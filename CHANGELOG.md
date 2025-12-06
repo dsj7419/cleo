@@ -5,6 +5,23 @@ All notable changes to the claude-todo system will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.6] - 2025-12-06
+
+### Added
+- **Date filtering**: `--since` and `--until` options for list-tasks.sh
+- **Sorting**: `--sort` option (status, priority, createdAt, title) and `--reverse` flag
+- **Test coverage**: New tests for session, focus, export, and migrate commands (7 total test suites)
+- **CI/CD**: GitHub Actions workflow with test, lint, JSON validation, and install jobs
+- **CONTRIBUTING.md**: Comprehensive contribution guidelines for open source
+
+### Changed
+- Documentation fully aligned with implemented features
+
+## [0.2.5] - 2025-12-05
+
+### Added
+- CHANGELOG.md for version tracking
+
 ## [0.2.4] - 2025-12-06
 
 ### Changed

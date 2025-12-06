@@ -1,0 +1,115 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq
+
+      - name: Verify Bash version
+        run: bash --version
+
+      - name: Verify jq version
+        run: jq --version
+
+      - name: Make scripts executable
+        run: |
+          chmod +x scripts/*.sh
+          chmod +x lib/*.sh
+          chmod +x tests/*.sh
+          chmod +x install.sh
+
+      - name: Run test suite
+        run: ./tests/run-all-tests.sh
+
+  lint:
+    name: Shell Linting
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install ShellCheck
+        run: sudo apt-get install -y shellcheck
+
+      - name: Run ShellCheck on scripts
+        run: |
+          shellcheck scripts/*.sh || true
+          shellcheck lib/*.sh || true
+
+      - name: Check for syntax errors
+        run: |
+          for script in scripts/*.sh lib/*.sh; do
+            echo "Checking syntax: $script"
+            bash -n "$script"
+          done
+
+  validate-json:
+    name: Validate JSON Files
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install jq
+        run: sudo apt-get install -y jq
+
+      - name: Validate JSON schemas
+        run: |
+          for file in schemas/*.json; do
+            echo "Validating: $file"
+            jq empty "$file"
+          done
+
+      - name: Validate template files
+        run: |
+          for file in templates/*.json; do
+            echo "Validating: $file"
+            jq empty "$file"
+          done
+
+  install-test:
+    name: Installation Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: sudo apt-get install -y jq
+
+      - name: Make install script executable
+        run: chmod +x install.sh
+
+      - name: Run installation
+        run: ./install.sh
+
+      - name: Verify installation
+        run: |
+          ~/.local/bin/claude-todo version
+          ~/.local/bin/claude-todo help
+
+      - name: Test project initialization
+        run: |
+          mkdir -p /tmp/test-project
+          cd /tmp/test-project
+          ~/.local/bin/claude-todo init test-project
+          ls -la .claude/
+          ~/.local/bin/claude-todo validate

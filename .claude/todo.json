@@ -2,9 +2,9 @@
   "$schema": "./schemas/todo.schema.json",
   "version": "2.1.0",
   "project": "claude-todo",
-  "lastUpdated": "2025-12-06T07:17:37Z",
+  "lastUpdated": "2025-12-06T08:14:04Z",
   "_meta": {
-    "checksum": "8ce113d48410bce0",
+    "checksum": "c05fb5559c0f55b8",
     "configVersion": "2.1.0",
     "lastSessionId": null,
     "activeSession": null,
@@ -273,14 +273,15 @@
     {
       "id": "T029",
       "title": "Remove non-existent list-tasks.sh options from docs",
-      "status": "pending",
+      "status": "done",
       "priority": "medium",
       "createdAt": "2025-12-06T05:19:48Z",
       "description": "Docs show --since, --sort, --reverse, --until options that dont exist in list-tasks.sh. Remove from usage.md",
       "labels": [
         "documentation",
         "minor"
-      ]
+      ],
+      "completedAt": "2025-12-06T08:14:04Z"
     },
     {
       "id": "T030",
@@ -321,26 +322,28 @@
     {
       "id": "T033",
       "title": "Add CONTRIBUTING.md for open source",
-      "status": "pending",
+      "status": "done",
       "priority": "low",
       "createdAt": "2025-12-06T05:19:52Z",
-      "description": "Project needs CONTRIBUTING.md with guidelines for contributors, code style, PR process, etc for open source release",
+      "description": "Project needs CONTRIBUTING.md for open source release. Include: (1) How to report bugs/request features, (2) Development setup (./install.sh, run tests), (3) Code style (bash best practices, shellcheck), (4) PR process (fork, branch, test, PR), (5) Commit message format (we use conventional commits with Claude co-author), (6) Testing requirements (add tests for new features), (7) Documentation requirements (update docs for changes)",
       "labels": [
         "documentation",
         "opensource"
-      ]
+      ],
+      "completedAt": "2025-12-06T08:08:34Z"
     },
     {
       "id": "T034",
       "title": "Add CHANGELOG.md for version tracking",
-      "status": "pending",
+      "status": "done",
       "priority": "low",
       "createdAt": "2025-12-06T05:19:54Z",
       "description": "Project needs CHANGELOG.md to track version history for open source release",
       "labels": [
         "documentation",
         "opensource"
-      ]
+      ],
+      "completedAt": "2025-12-06T07:47:02Z"
     },
     {
       "id": "T035",
@@ -403,6 +406,15 @@
         "integration"
       ],
       "completedAt": "2025-12-06T07:01:11Z"
+    },
+    {
+      "id": "T040",
+      "title": "Expand test coverage for open source readiness",
+      "status": "done",
+      "priority": "high",
+      "createdAt": "2025-12-06T08:03:44Z",
+      "description": "Current tests only cover add-task, archive, validation. Need tests for: (1) session.sh start/end/status, (2) focus.sh set/clear/note, (3) export.sh all formats, (4) migrate.sh status/check/run, (5) Edge cases: empty files, malformed JSON, concurrent access. Target: All commands have at least basic happy-path tests before v1.0",
+      "completedAt": "2025-12-06T08:12:34Z"
     }
   ],
   "phases": {

@@ -44,6 +44,10 @@ LABEL_FILTER=""
 FORMAT="text"
 INCLUDE_ARCHIVE=false
 LIMIT=""
+SINCE_DATE=""
+UNTIL_DATE=""
+SORT_FIELD=""
+SORT_REVERSE=false
 SHOW_NOTES=false
 SHOW_FILES=false
 SHOW_ACCEPTANCE=false
@@ -62,8 +66,14 @@ Filters:
   --priority PRIORITY   Filter by priority: critical|high|medium|low
   --phase PHASE         Filter by phase slug
   --label LABEL         Filter by label
+  --since DATE          Show tasks created after date (ISO 8601: YYYY-MM-DD)
+  --until DATE          Show tasks created before date (ISO 8601: YYYY-MM-DD)
   --all                 Include archived tasks
   --limit N             Show first N tasks only
+
+Sorting:
+  --sort FIELD          Sort by field: status|priority|createdAt|title (default: priority)
+  --reverse             Reverse sort order
 
 Display Options:
   --format FORMAT       Output format: text|json|markdown|table (default: text)
@@ -79,6 +89,8 @@ Examples:
   $(basename "$0")                          # List all active tasks
   $(basename "$0") --status pending         # Only pending tasks
   $(basename "$0") --priority critical      # Only critical priority
+  $(basename "$0") --since 2025-12-01       # Tasks created after Dec 1
+  $(basename "$0") --sort createdAt --reverse  # Newest first
   $(basename "$0") --format json            # JSON output
   $(basename "$0") --all --limit 20         # Last 20 tasks including archive
   $(basename "$0") -v                       # Verbose mode with all details
@@ -103,6 +115,10 @@ while [[ $# -gt 0 ]]; do
     --priority) PRIORITY_FILTER="$2"; shift 2 ;;
     --phase) PHASE_FILTER="$2"; shift 2 ;;
     --label) LABEL_FILTER="$2"; shift 2 ;;
+    --since) SINCE_DATE="$2"; shift 2 ;;
+    --until) UNTIL_DATE="$2"; shift 2 ;;
+    --sort) SORT_FIELD="$2"; GROUP_BY_PRIORITY=false; shift 2 ;;
+    --reverse) SORT_REVERSE=true; shift ;;
     --format) FORMAT="$2"; shift 2 ;;
     --all) INCLUDE_ARCHIVE=true; shift ;;
     --limit) LIMIT="$2"; shift 2 ;;
@@ -164,11 +180,43 @@ if [[ -n "$LABEL_FILTER" ]]; then
   JQ_FILTER="$JQ_FILTER | select(.labels // [] | index(\"$LABEL_FILTER\"))"
 fi
 
+# Date-based filtering
+if [[ -n "$SINCE_DATE" ]]; then
+  JQ_FILTER="$JQ_FILTER | select(.createdAt >= \"$SINCE_DATE\")"
+fi
+
+if [[ -n "$UNTIL_DATE" ]]; then
+  JQ_FILTER="$JQ_FILTER | select(.createdAt <= \"$UNTIL_DATE\")"
+fi
+
+# Build sort expression
+SORT_EXPR=""
+case "$SORT_FIELD" in
+  status)
+    SORT_EXPR='sort_by(if .status == "active" then 0 elif .status == "pending" then 1 elif .status == "blocked" then 2 else 3 end)'
+    ;;
+  priority)
+    SORT_EXPR='sort_by(if .priority == "critical" then 0 elif .priority == "high" then 1 elif .priority == "medium" then 2 else 3 end)'
+    ;;
+  createdAt)
+    SORT_EXPR='sort_by(.createdAt)'
+    ;;
+  title)
+    SORT_EXPR='sort_by(.title | ascii_downcase)'
+    ;;
+  *)
+    # Default: sort by priority then createdAt
+    SORT_EXPR='sort_by((if .priority == "critical" then 0 elif .priority == "high" then 1 elif .priority == "medium" then 2 else 3 end), .createdAt)'
+    ;;
+esac
+
+# Apply reverse if requested
+if [[ "$SORT_REVERSE" == true ]]; then
+  SORT_EXPR="$SORT_EXPR | reverse"
+fi
+
 # Apply filters and sort
-FILTERED_TASKS=$(echo "$TASKS" | jq -s "map($JQ_FILTER) | sort_by(
-  (if .priority == \"critical\" then 0 elif .priority == \"high\" then 1 elif .priority == \"medium\" then 2 else 3 end),
-  .createdAt
-)")
+FILTERED_TASKS=$(echo "$TASKS" | jq -s "map($JQ_FILTER) | $SORT_EXPR")
 
 # Apply limit if specified
 if [[ -n "$LIMIT" ]]; then

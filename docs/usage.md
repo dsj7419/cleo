@@ -369,13 +369,18 @@ claude-todo list [OPTIONS]
 **Options**:
 - `--status <status>`: Filter by status (`pending`, `active`, `blocked`, `done`)
 - `--priority <priority>`: Filter by priority (`low`, `medium`, `high`, `critical`)
+- `--phase <phase>`: Filter by phase slug
 - `--label <label>`: Filter by label
-- `--since <date>`: Show tasks created after date (ISO 8601)
+- `--since <date>`: Show tasks created after date (ISO 8601: YYYY-MM-DD)
+- `--until <date>`: Show tasks created before date (ISO 8601: YYYY-MM-DD)
 - `--limit <n>`: Limit results to N tasks
 - `--all`: Include archived tasks
 - `--format <format>`: Output format (`text`, `json`, `markdown`, `table`)
-- `--sort <field>`: Sort by field (`status`, `priority`, `createdAt`)
+- `--sort <field>`: Sort by field (`status`, `priority`, `createdAt`, `title`)
 - `--reverse`: Reverse sort order
+- `--compact, -c`: Compact one-line per task view
+- `--flat`: Don't group by priority (flat list)
+- `-v, --verbose`: Show all task details
 
 **Examples**:
 ```bash
@@ -406,8 +411,14 @@ claude-todo list --format markdown
 # All tasks including archived
 claude-todo list --all
 
-# Sort by priority, highest first
-claude-todo list --sort priority --reverse
+# Sort by creation date, newest first
+claude-todo list --sort createdAt --reverse
+
+# Compact view
+claude-todo list --compact
+
+# Verbose mode with all details
+claude-todo list -v
 ```
 
 **Output Formats**:
@@ -1202,7 +1213,7 @@ claude-todo list \
   --priority critical \
   --format json
 
-# Recent active work
+# Recent active work, newest first
 claude-todo list \
   --status active \
   --since 2025-12-01 \
@@ -1624,6 +1635,9 @@ restore.sh DIR       # Restore backup
 --priority high      # High priority
 --label backend      # Backend tasks
 --since 2025-12-01   # Recent tasks
+--sort createdAt     # Sort by date
+--reverse            # Reverse order
+--limit 10           # First 10 tasks
 --format json        # JSON output
 
 # Status Values
