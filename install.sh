@@ -37,27 +37,77 @@ log_warn()  { echo -e "${YELLOW}[WARN]${NC} $1"; }
 log_error() { echo -e "${RED}[ERROR]${NC} $1" >&2; }
 log_step()  { echo -e "${BLUE}[STEP]${NC} $1"; }
 
+# Compare semantic versions: returns 0 if v1 < v2, 1 if v1 == v2, 2 if v1 > v2
+compare_versions() {
+  local v1="$1" v2="$2"
+
+  # Parse version components
+  local v1_major v1_minor v1_patch v2_major v2_minor v2_patch
+  IFS='.' read -r v1_major v1_minor v1_patch <<< "$v1"
+  IFS='.' read -r v2_major v2_minor v2_patch <<< "$v2"
+
+  # Default to 0 if empty
+  v1_major=${v1_major:-0}; v1_minor=${v1_minor:-0}; v1_patch=${v1_patch:-0}
+  v2_major=${v2_major:-0}; v2_minor=${v2_minor:-0}; v2_patch=${v2_patch:-0}
+
+  # Compare major
+  if (( v1_major < v2_major )); then return 0; fi
+  if (( v1_major > v2_major )); then return 2; fi
+
+  # Compare minor
+  if (( v1_minor < v2_minor )); then return 0; fi
+  if (( v1_minor > v2_minor )); then return 2; fi
+
+  # Compare patch
+  if (( v1_patch < v2_patch )); then return 0; fi
+  if (( v1_patch > v2_patch )); then return 2; fi
+
+  return 1  # Equal
+}
+
 # Check for existing installation
 if [[ -d "$INSTALL_DIR" ]]; then
   EXISTING_VERSION=""
-  [[ -f "$INSTALL_DIR/VERSION" ]] && EXISTING_VERSION=$(cat "$INSTALL_DIR/VERSION")
+  [[ -f "$INSTALL_DIR/VERSION" ]] && EXISTING_VERSION=$(cat "$INSTALL_DIR/VERSION" | tr -d '[:space:]')
 
   echo ""
-  log_warn "Existing installation found at $INSTALL_DIR"
-  [[ -n "$EXISTING_VERSION" ]] && echo "  Current version: $EXISTING_VERSION"
-  echo "  New version: $VERSION"
-  echo ""
 
-  if [[ "$FORCE" == "true" ]]; then
-    log_info "Force mode: overwriting existing installation"
+  if [[ -z "$EXISTING_VERSION" ]]; then
+    # No version file - old installation, just upgrade
+    log_info "Upgrading legacy installation (no version file)"
   else
-    read -p "Overwrite existing installation? (y/N) " -n 1 -r
-    echo ""
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-      echo "Installation cancelled."
-      exit 0
+    # Compare versions
+    set +e
+    compare_versions "$EXISTING_VERSION" "$VERSION"
+    CMP_RESULT=$?
+    set -e
+
+    if [[ $CMP_RESULT -eq 0 ]]; then
+      # Existing < New: Auto-upgrade
+      log_info "Upgrading: $EXISTING_VERSION → $VERSION"
+    elif [[ $CMP_RESULT -eq 1 ]]; then
+      # Equal versions
+      if [[ "$FORCE" == "true" ]]; then
+        log_info "Reinstalling v$VERSION (forced)"
+      else
+        log_info "Already at version $VERSION"
+        echo "  Use --force to reinstall"
+        exit 0
+      fi
+    else
+      # Existing > New: Downgrade warning
+      log_warn "Downgrade detected: $EXISTING_VERSION → $VERSION"
+      if [[ "$FORCE" != "true" ]]; then
+        read -p "Continue with downgrade? (y/N) " -n 1 -r
+        echo ""
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+          echo "Installation cancelled."
+          exit 0
+        fi
+      fi
     fi
   fi
+
   rm -rf "$INSTALL_DIR"
 fi
 
