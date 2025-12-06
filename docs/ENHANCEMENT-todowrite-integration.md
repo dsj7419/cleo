@@ -1,5 +1,9 @@
 # TodoWrite Integration Analysis: Persistent vs Ephemeral Task Synchronization
 
+**Status**: ✅ **IMPLEMENTED** (v0.2.1)
+**Task IDs**: T037, T038, T039
+**Completed**: 2025-12-05
+
 ## Executive Summary
 
 This document analyzes integration patterns between persistent task management systems (claude-todo) and ephemeral session-scoped task tracking (Claude Code's TodoWrite), providing recommendations based on industry research and best practices.
@@ -772,7 +776,17 @@ transform_to_active_form() {
    - Comprehensive logging for audit trail
    - User confirmation required for destructive operations
 
-**Next Steps**: Proceed with Phase 1 implementation (core commands and grammar transformation library).
+**Implementation Complete**:
+- ✅ Phase 1: Grammar transformation library (`lib/todowrite-integration.sh`) - 130+ verbs
+- ✅ Phase 2: Export command (`scripts/export.sh`) - todowrite/json/markdown formats
+- ✅ Phase 3: Documentation updated (CLAUDE.md, README.md, usage.md, QUICK-REFERENCE.md)
+
+**Usage**:
+```bash
+claude-todo export --format todowrite   # Export for Claude Code
+claude-todo export --format markdown    # Export as checklist
+claude-todo export --format json        # Export raw JSON
+```
 
 ---
 
