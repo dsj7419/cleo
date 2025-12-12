@@ -204,6 +204,80 @@
           "description": "Warn about tasks pending longer than this."
         }
       }
+    },
+
+    "cli": {
+      "type": "object",
+      "description": "CLI behavior, aliases, and plugin settings.",
+      "additionalProperties": false,
+      "properties": {
+        "aliases": {
+          "type": "object",
+          "description": "Command aliases mapping short names to commands.",
+          "additionalProperties": {
+            "type": "string",
+            "description": "Target command name."
+          },
+          "default": {
+            "ls": "list",
+            "done": "complete",
+            "new": "add",
+            "edit": "update",
+            "rm": "archive",
+            "check": "validate"
+          }
+        },
+        "plugins": {
+          "type": "object",
+          "description": "Plugin system configuration.",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": true,
+              "description": "Enable plugin discovery and loading."
+            },
+            "directories": {
+              "type": "array",
+              "items": { "type": "string" },
+              "default": ["~/.claude-todo/plugins", "./.claude/plugins"],
+              "description": "Directories to scan for plugins (in order of priority)."
+            },
+            "autoDiscover": {
+              "type": "boolean",
+              "default": true,
+              "description": "Auto-discover plugins from directories."
+            }
+          }
+        },
+        "debug": {
+          "type": "object",
+          "description": "Debug and validation settings for CLI.",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": false,
+              "description": "Enable debug mode (verbose output, validation checks)."
+            },
+            "validateMappings": {
+              "type": "boolean",
+              "default": true,
+              "description": "Validate command-to-script mappings exist."
+            },
+            "checksumVerify": {
+              "type": "boolean",
+              "default": true,
+              "description": "Verify script checksums for integrity."
+            },
+            "showTimings": {
+              "type": "boolean",
+              "default": false,
+              "description": "Show command execution timings."
+            }
+          }
+        }
+      }
     }
   }
 }

@@ -44,5 +44,27 @@
     "showArchiveCount": true,
     "showLogSummary": true,
     "warnStaleDays": 30
+  },
+
+  "cli": {
+    "aliases": {
+      "ls": "list",
+      "done": "complete",
+      "new": "add",
+      "edit": "update",
+      "rm": "archive",
+      "check": "validate"
+    },
+    "plugins": {
+      "enabled": true,
+      "directories": ["~/.claude-todo/plugins", "./.claude/plugins"],
+      "autoDiscover": true
+    },
+    "debug": {
+      "enabled": false,
+      "validateMappings": true,
+      "checksumVerify": true,
+      "showTimings": false
+    }
   }
 }

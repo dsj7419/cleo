@@ -122,7 +122,7 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 # Create directory structure
 log_step "Creating directory structure..."
-mkdir -p "$INSTALL_DIR"/{schemas,templates,scripts,lib,docs}
+mkdir -p "$INSTALL_DIR"/{schemas,templates,scripts,lib,docs,plugins}
 
 # Write version
 echo "$VERSION" > "$INSTALL_DIR/VERSION"
@@ -163,11 +163,20 @@ log_step "Installing scripts..."
 # Create wrapper script for PATH
 cat > "$INSTALL_DIR/scripts/claude-todo" << 'WRAPPER_EOF'
 #!/usr/bin/env bash
-# CLAUDE-TODO CLI Wrapper
+# CLAUDE-TODO CLI Wrapper v2 - Enhanced with aliases, plugins, and debug support
+set -uo pipefail
+
 CLAUDE_TODO_HOME="${CLAUDE_TODO_HOME:-$HOME/.claude-todo}"
 SCRIPT_DIR="$CLAUDE_TODO_HOME/scripts"
+PLUGIN_DIR="$CLAUDE_TODO_HOME/plugins"
+GLOBAL_CONFIG="$CLAUDE_TODO_HOME/config.json"
 
-# Command to script mapping
+# Debug mode (set CLAUDE_TODO_DEBUG=1 to enable)
+DEBUG="${CLAUDE_TODO_DEBUG:-0}"
+
+# ============================================
+# COMMAND TO SCRIPT MAPPING (Core Commands)
+# ============================================
 declare -A CMD_MAP=(
   [init]="init.sh"
   [validate]="validate.sh"
@@ -186,7 +195,7 @@ declare -A CMD_MAP=(
   [update]="update-task.sh"
 )
 
-# Brief descriptions for main help (one-liners only)
+# Brief descriptions for main help
 declare -A CMD_DESC=(
   [init]="Initialize todo system in current directory"
   [validate]="Validate todo.json against schema"
@@ -205,8 +214,149 @@ declare -A CMD_DESC=(
   [update]="Update existing task fields"
 )
 
+# ============================================
+# DEFAULT ALIASES (can be overridden in config)
+# ============================================
+declare -A CMD_ALIASES=(
+  [ls]="list"
+  [done]="complete"
+  [new]="add"
+  [edit]="update"
+  [rm]="archive"
+  [check]="validate"
+)
+
+# ============================================
+# LOAD CONFIG OVERRIDES (if global config exists)
+# ============================================
+load_config_aliases() {
+  if [[ -f "$GLOBAL_CONFIG" ]] && command -v jq &>/dev/null; then
+    # Load custom aliases from config
+    local config_aliases
+    config_aliases=$(jq -r '.cli.aliases // {} | to_entries[] | "\(.key)=\(.value)"' "$GLOBAL_CONFIG" 2>/dev/null)
+    while IFS='=' read -r alias target; do
+      [[ -n "$alias" && -n "$target" ]] && CMD_ALIASES["$alias"]="$target"
+    done <<< "$config_aliases"
+  fi
+}
+
+# ============================================
+# PLUGIN DISCOVERY (Auto-discover from plugin directories)
+# ============================================
+declare -A PLUGIN_MAP=()
+declare -A PLUGIN_DESC=()
+
+discover_plugins() {
+  local plugin_dirs=("$PLUGIN_DIR" "./.claude/plugins")
+
+  for dir in "${plugin_dirs[@]}"; do
+    [[ ! -d "$dir" ]] && continue
+
+    for plugin in "$dir"/*.sh; do
+      [[ ! -f "$plugin" ]] && continue
+      [[ ! -x "$plugin" ]] && continue
+
+      # Extract plugin name from filename
+      local plugin_name=$(basename "$plugin" .sh)
+
+      # Check for metadata block (###PLUGIN ... ###END)
+      local desc="Custom plugin"
+      if grep -q "^###PLUGIN" "$plugin" 2>/dev/null; then
+        desc=$(sed -n '/^###PLUGIN$/,/^###END$/p' "$plugin" | grep "^# description:" | cut -d: -f2- | xargs)
+        [[ -z "$desc" ]] && desc="Custom plugin"
+      fi
+
+      # Register plugin (plugins override core commands if same name)
+      PLUGIN_MAP["$plugin_name"]="$plugin"
+      PLUGIN_DESC["$plugin_name"]="$desc"
+
+      [[ "$DEBUG" == "1" ]] && echo "[DEBUG] Discovered plugin: $plugin_name -> $plugin" >&2
+    done
+  done
+}
+
+# ============================================
+# DEBUG VALIDATION
+# ============================================
+debug_validate() {
+  echo "[DEBUG] Validating CLI configuration..."
+  local errors=0
+
+  # Check all mapped scripts exist
+  for cmd in "${!CMD_MAP[@]}"; do
+    local script="$SCRIPT_DIR/${CMD_MAP[$cmd]}"
+    if [[ ! -f "$script" ]]; then
+      echo "[ERROR] Missing script for '$cmd': $script" >&2
+      ((errors++))
+    elif [[ ! -x "$script" ]]; then
+      echo "[WARN] Script not executable: $script" >&2
+    fi
+  done
+
+  # Check plugin directory
+  if [[ -d "$PLUGIN_DIR" ]]; then
+    local plugin_count=$(find "$PLUGIN_DIR" -maxdepth 1 -name "*.sh" -executable 2>/dev/null | wc -l)
+    echo "[DEBUG] Plugin directory: $PLUGIN_DIR ($plugin_count plugins)"
+  else
+    echo "[DEBUG] Plugin directory not found: $PLUGIN_DIR"
+  fi
+
+  # Show loaded aliases
+  echo "[DEBUG] Loaded aliases:"
+  for alias in "${!CMD_ALIASES[@]}"; do
+    echo "  $alias -> ${CMD_ALIASES[$alias]}"
+  done
+
+  # Checksum verification (if enabled)
+  if [[ -f "$CLAUDE_TODO_HOME/checksums.sha256" ]]; then
+    echo "[DEBUG] Verifying script checksums..."
+    if cd "$SCRIPT_DIR" && sha256sum -c "$CLAUDE_TODO_HOME/checksums.sha256" --quiet 2>/dev/null; then
+      echo "[DEBUG] Checksum verification: PASSED"
+    else
+      echo "[WARN] Checksum verification: FAILED (scripts may have been modified)" >&2
+    fi
+  fi
+
+  if [[ $errors -gt 0 ]]; then
+    echo "[DEBUG] Validation completed with $errors error(s)"
+    return 1
+  fi
+  echo "[DEBUG] Validation completed successfully"
+  return 0
+}
+
+# ============================================
+# RESOLVE COMMAND (handles aliases and plugins)
+# ============================================
+resolve_command() {
+  local cmd="$1"
+
+  # Check if it's an alias first
+  if [[ -n "${CMD_ALIASES[$cmd]:-}" ]]; then
+    cmd="${CMD_ALIASES[$cmd]}"
+  fi
+
+  # Check plugins (plugins override core commands)
+  if [[ -n "${PLUGIN_MAP[$cmd]:-}" ]]; then
+    echo "plugin:${PLUGIN_MAP[$cmd]}"
+    return 0
+  fi
+
+  # Check core commands
+  if [[ -n "${CMD_MAP[$cmd]:-}" ]]; then
+    echo "core:$cmd"
+    return 0
+  fi
+
+  # Not found
+  return 1
+}
+
+# ============================================
+# HELP DISPLAY
+# ============================================
 show_main_help() {
-  echo "CLAUDE-TODO v$(cat "$CLAUDE_TODO_HOME/VERSION")"
+  echo "CLAUDE-TODO v$(cat "$CLAUDE_TODO_HOME/VERSION" 2>/dev/null || echo "unknown")"
   echo ""
   echo "Usage: claude-todo <command> [options]"
   echo "       claude-todo help <command>    Show detailed command help"
@@ -217,43 +367,134 @@ show_main_help() {
   done
   echo "  version        Show version"
   echo "  help           Show this help"
+
+  # Show aliases
+  echo ""
+  echo "Aliases:"
+  printf "  "
+  local alias_list=""
+  for alias in "${!CMD_ALIASES[@]}"; do
+    alias_list+="$alias->${CMD_ALIASES[$alias]}  "
+  done
+  echo "$alias_list"
+
+  # Show plugins if any
+  if [[ ${#PLUGIN_MAP[@]} -gt 0 ]]; then
+    echo ""
+    echo "Plugins:"
+    for plugin in "${!PLUGIN_MAP[@]}"; do
+      printf "  %-14s %s\n" "$plugin" "${PLUGIN_DESC[$plugin]:-Custom plugin}"
+    done
+  fi
+
   echo ""
   echo "Run 'claude-todo help <command>' for detailed options."
   echo ""
   echo "Examples:"
   echo "  claude-todo init my-project"
-  echo "  claude-todo session start"
   echo "  claude-todo add \"Implement feature\""
-  echo "  claude-todo focus set <task-id>"
-  echo "  claude-todo complete <task-id>"
-  echo "  claude-todo session end --note \"Done for today\""
+  echo "  claude-todo ls                        # alias for list"
+  echo "  claude-todo done T001                 # alias for complete"
+  echo "  claude-todo focus set T001"
+  echo ""
+  echo "Debug: CLAUDE_TODO_DEBUG=1 claude-todo --validate"
 }
+
+# ============================================
+# MAIN EXECUTION
+# ============================================
+
+# Load config and discover plugins
+load_config_aliases
+discover_plugins
+
+# Handle special debug commands
+if [[ "${1:-}" == "--validate" ]] || [[ "${1:-}" == "--debug" ]]; then
+  DEBUG=1
+  debug_validate
+  exit $?
+fi
+
+if [[ "${1:-}" == "--list-commands" ]]; then
+  echo "Core commands:"
+  for cmd in "${!CMD_MAP[@]}"; do echo "  $cmd"; done
+  echo "Aliases:"
+  for alias in "${!CMD_ALIASES[@]}"; do echo "  $alias -> ${CMD_ALIASES[$alias]}"; done
+  if [[ ${#PLUGIN_MAP[@]} -gt 0 ]]; then
+    echo "Plugins:"
+    for plugin in "${!PLUGIN_MAP[@]}"; do echo "  $plugin"; done
+  fi
+  exit 0
+fi
 
 CMD="${1:-help}"
 
+# Debug timing
+[[ "$DEBUG" == "1" ]] && START_TIME=$(date +%s%N)
+
 case "$CMD" in
-  version)
-    cat "$CLAUDE_TODO_HOME/VERSION"
+  version|--version|-v)
+    cat "$CLAUDE_TODO_HOME/VERSION" 2>/dev/null || echo "unknown"
     ;;
-  help)
-    if [[ -n "${2:-}" ]] && [[ -n "${CMD_MAP[$2]:-}" ]]; then
-      # Delegate to script's --help
-      bash "$SCRIPT_DIR/${CMD_MAP[$2]}" --help
+  help|--help|-h)
+    if [[ -n "${2:-}" ]]; then
+      resolved=$(resolve_command "$2")
+      if [[ $? -eq 0 ]]; then
+        if [[ "$resolved" == plugin:* ]]; then
+          bash "${resolved#plugin:}" --help
+        else
+          bash "$SCRIPT_DIR/${CMD_MAP[${resolved#core:}]}" --help
+        fi
+      else
+        echo "Unknown command: $2"
+        echo "Run 'claude-todo help' for available commands."
+        exit 1
+      fi
     else
       show_main_help
     fi
     ;;
   *)
-    if [[ -n "${CMD_MAP[$CMD]:-}" ]]; then
+    resolved=$(resolve_command "$CMD")
+    if [[ $? -eq 0 ]]; then
       shift
-      bash "$SCRIPT_DIR/${CMD_MAP[$CMD]}" "$@"
+      if [[ "$resolved" == plugin:* ]]; then
+        [[ "$DEBUG" == "1" ]] && echo "[DEBUG] Executing plugin: ${resolved#plugin:}" >&2
+        exec bash "${resolved#plugin:}" "$@"
+      else
+        target_cmd="${resolved#core:}"
+        script="$SCRIPT_DIR/${CMD_MAP[$target_cmd]}"
+        [[ "$DEBUG" == "1" ]] && echo "[DEBUG] Executing: $script" >&2
+        exec bash "$script" "$@"
+      fi
     else
       echo "Unknown command: $CMD"
+      echo ""
+      echo "Did you mean one of these?"
+      # Suggest similar commands
+      for cmd in "${!CMD_MAP[@]}" "${!CMD_ALIASES[@]}"; do
+        if [[ "$cmd" == *"$CMD"* ]] || [[ "$CMD" == *"$cmd"* ]]; then
+          echo "  $cmd"
+        fi
+      done
+      [[ ${#PLUGIN_MAP[@]} -gt 0 ]] && for plugin in "${!PLUGIN_MAP[@]}"; do
+        if [[ "$plugin" == *"$CMD"* ]] || [[ "$CMD" == *"$plugin"* ]]; then
+          echo "  $plugin"
+        fi
+      done
+      echo ""
       echo "Run 'claude-todo help' for available commands."
       exit 1
     fi
     ;;
 esac
+
+# Debug timing output
+if [[ "$DEBUG" == "1" ]] && [[ -n "${START_TIME:-}" ]]; then
+  END_TIME=$(date +%s%N)
+  ELAPSED=$(( (END_TIME - START_TIME) / 1000000 ))
+  echo "[DEBUG] Execution time: ${ELAPSED}ms" >&2
+fi
 WRAPPER_EOF
 
 chmod +x "$INSTALL_DIR/scripts/claude-todo"
@@ -270,6 +511,51 @@ if [[ -d "$SCRIPT_DIR/scripts" ]]; then
 else
   log_warn "Scripts directory not found at $SCRIPT_DIR/scripts"
 fi
+
+# Generate checksums for integrity verification
+log_step "Generating script checksums..."
+if command -v sha256sum &>/dev/null; then
+  (cd "$INSTALL_DIR/scripts" && sha256sum *.sh > "$INSTALL_DIR/checksums.sha256" 2>/dev/null)
+  log_info "Checksums generated: $INSTALL_DIR/checksums.sha256"
+else
+  log_warn "sha256sum not found - skipping checksum generation"
+fi
+
+# ============================================
+# PLUGINS DIRECTORY
+# ============================================
+log_step "Setting up plugins directory..."
+mkdir -p "$INSTALL_DIR/plugins"
+
+# Create example plugin template
+cat > "$INSTALL_DIR/plugins/README.md" << 'PLUGIN_README'
+# CLAUDE-TODO Plugins
+
+Place custom command scripts here. Each `.sh` file becomes a command.
+
+## Plugin Format
+
+```bash
+#!/usr/bin/env bash
+###PLUGIN
+# description: Brief description of what this plugin does
+###END
+
+# Your script implementation here
+echo "Hello from my plugin!"
+```
+
+## Usage
+
+1. Create a script: `~/.claude-todo/plugins/my-command.sh`
+2. Make it executable: `chmod +x ~/.claude-todo/plugins/my-command.sh`
+3. Run it: `claude-todo my-command`
+
+## Project-Local Plugins
+
+You can also place plugins in `./.claude/plugins/` for project-specific commands.
+PLUGIN_README
+log_info "Plugins directory ready: $INSTALL_DIR/plugins"
 
 # ============================================
 # LIBRARY FUNCTIONS
