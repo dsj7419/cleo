@@ -12,7 +12,18 @@
 # Only exclude backups and temp files (noise):
 .claude/.backups/
 .claude/*.tmp
+.claude/*.lock
+.claude/.cache/
+.claude/.claude/
+.claude/backup-metadata.json
 .claude/todo-log-old.json
+
+# ============================================================
+# Claude Session Working Documents
+# ============================================================
+# Working documents generated during Claude Code sessions
+# These are temporary analysis/reports, not project documentation
+claudedocs/
 
 # Any test project directories created during development
 test-project/
