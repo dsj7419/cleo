@@ -3,9 +3,9 @@
   "version": "2.1.0",
   "project": "claude-todo",
   "_meta": {
-    "totalEntries": 14,
+    "totalEntries": 15,
     "firstEntry": "2025-12-13T07:14:38Z",
-    "lastEntry": "2025-12-13T16:12:12Z",
+    "lastEntry": "2025-12-13T17:40:55Z",
     "entriesPruned": 0
   },
   "entries": [
@@ -578,6 +578,178 @@
         "title": "Test",
         "status": "pending",
         "priority": "medium"
+      }
+    },
+    {
+      "id": "log_bc599db2d5b9",
+      "timestamp": "2025-12-13T17:40:55Z",
+      "sessionId": "system",
+      "action": "task_archived",
+      "actor": "system",
+      "taskId": null,
+      "before": null,
+      "after": null,
+      "details": {
+        "count": 31,
+        "taskIds": [
+          "T036",
+          "T035",
+          "T014",
+          "T013",
+          "T032",
+          "T031",
+          "T030",
+          "T027",
+          "T026",
+          "T025",
+          "T028",
+          "T029",
+          "T040",
+          "T033",
+          "T034",
+          "T024",
+          "T023",
+          "T022",
+          "T021",
+          "T011",
+          "T010",
+          "T020",
+          "T019",
+          "T018",
+          "T009",
+          "T008",
+          "T037",
+          "T039",
+          "T038",
+          "T017",
+          "T016"
+        ]
+      }
+    },
+    {
+      "id": "log-1765649360-75fcf7",
+      "timestamp": "2025-12-13T18:09:20Z",
+      "operation": "create",
+      "task_id": "T152",
+      "user": "system",
+      "details": {
+        "title": "Fix complete-task.sh backup rotation (no rotation bug)",
+        "status": "pending",
+        "priority": "critical"
+      },
+      "before": null,
+      "after": {
+        "title": "Fix complete-task.sh backup rotation (no rotation bug)",
+        "status": "pending",
+        "priority": "critical"
+      }
+    },
+    {
+      "id": "log-1765649361-8448f2",
+      "timestamp": "2025-12-13T18:09:21Z",
+      "operation": "create",
+      "task_id": "T153",
+      "user": "system",
+      "details": {
+        "title": "Fix file-ops.sh path calculation bug (nested directories)",
+        "status": "pending",
+        "priority": "critical"
+      },
+      "before": null,
+      "after": {
+        "title": "Fix file-ops.sh path calculation bug (nested directories)",
+        "status": "pending",
+        "priority": "critical"
+      }
+    },
+    {
+      "id": "log-1765649362-f8862d",
+      "timestamp": "2025-12-13T18:09:22Z",
+      "operation": "create",
+      "task_id": "T154",
+      "user": "system",
+      "details": {
+        "title": "Fix safe_find edge cases with mtime-based sorting",
+        "status": "pending",
+        "priority": "critical"
+      },
+      "before": null,
+      "after": {
+        "title": "Fix safe_find edge cases with mtime-based sorting",
+        "status": "pending",
+        "priority": "critical"
+      }
+    },
+    {
+      "id": "log-1765649364-28233e",
+      "timestamp": "2025-12-13T18:09:24Z",
+      "operation": "create",
+      "task_id": "T155",
+      "user": "system",
+      "details": {
+        "title": "Create docs/commands/restore.md documentation",
+        "status": "pending",
+        "priority": "critical"
+      },
+      "before": null,
+      "after": {
+        "title": "Create docs/commands/restore.md documentation",
+        "status": "pending",
+        "priority": "critical"
+      }
+    },
+    {
+      "id": "log-1765649365-f0d340",
+      "timestamp": "2025-12-13T18:09:25Z",
+      "operation": "create",
+      "task_id": "T156",
+      "user": "system",
+      "details": {
+        "title": "Update QUICK-REFERENCE.md with restore commands",
+        "status": "pending",
+        "priority": "high"
+      },
+      "before": null,
+      "after": {
+        "title": "Update QUICK-REFERENCE.md with restore commands",
+        "status": "pending",
+        "priority": "high"
+      }
+    },
+    {
+      "id": "log-1765649366-c3bb01",
+      "timestamp": "2025-12-13T18:09:26Z",
+      "operation": "create",
+      "task_id": "T157",
+      "user": "system",
+      "details": {
+        "title": "Test backup system fixes end-to-end",
+        "status": "pending",
+        "priority": "high"
+      },
+      "before": null,
+      "after": {
+        "title": "Test backup system fixes end-to-end",
+        "status": "pending",
+        "priority": "high"
+      }
+    },
+    {
+      "id": "log-1765649367-1b6031",
+      "timestamp": "2025-12-13T18:09:27Z",
+      "operation": "create",
+      "task_id": "T158",
+      "user": "system",
+      "details": {
+        "title": "Bump version to 0.9.5 and update CHANGELOG for backup fixes",
+        "status": "pending",
+        "priority": "high"
+      },
+      "before": null,
+      "after": {
+        "title": "Bump version to 0.9.5 and update CHANGELOG for backup fixes",
+        "status": "pending",
+        "priority": "high"
       }
     }
   ]
