@@ -4,7 +4,7 @@
   "project": "claude-todo",
   "lastUpdated": "2025-12-13T18:48:28Z",
   "_meta": {
-    "checksum": "7f378e81f13c5f17",
+    "checksum": "0cd306759bbb9fd4",
     "configVersion": "2.1.0",
     "lastSessionId": null,
     "activeSession": null,
@@ -544,8 +544,7 @@
       "description": "Cache label-to-task and phase-to-task indices in .claude/.cache/. Checksum-based staleness detection. Lazy regeneration on first query after changes. O(1) lookups.",
       "labels": [
         "performance",
-        "caching",
-        "v1.0.0"
+        "caching"
       ],
       "notes": [
         "2025-12-13 08:08:33 UTC: Phase 4 verification: No cache files (.cache*) found, no caching code in lib/*.sh. Index caching not implemented.",
@@ -564,8 +563,7 @@
       "labels": [
         "ci-cd",
         "docs",
-        "v0.10.0",
-        "v1.0.0"
+        "v0.10.0"
       ]
     },
     {
@@ -579,8 +577,7 @@
       "labels": [
         "optimization",
         "performance",
-        "v0.10.0",
-        "v1.0.0"
+        "v0.10.0"
       ]
     },
     {
@@ -593,8 +590,7 @@
       "description": "BATS tests for: all output formats (json, jsonl, csv, tsv, table, markdown), color modes (NO_COLOR, FORCE_COLOR), terminal width adaptation, JSON schema validation with ajv-cli.",
       "labels": [
         "testing",
-        "output",
-        "v1.0.0"
+        "output"
       ],
       "completedAt": "2025-12-13T08:08:23Z",
       "notes": [
@@ -611,8 +607,7 @@
       "description": "Golden file tests in tests/golden/. Snapshot expected output for list, stats, dash, deps commands. UPDATE_GOLDEN=1 workflow. Normalize timestamps and paths.",
       "labels": [
         "testing",
-        "golden-files",
-        "v1.0.0"
+        "golden-files"
       ],
       "notes": [
         "2025-12-13 08:08:34 UTC: Phase 4 verification: No golden files (*.expected, *.golden, *snapshot*) found in tests/. Golden file regression testing not implemented.",
@@ -927,7 +922,8 @@
       "title": "Test task",
       "status": "active",
       "priority": "high",
-      "createdAt": "2025-12-13T16:11:57Z"
+      "createdAt": "2025-12-13T16:11:57Z",
+      "labels": []
     },
     {
       "id": "T149",
@@ -954,14 +950,16 @@
       "files": [
         "src/file.ts",
         "lib/util.js"
-      ]
+      ],
+      "labels": []
     },
     {
       "id": "T151",
       "title": "Test",
       "status": "pending",
       "priority": "medium",
-      "createdAt": "2025-12-13T16:12:31Z"
+      "createdAt": "2025-12-13T16:12:31Z",
+      "labels": []
     },
     {
       "id": "T152",
@@ -1142,8 +1140,7 @@
       "labels": [
         "architecture",
         "backup-system",
-        "v0.10.0",
-        "v1.0.0"
+        "v0.10.0"
       ],
       "notes": [
         "2025-12-13 18:42:51 UTC: Reference docs: claudedocs/BACKUP-ARCHITECTURE.md, claudedocs/BACKUP-SYSTEM-STATUS.md"
@@ -1160,8 +1157,7 @@
       "labels": [
         "architecture",
         "backup-system",
-        "v0.10.0",
-        "v1.0.0"
+        "v0.10.0"
       ],
       "depends": [
         "T161"
@@ -1178,8 +1174,7 @@
       "labels": [
         "architecture",
         "backup-system",
-        "v0.10.0",
-        "v1.0.0"
+        "v0.10.0"
       ],
       "depends": [
         "T161"
@@ -1196,8 +1191,7 @@
       "labels": [
         "backup-system",
         "migration",
-        "v0.10.0",
-        "v1.0.0"
+        "v0.10.0"
       ],
       "depends": [
         "T162"
@@ -1215,8 +1209,7 @@
         "backup-system",
         "config",
         "schema",
-        "v0.10.0",
-        "v1.0.0"
+        "v0.10.0"
       ],
       "depends": [
         "T163"
