@@ -376,7 +376,7 @@ show_main_help() {
   echo "       claude-todo help <command>    Show detailed command help"
   echo ""
   echo "Commands:"
-  for cmd in init add update complete list focus session archive validate stats backup restore export migrate log dash next labels deps blockers; do
+  for cmd in init add update complete list focus session archive validate stats backup restore export migrate log dash next labels deps blockers phases; do
     printf "  %-14s %s\n" "$cmd" "${CMD_DESC[$cmd]}"
   done
   echo "  version        Show version"
