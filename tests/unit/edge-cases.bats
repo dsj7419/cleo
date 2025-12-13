@@ -225,7 +225,7 @@ teardown() {
 
     # Complete and archive the dependency
     bash "$COMPLETE_SCRIPT" T001 --skip-notes
-    bash "$SCRIPTS_DIR/archive.sh" --force
+    bash "$SCRIPTS_DIR/archive.sh" --all
 
     # Verify dependent task's depends[] is cleaned
     local deps_count
@@ -248,7 +248,7 @@ teardown() {
 EOF
 
     # Archive completed tasks
-    bash "$SCRIPTS_DIR/archive.sh" --force
+    bash "$SCRIPTS_DIR/archive.sh" --all
 
     # Verify both dependencies were cleaned
     local deps_count

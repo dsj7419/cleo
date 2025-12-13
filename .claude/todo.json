@@ -2,9 +2,9 @@
   "$schema": "./schemas/todo.schema.json",
   "version": "2.1.0",
   "project": "claude-todo",
-  "lastUpdated": "2025-12-13T19:09:55Z",
+  "lastUpdated": "2025-12-13T19:29:07Z",
   "_meta": {
-    "checksum": "98e5efc390af496f",
+    "checksum": "e25839198e0515d7",
     "configVersion": "2.1.0",
     "lastSessionId": null,
     "activeSession": null,
@@ -618,7 +618,7 @@
     {
       "id": "T132",
       "title": "P0: Fix task ID collision under concurrent operations",
-      "status": "pending",
+      "status": "done",
       "priority": "critical",
       "createdAt": "2025-12-13T05:49:34Z",
       "description": "File locking exists but ID generation happens BEFORE lock acquisition. Under concurrent load (5 parallel adds), all processes generate same ID causing 80% data loss. Solution: Move ID generation inside locked critical section. See claudedocs/P0-1-RACE-CONDITION-ISSUE.md for full root cause analysis, fix requirements, and implementation plan.",
@@ -635,7 +635,8 @@
           "content": "Full documentation: claudedocs/P0-1-RACE-CONDITION-ISSUE.md - Requires architectural change to make ID generation atomic inside locked section"
         }
       ],
-      "phase": "core"
+      "phase": "core",
+      "completedAt": "2025-12-13T19:28:24Z"
     },
     {
       "id": "T133",
@@ -857,7 +858,7 @@
     {
       "id": "T144",
       "title": "Fix validate checksum recovery test",
-      "status": "pending",
+      "status": "done",
       "priority": "medium",
       "createdAt": "2025-12-13T16:11:31Z",
       "description": "Tests failing: Unit T211, Integration T33, T34. Tests: validate --fix recovers from checksum mismatch, validate --fix preserves task data. Root cause: checksum recalculation or file handling in validate.sh --fix mode. See: scripts/validate.sh, lib/validation.sh",
@@ -868,7 +869,8 @@
         "v0.9.6",
         "validation"
       ],
-      "phase": "core"
+      "phase": "core",
+      "completedAt": "2025-12-13T19:28:24Z"
     },
     {
       "id": "T145",
@@ -895,7 +897,7 @@
     {
       "id": "T146",
       "title": "Fix file locking concurrency tests",
-      "status": "pending",
+      "status": "done",
       "priority": "low",
       "createdAt": "2025-12-13T16:11:41Z",
       "description": "Tests failing: Unit T274, T279, T280, T283. Tests: concurrent lock timeout, lock released on error, lock timeout configurable, race condition prevention. Root cause: timing-sensitive tests that depend on system load and flock behavior. May need test isolation or mocking. See: lib/file-ops.sh lock_file() unlock_file()",
@@ -910,12 +912,13 @@
       "phase": "core",
       "notes": [
         "2025-12-13 18:42:49 UTC: Reference docs: claudedocs/FILE-LOCKING-ANALYSIS.md, claudedocs/file-locking-quick-reference.md"
-      ]
+      ],
+      "completedAt": "2025-12-13T19:28:24Z"
     },
     {
       "id": "T147",
       "title": "Fix stats command tests",
-      "status": "pending",
+      "status": "done",
       "priority": "medium",
       "createdAt": "2025-12-13T16:11:42Z",
       "description": "Tests failing: Unit T606, T621, T631. Tests: stats --period invalid shows error, stats shows 'tasks' for count > 1 (pluralization), stats handles missing .claude directory. Root cause: stats.sh validation and edge case handling. See: scripts/stats.sh",
@@ -926,7 +929,8 @@
         "test",
         "v0.9.6"
       ],
-      "phase": "core"
+      "phase": "core",
+      "completedAt": "2025-12-13T19:28:24Z"
     },
     {
       "id": "T148",
@@ -1125,7 +1129,7 @@
     {
       "id": "T159",
       "title": "Fix integration workflow tests (full lifecycle, dependencies)",
-      "status": "pending",
+      "status": "done",
       "priority": "medium",
       "createdAt": "2025-12-13T18:40:41Z",
       "description": "14 integration tests failing: T57-64 (lifecycle/dependency workflows), T69-71 (validation workflows). Tests: full task lifecycle, multiple tasks with dependencies, session workflows, dependency chain completion, unblock workflows, validation workflows, batch operations. Root cause: likely timing or state management issues in complex multi-step scenarios.",
@@ -1136,12 +1140,13 @@
         "test",
         "v0.9.6"
       ],
-      "phase": "core"
+      "phase": "core",
+      "completedAt": "2025-12-13T19:28:24Z"
     },
     {
       "id": "T160",
       "title": "Fix schema validation tests (invalid schema, missing fields)",
-      "status": "pending",
+      "status": "done",
       "priority": "medium",
       "createdAt": "2025-12-13T18:40:42Z",
       "description": "2 tests failing: T51 (invalid schema version handled gracefully), T52 (missing required fields detected). Root cause: schema validation edge cases in migrate.sh or validate.sh not handling error conditions correctly.",
@@ -1156,7 +1161,8 @@
       "notes": [
         "2025-12-13 19:04:44 UTC: Investigation: All validation.bats tests passing (28/28 ok). Need to identify which specific tests are actually failing per task description.",
         "2025-12-13 19:06:38 UTC: FIXED: Added schema version validation (check 7.5) and required field validation (check 7.6) to validate.sh. Both failing tests now pass. No regressions in existing tests."
-      ]
+      ],
+      "completedAt": "2025-12-13T19:28:24Z"
     },
     {
       "id": "T161",
@@ -1370,6 +1376,55 @@
       "labels": [
         "dependencies",
         "v0.9.7"
+      ]
+    },
+    {
+      "id": "T175",
+      "title": "Show character count in title length validation error",
+      "status": "pending",
+      "priority": "high",
+      "createdAt": "2025-12-13T19:26:54Z",
+      "phase": "core",
+      "description": "When title exceeds 120 char limit, error message should display actual character count to help user understand how much to trim. Example: 'Title too long (145/120 characters)'",
+      "labels": [
+        "error-message",
+        "ux",
+        "v0.9.6",
+        "v0.9.8",
+        "validation"
+      ]
+    },
+    {
+      "id": "T176",
+      "title": "Document --notes/--skip-notes requirement for complete command",
+      "status": "pending",
+      "priority": "high",
+      "createdAt": "2025-12-13T19:26:57Z",
+      "phase": "core",
+      "description": "The complete command now requires either --notes 'description' or --skip-notes flag. This UX change needs documentation in help text, QUICK-REFERENCE.md, and TODO_Task_Management.md",
+      "labels": [
+        "complete-command",
+        "documentation",
+        "ux",
+        "v0.9.6",
+        "v0.9.8"
+      ]
+    },
+    {
+      "id": "T177",
+      "title": "Improve phase validation errors with valid options and add-phase flag",
+      "status": "pending",
+      "priority": "high",
+      "createdAt": "2025-12-13T19:26:58Z",
+      "phase": "core",
+      "description": "When invalid phase used: 1) List valid phases from phase index in error message, 2) Add --add-phase flag to create new phase on-the-fly when intentionally adding new phases. Example error: 'Phase not found. Valid: setup, core, polish. Use --add-phase to create new.'",
+      "labels": [
+        "error-message",
+        "phases",
+        "ux",
+        "v0.9.6",
+        "v0.9.8",
+        "validation"
       ]
     }
   ],

@@ -234,7 +234,7 @@ EOF
 
     # Complete and archive T001
     bash "$COMPLETE_SCRIPT" T001 --skip-notes
-    bash "$SCRIPTS_DIR/archive.sh" --force
+    bash "$SCRIPTS_DIR/archive.sh" --all
 
     # Verify T002 no longer depends on archived T001
     local deps_count
@@ -257,7 +257,7 @@ EOF
 EOF
 
     # Archive T001 only
-    bash "$SCRIPTS_DIR/archive.sh" --force
+    bash "$SCRIPTS_DIR/archive.sh" --all
 
     # T003 should still depend on T002
     assert_task_depends_on "T003" "T002"

@@ -3,9 +3,9 @@
   "version": "2.1.0",
   "project": "claude-todo",
   "_meta": {
-    "totalEntries": 63,
+    "totalEntries": 72,
     "firstEntry": "2025-12-13T07:14:38Z",
-    "lastEntry": "2025-12-13T19:09:55Z",
+    "lastEntry": "2025-12-13T19:29:07Z",
     "entriesPruned": 0
   },
   "entries": [
@@ -2921,6 +2921,320 @@
           "dependencies",
           "installation",
           "v0.9.7"
+        ],
+        "files": null,
+        "acceptance": null,
+        "depends": null,
+        "blockedBy": null
+      },
+      "details": {
+        "operation": "update"
+      }
+    },
+    {
+      "id": "log-1765654015-43472b",
+      "timestamp": "2025-12-13T19:26:55Z",
+      "operation": "create",
+      "task_id": "T175",
+      "user": "system",
+      "details": {
+        "title": "Show character count in title length validation error",
+        "status": "pending",
+        "priority": "high"
+      },
+      "before": null,
+      "after": {
+        "title": "Show character count in title length validation error",
+        "status": "pending",
+        "priority": "high"
+      }
+    },
+    {
+      "id": "log-1765654017-a6ab1e",
+      "timestamp": "2025-12-13T19:26:57Z",
+      "operation": "create",
+      "task_id": "T176",
+      "user": "system",
+      "details": {
+        "title": "Document --notes/--skip-notes requirement for complete command",
+        "status": "pending",
+        "priority": "high"
+      },
+      "before": null,
+      "after": {
+        "title": "Document --notes/--skip-notes requirement for complete command",
+        "status": "pending",
+        "priority": "high"
+      }
+    },
+    {
+      "id": "log-1765654018-95137d",
+      "timestamp": "2025-12-13T19:26:58Z",
+      "operation": "create",
+      "task_id": "T177",
+      "user": "system",
+      "details": {
+        "title": "Improve phase validation errors with valid options and add-phase flag",
+        "status": "pending",
+        "priority": "high"
+      },
+      "before": null,
+      "after": {
+        "title": "Improve phase validation errors with valid options and add-phase flag",
+        "status": "pending",
+        "priority": "high"
+      }
+    },
+    {
+      "id": "log_3d6d6e137934",
+      "timestamp": "2025-12-13T19:28:24Z",
+      "sessionId": null,
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T132",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-13T19:28:24Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_55f5714cf08e",
+      "timestamp": "2025-12-13T19:28:24Z",
+      "sessionId": null,
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T144",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-13T19:28:24Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_224ebe8f0b23",
+      "timestamp": "2025-12-13T19:28:24Z",
+      "sessionId": null,
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T146",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-13T19:28:24Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_f005d85c9685",
+      "timestamp": "2025-12-13T19:28:24Z",
+      "sessionId": null,
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T147",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-13T19:28:24Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_0d91db3cfbc0",
+      "timestamp": "2025-12-13T19:28:24Z",
+      "sessionId": null,
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T159",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-13T19:28:24Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_b59bbe83ef69",
+      "timestamp": "2025-12-13T19:28:24Z",
+      "sessionId": null,
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T160",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-13T19:28:24Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_d3bc7979e8ab",
+      "timestamp": "2025-12-13T19:29:05Z",
+      "sessionId": null,
+      "action": "task_updated",
+      "actor": "system",
+      "taskId": "T175",
+      "before": {
+        "title": "Show character count in title length validation error",
+        "status": "pending",
+        "priority": "high",
+        "description": "When title exceeds 120 char limit, error message should display actual character count to help user understand how much to trim. Example: 'Title too long (145/120 characters)'",
+        "phase": "core",
+        "labels": [
+          "error-message",
+          "ux",
+          "v0.9.6",
+          "validation"
+        ],
+        "files": null,
+        "acceptance": null,
+        "depends": null,
+        "blockedBy": null
+      },
+      "after": {
+        "title": "Show character count in title length validation error",
+        "status": "pending",
+        "priority": "high",
+        "description": "When title exceeds 120 char limit, error message should display actual character count to help user understand how much to trim. Example: 'Title too long (145/120 characters)'",
+        "phase": "core",
+        "labels": [
+          "error-message",
+          "ux",
+          "v0.9.6",
+          "v0.9.8",
+          "validation"
+        ],
+        "files": null,
+        "acceptance": null,
+        "depends": null,
+        "blockedBy": null
+      },
+      "details": {
+        "operation": "update"
+      }
+    },
+    {
+      "id": "log_545bd5d5e534",
+      "timestamp": "2025-12-13T19:29:06Z",
+      "sessionId": null,
+      "action": "task_updated",
+      "actor": "system",
+      "taskId": "T176",
+      "before": {
+        "title": "Document --notes/--skip-notes requirement for complete command",
+        "status": "pending",
+        "priority": "high",
+        "description": "The complete command now requires either --notes 'description' or --skip-notes flag. This UX change needs documentation in help text, QUICK-REFERENCE.md, and TODO_Task_Management.md",
+        "phase": "core",
+        "labels": [
+          "complete-command",
+          "documentation",
+          "ux",
+          "v0.9.6"
+        ],
+        "files": null,
+        "acceptance": null,
+        "depends": null,
+        "blockedBy": null
+      },
+      "after": {
+        "title": "Document --notes/--skip-notes requirement for complete command",
+        "status": "pending",
+        "priority": "high",
+        "description": "The complete command now requires either --notes 'description' or --skip-notes flag. This UX change needs documentation in help text, QUICK-REFERENCE.md, and TODO_Task_Management.md",
+        "phase": "core",
+        "labels": [
+          "complete-command",
+          "documentation",
+          "ux",
+          "v0.9.6",
+          "v0.9.8"
+        ],
+        "files": null,
+        "acceptance": null,
+        "depends": null,
+        "blockedBy": null
+      },
+      "details": {
+        "operation": "update"
+      }
+    },
+    {
+      "id": "log_8880e8d53c4b",
+      "timestamp": "2025-12-13T19:29:07Z",
+      "sessionId": null,
+      "action": "task_updated",
+      "actor": "system",
+      "taskId": "T177",
+      "before": {
+        "title": "Improve phase validation errors with valid options and add-phase flag",
+        "status": "pending",
+        "priority": "high",
+        "description": "When invalid phase used: 1) List valid phases from phase index in error message, 2) Add --add-phase flag to create new phase on-the-fly when intentionally adding new phases. Example error: 'Phase not found. Valid: setup, core, polish. Use --add-phase to create new.'",
+        "phase": "core",
+        "labels": [
+          "error-message",
+          "phases",
+          "ux",
+          "v0.9.6",
+          "validation"
+        ],
+        "files": null,
+        "acceptance": null,
+        "depends": null,
+        "blockedBy": null
+      },
+      "after": {
+        "title": "Improve phase validation errors with valid options and add-phase flag",
+        "status": "pending",
+        "priority": "high",
+        "description": "When invalid phase used: 1) List valid phases from phase index in error message, 2) Add --add-phase flag to create new phase on-the-fly when intentionally adding new phases. Example error: 'Phase not found. Valid: setup, core, polish. Use --add-phase to create new.'",
+        "phase": "core",
+        "labels": [
+          "error-message",
+          "phases",
+          "ux",
+          "v0.9.6",
+          "v0.9.8",
+          "validation"
         ],
         "files": null,
         "acceptance": null,
