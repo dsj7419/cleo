@@ -52,6 +52,7 @@
 | **[PLUGINS.md](PLUGINS.md)** | Plugin architecture and development | Extending the CLI with custom commands |
 | **[integration/CLAUDE-CODE.md](integration/CLAUDE-CODE.md)** | TodoWrite integration & session workflows | Understanding Claude Code integration |
 | **[migration-guide.md](reference/migration-guide.md)** | Schema migration and upgrade guide | Understanding version migrations |
+| **[testing.md](testing.md)** | BATS test suite guide | Writing and running tests |
 
 ---
 
@@ -294,6 +295,25 @@
 
 ---
 
+### testing.md
+**Purpose**: BATS test suite guide and quick reference
+
+**Contents**:
+- Quick start for running tests
+- Prerequisites and setup
+- Test directory structure
+- Test categories overview
+- Writing tests guide
+- Common assertions reference
+- Reusable fixtures
+- Debugging techniques
+
+**Best For**: Running tests, writing new tests, understanding test infrastructure
+
+**Detailed Documentation**: [tests/README.md](../tests/README.md)
+
+---
+
 ## 🗺️ Navigation Guide
 
 ### I want to...
@@ -323,7 +343,8 @@
 1. Read [README.md](../README.md) for project overview
 2. Review [ARCHITECTURE.md](architecture/ARCHITECTURE.md) for design principles
 3. Reference [QUICK-REFERENCE.md](QUICK-REFERENCE.md) for standards
-4. Check [usage.md](usage.md) for operational patterns
+4. Check [testing.md](testing.md) for test suite guide
+5. Check [usage.md](usage.md) for operational patterns
 
 #### ...debug an issue
 1. Check [troubleshooting.md](reference/troubleshooting.md) first
