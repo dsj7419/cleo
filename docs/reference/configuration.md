@@ -660,7 +660,7 @@ For complete schema definition including all constraints and validation rules:
 cat ~/.claude-todo/schemas/config.schema.json
 ```
 
-See also: [schema-reference.md](./schema-reference.md)
+See also: [schema-reference.md](../architecture/SCHEMAS.md)
 
 ## Troubleshooting Configuration
 
@@ -719,7 +719,7 @@ claude-todo init --force
 claude-todo validate .claude/todo-config.json
 ```
 
-> **Note**: Automated migration scripts are not yet implemented. Manual backup and re-initialization is recommended.
+> **Note**: For automated schema migrations, see the [Migration Guide](migration-guide.md). The `claude-todo migrate` command handles version upgrades automatically with backup and rollback support.
 
 ## Best Practices
 
@@ -736,8 +736,8 @@ claude-todo validate .claude/todo-config.json
 
 ## See Also
 
-- [Installation Guide](./installation.md) - Setting up CLAUDE-TODO
-- [Usage Guide](./usage.md) - Working with tasks
-- [Schema Reference](./schema-reference.md) - Complete schema documentation
-- [Troubleshooting](./troubleshooting.md) - Common issues and solutions
-- [ARCHITECTURE.md](ARCHITECTURE.md) - System design and rationale
+- [Installation Guide](installation.md) - Setting up CLAUDE-TODO
+- [Usage Guide](../usage.md) - Working with tasks
+- [Schema Reference](../architecture/SCHEMAS.md) - Complete schema documentation
+- [Troubleshooting](troubleshooting.md) - Common issues and solutions
+- [ARCHITECTURE.md](../architecture/ARCHITECTURE.md) - System design and rationale

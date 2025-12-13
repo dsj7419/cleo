@@ -243,7 +243,7 @@ claude-todo validate
 **Solutions for All Schema Errors:**
 
 1. **Read error message carefully** - tells you exact field and issue
-2. **Check schema reference** - see `/docs/schema-reference.md`
+2. **Check schema reference** - see `/docs/architecture/SCHEMAS.md`
 3. **Compare with template** - `~/.claude-todo/templates/todo.template.json`
 4. **Restore from backup** - if too many errors
 

@@ -6,6 +6,9 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CLAUDE_TODO_HOME="${CLAUDE_TODO_HOME:-$HOME/.claude-todo}"
 
+# Capture start time for execution metrics (nanoseconds)
+START_TIME_NS=$(date +%s%N 2>/dev/null || echo "0")
+
 # Source version from central location
 if [[ -f "$CLAUDE_TODO_HOME/VERSION" ]]; then
   VERSION="$(cat "$CLAUDE_TODO_HOME/VERSION" | tr -d '[:space:]')"
@@ -19,8 +22,15 @@ TODO_FILE="${TODO_FILE:-.claude/todo.json}"
 ARCHIVE_FILE="${ARCHIVE_FILE:-.claude/todo-archive.json}"
 CONFIG_FILE="${CONFIG_FILE:-.claude/todo-config.json}"
 
-# Colors (check if terminal supports colors)
-if [[ -t 1 ]] && command -v tput &>/dev/null && [[ $(tput colors) -ge 8 ]]; then
+# Source logging library for should_use_color function
+LIB_DIR="${SCRIPT_DIR}/../lib"
+if [[ -f "$LIB_DIR/logging.sh" ]]; then
+  # shellcheck source=../lib/logging.sh
+  source "$LIB_DIR/logging.sh"
+fi
+
+# Colors (respects NO_COLOR and FORCE_COLOR environment variables per https://no-color.org)
+if declare -f should_use_color >/dev/null 2>&1 && should_use_color; then
   COLORS_ENABLED=true
   RED='\033[0;31m'
   GREEN='\033[0;32m'
@@ -53,6 +63,7 @@ SHOW_FILES=false
 SHOW_ACCEPTANCE=false
 VERBOSE=false
 COMPACT=false
+QUIET=false
 GROUP_BY_PRIORITY=true
 
 usage() {
@@ -62,38 +73,42 @@ Usage: $(basename "$0") [OPTIONS]
 Display tasks from todo.json with flexible filtering and formatting.
 
 Filters:
-  --status STATUS       Filter by status: pending|active|blocked|done
-  --priority PRIORITY   Filter by priority: critical|high|medium|low
-  --phase PHASE         Filter by phase slug
-  --label LABEL         Filter by label
-  --since DATE          Show tasks created after date (ISO 8601: YYYY-MM-DD)
-  --until DATE          Show tasks created before date (ISO 8601: YYYY-MM-DD)
-  --all                 Include archived tasks
-  --limit N             Show first N tasks only
+  -s, --status STATUS       Filter by status: pending|active|blocked|done
+  -p, --priority PRIORITY   Filter by priority: critical|high|medium|low
+      --phase PHASE         Filter by phase slug
+  -l, --label LABEL         Filter by label
+      --since DATE          Show tasks created after date (ISO 8601: YYYY-MM-DD)
+      --until DATE          Show tasks created before date (ISO 8601: YYYY-MM-DD)
+      --all                 Include archived tasks
+      --limit N             Show first N tasks only
 
 Sorting:
-  --sort FIELD          Sort by field: status|priority|createdAt|title (default: priority)
-  --reverse             Reverse sort order
+  --sort FIELD              Sort by field: status|priority|createdAt|title (default: priority)
+  --reverse                 Reverse sort order
 
 Display Options:
-  --format FORMAT       Output format: text|json|markdown|table (default: text)
-  --compact, -c         Compact one-line per task view
-  --flat                Don't group by priority (flat list)
-  --notes               Show task notes
-  --files               Show associated files
-  --acceptance          Show acceptance criteria
-  -v, --verbose         Show all task details
-  -h, --help            Show this help
+  -f, --format FORMAT       Output format: text|json|jsonl|markdown|table (default: text)
+  -c, --compact             Compact one-line per task view
+      --flat                Don't group by priority (flat list)
+      --notes               Show task notes
+      --files               Show associated files
+      --acceptance          Show acceptance criteria
+  -v, --verbose             Show all task details
+  -q, --quiet               Suppress informational messages, only show task data
+  -h, --help                Show this help
 
 Examples:
   $(basename "$0")                          # List all active tasks
-  $(basename "$0") --status pending         # Only pending tasks
-  $(basename "$0") --priority critical      # Only critical priority
+  $(basename "$0") -s pending               # Only pending tasks (short flag)
+  $(basename "$0") --status pending         # Only pending tasks (long flag)
+  $(basename "$0") -p critical              # Only critical priority
   $(basename "$0") --since 2025-12-01       # Tasks created after Dec 1
   $(basename "$0") --sort createdAt --reverse  # Newest first
-  $(basename "$0") --format json            # JSON output
+  $(basename "$0") -f json                  # JSON output
   $(basename "$0") --all --limit 20         # Last 20 tasks including archive
   $(basename "$0") -v                       # Verbose mode with all details
+  $(basename "$0") -s pending -p high -l backend  # Combined filters
+  $(basename "$0") -q -f json               # Quiet mode with JSON output
 EOF
   exit 0
 }
@@ -111,15 +126,15 @@ check_deps() {
 # Parse arguments
 while [[ $# -gt 0 ]]; do
   case $1 in
-    --status) STATUS_FILTER="$2"; shift 2 ;;
-    --priority) PRIORITY_FILTER="$2"; shift 2 ;;
+    -s|--status) STATUS_FILTER="$2"; shift 2 ;;
+    -p|--priority) PRIORITY_FILTER="$2"; shift 2 ;;
     --phase) PHASE_FILTER="$2"; shift 2 ;;
-    --label) LABEL_FILTER="$2"; shift 2 ;;
+    -l|--label) LABEL_FILTER="$2"; shift 2 ;;
     --since) SINCE_DATE="$2"; shift 2 ;;
     --until) UNTIL_DATE="$2"; shift 2 ;;
     --sort) SORT_FIELD="$2"; GROUP_BY_PRIORITY=false; shift 2 ;;
     --reverse) SORT_REVERSE=true; shift ;;
-    --format) FORMAT="$2"; shift 2 ;;
+    -f|--format) FORMAT="$2"; shift 2 ;;
     --all) INCLUDE_ARCHIVE=true; shift ;;
     --limit) LIMIT="$2"; shift 2 ;;
     --notes) SHOW_NOTES=true; shift ;;
@@ -128,6 +143,7 @@ while [[ $# -gt 0 ]]; do
     -c|--compact) COMPACT=true; shift ;;
     --flat) GROUP_BY_PRIORITY=false; shift ;;
     -v|--verbose) VERBOSE=true; SHOW_NOTES=true; SHOW_FILES=true; SHOW_ACCEPTANCE=true; shift ;;
+    -q|--quiet) QUIET=true; shift ;;
     -h|--help) usage ;;
     -*) log_error "Unknown option: $1"; exit 1 ;;
     *) shift ;;
@@ -155,7 +171,7 @@ fi
 if [[ -z "$TASKS" ]]; then
   if [[ "$FORMAT" == "json" ]]; then
     echo '{"tasks":[],"count":0,"filters":{}}'
-  else
+  elif [[ "$QUIET" != true ]]; then
     echo "No tasks found."
   fi
   exit 0
@@ -363,22 +379,92 @@ export -f render_task status_color status_icon
 export COMPACT VERBOSE SHOW_FILES SHOW_ACCEPTANCE SHOW_NOTES
 export RED GREEN YELLOW BLUE MAGENTA CYAN BOLD DIM NC
 
+# Calculate execution time and generate metadata
+END_TIME_NS=$(date +%s%N 2>/dev/null || echo "$START_TIME_NS")
+if [[ "$START_TIME_NS" != "0" ]] && [[ "$END_TIME_NS" != "0" ]]; then
+  EXECUTION_MS=$(( (END_TIME_NS - START_TIME_NS) / 1000000 ))
+else
+  EXECUTION_MS=0
+fi
+
+# Generate checksum for data integrity
+TASKS_CHECKSUM=$(echo "$FILTERED_TASKS" | sha256sum 2>/dev/null | cut -c1-16 || echo "unavailable")
+
+# Current timestamp in ISO 8601 format
+CURRENT_TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+# Calculate summary counts
+TOTAL_TASKS=$(jq -c '.tasks[]' "$TODO_FILE" 2>/dev/null | wc -l || echo "0")
+PENDING_COUNT=$(echo "$FILTERED_TASKS" | jq '[.[] | select(.status == "pending")] | length')
+ACTIVE_COUNT=$(echo "$FILTERED_TASKS" | jq '[.[] | select(.status == "active")] | length')
+BLOCKED_COUNT=$(echo "$FILTERED_TASKS" | jq '[.[] | select(.status == "blocked")] | length')
+DONE_COUNT=$(echo "$FILTERED_TASKS" | jq '[.[] | select(.status == "done")] | length')
+
 # Format output based on selected format
 case "$FORMAT" in
   json)
-    # JSON format
-    jq -n --argjson tasks "$FILTERED_TASKS" --argjson count "$TASK_COUNT" \
-      --arg status "$STATUS_FILTER" --arg priority "$PRIORITY_FILTER" \
-      --arg phase "$PHASE_FILTER" --arg label "$LABEL_FILTER" '{
-      tasks: $tasks,
-      count: $count,
+    # JSON format with metadata envelope
+    jq -n --argjson tasks "$FILTERED_TASKS" \
+      --arg version "$VERSION" \
+      --arg timestamp "$CURRENT_TIMESTAMP" \
+      --arg checksum "$TASKS_CHECKSUM" \
+      --argjson execution_ms "$EXECUTION_MS" \
+      --arg status "$STATUS_FILTER" \
+      --arg priority "$PRIORITY_FILTER" \
+      --arg phase "$PHASE_FILTER" \
+      --arg label "$LABEL_FILTER" \
+      --argjson total "$TOTAL_TASKS" \
+      --argjson filtered "$TASK_COUNT" \
+      --argjson pending "$PENDING_COUNT" \
+      --argjson active "$ACTIVE_COUNT" \
+      --argjson blocked "$BLOCKED_COUNT" \
+      --argjson done "$DONE_COUNT" '{
+      "$schema": "https://claude-todo.dev/schemas/output-v2.json",
+      "_meta": {
+        version: $version,
+        command: "list",
+        timestamp: $timestamp,
+        checksum: $checksum,
+        execution_ms: $execution_ms
+      },
       filters: {
-        status: (if $status != "" then $status else null end),
+        status: (if $status != "" then [$status] else null end),
         priority: (if $priority != "" then $priority else null end),
         phase: (if $phase != "" then $phase else null end),
         label: (if $label != "" then $label else null end)
-      }
+      },
+      summary: {
+        total: $total,
+        filtered: $filtered,
+        pending: $pending,
+        active: $active,
+        blocked: $blocked,
+        done: $done
+      },
+      tasks: $tasks
     }'
+    ;;
+
+  jsonl)
+    # JSONL format - one JSON object per line (compact)
+    # Line 1: Metadata
+    jq -nc --arg version "$VERSION" \
+      --arg timestamp "$CURRENT_TIMESTAMP" \
+      --arg checksum "$TASKS_CHECKSUM" \
+      --argjson execution_ms "$EXECUTION_MS" \
+      '{_type: "meta", version: $version, command: "list", timestamp: $timestamp, checksum: $checksum, execution_ms: $execution_ms}'
+
+    # Lines 2-N: Tasks (one per line)
+    echo "$FILTERED_TASKS" | jq -c '.[] | {_type: "task"} + .'
+
+    # Last line: Summary
+    jq -nc --argjson total "$TOTAL_TASKS" \
+      --argjson filtered "$TASK_COUNT" \
+      --argjson pending "$PENDING_COUNT" \
+      --argjson active "$ACTIVE_COUNT" \
+      --argjson blocked "$BLOCKED_COUNT" \
+      --argjson done "$DONE_COUNT" \
+      '{_type: "summary", total: $total, filtered: $filtered, pending: $pending, active: $active, blocked: $blocked, done: $done}'
     ;;
 
   markdown)
@@ -420,7 +506,7 @@ case "$FORMAT" in
   text|*)
     # Human-readable text format (default)
     if [[ "$TASK_COUNT" -eq 0 ]]; then
-      echo "No tasks match the specified filters."
+      [[ "$QUIET" != true ]] && echo "No tasks match the specified filters."
       exit 0
     fi
 
@@ -437,6 +523,8 @@ case "$FORMAT" in
     low_count=$(echo "$FILTERED_TASKS" | jq '[.[] | select(.priority == "low")] | length')
 
     # Header
+    # Header (suppress in quiet mode)
+    if [[ "$QUIET" != true ]]; then
     echo ""
     echo -e "${BOLD}╭─────────────────────────────────────────────────────────────────╮${NC}"
     echo -e "${BOLD}│${NC}  📋 ${BOLD}TASKS${NC}                                                       ${BOLD}│${NC}"
@@ -445,14 +533,15 @@ case "$FORMAT" in
     echo -e "${BOLD}│${NC}  ${YELLOW}○ ${pending_count} pending${NC}  ${GREEN}◉ ${active_count} active${NC}  ${RED}⊗ ${blocked_count} blocked${NC}  ${DIM}✓ ${done_count} done${NC}          ${BOLD}│${NC}"
     echo -e "${BOLD}╰─────────────────────────────────────────────────────────────────╯${NC}"
 
-    # Show filters if any
-    if [[ -n "$STATUS_FILTER" ]] || [[ -n "$PRIORITY_FILTER" ]] || [[ -n "$PHASE_FILTER" ]] || [[ -n "$LABEL_FILTER" ]]; then
-      echo -e "${DIM}Filters: ${NC}"
-      [[ -n "$STATUS_FILTER" ]] && echo -n -e "${DIM}status=${NC}$STATUS_FILTER "
-      [[ -n "$PRIORITY_FILTER" ]] && echo -n -e "${DIM}priority=${NC}$PRIORITY_FILTER "
-      [[ -n "$PHASE_FILTER" ]] && echo -n -e "${DIM}phase=${NC}$PHASE_FILTER "
-      [[ -n "$LABEL_FILTER" ]] && echo -n -e "${DIM}label=${NC}$LABEL_FILTER "
-      echo ""
+      # Show filters if any
+      if [[ -n "$STATUS_FILTER" ]] || [[ -n "$PRIORITY_FILTER" ]] || [[ -n "$PHASE_FILTER" ]] || [[ -n "$LABEL_FILTER" ]]; then
+        echo -e "${DIM}Filters: ${NC}"
+        [[ -n "$STATUS_FILTER" ]] && echo -n -e "${DIM}status=${NC}$STATUS_FILTER "
+        [[ -n "$PRIORITY_FILTER" ]] && echo -n -e "${DIM}priority=${NC}$PRIORITY_FILTER "
+        [[ -n "$PHASE_FILTER" ]] && echo -n -e "${DIM}phase=${NC}$PHASE_FILTER "
+        [[ -n "$LABEL_FILTER" ]] && echo -n -e "${DIM}label=${NC}$LABEL_FILTER "
+        echo ""
+      fi
     fi
 
     # Render tasks grouped by priority or flat
@@ -483,9 +572,12 @@ case "$FORMAT" in
         esac
 
         if [[ "$count" -gt 0 ]]; then
-          echo ""
-          echo -e "$header ${DIM}($count)${NC}"
-          echo -e "${DIM}─────────────────────────────────────────────────────────────────${NC}"
+          # Suppress section headers in quiet mode
+          if [[ "$QUIET" != true ]]; then
+            echo ""
+            echo -e "$header ${DIM}($count)${NC}"
+            echo -e "${DIM}─────────────────────────────────────────────────────────────────${NC}"
+          fi
 
           # Use readarray to avoid subshell issues
           readarray -t tasks_arr < <(echo "$priority_tasks" | jq -c '.[]')
@@ -503,8 +595,11 @@ case "$FORMAT" in
       done
     fi
 
-    echo ""
-    echo -e "${DIM}─────────────────────────────────────────────────────────────────${NC}"
-    echo -e "${DIM}Total: $TASK_COUNT tasks${NC}"
+    # Footer (suppress in quiet mode)
+    if [[ "$QUIET" != true ]]; then
+      echo ""
+      echo -e "${DIM}─────────────────────────────────────────────────────────────────${NC}"
+      echo -e "${DIM}Total: $TASK_COUNT tasks${NC}"
+    fi
     ;;
 esac

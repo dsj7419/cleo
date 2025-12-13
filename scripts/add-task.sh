@@ -3,15 +3,28 @@
 # Add new task to todo.json with validation and logging
 set -uo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 TODO_FILE="${TODO_FILE:-.claude/todo.json}"
 CONFIG_FILE="${CONFIG_FILE:-.claude/todo-config.json}"
 LOG_FILE="${LOG_FILE:-.claude/todo-log.json}"
 
-# Colors
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m'
+# Source logging library for should_use_color function
+LIB_DIR="${SCRIPT_DIR}/../lib"
+if [[ -f "$LIB_DIR/logging.sh" ]]; then
+  # shellcheck source=../lib/logging.sh
+  source "$LIB_DIR/logging.sh"
+fi
+
+# Colors (respects NO_COLOR and FORCE_COLOR environment variables per https://no-color.org)
+if declare -f should_use_color >/dev/null 2>&1 && should_use_color; then
+  RED='\033[0;31m'
+  GREEN='\033[0;32m'
+  YELLOW='\033[1;33m'
+  NC='\033[0m'
+else
+  RED='' GREEN='' YELLOW='' NC=''
+fi
 
 # Defaults
 STATUS="pending"
@@ -23,6 +36,7 @@ FILES=""
 ACCEPTANCE=""
 DEPENDS=""
 NOTES=""
+QUIET=false
 
 usage() {
   cat << 'EOF'
@@ -34,24 +48,26 @@ Arguments:
   TITLE                 Task title (required, action-oriented)
 
 Options:
-  --status STATUS       Task status (pending|active|blocked|done)
-                        Default: pending
-  --priority PRIORITY   Task priority (critical|high|medium|low)
-                        Default: medium
-  --description DESC    Detailed description
-  --labels LABELS       Comma-separated labels (e.g., bug,security)
-  --phase PHASE         Phase slug (must exist in phases)
-  --files FILES         Comma-separated file paths
-  --acceptance CRITERIA Comma-separated acceptance criteria
-  --depends IDS         Comma-separated task IDs (e.g., T001,T002)
-  --notes NOTE          Initial note entry
-  -h, --help            Show this help
+  -s, --status STATUS       Task status (pending|active|blocked|done)
+                            Default: pending
+  -p, --priority PRIORITY   Task priority (critical|high|medium|low)
+                            Default: medium
+  -d, --description DESC    Detailed description
+  -l, --labels LABELS       Comma-separated labels (e.g., bug,security)
+  -P, --phase PHASE         Phase slug (must exist in phases)
+      --files FILES         Comma-separated file paths
+      --acceptance CRITERIA Comma-separated acceptance criteria
+  -D, --depends IDS         Comma-separated task IDs (e.g., T001,T002)
+      --notes NOTE          Initial note entry
+  -q, --quiet               Suppress messages, output only task ID
+  -h, --help                Show this help
 
 Examples:
   add-task.sh "Implement authentication"
-  add-task.sh "Fix login bug" --priority high --labels bug,security
-  add-task.sh "Add tests" --depends T001,T002 --phase testing
+  add-task.sh "Fix login bug" -p high -l bug,security
+  add-task.sh "Add tests" -D T001,T002 -P testing
   add-task.sh "Implement auth" --acceptance "User can login,Session persists"
+  add-task.sh "Quick task" -q  # Outputs only: T042
 
 Exit Codes:
   0 = Success
@@ -66,11 +82,15 @@ log_error() {
 }
 
 log_warn() {
-  echo -e "${YELLOW}[WARN]${NC} $1"
+  if [[ "$QUIET" != "true" ]]; then
+    echo -e "${YELLOW}[WARN]${NC} $1"
+  fi
 }
 
 log_info() {
-  echo -e "${GREEN}[INFO]${NC} $1"
+  if [[ "$QUIET" != "true" ]]; then
+    echo -e "${GREEN}[INFO]${NC} $1"
+  fi
 }
 
 check_deps() {
@@ -344,23 +364,23 @@ log_operation() {
 TITLE=""
 while [[ $# -gt 0 ]]; do
   case $1 in
-    --status)
+    -s|--status)
       STATUS="$2"
       shift 2
       ;;
-    --priority)
+    -p|--priority)
       PRIORITY="$2"
       shift 2
       ;;
-    --description)
+    -d|--description)
       DESCRIPTION="$2"
       shift 2
       ;;
-    --labels)
+    -l|--labels)
       LABELS="$2"
       shift 2
       ;;
-    --phase)
+    -P|--phase)
       PHASE="$2"
       shift 2
       ;;
@@ -372,13 +392,17 @@ while [[ $# -gt 0 ]]; do
       ACCEPTANCE="$2"
       shift 2
       ;;
-    --depends)
+    -D|--depends)
       DEPENDS="$2"
       shift 2
       ;;
     --notes)
       NOTES="$2"
       shift 2
+      ;;
+    -q|--quiet)
+      QUIET=true
+      shift
       ;;
     -h|--help)
       usage
@@ -531,16 +555,20 @@ task_details=$(jq -n \
 log_operation "create" "$TASK_ID" "$task_details"
 
 # Success output
-log_info "Task added successfully"
-echo ""
-echo "Task ID: $TASK_ID"
-echo "Title: $TITLE"
-echo "Status: $STATUS"
-echo "Priority: $PRIORITY"
-[[ -n "$PHASE" ]] && echo "Phase: $PHASE"
-[[ -n "$LABELS" ]] && echo "Labels: $LABELS"
-[[ -n "$DEPENDS" ]] && echo "Depends: $DEPENDS"
-echo ""
-echo "View with: jq '.tasks[] | select(.id == \"$TASK_ID\")' $TODO_FILE"
+if [[ "$QUIET" == "true" ]]; then
+  echo "$TASK_ID"
+else
+  log_info "Task added successfully"
+  echo ""
+  echo "Task ID: $TASK_ID"
+  echo "Title: $TITLE"
+  echo "Status: $STATUS"
+  echo "Priority: $PRIORITY"
+  [[ -n "$PHASE" ]] && echo "Phase: $PHASE"
+  [[ -n "$LABELS" ]] && echo "Labels: $LABELS"
+  [[ -n "$DEPENDS" ]] && echo "Depends: $DEPENDS"
+  echo ""
+  echo "View with: jq '.tasks[] | select(.id == \"$TASK_ID\")' $TODO_FILE"
+fi
 
 exit 0

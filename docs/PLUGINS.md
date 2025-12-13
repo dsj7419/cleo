@@ -350,9 +350,9 @@ To contribute plugins to the community:
 
 ## Related Documentation
 
-- [Configuration Reference](configuration.md) - CLI configuration options
+- [Configuration Reference](reference/configuration.md) - CLI configuration options
 - [Usage Guide](usage.md) - Command reference
-- [Architecture](ARCHITECTURE.md) - System design
+- [Architecture](architecture/ARCHITECTURE.md) - System design
 
 ---
 

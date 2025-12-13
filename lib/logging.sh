@@ -74,6 +74,20 @@ fi
 # UTILITY FUNCTIONS
 # ============================================================================
 
+# Check if color output should be used
+# Respects NO_COLOR and FORCE_COLOR environment variables per https://no-color.org
+# Returns: 0 if colors should be used, 1 otherwise
+should_use_color() {
+    # NO_COLOR takes precedence - disable colors if set (to any value)
+    [[ -n "${NO_COLOR:-}" ]] && return 1
+
+    # FORCE_COLOR overrides TTY detection
+    [[ -n "${FORCE_COLOR:-}" ]] && return 0
+
+    # Default: check if stdout is a terminal and tput is available
+    [[ -t 1 ]] && command -v tput &>/dev/null && [[ $(tput colors 2>/dev/null) -ge 8 ]]
+}
+
 # Generate unique log entry ID
 # Format: log_<12-hex-chars>
 # Output: log ID string
@@ -593,6 +607,7 @@ handle_log_error() {
 # ============================================================================
 
 # Export functions for use by other scripts
+export -f should_use_color
 export -f generate_log_id
 export -f get_timestamp
 export -f init_log_file

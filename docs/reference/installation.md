@@ -638,7 +638,7 @@ After successful installation and initialization:
 2. **Configure settings**: Edit `.claude/todo-config.json` for your workflow
 3. **Add first task**: Manually edit `.claude/todo.json` or use Claude Code
 4. **Learn workflows**: See `usage.md` for complete task management patterns
-5. **Understand schemas**: Review `schema-reference.md` for data structures
+5. **Understand schemas**: Review `architecture/SCHEMAS.md` for data structures
 
 ---
 
@@ -646,7 +646,7 @@ After successful installation and initialization:
 
 - **Documentation**: `~/.claude-todo/docs/`
 - **Issue Tracker**: GitHub repository issues
-- **Schema Reference**: `schema-reference.md`
+- **Schema Reference**: `architecture/SCHEMAS.md`
 - **Configuration Guide**: `configuration.md`
 - **Troubleshooting**: `troubleshooting.md`
 

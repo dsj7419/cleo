@@ -223,7 +223,7 @@ task_id="$1"
 # ~/.claude-todo/formatters/csv-export.sh
 format_csv() {
     local todo_file="$1"
-    jq -r '.todos[] | [.id, .status, .title] | @csv' "$todo_file"
+    jq -r '.tasks[] | [.id, .status, .title] | @csv' "$todo_file"
 }
 ```
 
@@ -332,11 +332,11 @@ chmod 600 .claude/.backups/*.json
 
 | Document | Purpose |
 |----------|---------|
-| **[ARCHITECTURE.md](ARCHITECTURE.md)** | Complete system design |
-| **[DATA-FLOW-DIAGRAMS.md](DATA-FLOW-DIAGRAMS.md)** | Visual workflows |
-| **[SYSTEM-DESIGN-SUMMARY.md](SYSTEM-DESIGN-SUMMARY.md)** | Executive overview |
+| **[ARCHITECTURE.md](architecture/ARCHITECTURE.md)** | Complete system design |
+| **[DATA-FLOW-DIAGRAMS.md](architecture/DATA-FLOWS.md)** | Visual workflows |
+| **[ARCHITECTURE.md#executive-summary](architecture/ARCHITECTURE.md#executive-summary)** | Executive overview |
 | **[usage.md](usage.md)** | Detailed usage guide |
-| **[configuration.md](configuration.md)** | Config reference |
+| **[configuration.md](reference/configuration.md)** | Config reference |
 
 ## Upgrade Path
 
@@ -414,4 +414,4 @@ jq '.entries[-10:]' .claude/todo-log.json
 
 ---
 
-**For detailed information, always refer to [ARCHITECTURE.md](ARCHITECTURE.md)**
+**For detailed information, always refer to [ARCHITECTURE.md](architecture/ARCHITECTURE.md)**
