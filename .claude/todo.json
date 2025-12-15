@@ -2,9 +2,9 @@
   "$schema": "./schemas/todo.schema.json",
   "version": "2.1.0",
   "project": "claude-todo",
-  "lastUpdated": "2025-12-15T22:00:42Z",
+  "lastUpdated": "2025-12-15T22:13:28Z",
   "_meta": {
-    "checksum": "f93e2d9b8ee644de",
+    "checksum": "512587a771298a42",
     "configVersion": "2.1.0",
     "lastSessionId": null,
     "activeSession": null,
@@ -2661,7 +2661,7 @@
     {
       "id": "T234",
       "title": "Implement inject-todowrite.sh script",
-      "status": "pending",
+      "status": "done",
       "priority": "high",
       "createdAt": "2025-12-15T22:00:34Z",
       "phase": "core",
@@ -2673,12 +2673,16 @@
       ],
       "depends": [
         "T227"
+      ],
+      "completedAt": "2025-12-15T22:13:28Z",
+      "notes": [
+        "[COMPLETED 2025-12-15T22:13:28Z] Script implemented with tiered selection, ID prefix embedding, and session state tracking"
       ]
     },
     {
       "id": "T235",
       "title": "Implement extract-todowrite.sh script",
-      "status": "pending",
+      "status": "done",
       "priority": "high",
       "createdAt": "2025-12-15T22:00:41Z",
       "phase": "core",
@@ -2690,12 +2694,16 @@
       ],
       "depends": [
         "T234"
+      ],
+      "completedAt": "2025-12-15T22:13:28Z",
+      "notes": [
+        "[COMPLETED 2025-12-15T22:13:28Z] Script implemented with ID parsing, diff detection, and merge logic"
       ]
     },
     {
       "id": "T236",
       "title": "Implement sync-todowrite.sh orchestrator",
-      "status": "pending",
+      "status": "done",
       "priority": "high",
       "createdAt": "2025-12-15T22:00:42Z",
       "phase": "core",
@@ -2708,6 +2716,10 @@
       "depends": [
         "T234",
         "T235"
+      ],
+      "completedAt": "2025-12-15T22:13:28Z",
+      "notes": [
+        "[COMPLETED 2025-12-15T22:13:28Z] Orchestrator implemented with inject/extract/status/clear subcommands"
       ]
     }
   ],

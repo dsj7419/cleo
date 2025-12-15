@@ -410,6 +410,7 @@ declare -A CMD_MAP=(
   [exists]="exists.sh"
   [history]="history.sh"
   [show]="show.sh"
+  [sync]="sync-todowrite.sh"
 )
 
 # Brief descriptions for main help
@@ -439,6 +440,7 @@ declare -A CMD_DESC=(
   [exists]="Check if a task ID exists"
   [history]="Show completion history and timeline analytics"
   [show]="Show detailed view of a single task"
+  [sync]="Sync tasks with TodoWrite (inject/extract/status)"
 )
 
 # ============================================

@@ -25,7 +25,10 @@ setup() {
     export SYNC_SCRIPT="${SCRIPTS_DIR}/sync-todowrite.sh"
     export INJECT_SCRIPT="${SCRIPTS_DIR}/inject-todowrite.sh"
     export EXTRACT_SCRIPT="${SCRIPTS_DIR}/extract-todowrite.sh"
-    export SYNC_STATE_FILE="${TEST_TEMP_DIR}/.claude/todowrite-session.json"
+    export SYNC_STATE_FILE="${TEST_TEMP_DIR}/.claude/sync/todowrite-session.json"
+
+    # Create sync directory
+    mkdir -p "${TEST_TEMP_DIR}/.claude/sync"
 }
 
 teardown() {
@@ -122,10 +125,9 @@ EOF
 # =============================================================================
 
 @test "inject: generates TodoWrite JSON from focused task" {
-    skip "Not implemented - T227 design phase"
     create_sync_test_fixture
 
-    run bash "$INJECT_SCRIPT"
+    run bash "$INJECT_SCRIPT" --quiet
     assert_success
 
     # Should output valid JSON
@@ -138,10 +140,9 @@ EOF
 }
 
 @test "inject: adds [!] prefix for high/critical priority" {
-    skip "Not implemented - T227 design phase"
     create_sync_test_fixture
 
-    run bash "$INJECT_SCRIPT"
+    run bash "$INJECT_SCRIPT" --quiet
     assert_success
 
     # High priority task should have [!] marker
@@ -149,10 +150,9 @@ EOF
 }
 
 @test "inject: maps blocked status to pending with [BLOCKED] prefix" {
-    skip "Not implemented - T227 design phase"
     create_sync_test_fixture
 
-    run bash "$INJECT_SCRIPT"
+    run bash "$INJECT_SCRIPT" --quiet
     assert_success
 
     # Blocked task should be pending with prefix
@@ -167,10 +167,9 @@ EOF
 }
 
 @test "inject: generates activeForm from title" {
-    skip "Not implemented - T227 design phase"
     create_sync_test_fixture
 
-    run bash "$INJECT_SCRIPT"
+    run bash "$INJECT_SCRIPT" --quiet
     assert_success
 
     # Should have activeForm field
@@ -179,11 +178,10 @@ EOF
 }
 
 @test "inject: respects tiered selection (max 8 tasks)" {
-    skip "Not implemented - T227 design phase"
     # Create fixture with many tasks
     create_sync_test_fixture
 
-    run bash "$INJECT_SCRIPT" --max-tasks 8
+    run bash "$INJECT_SCRIPT" --max-tasks 8 --quiet
     assert_success
 
     local count
@@ -192,7 +190,6 @@ EOF
 }
 
 @test "inject: excludes already-completed tasks" {
-    skip "Not implemented - T227 design phase"
     create_sync_test_fixture
 
     run bash "$INJECT_SCRIPT"
@@ -203,10 +200,9 @@ EOF
 }
 
 @test "inject: creates session state file for round-trip" {
-    skip "Not implemented - T227 design phase"
     create_sync_test_fixture
 
-    run bash "$INJECT_SCRIPT"
+    run bash "$INJECT_SCRIPT" --quiet
     assert_success
 
     # Should create session state file
@@ -222,19 +218,18 @@ EOF
 # =============================================================================
 
 @test "extract: parses [T###] prefix to recover task IDs" {
-    skip "Not implemented - T227 design phase"
     create_sync_test_fixture
     create_todowrite_state_fixture
 
     # First inject to create session state
-    bash "$INJECT_SCRIPT" > /dev/null
+    bash "$INJECT_SCRIPT" --quiet > /dev/null
 
     run bash "$EXTRACT_SCRIPT" "${TEST_TEMP_DIR}/todowrite-state.json"
     assert_success
 
     # Should detect T001 was completed
     assert_output --partial 'T001'
-    assert_output --partial 'completed'
+    assert_output --partial 'Completed'
 }
 
 @test "extract: marks completed tasks as done in claude-todo" {

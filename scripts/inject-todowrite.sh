@@ -1,0 +1,346 @@
+#!/usr/bin/env bash
+# =============================================================================
+# inject-todowrite.sh - Prepare claude-todo tasks for TodoWrite injection
+# =============================================================================
+# Transforms claude-todo tasks into TodoWrite JSON format with ID prefix
+# embedding for round-trip tracking. Used at session start.
+#
+# Research: T227 (todowrite-sync-research.md)
+#
+# Format: [T###] [!]? [BLOCKED]? <title>
+#   - [T###] = Task ID prefix (required for round-trip)
+#   - [!] = High/critical priority marker (optional)
+#   - [BLOCKED] = Blocked status marker (optional)
+#
+# Usage:
+#   claude-todo sync --inject
+#   ./inject-todowrite.sh [OPTIONS]
+#
+# Options:
+#   --max-tasks N     Maximum tasks to inject (default: 8)
+#   --focused-only    Only inject the focused task
+#   --output FILE     Write to file instead of stdout
+#   --save-state      Save session state for extraction (default: true)
+#   --help, -h        Show this help
+# =============================================================================
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LIB_DIR="$(dirname "$SCRIPT_DIR")/lib"
+
+# Source required libraries
+source "$LIB_DIR/todowrite-integration.sh"
+
+# =============================================================================
+# Colors and Logging
+# =============================================================================
+if [[ -z "${NO_COLOR:-}" && -t 1 ]]; then
+    RED='\033[0;31m'
+    GREEN='\033[0;32m'
+    YELLOW='\033[0;33m'
+    NC='\033[0m'
+else
+    RED='' GREEN='' YELLOW='' NC=''
+fi
+
+log_error() { echo -e "${RED}[ERROR]${NC} $1" >&2; }
+log_warn() { [[ "${QUIET:-false}" != "true" ]] && echo -e "${YELLOW}[WARN]${NC} $1" || true; }
+log_info() { [[ "${QUIET:-false}" != "true" ]] && echo -e "${GREEN}[INFO]${NC} $1" || true; }
+
+# =============================================================================
+# Configuration
+# =============================================================================
+TODO_FILE=".claude/todo.json"
+SYNC_DIR=".claude/sync"
+STATE_FILE="${SYNC_DIR}/todowrite-session.json"
+MAX_TASKS=8
+FOCUSED_ONLY=false
+OUTPUT_FILE=""
+SAVE_STATE=true
+QUIET=false
+
+# =============================================================================
+# Help
+# =============================================================================
+show_help() {
+    cat << 'EOF'
+inject-todowrite.sh - Prepare tasks for TodoWrite injection
+
+USAGE
+    claude-todo sync --inject [OPTIONS]
+    ./inject-todowrite.sh [OPTIONS]
+
+DESCRIPTION
+    Transforms claude-todo tasks into TodoWrite JSON format with embedded
+    task IDs for round-trip tracking. Called at session start to populate
+    Claude's ephemeral todo list.
+
+    Selection Strategy (tiered):
+      Tier 1: Current focused task (always included)
+      Tier 2: Direct dependencies of focused task
+      Tier 3: Other high-priority tasks in same phase
+
+OPTIONS
+    --max-tasks N     Maximum tasks to inject (default: 8)
+    --focused-only    Only inject the currently focused task
+    --output FILE     Write JSON to file instead of stdout
+    --no-save-state   Don't save session state file
+    --quiet, -q       Suppress info messages
+    --help, -h        Show this help
+
+OUTPUT FORMAT
+    {
+      "todos": [
+        {
+          "content": "[T001] [!] Task title",
+          "status": "in_progress",
+          "activeForm": "Working on task title"
+        }
+      ]
+    }
+
+CONTENT PREFIX FORMAT
+    [T###]           Task ID (always present)
+    [!]              High/critical priority marker
+    [BLOCKED]        Blocked status (mapped to pending)
+
+EXAMPLES
+    # Inject focused task and dependencies
+    claude-todo sync --inject
+
+    # Inject only focused task
+    claude-todo sync --inject --focused-only
+
+    # Save to file for debugging
+    claude-todo sync --inject --output /tmp/inject.json
+
+EOF
+    exit 0
+}
+
+# =============================================================================
+# Argument Parsing
+# =============================================================================
+parse_args() {
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --max-tasks)
+                MAX_TASKS="$2"
+                shift 2
+                ;;
+            --focused-only)
+                FOCUSED_ONLY=true
+                shift
+                ;;
+            --output)
+                OUTPUT_FILE="$2"
+                shift 2
+                ;;
+            --no-save-state)
+                SAVE_STATE=false
+                shift
+                ;;
+            --quiet|-q)
+                QUIET=true
+                shift
+                ;;
+            --help|-h)
+                show_help
+                ;;
+            *)
+                log_error "Unknown option: $1"
+                exit 1
+                ;;
+        esac
+    done
+}
+
+# =============================================================================
+# Core Functions
+# =============================================================================
+
+# Format task content with ID prefix and markers
+format_task_content() {
+    local id="$1"
+    local title="$2"
+    local priority="$3"
+    local status="$4"
+
+    local content="[${id}]"
+
+    # Add priority marker for high/critical
+    if [[ "$priority" == "high" || "$priority" == "critical" ]]; then
+        content="${content} [!]"
+    fi
+
+    # Add blocked marker
+    if [[ "$status" == "blocked" ]]; then
+        content="${content} [BLOCKED]"
+    fi
+
+    content="${content} ${title}"
+    echo "$content"
+}
+
+# Get tasks to inject based on tiered selection
+get_tasks_to_inject() {
+    local todo_file="$1"
+    local max_tasks="$2"
+    local focused_only="$3"
+
+    # Get focused task ID
+    local focus_id
+    focus_id=$(jq -r '.focus.taskId // ""' "$todo_file")
+
+    if [[ "$focused_only" == "true" && -n "$focus_id" ]]; then
+        # Only return focused task
+        jq -c "[.tasks[] | select(.id == \"$focus_id\")]" "$todo_file"
+        return
+    fi
+
+    # Get focused task's phase for tier 3 filtering
+    local focus_phase=""
+    if [[ -n "$focus_id" ]]; then
+        focus_phase=$(jq -r ".tasks[] | select(.id == \"$focus_id\") | .phase // \"\"" "$todo_file")
+    fi
+
+    # Build task list with tiers
+    jq -c --arg focus_id "$focus_id" --arg focus_phase "$focus_phase" --argjson max "$max_tasks" '
+        # Get focused task (tier 1)
+        (.tasks[] | select(.id == $focus_id and .status != "done")) as $focused |
+
+        # Get all non-done tasks
+        [.tasks[] | select(.status != "done")] |
+
+        # Sort by tier priority
+        sort_by(
+            if .id == $focus_id then 0                           # Tier 1: focused
+            elif (.depends // []) | any(. == $focus_id) then 1   # Tier 2: depends on focused
+            elif .priority == "critical" then 2                   # Tier 3a: critical
+            elif .priority == "high" then 3                       # Tier 3b: high priority
+            elif .phase == $focus_phase and $focus_phase != "" then 4  # Tier 3c: same phase
+            else 5                                                # Everything else
+            end
+        ) |
+
+        # Take max tasks
+        .[0:$max]
+    ' "$todo_file"
+}
+
+# Convert tasks to TodoWrite format
+convert_to_todowrite() {
+    local tasks_json="$1"
+
+    local todowrite_todos="[]"
+
+    while IFS= read -r task; do
+        local id=$(echo "$task" | jq -r '.id')
+        local title=$(echo "$task" | jq -r '.title // ""')
+        local status=$(echo "$task" | jq -r '.status // "pending"')
+        local priority=$(echo "$task" | jq -r '.priority // "medium"')
+
+        # Format content with ID prefix
+        local content
+        content=$(format_task_content "$id" "$title" "$priority" "$status")
+
+        # Get activeForm
+        local active_form
+        active_form=$(convert_to_active_form "$title")
+
+        # Map status
+        local todowrite_status
+        todowrite_status=$(map_status_to_todowrite "$status")
+
+        # Build todo item
+        local todo_item
+        todo_item=$(jq -n \
+            --arg content "$content" \
+            --arg activeForm "$active_form" \
+            --arg status "$todowrite_status" \
+            '{content: $content, activeForm: $activeForm, status: $status}')
+
+        todowrite_todos=$(echo "$todowrite_todos" | jq --argjson item "$todo_item" '. + [$item]')
+    done < <(echo "$tasks_json" | jq -c '.[]')
+
+    # Return final format
+    jq -n --argjson todos "$todowrite_todos" '{todos: $todos}'
+}
+
+# Save session state for extraction phase
+save_session_state() {
+    local injected_ids="$1"
+    local output_json="$2"
+
+    mkdir -p "$SYNC_DIR"
+
+    # Get current session ID if active
+    local session_id
+    session_id=$(jq -r '._meta.activeSession // "manual"' "$TODO_FILE" 2>/dev/null || echo "manual")
+
+    jq -n \
+        --arg session_id "$session_id" \
+        --arg injected_at "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
+        --argjson injected_ids "$injected_ids" \
+        --argjson snapshot "$output_json" \
+        '{
+            session_id: $session_id,
+            injected_at: $injected_at,
+            injected_tasks: $injected_ids,
+            snapshot: $snapshot
+        }' > "$STATE_FILE"
+
+    log_info "Session state saved: $STATE_FILE"
+}
+
+# =============================================================================
+# Main
+# =============================================================================
+main() {
+    parse_args "$@"
+
+    # Validate todo.json exists
+    if [[ ! -f "$TODO_FILE" ]]; then
+        log_error "todo.json not found at $TODO_FILE"
+        exit 1
+    fi
+
+    # Get tasks to inject
+    local tasks_json
+    tasks_json=$(get_tasks_to_inject "$TODO_FILE" "$MAX_TASKS" "$FOCUSED_ONLY")
+
+    local task_count
+    task_count=$(echo "$tasks_json" | jq 'length')
+
+    if [[ "$task_count" -eq 0 ]]; then
+        log_warn "No tasks to inject"
+        echo '{"todos": []}'
+        exit 0
+    fi
+
+    log_info "Injecting $task_count tasks to TodoWrite format"
+
+    # Convert to TodoWrite format
+    local output_json
+    output_json=$(convert_to_todowrite "$tasks_json")
+
+    # Extract injected task IDs for state file
+    local injected_ids
+    injected_ids=$(echo "$tasks_json" | jq '[.[].id]')
+
+    # Save session state if requested
+    if [[ "$SAVE_STATE" == "true" ]]; then
+        save_session_state "$injected_ids" "$output_json"
+    fi
+
+    # Output result
+    if [[ -n "$OUTPUT_FILE" ]]; then
+        echo "$output_json" > "$OUTPUT_FILE"
+        log_info "Output written to: $OUTPUT_FILE"
+    else
+        echo "$output_json"
+    fi
+}
+
+main "$@"
