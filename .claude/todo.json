@@ -2,20 +2,20 @@
   "$schema": "./schemas/todo.schema.json",
   "version": "2.1.0",
   "project": "claude-todo",
-  "lastUpdated": "2025-12-15T20:09:24Z",
+  "lastUpdated": "2025-12-15T22:00:42Z",
   "_meta": {
-    "checksum": "d889aefb4b283e7b",
+    "checksum": "f93e2d9b8ee644de",
     "configVersion": "2.1.0",
     "lastSessionId": null,
-    "activeSession": "session_20251215_114111_bc622b",
-    "lastModified": "2025-12-15T20:02:48Z",
+    "activeSession": null,
+    "lastModified": "2025-12-15T21:44:30Z",
     "version": "2.0.0"
   },
   "focus": {
     "currentTask": null,
     "blockedUntil": null,
-    "sessionNote": "=== SESSION: 2025-12-15 (v0.12.3 prep) ===\n\n## COMPLETED THIS SESSION\n- T209, T210, T212: Resolved contested claims\n- T205-T208, T211: Closed REFUTED claims with verdicts\n- Fixed _meta.version WARN (added v2.0.0)\n- Added CLAUDE.md injection check to validate command\n- Researched history.sh integration (T224 created)\n\n## KEY CHANGES\n1. schemas/config.schema.json: autoArchiveOnComplete\n2. scripts/validate.sh: CLAUDE.md injection version check\n3. docs/: Renamed Anti-Hallucination → Data Integrity\n4. .claude/todo.json: _meta.version = 2.0.0\n\n## CONSENSUS INVESTIGATION: COMPLETE\n- 30 tasks done (investigation + claims)\n- 9 pending (T204 plugin + T224 history)\n\n## NEXT VERSION\nv0.12.3: Schema/doc fixes + validate enhancement\nv0.13.0: History command integration (T224)",
-    "nextAction": "Review contested claims T209/T210/T212 from consensus investigation"
+    "sessionNote": "T227 research complete. All 6 subtasks done. Design documented in Serena memory: todowrite-sync-research.md",
+    "nextAction": "Implementation phase: create sync scripts and hook files for v0.14.0"
   },
   "tasks": [
     {
@@ -2500,6 +2500,214 @@
       "completedAt": "2025-12-15T20:09:24Z",
       "notes": [
         "[COMPLETED 2025-12-15T20:09:24Z] Documentation completeness audit completed. Created 12 new docs/commands/*.md files (add, archive, complete, focus, init, list, migrate, migrate-backups, session, stats, update, validate). Updated INDEX.md with 25 total command refs (added 13). Added history and migrate-backups to TODO_Task_Management.md. Verified CLAUDE-INJECTION.md points to TODO_Task_Management.md. All 25 command docs validated."
+      ]
+    },
+    {
+      "id": "T227",
+      "title": "Research TodoWrite ↔ claude-todo Bidirectional Sync Integration",
+      "status": "done",
+      "priority": "high",
+      "createdAt": "2025-12-15T21:07:56Z",
+      "phase": "core",
+      "description": "Investigate seamless integration between durable claude-todo persistence and ephemeral TodoWrite session tracking. Goal: automatic injection at session start, live sync during session, extraction at session end.",
+      "labels": [
+        "integration",
+        "research",
+        "session-management",
+        "todowrite",
+        "v0.14.0"
+      ],
+      "notes": [
+        "2025-12-15 21:07:56 UTC: Key investigation areas: (1) Session start hook to export claude-todo → TodoWrite format, (2) Session end hook to diff/merge TodoWrite → claude-todo, (3) Conflict resolution for tasks modified in both systems, (4) Metadata mapping (phases/labels/deps → simplified TodoWrite format), (5) Progress note preservation across session boundaries",
+        "2025-12-15 21:44:14 UTC: All 6 subtasks complete (T228-T233). Research findings saved to Serena memory. Key design: intentionally lossy transformation with ID prefix for round-trip, hybrid hook architecture (command+prompt hooks), claude-todo authoritative for metadata, TodoWrite authoritative for session progress.",
+        "[COMPLETED 2025-12-15T21:44:14Z] Research complete: TodoWrite sync integration designed with tiered injection, ID-prefix tracking, hybrid hooks, and conflict resolution protocol"
+      ],
+      "completedAt": "2025-12-15T21:44:14Z"
+    },
+    {
+      "id": "T228",
+      "title": "T227.1: Analyze TodoWrite Tool Schema and Capabilities",
+      "status": "done",
+      "priority": "high",
+      "createdAt": "2025-12-15T21:08:14Z",
+      "phase": "core",
+      "description": "Deep dive into Claude Code's TodoWrite tool: accepted parameters, status values, content/activeForm grammar rules, limitations, and undocumented behaviors.",
+      "labels": [
+        "research",
+        "schema-analysis",
+        "todowrite"
+      ],
+      "depends": [
+        "T227"
+      ],
+      "notes": [
+        "2025-12-15 21:41:15 UTC: Schema analysis complete. Key findings: (1) No stable IDs in TodoWrite - uses array position only, (2) Status mapping: completed→done, in_progress→active, pending→pending, blocked has no equivalent, (3) All rich metadata lost (priority, labels, phase, deps, notes), (4) TodoWrite allows multiple in_progress vs claude-todo single active",
+        "[COMPLETED 2025-12-15T21:41:22Z] Documented TodoWrite schema limitations and identified 4 critical integration challenges"
+      ],
+      "completedAt": "2025-12-15T21:41:22Z"
+    },
+    {
+      "id": "T229",
+      "title": "T227.2: Design Session Start Injection Mechanism",
+      "status": "done",
+      "priority": "high",
+      "createdAt": "2025-12-15T21:08:16Z",
+      "phase": "core",
+      "description": "Research how to automatically populate TodoWrite with relevant claude-todo tasks at session start. Consider: which tasks to inject (active, pending high-priority, focused), format transformation, hook integration points.",
+      "labels": [
+        "design",
+        "injection",
+        "research",
+        "session-start"
+      ],
+      "depends": [
+        "T227"
+      ],
+      "notes": [
+        "2025-12-15 21:41:39 UTC: Design complete: (1) Tiered injection - focused task + deps + same-phase high-priority up to 8 tasks, (2) Hybrid trigger via SessionStart hook calling export command, (3) Format: embed task ID in content prefix for round-trip tracking, status mapping with blocked→pending+prefix",
+        "[COMPLETED 2025-12-15T21:41:40Z] Injection mechanism designed with tiered selection, hook trigger, and ID-embedded content format"
+      ],
+      "completedAt": "2025-12-15T21:41:40Z"
+    },
+    {
+      "id": "T230",
+      "title": "T227.3: Design Session End Extraction and Merge Strategy",
+      "status": "done",
+      "priority": "high",
+      "createdAt": "2025-12-15T21:08:17Z",
+      "phase": "core",
+      "description": "Research how to capture TodoWrite state at session end and merge back to claude-todo. Key challenges: detecting new tasks, mapping completed items, preserving progress notes, handling conflicts.",
+      "labels": [
+        "extraction",
+        "merge",
+        "research",
+        "session-end"
+      ],
+      "depends": [
+        "T227"
+      ],
+      "notes": [
+        "2025-12-15 21:42:02 UTC: Design complete: (1) ID recovery via [T###] prefix parsing, (2) Diff detection categorizes: completed, progressed, new_tasks, removed, unchanged, (3) Merge actions: complete→ct complete, new→ct add with session-created label, (4) Session state file tracks injected tasks for diff calculation",
+        "[COMPLETED 2025-12-15T21:42:02Z] Extraction/merge strategy designed with ID parsing, diff detection, and session state tracking"
+      ],
+      "completedAt": "2025-12-15T21:42:02Z"
+    },
+    {
+      "id": "T231",
+      "title": "T227.4: Metadata Mapping and Lossy Transformation Analysis",
+      "status": "done",
+      "priority": "medium",
+      "createdAt": "2025-12-15T21:08:19Z",
+      "phase": "core",
+      "description": "Analyze information loss when mapping rich claude-todo metadata (phases, labels, dependencies, notes, acceptance criteria) to simplified TodoWrite format. Design round-trip preservation strategies.",
+      "labels": [
+        "metadata",
+        "research",
+        "transformation"
+      ],
+      "depends": [
+        "T227"
+      ],
+      "notes": [
+        "2025-12-15 21:42:27 UTC: Analysis complete: 10+ fields map to 3 TodoWrite fields. Only ID (via prefix) and status are round-trippable. Design accepts lossy transformation - full metadata stays in claude-todo. Priority/blocked optionally encoded in content prefix.",
+        "[COMPLETED 2025-12-15T21:42:27Z] Documented complete field mapping with intentionally lossy design philosophy"
+      ],
+      "completedAt": "2025-12-15T21:42:27Z"
+    },
+    {
+      "id": "T232",
+      "title": "T227.5: Conflict Resolution Protocol Design",
+      "status": "done",
+      "priority": "medium",
+      "createdAt": "2025-12-15T21:08:20Z",
+      "phase": "core",
+      "description": "Design conflict resolution for scenarios: task completed in TodoWrite but modified in claude-todo externally, new tasks created in both systems, status drift during long sessions.",
+      "labels": [
+        "conflict-resolution",
+        "research",
+        "sync"
+      ],
+      "depends": [
+        "T227"
+      ],
+      "notes": [
+        "2025-12-15 21:42:52 UTC: Protocol designed with 5 conflict scenarios (status divergence, external delete, concurrent mod, ID collision, session overlap). Resolution: claude-todo authoritative for existence/metadata, TodoWrite authoritative for session progress. Warn-don't-fail strategy with conflict logging.",
+        "[COMPLETED 2025-12-15T21:42:52Z] Conflict resolution protocol complete with decision tree and logging format"
+      ],
+      "completedAt": "2025-12-15T21:42:52Z"
+    },
+    {
+      "id": "T233",
+      "title": "T227.6: Hook Integration Architecture",
+      "status": "done",
+      "priority": "medium",
+      "createdAt": "2025-12-15T21:08:22Z",
+      "phase": "core",
+      "description": "Research Claude Code hook system for automatic sync triggers. Investigate: SessionStart hook for injection, SessionEnd/Stop hooks for extraction, PreToolUse/PostToolUse for live sync options.",
+      "labels": [
+        "architecture",
+        "hooks",
+        "research"
+      ],
+      "depends": [
+        "T227"
+      ],
+      "notes": [
+        "2025-12-15 21:43:20 UTC: Architecture: Hybrid hooks (command + prompt-based). Key insight: hooks cannot call TodoWrite directly - must instruct Claude via prompt hooks. SessionStart prepares inject file, prompt-hook tells Claude to call TodoWrite. SessionEnd prompts Claude to output state, command hook merges.",
+        "[COMPLETED 2025-12-15T21:43:20Z] Hook integration architecture designed with hybrid command/prompt-based approach"
+      ],
+      "completedAt": "2025-12-15T21:43:20Z"
+    },
+    {
+      "id": "T234",
+      "title": "Implement inject-todowrite.sh script",
+      "status": "pending",
+      "priority": "high",
+      "createdAt": "2025-12-15T22:00:34Z",
+      "phase": "core",
+      "description": "Create script that transforms claude-todo focused tasks into TodoWrite JSON format with ID prefix embedding",
+      "labels": [
+        "integration",
+        "todowrite",
+        "v0.14.0"
+      ],
+      "depends": [
+        "T227"
+      ]
+    },
+    {
+      "id": "T235",
+      "title": "Implement extract-todowrite.sh script",
+      "status": "pending",
+      "priority": "high",
+      "createdAt": "2025-12-15T22:00:41Z",
+      "phase": "core",
+      "description": "Create script that parses TodoWrite state JSON, recovers task IDs, and merges changes back to claude-todo",
+      "labels": [
+        "integration",
+        "todowrite",
+        "v0.14.0"
+      ],
+      "depends": [
+        "T234"
+      ]
+    },
+    {
+      "id": "T236",
+      "title": "Implement sync-todowrite.sh orchestrator",
+      "status": "pending",
+      "priority": "high",
+      "createdAt": "2025-12-15T22:00:42Z",
+      "phase": "core",
+      "description": "Create main sync command that orchestrates inject and extract with session state management",
+      "labels": [
+        "integration",
+        "todowrite",
+        "v0.14.0"
+      ],
+      "depends": [
+        "T234",
+        "T235"
       ]
     }
   ],

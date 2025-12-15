@@ -3,9 +3,9 @@
   "version": "0.10.1",
   "project": "claude-todo",
   "_meta": {
-    "totalEntries": 361,
+    "totalEntries": 388,
     "firstEntry": "2025-12-13T07:14:38Z",
-    "lastEntry": "2025-12-15T20:09:24Z",
+    "lastEntry": "2025-12-15T21:44:30Z",
     "entriesPruned": 0
   },
   "entries": [
@@ -10202,6 +10202,707 @@
       "details": {
         "field": "status",
         "operation": "complete"
+      }
+    },
+    {
+      "id": "log_fa24a1a5e41a",
+      "timestamp": "2025-12-15T20:46:50Z",
+      "sessionId": "session_20251215_114111_bc622b",
+      "action": "session_end",
+      "actor": "system",
+      "taskId": null,
+      "before": null,
+      "after": null,
+      "details": {
+        "note": "Completed T226 Documentation Completeness Audit - v0.12.9 released"
+      }
+    },
+    {
+      "id": "log-1765832876-b7abba",
+      "timestamp": "2025-12-15T21:07:56Z",
+      "operation": "create",
+      "task_id": "T227",
+      "user": "system",
+      "details": {
+        "title": "Research TodoWrite ↔ claude-todo Bidirectional Sync Integration",
+        "status": "pending",
+        "priority": "high"
+      },
+      "before": null,
+      "after": {
+        "title": "Research TodoWrite ↔ claude-todo Bidirectional Sync Integration",
+        "status": "pending",
+        "priority": "high"
+      }
+    },
+    {
+      "id": "log-1765832894-5c2d34",
+      "timestamp": "2025-12-15T21:08:14Z",
+      "operation": "create",
+      "task_id": "T228",
+      "user": "system",
+      "details": {
+        "title": "T227.1: Analyze TodoWrite Tool Schema and Capabilities",
+        "status": "pending",
+        "priority": "high"
+      },
+      "before": null,
+      "after": {
+        "title": "T227.1: Analyze TodoWrite Tool Schema and Capabilities",
+        "status": "pending",
+        "priority": "high"
+      }
+    },
+    {
+      "id": "log-1765832896-1e29f5",
+      "timestamp": "2025-12-15T21:08:16Z",
+      "operation": "create",
+      "task_id": "T229",
+      "user": "system",
+      "details": {
+        "title": "T227.2: Design Session Start Injection Mechanism",
+        "status": "pending",
+        "priority": "high"
+      },
+      "before": null,
+      "after": {
+        "title": "T227.2: Design Session Start Injection Mechanism",
+        "status": "pending",
+        "priority": "high"
+      }
+    },
+    {
+      "id": "log-1765832897-1fe805",
+      "timestamp": "2025-12-15T21:08:17Z",
+      "operation": "create",
+      "task_id": "T230",
+      "user": "system",
+      "details": {
+        "title": "T227.3: Design Session End Extraction and Merge Strategy",
+        "status": "pending",
+        "priority": "high"
+      },
+      "before": null,
+      "after": {
+        "title": "T227.3: Design Session End Extraction and Merge Strategy",
+        "status": "pending",
+        "priority": "high"
+      }
+    },
+    {
+      "id": "log-1765832899-cb313f",
+      "timestamp": "2025-12-15T21:08:19Z",
+      "operation": "create",
+      "task_id": "T231",
+      "user": "system",
+      "details": {
+        "title": "T227.4: Metadata Mapping and Lossy Transformation Analysis",
+        "status": "pending",
+        "priority": "medium"
+      },
+      "before": null,
+      "after": {
+        "title": "T227.4: Metadata Mapping and Lossy Transformation Analysis",
+        "status": "pending",
+        "priority": "medium"
+      }
+    },
+    {
+      "id": "log-1765832901-bed98c",
+      "timestamp": "2025-12-15T21:08:21Z",
+      "operation": "create",
+      "task_id": "T232",
+      "user": "system",
+      "details": {
+        "title": "T227.5: Conflict Resolution Protocol Design",
+        "status": "pending",
+        "priority": "medium"
+      },
+      "before": null,
+      "after": {
+        "title": "T227.5: Conflict Resolution Protocol Design",
+        "status": "pending",
+        "priority": "medium"
+      }
+    },
+    {
+      "id": "log-1765832902-f13961",
+      "timestamp": "2025-12-15T21:08:22Z",
+      "operation": "create",
+      "task_id": "T233",
+      "user": "system",
+      "details": {
+        "title": "T227.6: Hook Integration Architecture",
+        "status": "pending",
+        "priority": "medium"
+      },
+      "before": null,
+      "after": {
+        "title": "T227.6: Hook Integration Architecture",
+        "status": "pending",
+        "priority": "medium"
+      }
+    },
+    {
+      "id": "log_4c84207bfd42",
+      "timestamp": "2025-12-15T21:40:37Z",
+      "sessionId": "session_20251215_134037_8d18ab",
+      "action": "session_start",
+      "actor": "system",
+      "taskId": null,
+      "before": null,
+      "after": null,
+      "details": "Session started"
+    },
+    {
+      "id": "log_1a03ac883704",
+      "timestamp": "2025-12-15T21:40:37Z",
+      "sessionId": "session_20251215_134037_8d18ab",
+      "action": "focus_changed",
+      "actor": "claude",
+      "taskId": null,
+      "before": null,
+      "after": {
+        "currentTask": "T227"
+      },
+      "details": null
+    },
+    {
+      "id": "log_312f4370e1de",
+      "timestamp": "2025-12-15T21:41:15Z",
+      "sessionId": "session_20251215_134037_8d18ab",
+      "action": "task_updated",
+      "actor": "system",
+      "taskId": "T228",
+      "before": {
+        "title": "T227.1: Analyze TodoWrite Tool Schema and Capabilities",
+        "status": "pending",
+        "priority": "high",
+        "description": "Deep dive into Claude Code's TodoWrite tool: accepted parameters, status values, content/activeForm grammar rules, limitations, and undocumented behaviors.",
+        "phase": "core",
+        "labels": [
+          "research",
+          "schema-analysis",
+          "todowrite"
+        ],
+        "files": null,
+        "acceptance": null,
+        "depends": [
+          "T227"
+        ],
+        "blockedBy": null
+      },
+      "after": {
+        "title": "T227.1: Analyze TodoWrite Tool Schema and Capabilities",
+        "status": "pending",
+        "priority": "high",
+        "description": "Deep dive into Claude Code's TodoWrite tool: accepted parameters, status values, content/activeForm grammar rules, limitations, and undocumented behaviors.",
+        "phase": "core",
+        "labels": [
+          "research",
+          "schema-analysis",
+          "todowrite"
+        ],
+        "files": null,
+        "acceptance": null,
+        "depends": [
+          "T227"
+        ],
+        "blockedBy": null
+      },
+      "details": {
+        "operation": "update"
+      }
+    },
+    {
+      "id": "log_f27fcfadef6e",
+      "timestamp": "2025-12-15T21:41:22Z",
+      "sessionId": "session_20251215_134037_8d18ab",
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T228",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-15T21:41:22Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_33cda36dd42f",
+      "timestamp": "2025-12-15T21:41:39Z",
+      "sessionId": "session_20251215_134037_8d18ab",
+      "action": "task_updated",
+      "actor": "system",
+      "taskId": "T229",
+      "before": {
+        "title": "T227.2: Design Session Start Injection Mechanism",
+        "status": "pending",
+        "priority": "high",
+        "description": "Research how to automatically populate TodoWrite with relevant claude-todo tasks at session start. Consider: which tasks to inject (active, pending high-priority, focused), format transformation, hook integration points.",
+        "phase": "core",
+        "labels": [
+          "design",
+          "injection",
+          "research",
+          "session-start"
+        ],
+        "files": null,
+        "acceptance": null,
+        "depends": [
+          "T227"
+        ],
+        "blockedBy": null
+      },
+      "after": {
+        "title": "T227.2: Design Session Start Injection Mechanism",
+        "status": "pending",
+        "priority": "high",
+        "description": "Research how to automatically populate TodoWrite with relevant claude-todo tasks at session start. Consider: which tasks to inject (active, pending high-priority, focused), format transformation, hook integration points.",
+        "phase": "core",
+        "labels": [
+          "design",
+          "injection",
+          "research",
+          "session-start"
+        ],
+        "files": null,
+        "acceptance": null,
+        "depends": [
+          "T227"
+        ],
+        "blockedBy": null
+      },
+      "details": {
+        "operation": "update"
+      }
+    },
+    {
+      "id": "log_02e6195a24d2",
+      "timestamp": "2025-12-15T21:41:40Z",
+      "sessionId": "session_20251215_134037_8d18ab",
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T229",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-15T21:41:40Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_4d6be5e8dc8e",
+      "timestamp": "2025-12-15T21:42:02Z",
+      "sessionId": "session_20251215_134037_8d18ab",
+      "action": "task_updated",
+      "actor": "system",
+      "taskId": "T230",
+      "before": {
+        "title": "T227.3: Design Session End Extraction and Merge Strategy",
+        "status": "pending",
+        "priority": "high",
+        "description": "Research how to capture TodoWrite state at session end and merge back to claude-todo. Key challenges: detecting new tasks, mapping completed items, preserving progress notes, handling conflicts.",
+        "phase": "core",
+        "labels": [
+          "extraction",
+          "merge",
+          "research",
+          "session-end"
+        ],
+        "files": null,
+        "acceptance": null,
+        "depends": [
+          "T227"
+        ],
+        "blockedBy": null
+      },
+      "after": {
+        "title": "T227.3: Design Session End Extraction and Merge Strategy",
+        "status": "pending",
+        "priority": "high",
+        "description": "Research how to capture TodoWrite state at session end and merge back to claude-todo. Key challenges: detecting new tasks, mapping completed items, preserving progress notes, handling conflicts.",
+        "phase": "core",
+        "labels": [
+          "extraction",
+          "merge",
+          "research",
+          "session-end"
+        ],
+        "files": null,
+        "acceptance": null,
+        "depends": [
+          "T227"
+        ],
+        "blockedBy": null
+      },
+      "details": {
+        "operation": "update"
+      }
+    },
+    {
+      "id": "log_225505d9666e",
+      "timestamp": "2025-12-15T21:42:03Z",
+      "sessionId": "session_20251215_134037_8d18ab",
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T230",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-15T21:42:02Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_2844f090ab5c",
+      "timestamp": "2025-12-15T21:42:27Z",
+      "sessionId": "session_20251215_134037_8d18ab",
+      "action": "task_updated",
+      "actor": "system",
+      "taskId": "T231",
+      "before": {
+        "title": "T227.4: Metadata Mapping and Lossy Transformation Analysis",
+        "status": "pending",
+        "priority": "medium",
+        "description": "Analyze information loss when mapping rich claude-todo metadata (phases, labels, dependencies, notes, acceptance criteria) to simplified TodoWrite format. Design round-trip preservation strategies.",
+        "phase": "core",
+        "labels": [
+          "metadata",
+          "research",
+          "transformation"
+        ],
+        "files": null,
+        "acceptance": null,
+        "depends": [
+          "T227"
+        ],
+        "blockedBy": null
+      },
+      "after": {
+        "title": "T227.4: Metadata Mapping and Lossy Transformation Analysis",
+        "status": "pending",
+        "priority": "medium",
+        "description": "Analyze information loss when mapping rich claude-todo metadata (phases, labels, dependencies, notes, acceptance criteria) to simplified TodoWrite format. Design round-trip preservation strategies.",
+        "phase": "core",
+        "labels": [
+          "metadata",
+          "research",
+          "transformation"
+        ],
+        "files": null,
+        "acceptance": null,
+        "depends": [
+          "T227"
+        ],
+        "blockedBy": null
+      },
+      "details": {
+        "operation": "update"
+      }
+    },
+    {
+      "id": "log_bf608da820dc",
+      "timestamp": "2025-12-15T21:42:28Z",
+      "sessionId": "session_20251215_134037_8d18ab",
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T231",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-15T21:42:27Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_959694f0b82c",
+      "timestamp": "2025-12-15T21:42:52Z",
+      "sessionId": "session_20251215_134037_8d18ab",
+      "action": "task_updated",
+      "actor": "system",
+      "taskId": "T232",
+      "before": {
+        "title": "T227.5: Conflict Resolution Protocol Design",
+        "status": "pending",
+        "priority": "medium",
+        "description": "Design conflict resolution for scenarios: task completed in TodoWrite but modified in claude-todo externally, new tasks created in both systems, status drift during long sessions.",
+        "phase": "core",
+        "labels": [
+          "conflict-resolution",
+          "research",
+          "sync"
+        ],
+        "files": null,
+        "acceptance": null,
+        "depends": [
+          "T227"
+        ],
+        "blockedBy": null
+      },
+      "after": {
+        "title": "T227.5: Conflict Resolution Protocol Design",
+        "status": "pending",
+        "priority": "medium",
+        "description": "Design conflict resolution for scenarios: task completed in TodoWrite but modified in claude-todo externally, new tasks created in both systems, status drift during long sessions.",
+        "phase": "core",
+        "labels": [
+          "conflict-resolution",
+          "research",
+          "sync"
+        ],
+        "files": null,
+        "acceptance": null,
+        "depends": [
+          "T227"
+        ],
+        "blockedBy": null
+      },
+      "details": {
+        "operation": "update"
+      }
+    },
+    {
+      "id": "log_e4c0cf3b8adf",
+      "timestamp": "2025-12-15T21:42:52Z",
+      "sessionId": "session_20251215_134037_8d18ab",
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T232",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-15T21:42:52Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_6e8b162ea92d",
+      "timestamp": "2025-12-15T21:43:20Z",
+      "sessionId": "session_20251215_134037_8d18ab",
+      "action": "task_updated",
+      "actor": "system",
+      "taskId": "T233",
+      "before": {
+        "title": "T227.6: Hook Integration Architecture",
+        "status": "pending",
+        "priority": "medium",
+        "description": "Research Claude Code hook system for automatic sync triggers. Investigate: SessionStart hook for injection, SessionEnd/Stop hooks for extraction, PreToolUse/PostToolUse for live sync options.",
+        "phase": "core",
+        "labels": [
+          "architecture",
+          "hooks",
+          "research"
+        ],
+        "files": null,
+        "acceptance": null,
+        "depends": [
+          "T227"
+        ],
+        "blockedBy": null
+      },
+      "after": {
+        "title": "T227.6: Hook Integration Architecture",
+        "status": "pending",
+        "priority": "medium",
+        "description": "Research Claude Code hook system for automatic sync triggers. Investigate: SessionStart hook for injection, SessionEnd/Stop hooks for extraction, PreToolUse/PostToolUse for live sync options.",
+        "phase": "core",
+        "labels": [
+          "architecture",
+          "hooks",
+          "research"
+        ],
+        "files": null,
+        "acceptance": null,
+        "depends": [
+          "T227"
+        ],
+        "blockedBy": null
+      },
+      "details": {
+        "operation": "update"
+      }
+    },
+    {
+      "id": "log_05bc5faaa967",
+      "timestamp": "2025-12-15T21:43:20Z",
+      "sessionId": "session_20251215_134037_8d18ab",
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T233",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-15T21:43:20Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_21d08078c584",
+      "timestamp": "2025-12-15T21:44:14Z",
+      "sessionId": "session_20251215_134037_8d18ab",
+      "action": "task_updated",
+      "actor": "system",
+      "taskId": "T227",
+      "before": {
+        "title": "Research TodoWrite ↔ claude-todo Bidirectional Sync Integration",
+        "status": "active",
+        "priority": "high",
+        "description": "Investigate seamless integration between durable claude-todo persistence and ephemeral TodoWrite session tracking. Goal: automatic injection at session start, live sync during session, extraction at session end.",
+        "phase": "core",
+        "labels": [
+          "integration",
+          "research",
+          "session-management",
+          "todowrite",
+          "v0.14.0"
+        ],
+        "files": null,
+        "acceptance": null,
+        "depends": null,
+        "blockedBy": null
+      },
+      "after": {
+        "title": "Research TodoWrite ↔ claude-todo Bidirectional Sync Integration",
+        "status": "active",
+        "priority": "high",
+        "description": "Investigate seamless integration between durable claude-todo persistence and ephemeral TodoWrite session tracking. Goal: automatic injection at session start, live sync during session, extraction at session end.",
+        "phase": "core",
+        "labels": [
+          "integration",
+          "research",
+          "session-management",
+          "todowrite",
+          "v0.14.0"
+        ],
+        "files": null,
+        "acceptance": null,
+        "depends": null,
+        "blockedBy": null
+      },
+      "details": {
+        "operation": "update"
+      }
+    },
+    {
+      "id": "log_1df79eb27d22",
+      "timestamp": "2025-12-15T21:44:14Z",
+      "sessionId": "session_20251215_134037_8d18ab",
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T227",
+      "before": {
+        "status": "active",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-15T21:44:14Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_01a92f355c45",
+      "timestamp": "2025-12-15T21:44:30Z",
+      "sessionId": "session_20251215_134037_8d18ab",
+      "action": "session_end",
+      "actor": "system",
+      "taskId": null,
+      "before": null,
+      "after": null,
+      "details": null
+    },
+    {
+      "id": "log-1765836034-d028b1",
+      "timestamp": "2025-12-15T22:00:34Z",
+      "operation": "create",
+      "task_id": "T234",
+      "user": "system",
+      "details": {
+        "title": "Implement inject-todowrite.sh script",
+        "status": "pending",
+        "priority": "high"
+      },
+      "before": null,
+      "after": {
+        "title": "Implement inject-todowrite.sh script",
+        "status": "pending",
+        "priority": "high"
+      }
+    },
+    {
+      "id": "log-1765836041-bcca33",
+      "timestamp": "2025-12-15T22:00:41Z",
+      "operation": "create",
+      "task_id": "T235",
+      "user": "system",
+      "details": {
+        "title": "Implement extract-todowrite.sh script",
+        "status": "pending",
+        "priority": "high"
+      },
+      "before": null,
+      "after": {
+        "title": "Implement extract-todowrite.sh script",
+        "status": "pending",
+        "priority": "high"
+      }
+    },
+    {
+      "id": "log-1765836042-9ec061",
+      "timestamp": "2025-12-15T22:00:42Z",
+      "operation": "create",
+      "task_id": "T236",
+      "user": "system",
+      "details": {
+        "title": "Implement sync-todowrite.sh orchestrator",
+        "status": "pending",
+        "priority": "high"
+      },
+      "before": null,
+      "after": {
+        "title": "Implement sync-todowrite.sh orchestrator",
+        "status": "pending",
+        "priority": "high"
       }
     }
   ]
