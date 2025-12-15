@@ -3,9 +3,9 @@
   "version": "0.10.1",
   "project": "claude-todo",
   "_meta": {
-    "totalEntries": 353,
+    "totalEntries": 361,
     "firstEntry": "2025-12-13T07:14:38Z",
-    "lastEntry": "2025-12-15T18:48:47Z",
+    "lastEntry": "2025-12-15T20:09:24Z",
     "entriesPruned": 0
   },
   "entries": [
@@ -10054,6 +10054,150 @@
       "after": {
         "status": "done",
         "completedAt": "2025-12-15T18:48:47Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_28775fea0167",
+      "timestamp": "2025-12-15T19:31:57Z",
+      "sessionId": "session_20251215_103332_633a1f",
+      "action": "focus_changed",
+      "actor": "claude",
+      "taskId": null,
+      "before": null,
+      "after": {
+        "currentTask": "T224"
+      },
+      "details": null
+    },
+    {
+      "id": "log_41a133e95f42",
+      "timestamp": "2025-12-15T19:35:18Z",
+      "sessionId": "session_20251215_103332_633a1f",
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T224",
+      "before": {
+        "status": "active",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-15T19:35:18Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_6431118c1a21",
+      "timestamp": "2025-12-15T19:35:48Z",
+      "sessionId": "session_20251215_103332_633a1f",
+      "action": "session_end",
+      "actor": "system",
+      "taskId": null,
+      "before": null,
+      "after": null,
+      "details": null
+    },
+    {
+      "id": "log_81149a356ae8",
+      "timestamp": "2025-12-15T19:41:11Z",
+      "sessionId": "session_20251215_114111_bc622b",
+      "action": "session_start",
+      "actor": "system",
+      "taskId": null,
+      "before": null,
+      "after": null,
+      "details": "Session started"
+    },
+    {
+      "id": "log-1765827688-e25296",
+      "timestamp": "2025-12-15T19:41:28Z",
+      "operation": "create",
+      "task_id": "T225",
+      "user": "system",
+      "details": {
+        "title": "Implement 'show' command for single-task detail view",
+        "status": "pending",
+        "priority": "medium"
+      },
+      "before": null,
+      "after": {
+        "title": "Implement 'show' command for single-task detail view",
+        "status": "pending",
+        "priority": "medium"
+      }
+    },
+    {
+      "id": "log_8738e13200f7",
+      "timestamp": "2025-12-15T19:51:40Z",
+      "sessionId": "session_20251215_114111_bc622b",
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T225",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-15T19:51:39Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log-1765828726-1f6c5b",
+      "timestamp": "2025-12-15T19:58:46Z",
+      "operation": "create",
+      "task_id": "T226",
+      "user": "system",
+      "details": {
+        "title": "Documentation Completeness Audit: Full CLI Command Coverage",
+        "status": "pending",
+        "priority": "high"
+      },
+      "before": null,
+      "after": {
+        "title": "Documentation Completeness Audit: Full CLI Command Coverage",
+        "status": "pending",
+        "priority": "high"
+      }
+    },
+    {
+      "id": "log_e60b35306bc4",
+      "timestamp": "2025-12-15T20:02:48Z",
+      "sessionId": "session_20251215_114111_bc622b",
+      "action": "focus_changed",
+      "actor": "claude",
+      "taskId": null,
+      "before": null,
+      "after": {
+        "currentTask": "T226"
+      },
+      "details": null
+    },
+    {
+      "id": "log_b9c91d0a10a0",
+      "timestamp": "2025-12-15T20:09:24Z",
+      "sessionId": "session_20251215_114111_bc622b",
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T226",
+      "before": {
+        "status": "active",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-15T20:09:24Z"
       },
       "details": {
         "field": "status",

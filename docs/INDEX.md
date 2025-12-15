@@ -39,18 +39,31 @@
 
 | Document | Purpose | When to Read |
 |----------|---------|--------------|
-| **[commands/dash.md](commands/dash.md)** | Dashboard command documentation | Using project overview features |
-| **[commands/labels.md](commands/labels.md)** | Labels command documentation | Managing and analyzing task labels |
-| **[commands/next.md](commands/next.md)** | Next command documentation | Using intelligent task suggestions |
-| **[commands/deps.md](commands/deps.md)** | Dependency visualization documentation | Understanding task dependencies |
-| **[commands/blockers.md](commands/blockers.md)** | Blockers command documentation | Analyzing blocked tasks and chains |
-| **[commands/phases.md](commands/phases.md)** | Phase management command documentation | Managing project phases and phase-based workflows |
-| **[commands/export.md](commands/export.md)** | Export command documentation | Exporting tasks in CSV, TSV, JSON, markdown formats |
+| **[commands/add.md](commands/add.md)** | Add task command documentation | Creating new tasks with options |
+| **[commands/archive.md](commands/archive.md)** | Archive command documentation | Archiving completed tasks |
 | **[commands/backup.md](commands/backup.md)** | Backup command documentation | Creating and listing backups |
-| **[commands/restore.md](commands/restore.md)** | Restore command documentation | Restoring from backups |
+| **[commands/blockers.md](commands/blockers.md)** | Blockers command documentation | Analyzing blocked tasks and chains |
+| **[commands/complete.md](commands/complete.md)** | Complete task command documentation | Marking tasks as done |
+| **[commands/dash.md](commands/dash.md)** | Dashboard command documentation | Using project overview features |
+| **[commands/deps.md](commands/deps.md)** | Dependency visualization documentation | Understanding task dependencies |
 | **[commands/exists.md](commands/exists.md)** | Task existence validation documentation | Validating task IDs in scripts and CI/CD pipelines |
+| **[commands/export.md](commands/export.md)** | Export command documentation | Exporting tasks in CSV, TSV, JSON, markdown formats |
+| **[commands/focus.md](commands/focus.md)** | Focus command documentation | Managing single-task workflow discipline |
 | **[commands/history.md](commands/history.md)** | Completion history and timeline analytics | Reviewing productivity trends and completion metrics |
+| **[commands/init.md](commands/init.md)** | Init command documentation | Project initialization and CLAUDE.md updates |
+| **[commands/labels.md](commands/labels.md)** | Labels command documentation | Managing and analyzing task labels |
+| **[commands/list.md](commands/list.md)** | List tasks command documentation | Viewing and filtering tasks |
+| **[commands/log.md](commands/log.md)** | Log command documentation | Viewing and managing audit logs |
+| **[commands/migrate.md](commands/migrate.md)** | Schema migration command documentation | Upgrading schema versions |
+| **[commands/migrate-backups.md](commands/migrate-backups.md)** | Backup migration documentation | Migrating legacy backup structure |
+| **[commands/next.md](commands/next.md)** | Next command documentation | Using intelligent task suggestions |
+| **[commands/phases.md](commands/phases.md)** | Phase management command documentation | Managing project phases and phase-based workflows |
+| **[commands/restore.md](commands/restore.md)** | Restore command documentation | Restoring from backups |
+| **[commands/session.md](commands/session.md)** | Session command documentation | Managing work sessions |
 | **[commands/show.md](commands/show.md)** | Single task detail view documentation | Viewing full task details, dependencies, and history |
+| **[commands/stats.md](commands/stats.md)** | Statistics command documentation | Generating project statistics |
+| **[commands/update.md](commands/update.md)** | Update task command documentation | Modifying existing tasks |
+| **[commands/validate.md](commands/validate.md)** | Validate command documentation | Checking project integrity |
 
 ### 🔬 Technical Reference
 

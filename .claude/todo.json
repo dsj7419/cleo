@@ -2,13 +2,13 @@
   "$schema": "./schemas/todo.schema.json",
   "version": "2.1.0",
   "project": "claude-todo",
-  "lastUpdated": "2025-12-15T18:48:47Z",
+  "lastUpdated": "2025-12-15T20:09:24Z",
   "_meta": {
-    "checksum": "3ccc1b3a04009789",
+    "checksum": "d889aefb4b283e7b",
     "configVersion": "2.1.0",
     "lastSessionId": null,
-    "activeSession": "session_20251215_103332_633a1f",
-    "lastModified": "2025-12-15T18:49:26Z",
+    "activeSession": "session_20251215_114111_bc622b",
+    "lastModified": "2025-12-15T20:02:48Z",
     "version": "2.0.0"
   },
   "focus": {
@@ -2452,7 +2452,7 @@
     {
       "id": "T224",
       "title": "Integrate history command into CLI",
-      "status": "pending",
+      "status": "done",
       "priority": "high",
       "createdAt": "2025-12-15T18:48:10Z",
       "description": "history.sh (v0.10.2) exists but not registered. Steps: 1) Add to CMD_MAP in claude-todo script, 2) Add CMD_DESC, 3) Create docs/commands/history.md, 4) Add tests. Features: completion timeline, sparklines, velocity metrics.",
@@ -2460,6 +2460,46 @@
         "cli",
         "integration",
         "v0.13.0"
+      ],
+      "completedAt": "2025-12-15T19:35:18Z",
+      "notes": [
+        "[COMPLETED 2025-12-15T19:35:18Z] Integrated history command: added to CMD_MAP, CMD_DESC, help list. Created docs/commands/history.md. Updated docs/INDEX.md. Command tested working with text and JSON output."
+      ]
+    },
+    {
+      "id": "T225",
+      "title": "Implement 'show' command for single-task detail view",
+      "status": "done",
+      "priority": "medium",
+      "createdAt": "2025-12-15T19:41:28Z",
+      "phase": "setup",
+      "description": "## Problem\nLLM agents are trying to use `claude-todo show T036` which doesn't exist. This command was proposed in performance research (Dec 12) as part of lazy loading strategy but never implemented.\n\n## Error Observed\n```\nUnknown command: show\nDid you mean one of these?\n```\n\n## Source of Confusion\nPerformance research document recommended:\n- `list` → minimal task info (fast, 20ms for 1000 tasks)\n- `show <id>` → full task details (5ms for single task)\n\nThis pattern is documented in:\n1. Claude session logs from Dec 12 research\n2. Possibly in LLM instruction files referencing 'show' command\n\n## Current Workaround\n```bash\nclaude-todo list --format json | jq '.tasks[] | select(.id == \"T036\")'\n```\n\n## Proposed Implementation\n1. Create scripts/show.sh\n2. Add to CMD_MAP: [show]=\"show.sh\"\n3. Add to CMD_DESC: [show]=\"Show detailed view of a single task\"\n4. Add to help loop\n5. Features:\n   - Display all task fields in formatted view\n   - Show dependency chain (what blocks this, what this blocks)\n   - Show related tasks by label\n   - Show task history from log\n   - Optional: --json for raw output\n\n## Acceptance Criteria\n- `claude-todo show T001` displays full task details\n- Includes notes, files, acceptance criteria if present\n- Shows dependency relationships\n- Performance: <50ms for single task lookup",
+      "labels": [
+        "cli",
+        "ux",
+        "v0.13.0"
+      ],
+      "completedAt": "2025-12-15T19:51:39Z",
+      "notes": [
+        "[COMPLETED 2025-12-15T19:51:39Z] Implemented show command: scripts/show.sh (420 lines), docs/commands/show.md, updated TODO_Task_Management.md with Task Inspection section, updated CLAUDE-INJECTION.md template. Features: full task details, dependency info, --history, --related, --include-archive, JSON output."
+      ]
+    },
+    {
+      "id": "T226",
+      "title": "Documentation Completeness Audit: Full CLI Command Coverage",
+      "status": "done",
+      "priority": "high",
+      "createdAt": "2025-12-15T19:58:46Z",
+      "phase": "polish",
+      "description": "## Overview\nComprehensive audit and completion of CLI command documentation. Ensure all 25 commands are properly documented with consistent structure across all documentation touchpoints.\n\n## Documentation Architecture\n```\ndocs/commands/*.md     → Detailed command reference (source of truth for each command)\ndocs/INDEX.md          → Master index pointing to all documentation\ndocs/TODO_Task_Management.md → LLM-facing instructions (concise, references docs/commands/)\ntemplates/CLAUDE-INJECTION.md → Quick reference (essential commands only, points to TODO_Task_Management.md)\n```\n\n## Current State (v0.12.8)\n\n### CLI Commands vs Documentation Coverage\n\n| # | Command | docs/commands/ | INDEX.md | TODO_Task_Mgmt | CLAUDE-INJECTION |\n|---|---------|----------------|----------|----------------|------------------|\n| 1 | init | ❌ | ❌ | ✅ | ❌ |\n| 2 | add | ❌ | ❌ | ✅ | ✅ |\n| 3 | update | ❌ | ❌ | ✅ | ❌ |\n| 4 | complete | ❌ | ❌ | ✅ | ✅ (done) |\n| 5 | list | ❌ | ❌ | ✅ | ✅ |\n| 6 | focus | ❌ | ❌ | ✅ | ✅ |\n| 7 | session | ❌ | ❌ | ✅ | ✅ |\n| 8 | archive | ❌ | ❌ | ✅ | ❌ |\n| 9 | validate | ❌ | ❌ | ✅ | ❌ |\n| 10 | stats | ❌ | ❌ | ✅ | ❌ |\n| 11 | backup | ✅ | ✅ | ✅ | ❌ |\n| 12 | restore | ✅ | ✅ | ✅ | ❌ |\n| 13 | export | ✅ | ✅ | ✅ | ❌ |\n| 14 | migrate | ❌ | ❌ | ✅ | ❌ |\n| 15 | migrate-backups | ❌ | ❌ | ❌ | ❌ |\n| 16 | log | ✅ | ❌ | ❌ | ❌ |\n| 17 | dash | ✅ | ✅ | ✅ | ✅ |\n| 18 | next | ✅ | ✅ | ✅ | ❌ |\n| 19 | labels | ✅ | ✅ | ✅ | ❌ |\n| 20 | deps | ✅ | ✅ | ✅ | ❌ |\n| 21 | blockers | ✅ | ✅ | ✅ | ❌ |\n| 22 | phases | ✅ | ✅ | ✅ | ❌ |\n| 23 | exists | ✅ | ✅ | ✅ | ✅ |\n| 24 | history | ✅ | ✅ | ❌ | ❌ |\n| 25 | show | ✅ | ✅ | ✅ | ✅ |\n\n### Summary\n- **Total CLI Commands**: 25 (+version, help built-in)\n- **docs/commands/ files**: 13 exist\n- **Missing command docs**: 12 (init, add, update, complete, list, focus, session, archive, validate, stats, migrate, migrate-backups)\n- **INDEX.md references**: 12 (missing: log.md)\n- **CLAUDE-INJECTION**: 9 essential commands\n\n## Work Required\n\n### Phase 1: Create Missing docs/commands/*.md (12 files)\nEach file should follow existing pattern (see dash.md, show.md as templates):\n- Usage section with bash examples\n- Description of purpose\n- Options table (Option | Short | Description | Default)\n- Examples section with common use cases\n- Exit codes (if applicable)\n- Related commands section\n\nFiles to create:\n1. docs/commands/init.md\n2. docs/commands/add.md\n3. docs/commands/update.md\n4. docs/commands/complete.md\n5. docs/commands/list.md\n6. docs/commands/focus.md\n7. docs/commands/session.md\n8. docs/commands/archive.md\n9. docs/commands/validate.md\n10. docs/commands/stats.md\n11. docs/commands/migrate.md\n12. docs/commands/migrate-backups.md\n\n### Phase 2: Update docs/INDEX.md\n- Add references to all 25 command docs\n- Currently missing: init, add, update, complete, list, focus, session, archive, validate, stats, migrate, migrate-backups, log\n- Organize by category (Core CRUD, Session/Focus, Analysis, Maintenance)\n\n### Phase 3: Update docs/TODO_Task_Management.md\n- Add history command to appropriate section\n- Add migrate-backups command\n- Ensure all commands reference docs/commands/ for details\n- Keep concise - this is LLM-facing, not full reference\n\n### Phase 4: Review templates/CLAUDE-INJECTION.md\n- Keep minimal (essential commands only)\n- Ensure it points to TODO_Task_Management.md for full docs\n- Current essential commands are appropriate (list, show, add, done, focus, session, exists, dash)\n\n### Phase 5: Validation\n- Run `claude-todo help` and verify all commands match docs\n- Test each command's --help output matches its docs/commands/*.md\n- Verify INDEX.md links all work\n- Verify no duplicate detailed information (single source of truth)\n\n## Principles\n1. **No duplication**: Detailed info lives in docs/commands/*.md only\n2. **Layered docs**: CLAUDE-INJECTION → TODO_Task_Management → docs/commands/\n3. **LLM-optimized**: TODO_Task_Management.md should be concise, scannable\n4. **Human-optimized**: docs/commands/*.md should be comprehensive\n5. **INDEX.md**: Master reference, links to everything\n\n## Acceptance Criteria\n- [ ] All 25 commands have docs/commands/*.md files\n- [ ] docs/INDEX.md references all 25 command docs\n- [ ] docs/TODO_Task_Management.md covers all commands (concisely)\n- [ ] templates/CLAUDE-INJECTION.md points to TODO_Task_Management.md\n- [ ] No detailed command info duplicated across files\n- [ ] All --help outputs consistent with documentation",
+      "labels": [
+        "cli",
+        "documentation",
+        "v0.13.0"
+      ],
+      "completedAt": "2025-12-15T20:09:24Z",
+      "notes": [
+        "[COMPLETED 2025-12-15T20:09:24Z] Documentation completeness audit completed. Created 12 new docs/commands/*.md files (add, archive, complete, focus, init, list, migrate, migrate-backups, session, stats, update, validate). Updated INDEX.md with 25 total command refs (added 13). Added history and migrate-backups to TODO_Task_Management.md. Verified CLAUDE-INJECTION.md points to TODO_Task_Management.md. All 25 command docs validated."
       ]
     }
   ],

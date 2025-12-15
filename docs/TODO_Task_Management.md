@@ -78,9 +78,19 @@ claude-todo backup --list                  # List available backups
 claude-todo restore [backup]               # Restore from backup
 claude-todo migrate status                 # Check schema versions
 claude-todo migrate run                    # Run schema migrations
+claude-todo migrate-backups --detect       # List legacy backups
+claude-todo migrate-backups --run          # Migrate to new taxonomy
 claude-todo export --format todowrite      # Export to Claude Code format
 claude-todo export --format csv            # Export to CSV
 claude-todo init --update-claude-md        # Update CLAUDE.md injection (idempotent)
+```
+
+### History & Analytics
+```bash
+claude-todo history                        # Recent completion timeline (30 days)
+claude-todo history --days 7               # Last week's completions
+claude-todo history --since 2025-12-01     # Since specific date
+claude-todo history --format json          # JSON output for scripting
 ```
 
 ## CLAUDE.md Integration

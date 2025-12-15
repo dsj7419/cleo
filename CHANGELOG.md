@@ -5,6 +5,22 @@ All notable changes to the claude-todo system will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.12.9] - 2025-12-15
+
+### Added
+- **Documentation Completeness Audit** (T226)
+  - Created 12 missing command docs: `add.md`, `archive.md`, `complete.md`, `focus.md`, `init.md`, `list.md`, `migrate.md`, `migrate-backups.md`, `session.md`, `stats.md`, `update.md`, `validate.md`
+  - Updated `docs/INDEX.md` with 25 total command references (was 12)
+  - Added `history` and `migrate-backups` commands to `TODO_Task_Management.md`
+
+### Fixed
+- **Documentation accuracy**: Verified all 25 command docs against actual CLI behavior
+  - `backup.md`: Removed non-existent `-d`, `-c` short flags
+  - `log.md`: Added missing `list` and `show` subcommands
+  - `init.md`: Corrected arguments (uses `[PROJECT_NAME]`, not `--dir`)
+  - `list.md`: Fixed options table to match actual flags
+  - `TODO_Task_Management.md`: Fixed `history` syntax (`--days 7` not `--period week`)
+
 ## [0.12.8] - 2025-12-15
 
 ### Added

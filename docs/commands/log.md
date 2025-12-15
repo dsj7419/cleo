@@ -1,14 +1,69 @@
 # Log Command (`claude-todo log`)
 
-Manage todo-log.json entries and perform log schema migrations.
+Manage todo-log.json entries with listing, filtering, and schema migrations.
 
 ## Overview
 
-The `log` command provides two main functions:
-1. **Add log entries** - Manually add entries to the audit log
-2. **Migrate schema** - Migrate old log schema entries to the current schema
+The `log` command provides four main functions:
+1. **List log entries** - View audit log entries with filtering
+2. **Show entry details** - View a specific log entry
+3. **Add log entries** - Manually add entries to the audit log
+4. **Migrate schema** - Migrate old log schema entries to the current schema
 
 ## Subcommands
+
+### `list` - List Log Entries
+
+List log entries with flexible filtering options.
+
+**Usage:**
+```bash
+claude-todo log list [OPTIONS]
+```
+
+**Options:**
+- `--limit N` - Show last N entries (default: 20, 0 = all)
+- `--action ACTION` - Filter by action type
+- `--task-id ID` - Filter by task ID
+- `--actor ACTOR` - Filter by actor (human|claude|system)
+- `--since DATE` - Show entries since date (YYYY-MM-DD)
+- `--format FORMAT` - Output format: text|json (default: text)
+
+**Examples:**
+```bash
+# List last 20 entries
+claude-todo log list
+
+# List last 50 entries
+claude-todo log list --limit 50
+
+# Filter by action type
+claude-todo log list --action task_created
+
+# Filter by task ID
+claude-todo log list --task-id T001
+
+# Filter by date
+claude-todo log list --since "2025-12-13"
+
+# JSON output for scripting
+claude-todo log list --format json
+```
+
+### `show` - Show Entry Details
+
+Show details of a specific log entry by ID.
+
+**Usage:**
+```bash
+claude-todo log show <log-id>
+```
+
+**Examples:**
+```bash
+# Show specific log entry
+claude-todo log show log_abc123def456
+```
 
 ### `migrate` - Schema Migration
 

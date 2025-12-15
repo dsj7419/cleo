@@ -25,8 +25,8 @@ All backups are validated during creation to ensure integrity, and automatic ret
 
 | Option | Short | Description | Default |
 |--------|-------|-------------|---------|
-| `--destination DIR` | `-d` | Custom backup location | `.claude/.backups` |
-| `--compress` | `-c` | Create compressed tarball (.tar.gz) | `false` |
+| `--destination DIR` | | Custom backup location | `.claude/backups` |
+| `--compress` | | Create compressed tarball (.tar.gz) | `false` |
 | `--name NAME` | `-n` | Custom name appended to timestamp | (none) |
 | `--list` | `-l` | **List all available backups** | `false` |
 | `--verbose` | | **Show detailed debug output** | `false` |
