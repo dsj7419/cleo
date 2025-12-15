@@ -68,6 +68,36 @@ claude-todo migrate status                 # Check schema versions
 claude-todo migrate run                    # Run schema migrations
 claude-todo export --format todowrite      # Export to Claude Code format
 claude-todo export --format csv            # Export to CSV
+claude-todo init --update-claude-md        # Update CLAUDE.md injection (idempotent)
+```
+
+## CLAUDE.md Integration
+
+### Update CLAUDE.md Instructions
+When claude-todo is upgraded, update your project's CLAUDE.md injection:
+
+```bash
+# Update existing CLAUDE.md injection to latest template
+claude-todo init --update-claude-md
+```
+
+This command:
+- Replaces content between `<!-- CLAUDE-TODO:START -->` and `<!-- CLAUDE-TODO:END -->`
+- Adds injection if not present
+- Safe to run anytime (idempotent)
+- Does NOT re-initialize the project or touch `.claude/` files
+
+### When to Update
+Run `init --update-claude-md` after:
+- Upgrading claude-todo to a new version
+- Template improvements are released
+- You notice outdated instructions in CLAUDE.md
+
+### Check Current Version
+```bash
+# Compare injection to installed template
+diff <(sed -n '/CLAUDE-TODO:START/,/CLAUDE-TODO:END/p' CLAUDE.md) \
+     ~/.claude-todo/templates/CLAUDE-INJECTION.md
 ```
 
 ## Task Options

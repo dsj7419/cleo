@@ -178,6 +178,18 @@ cmd_start() {
   if [[ -n "$next_action" ]]; then
     log_info "Suggested next action: $next_action"
   fi
+
+  # Check if CLAUDE.md injection is outdated
+  if [[ -f "CLAUDE.md" ]] && [[ -f "$CLAUDE_TODO_HOME/templates/CLAUDE-INJECTION.md" ]]; then
+    local current_version installed_version
+    current_version=$(grep -oP 'CLAUDE-TODO:START v\K[0-9.]+' CLAUDE.md 2>/dev/null || echo "")
+    installed_version=$(grep -oP 'CLAUDE-TODO:START v\K[0-9.]+' "$CLAUDE_TODO_HOME/templates/CLAUDE-INJECTION.md" 2>/dev/null || echo "")
+
+    if [[ -n "$installed_version" ]] && [[ "$current_version" != "$installed_version" ]]; then
+      log_warn "CLAUDE.md injection outdated (${current_version:-unknown} → $installed_version)"
+      log_warn "Run: claude-todo init --update-claude-md"
+    fi
+  fi
 }
 
 # End current session
