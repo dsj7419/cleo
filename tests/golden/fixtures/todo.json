@@ -1,14 +1,65 @@
 {
+  "version": "2.2.0",
   "_meta": {
-    "version": "2.1.0",
-    "checksum": "CHECKSUM"
+    "version": "2.2.0",
+    "schemaVersion": "2.2.0",
+    "configVersion": "2.1.0",
+    "checksum": "CHECKSUM",
+    "lastSessionId": null,
+    "activeSession": null
   },
-  "phases": {
-    "setup": {"name": "Setup", "description": "Initial setup tasks", "order": 1},
-    "core": {"name": "Core", "description": "Core functionality", "order": 2},
-    "testing": {"name": "Testing", "description": "Testing and validation", "order": 3},
-    "polish": {"name": "Polish", "description": "Final polish", "order": 4},
-    "maintenance": {"name": "Maintenance", "description": "Bug fixes and support", "order": 5}
+  "project": {
+    "name": "golden-test-project",
+    "currentPhase": "core",
+    "phases": {
+      "setup": {
+        "order": 1,
+        "name": "Setup & Foundation",
+        "description": "Initial setup tasks",
+        "status": "completed",
+        "startedAt": "2025-01-01T10:00:00Z",
+        "completedAt": "2025-01-02T15:30:00Z"
+      },
+      "core": {
+        "order": 2,
+        "name": "Core Development",
+        "description": "Core functionality",
+        "status": "active",
+        "startedAt": "2025-01-02T16:00:00Z",
+        "completedAt": null
+      },
+      "testing": {
+        "order": 3,
+        "name": "Testing & Validation",
+        "description": "Testing and validation",
+        "status": "pending",
+        "startedAt": null,
+        "completedAt": null
+      },
+      "polish": {
+        "order": 4,
+        "name": "Polish & Refinement",
+        "description": "Final polish",
+        "status": "pending",
+        "startedAt": null,
+        "completedAt": null
+      },
+      "maintenance": {
+        "order": 5,
+        "name": "Maintenance",
+        "description": "Bug fixes and support",
+        "status": "pending",
+        "startedAt": null,
+        "completedAt": null
+      }
+    }
+  },
+  "focus": {
+    "currentTask": "T003",
+    "currentPhase": "core",
+    "blockedUntil": null,
+    "sessionNote": null,
+    "nextAction": null
   },
   "tasks": [
     {
@@ -78,5 +129,5 @@
       "createdAt": "2025-01-06T09:00:00Z"
     }
   ],
-  "focus": {}
+  "lastUpdated": "2025-01-06T12:00:00Z"
 }

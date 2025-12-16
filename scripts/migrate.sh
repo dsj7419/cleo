@@ -50,6 +50,7 @@ Commands:
   run                    Execute migration for all files
   file <path> <type>     Migrate specific file
   rollback               Rollback from most recent migration backup
+  repair                 Repair schema to canonical structure (fixes phases, _meta, etc.)
 
 Options:
   --dir <path>          Project directory (default: current directory)
@@ -62,6 +63,10 @@ Options:
 Rollback Options:
   --backup-id <id>      Specific backup to restore from (optional)
   --force               Skip confirmation prompt
+
+Repair Options:
+  --dry-run             Show what would be repaired without making changes
+  --auto                Auto-repair without confirmation
 
 Examples:
   # Check migration status
@@ -82,6 +87,12 @@ Examples:
   # Rollback from specific backup
   claude-todo migrate rollback --backup-id migration_v2.1.0_20251215_120000
 
+  # Check what repairs are needed (dry-run)
+  claude-todo migrate repair --dry-run
+
+  # Auto-repair schema issues
+  claude-todo migrate repair --auto
+
 Schema Versions:
   todo:    $SCHEMA_VERSION_TODO
   config:  $SCHEMA_VERSION_CONFIG
@@ -93,6 +104,38 @@ EOF
 # ============================================================================
 # COMMAND HANDLERS
 # ============================================================================
+
+# Repair schema to canonical structure
+cmd_repair() {
+    local project_dir="${1:-.}"
+    local mode="${2:-interactive}"  # interactive, auto, dry-run
+
+    local claude_dir="$project_dir/.claude"
+    local todo_file="$claude_dir/todo.json"
+
+    if [[ ! -d "$claude_dir" ]]; then
+        echo "ERROR: No .claude directory found in $project_dir" >&2
+        echo "Run 'claude-todo init' to initialize the project" >&2
+        exit 1
+    fi
+
+    if [[ ! -f "$todo_file" ]]; then
+        echo "ERROR: No todo.json found in $claude_dir" >&2
+        exit 1
+    fi
+
+    echo "Schema Repair"
+    echo "============="
+    echo ""
+    echo "Project: $project_dir"
+    echo "File: $todo_file"
+    echo ""
+
+    # Call the repair function from lib/migrate.sh
+    if ! repair_todo_schema "$todo_file" "$mode"; then
+        exit 1
+    fi
+}
 
 # Show migration status for all files
 cmd_status() {
@@ -606,6 +649,7 @@ main() {
     local create_backup=true
     local force_migration=false
     local backup_id=""
+    local dry_run=false
 
     while [[ $# -gt 0 ]]; do
         case "$1" in
@@ -632,6 +676,10 @@ main() {
             --backup-id)
                 backup_id="$2"
                 shift 2
+                ;;
+            --dry-run)
+                dry_run=true
+                shift
                 ;;
             -h|--help)
                 show_usage
@@ -663,6 +711,16 @@ main() {
             ;;
         "rollback")
             cmd_rollback "$project_dir" "$backup_id" "$force_migration"
+            ;;
+        "repair")
+            # Determine repair mode from flags
+            local repair_mode="interactive"
+            if [[ "$dry_run" == "true" ]]; then
+                repair_mode="dry-run"
+            elif [[ "$auto_migrate" == "true" ]]; then
+                repair_mode="auto"
+            fi
+            cmd_repair "$project_dir" "$repair_mode"
             ;;
         "")
             show_usage

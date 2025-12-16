@@ -64,6 +64,7 @@ normalize_output() {
         -e 's/"completedAt":"[^"]+/"completedAt":"TIMESTAMP/g' \
         -e 's/"checksum":"[^"]+/"checksum":"CHECKSUM/g' \
         -e 's/checksum.*[a-f0-9]{16}/checksum: CHECKSUM/g' \
+        -e 's/"execution_ms": *[0-9]+/"execution_ms": XXX/g' \
         -e 's/execution_ms":[0-9]+/execution_ms":XXX/g' \
         -e 's/[0-9]+ms/XXXms/g' \
         -e "s|$TEST_DIR|TESTDIR|g" \

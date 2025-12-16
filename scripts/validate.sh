@@ -361,7 +361,59 @@ else
   log_info "Focus matches active task"
 fi
 
-# 9. Verify checksum
+# 9. Check for multiple active phases (phase validation)
+if jq -e '.project.phases' "$TODO_FILE" >/dev/null 2>&1; then
+  ACTIVE_PHASE_COUNT=$(jq '[.project.phases | to_entries[] | select(.value.status == "active")] | length' "$TODO_FILE")
+  if [[ "$ACTIVE_PHASE_COUNT" -gt 1 ]]; then
+    log_error "Multiple active phases found ($ACTIVE_PHASE_COUNT). Only ONE allowed."
+    if [[ "$FIX" == true ]]; then
+      # Find the first active phase and make others pending
+      FIRST_ACTIVE_PHASE=$(jq -r '[.project.phases | to_entries[] | select(.value.status == "active")][0].key' "$TODO_FILE")
+      jq --arg keep "$FIRST_ACTIVE_PHASE" '
+        .project.phases |= with_entries(
+          if .value.status == "active" and .key != $keep then
+            .value.status = "pending"
+          else . end
+        )
+      ' "$TODO_FILE" > "${TODO_FILE}.tmp" && mv "${TODO_FILE}.tmp" "$TODO_FILE"
+      echo "  Fixed: Kept $FIRST_ACTIVE_PHASE as active, others set to pending"
+    fi
+  elif [[ "$ACTIVE_PHASE_COUNT" -eq 1 ]]; then
+    log_info "Single active phase"
+  else
+    log_info "No active phases"
+  fi
+
+  # Check phase status values are valid (pending/active/completed)
+  INVALID_STATUSES=$(jq -r '.project.phases | to_entries[] | select(.value.status != "pending" and .value.status != "active" and .value.status != "completed") | "\(.key): \(.value.status)"' "$TODO_FILE" 2>/dev/null)
+  if [[ -n "$INVALID_STATUSES" ]]; then
+    log_error "Invalid phase status values found: $INVALID_STATUSES"
+  fi
+
+  # Check currentPhase references an existing phase
+  CURRENT_PHASE=$(jq -r '.project.currentPhase // ""' "$TODO_FILE")
+  if [[ -n "$CURRENT_PHASE" && "$CURRENT_PHASE" != "null" ]]; then
+    PHASE_EXISTS=$(jq --arg phase "$CURRENT_PHASE" '.project.phases | has($phase)' "$TODO_FILE")
+    if [[ "$PHASE_EXISTS" != "true" ]]; then
+      log_error "currentPhase '$CURRENT_PHASE' does not exist in phases"
+    fi
+  fi
+
+  # Check for future timestamps in phases
+  CURRENT_TIMESTAMP=$(date -u +%s)
+  FUTURE_PHASES=$(jq --argjson now "$CURRENT_TIMESTAMP" '
+    .project.phases | to_entries[] |
+    select(
+      (.value.startedAt != null and (.value.startedAt | fromdateiso8601) > $now) or
+      (.value.completedAt != null and (.value.completedAt | fromdateiso8601) > $now)
+    ) | .key
+  ' "$TODO_FILE" 2>/dev/null || echo "")
+  if [[ -n "$FUTURE_PHASES" ]]; then
+    log_error "Future timestamps detected in phases: $FUTURE_PHASES"
+  fi
+fi
+
+# 10. Verify checksum
 STORED_CHECKSUM=$(jq -r '._meta.checksum // ""' "$TODO_FILE")
 if [[ -n "$STORED_CHECKSUM" ]]; then
   COMPUTED_CHECKSUM=$(jq -c '.tasks' "$TODO_FILE" | sha256sum | cut -c1-16)

@@ -660,6 +660,357 @@ restore_file() {
 }
 
 # ============================================================================
+# REPAIR FUNCTIONS (T302)
+# ============================================================================
+
+# Get canonical phase structure from template
+# Returns: JSON object with canonical phases (with {{TIMESTAMP}} placeholders cleaned)
+get_canonical_phases() {
+    local template_file="${TEMPLATES_DIR}/todo.template.json"
+
+    if [[ -f "$template_file" ]]; then
+        # Read phases from template, clean timestamp placeholders to null
+        jq '.project.phases | walk(if type == "string" and test("\\{\\{") then null else . end)' "$template_file" 2>/dev/null
+    else
+        # Fallback: hardcoded canonical structure
+        cat <<'EOF'
+{
+  "setup": {"order":1,"name":"Setup & Foundation","description":"Initial project setup, dependencies, and configuration","status":"pending","startedAt":null,"completedAt":null},
+  "core": {"order":2,"name":"Core Development","description":"Build core functionality and features","status":"pending","startedAt":null,"completedAt":null},
+  "testing": {"order":3,"name":"Testing & Validation","description":"Comprehensive testing, validation, and quality assurance","status":"pending","startedAt":null,"completedAt":null},
+  "polish": {"order":4,"name":"Polish & Refinement","description":"UX improvements, optimization, and release preparation","status":"pending","startedAt":null,"completedAt":null},
+  "maintenance": {"order":5,"name":"Maintenance","description":"Bug fixes, updates, and ongoing support","status":"pending","startedAt":null,"completedAt":null}
+}
+EOF
+    fi
+}
+
+# Compare actual phases against canonical and return discrepancies
+# Args: $1 = file path
+# Returns: JSON object with {missing: [], extra: [], order_mismatch: []}
+compare_phases_structure() {
+    local file="$1"
+
+    local canonical
+    canonical=$(get_canonical_phases)
+
+    local actual
+    actual=$(jq '.project.phases // {}' "$file" 2>/dev/null)
+
+    # Use jq to compare and find discrepancies
+    jq -n --argjson canonical "$canonical" --argjson actual "$actual" '
+        ($canonical | keys) as $canonical_keys |
+        ($actual | keys) as $actual_keys |
+        {
+            missing: ($canonical_keys - $actual_keys),
+            extra: ($actual_keys - $canonical_keys),
+            order_mismatch: [
+                $canonical_keys[] |
+                select(. as $k | $actual[$k] != null) |
+                select(. as $k | $canonical[$k].order != $actual[$k].order) |
+                {
+                    phase: .,
+                    expected_order: $canonical[.].order,
+                    actual_order: $actual[.].order
+                }
+            ]
+        }
+    '
+}
+
+# Get repair actions needed for a todo.json file
+# Args: $1 = file path
+# Returns: JSON object with all needed repairs
+get_repair_actions() {
+    local file="$1"
+
+    local phase_diff
+    phase_diff=$(compare_phases_structure "$file")
+
+    local missing_phases extra_phases order_mismatches
+    missing_phases=$(echo "$phase_diff" | jq -r '.missing | length')
+    extra_phases=$(echo "$phase_diff" | jq -r '.extra | length')
+    order_mismatches=$(echo "$phase_diff" | jq -r '.order_mismatch | length')
+
+    local needs_repair=false
+    [[ $missing_phases -gt 0 || $extra_phases -gt 0 || $order_mismatches -gt 0 ]] && needs_repair=true
+
+    # Check _meta fields
+    local meta_issues=()
+    local has_checksum has_schema_version has_config_version
+    has_checksum=$(jq -r '._meta.checksum // "missing"' "$file")
+    has_schema_version=$(jq -r '._meta.schemaVersion // "missing"' "$file")
+    has_config_version=$(jq -r '._meta.configVersion // "missing"' "$file")
+
+    [[ "$has_checksum" == "missing" ]] && meta_issues+=("checksum")
+    [[ "$has_schema_version" == "missing" ]] && meta_issues+=("schemaVersion")
+    [[ "$has_config_version" == "missing" ]] && meta_issues+=("configVersion")
+
+    # Check focus fields
+    local focus_issues=()
+    local has_session_note has_next_action
+    has_session_note=$(jq -r '.focus.sessionNote // "missing"' "$file")
+    has_next_action=$(jq -r '.focus.nextAction // "missing"' "$file")
+
+    [[ "$has_session_note" == "missing" ]] && focus_issues+=("sessionNote")
+    [[ "$has_next_action" == "missing" ]] && focus_issues+=("nextAction")
+
+    # Output summary
+    jq -n \
+        --argjson phase_diff "$phase_diff" \
+        --argjson meta_issues "$(printf '%s\n' "${meta_issues[@]:-}" | jq -R . | jq -s .)" \
+        --argjson focus_issues "$(printf '%s\n' "${focus_issues[@]:-}" | jq -R . | jq -s .)" \
+        --argjson needs_repair "$needs_repair" \
+        '{
+            needs_repair: $needs_repair,
+            phases: $phase_diff,
+            meta_missing: ($meta_issues | map(select(. != ""))),
+            focus_missing: ($focus_issues | map(select(. != "")))
+        }'
+}
+
+# Display repair preview (dry-run)
+# Args: $1 = file path
+show_repair_preview() {
+    local file="$1"
+
+    local actions
+    actions=$(get_repair_actions "$file")
+
+    local needs_repair
+    needs_repair=$(echo "$actions" | jq -r '.needs_repair')
+
+    if [[ "$needs_repair" != "true" ]]; then
+        echo "✓ No repairs needed - file is compliant with schema"
+        return 0
+    fi
+
+    echo "Repair Preview"
+    echo "=============="
+    echo ""
+    echo "File: $file"
+    echo ""
+
+    # Phase repairs
+    local missing_count extra_count order_count
+    missing_count=$(echo "$actions" | jq '.phases.missing | length')
+    extra_count=$(echo "$actions" | jq '.phases.extra | length')
+    order_count=$(echo "$actions" | jq '.phases.order_mismatch | length')
+
+    if [[ $missing_count -gt 0 || $extra_count -gt 0 || $order_count -gt 0 ]]; then
+        echo "Phase Repairs:"
+
+        if [[ $missing_count -gt 0 ]]; then
+            echo "  Add missing phases:"
+            echo "$actions" | jq -r '.phases.missing[] | "    + \(.)"'
+        fi
+
+        if [[ $extra_count -gt 0 ]]; then
+            echo "  Remove obsolete phases:"
+            echo "$actions" | jq -r '.phases.extra[] | "    - \(.)"'
+        fi
+
+        if [[ $order_count -gt 0 ]]; then
+            echo "  Fix phase ordering:"
+            echo "$actions" | jq -r '.phases.order_mismatch[] | "    ~ \(.phase): order \(.actual_order) → \(.expected_order)"'
+        fi
+        echo ""
+    fi
+
+    # Meta repairs
+    local meta_count
+    meta_count=$(echo "$actions" | jq '.meta_missing | length')
+    if [[ $meta_count -gt 0 ]]; then
+        echo "Meta Field Repairs:"
+        echo "$actions" | jq -r '.meta_missing[] | "  + _meta.\(.)"'
+        echo ""
+    fi
+
+    # Focus repairs
+    local focus_count
+    focus_count=$(echo "$actions" | jq '.focus_missing | length')
+    if [[ $focus_count -gt 0 ]]; then
+        echo "Focus Field Repairs:"
+        echo "$actions" | jq -r '.focus_missing[] | "  + focus.\(.)"'
+        echo ""
+    fi
+
+    return 0
+}
+
+# Execute repairs on todo.json
+# Args: $1 = file path
+# Returns: 0 on success, 1 on failure
+execute_repair() {
+    local file="$1"
+    local temp_file="${file}.repair.tmp"
+
+    # Get canonical phases
+    local canonical_phases
+    canonical_phases=$(get_canonical_phases)
+
+    # Build the repair jq filter
+    # This is a complex but idempotent transformation
+    jq --argjson canonical "$canonical_phases" '
+        # Start with the original
+        . as $original |
+
+        # Get existing phases with their current status/timestamps
+        (.project.phases // {}) as $existing_phases |
+
+        # Build new phases object
+        ($canonical | to_entries | map(
+            .key as $slug |
+            .value as $default |
+            # If phase exists, preserve status/timestamps, update order/name/description
+            if $existing_phases[$slug] then
+                {
+                    key: $slug,
+                    value: ($existing_phases[$slug] + {
+                        order: $default.order,
+                        name: $default.name,
+                        description: $default.description
+                    })
+                }
+            else
+                # New phase with defaults
+                {key: $slug, value: $default}
+            end
+        ) | from_entries) as $repaired_phases |
+
+        # Apply all repairs
+        $original |
+
+        # Ensure project is object structure
+        (if (.project | type) == "string" then
+            .project = {name: .project, currentPhase: null, phases: {}}
+        else . end) |
+
+        # Set repaired phases
+        .project.phases = $repaired_phases |
+
+        # Ensure _meta has all fields
+        ._meta.schemaVersion = "2.2.0" |
+        ._meta.configVersion = (._meta.configVersion // "2.1.0") |
+        (if ._meta.checksum == null then ._meta.checksum = "pending" else . end) |
+
+        # Ensure version field
+        .version = "2.2.0" |
+
+        # Ensure focus has all fields
+        .focus.sessionNote = (.focus.sessionNote // null) |
+        .focus.nextAction = (.focus.nextAction // null)
+    ' "$file" > "$temp_file" 2>/dev/null
+
+    local jq_status=$?
+    if [[ $jq_status -ne 0 ]]; then
+        echo "ERROR: jq transformation failed" >&2
+        rm -f "$temp_file"
+        return 1
+    fi
+
+    # Validate the result
+    if ! jq empty "$temp_file" 2>/dev/null; then
+        echo "ERROR: Repair produced invalid JSON" >&2
+        rm -f "$temp_file"
+        return 1
+    fi
+
+    # Atomic replace
+    mv "$temp_file" "$file"
+
+    return 0
+}
+
+# Main repair command handler
+# Args: $1 = file path, $2 = mode (preview|auto|interactive)
+# Returns: 0 on success/no-repair-needed, 1 on failure
+repair_todo_schema() {
+    local file="$1"
+    local mode="${2:-interactive}"
+
+    if [[ ! -f "$file" ]]; then
+        echo "ERROR: File not found: $file" >&2
+        return 1
+    fi
+
+    # Get repair actions
+    local actions
+    actions=$(get_repair_actions "$file")
+
+    local needs_repair
+    needs_repair=$(echo "$actions" | jq -r '.needs_repair')
+
+    if [[ "$needs_repair" != "true" ]]; then
+        echo "✓ No repairs needed - file is fully compliant"
+        return 0
+    fi
+
+    case "$mode" in
+        "preview"|"dry-run")
+            show_repair_preview "$file"
+            echo "Run with --auto to apply these repairs"
+            return 0
+            ;;
+        "auto")
+            echo "Applying repairs..."
+
+            # Create backup first
+            local backup_file
+            backup_file=$(create_backup "$file" "pre-repair") || {
+                echo "ERROR: Failed to create backup" >&2
+                return 1
+            }
+            echo "✓ Backup created: $backup_file"
+
+            # Execute repair
+            if ! execute_repair "$file"; then
+                echo "ERROR: Repair failed" >&2
+                echo "Restoring from backup..."
+                restore_file "$backup_file" "$file" || {
+                    echo "CRITICAL: Failed to restore backup!" >&2
+                    return 1
+                }
+                return 1
+            fi
+
+            # Verify repair
+            local post_actions
+            post_actions=$(get_repair_actions "$file")
+            local still_needs_repair
+            still_needs_repair=$(echo "$post_actions" | jq -r '.needs_repair')
+
+            if [[ "$still_needs_repair" == "true" ]]; then
+                echo "WARNING: Some issues remain after repair" >&2
+                show_repair_preview "$file"
+                return 1
+            fi
+
+            echo "✓ Repair completed successfully"
+            return 0
+            ;;
+        "interactive")
+            show_repair_preview "$file"
+            echo ""
+            read -p "Apply these repairs? (y/N) " -r
+            echo ""
+
+            if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+                echo "Repair cancelled"
+                return 0
+            fi
+
+            # Recursively call with auto mode
+            repair_todo_schema "$file" "auto"
+            ;;
+        *)
+            echo "ERROR: Unknown mode: $mode" >&2
+            return 1
+            ;;
+    esac
+}
+
+# ============================================================================
 # CLI INTERFACE
 # ============================================================================
 

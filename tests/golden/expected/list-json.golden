@@ -2,11 +2,11 @@
   "$schema": "https://claude-todo.dev/schemas/output-v2.json",
   "_meta": {
     "format": "json",
-    "version": "0.8.2",
+    "version": "0.13.3",
     "command": "list",
     "timestamp": "TIMESTAMP",
     "checksum: CHECKSUM",
-    "execution_ms": 32
+    "execution_ms": XXX
   },
   "filters": {
     "status": null,

@@ -99,6 +99,7 @@ EOF
 }
 
 # Create already-migrated v2.2.0 todo.json (for idempotency tests)
+# Uses canonical 5-phase structure
 create_v2_2_0_todo() {
     cat > "$TODO_FILE" << 'EOF'
 {
@@ -109,32 +110,40 @@ create_v2_2_0_todo() {
     "phases": {
       "setup": {
         "order": 1,
-        "name": "Setup",
-        "description": "Initial setup and configuration",
+        "name": "Setup & Foundation",
+        "description": "Initial project setup, dependencies, and configuration",
         "status": "pending",
         "startedAt": null,
         "completedAt": null
       },
       "core": {
         "order": 2,
-        "name": "Core",
-        "description": "Core feature implementation",
+        "name": "Core Development",
+        "description": "Build core functionality and features",
+        "status": "pending",
+        "startedAt": null,
+        "completedAt": null
+      },
+      "testing": {
+        "order": 3,
+        "name": "Testing & Validation",
+        "description": "Comprehensive testing, validation, and quality assurance",
         "status": "pending",
         "startedAt": null,
         "completedAt": null
       },
       "polish": {
-        "order": 3,
-        "name": "Polish",
-        "description": "Refinement and testing",
+        "order": 4,
+        "name": "Polish & Refinement",
+        "description": "UX improvements, optimization, and release preparation",
         "status": "pending",
         "startedAt": null,
         "completedAt": null
       },
-      "release": {
-        "order": 4,
-        "name": "Release",
-        "description": "Release preparation",
+      "maintenance": {
+        "order": 5,
+        "name": "Maintenance",
+        "description": "Bug fixes, updates, and ongoing support",
         "status": "pending",
         "startedAt": null,
         "completedAt": null
@@ -223,9 +232,9 @@ EOF
 
     migrate_todo_to_2_2_0 "$TODO_FILE"
 
-    # Check all default phases exist
+    # Check all default phases exist (5 canonical phases)
     run jq -r '.project.phases | keys | length' "$TODO_FILE"
-    assert_output "4"
+    assert_output "5"
 
     run jq -r '.project.phases | has("setup")' "$TODO_FILE"
     assert_output "true"
@@ -233,10 +242,13 @@ EOF
     run jq -r '.project.phases | has("core")' "$TODO_FILE"
     assert_output "true"
 
+    run jq -r '.project.phases | has("testing")' "$TODO_FILE"
+    assert_output "true"
+
     run jq -r '.project.phases | has("polish")' "$TODO_FILE"
     assert_output "true"
 
-    run jq -r '.project.phases | has("release")' "$TODO_FILE"
+    run jq -r '.project.phases | has("maintenance")' "$TODO_FILE"
     assert_output "true"
 }
 
@@ -250,10 +262,11 @@ EOF
     assert_output "1"
 
     run jq -r '.project.phases.setup.name' "$TODO_FILE"
-    assert_output "Setup"
+    assert_output "Setup & Foundation"
 
+    # Setup phase starts as "active" for new projects (from template)
     run jq -r '.project.phases.setup.status' "$TODO_FILE"
-    assert_output "pending"
+    assert_output "active"
 
     run jq -r '.project.phases.setup.startedAt' "$TODO_FILE"
     assert_output "null"
@@ -265,13 +278,17 @@ EOF
     run jq -r '.project.phases.core.order' "$TODO_FILE"
     assert_output "2"
 
-    # Check polish phase order
-    run jq -r '.project.phases.polish.order' "$TODO_FILE"
+    # Check testing phase order (new in 5-phase)
+    run jq -r '.project.phases.testing.order' "$TODO_FILE"
     assert_output "3"
 
-    # Check release phase order
-    run jq -r '.project.phases.release.order' "$TODO_FILE"
+    # Check polish phase order
+    run jq -r '.project.phases.polish.order' "$TODO_FILE"
     assert_output "4"
+
+    # Check maintenance phase order (new in 5-phase)
+    run jq -r '.project.phases.maintenance.order' "$TODO_FILE"
+    assert_output "5"
 }
 
 @test "migrate_todo_to_2_2_0 updates version to 2.2.0" {
@@ -386,8 +403,9 @@ EOF
     run jq -r '.project | type' "$TODO_FILE"
     assert_output "object"
 
+    # 5 canonical phases should be present
     run jq -r '.project.phases | keys | length' "$TODO_FILE"
-    assert_output "4"
+    assert_output "5"
 }
 
 @test "multiple migrations preserve all phase fields" {
@@ -398,8 +416,8 @@ EOF
     migrate_todo_to_2_2_0 "$TODO_FILE"
     migrate_todo_to_2_2_0 "$TODO_FILE"
 
-    # Verify all required phase fields exist
-    for phase in setup core polish release; do
+    # Verify all required phase fields exist (5 canonical phases)
+    for phase in setup core testing polish maintenance; do
         run jq -r ".project.phases.$phase | has(\"order\")" "$TODO_FILE"
         assert_output "true"
 

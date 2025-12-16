@@ -6,42 +6,50 @@
     "currentPhase": "core",
     "phases": {
       "setup": {
-        "name": "Setup",
-        "description": "Initial setup and configuration",
+        "name": "Setup & Foundation",
+        "description": "Initial project setup, dependencies, and configuration",
         "status": "completed",
         "order": 1,
         "startedAt": null,
         "completedAt": null
       },
       "core": {
-        "name": "Core",
-        "description": "Core feature implementation",
+        "name": "Core Development",
+        "description": "Build core functionality and features",
         "status": "active",
         "order": 2,
         "startedAt": null,
         "completedAt": null
       },
-      "polish": {
-        "name": "Polish",
-        "description": "Refinement and testing",
-        "status": "pending",
+      "testing": {
         "order": 3,
+        "name": "Testing & Validation",
+        "description": "Comprehensive testing, validation, and quality assurance",
+        "status": "pending",
         "startedAt": null,
         "completedAt": null
       },
-      "release": {
-        "name": "Release",
-        "description": "Release preparation",
+      "polish": {
+        "name": "Polish & Refinement",
+        "description": "UX improvements, optimization, and release preparation",
         "status": "pending",
         "order": 4,
+        "startedAt": null,
+        "completedAt": null
+      },
+      "maintenance": {
+        "order": 5,
+        "name": "Maintenance",
+        "description": "Bug fixes, updates, and ongoing support",
+        "status": "pending",
         "startedAt": null,
         "completedAt": null
       }
     }
   },
-  "lastUpdated": "2025-12-16T20:17:12Z",
+  "lastUpdated": "2025-12-16T21:34:39Z",
   "_meta": {
-    "checksum": "a6f350743c6dca2a",
+    "checksum": "736d54d3655fc61b",
     "configVersion": "2.1.0",
     "lastSessionId": null,
     "activeSession": null,
@@ -50,7 +58,7 @@
     "schemaVersion": "2.2.0"
   },
   "focus": {
-    "currentTask": "T302",
+    "currentTask": null,
     "blockedUntil": null,
     "sessionNote": "SESSION 2025-12-16 HANDOFF - CRITICAL CONTEXT\n\n## Current Version: v0.13.3\n\n## CRITICAL ISSUE: This Project Has Wrong Phase Structure\n- .claude/todo.json has 4 phases (setup, core, polish, release)\n- SHOULD have 5 phases (setup, core, testing, polish, maintenance)\n- CANNOT be fixed manually - MUST use 'migrate repair' command (T302)\n- Proof: 'claude-todo add --phase testing' fails with 'phase not found'\n\n## Bugs Fixed This Session (v0.13.1-v0.13.3)\n1. IFS bug in migration (v0.13.1) - check_compatibility() failed\n2. 'Argument list too long' with 200+ tasks (v0.13.1) - list/history JSON\n3. Wrong 4-phase in migration function (v0.13.2) - now creates 5-phase\n4. Migration reads phases from template dynamically (v0.13.3)\n\n## Tasks Created This Session\n- T302: Implement 'migrate repair' command (MAIN TASK)\n- T303-T307: Subtasks for repair implementation\n- T308: Repair THIS project's phases using repair command\n- T309: Regenerate golden test fixtures\n\n## What 'migrate repair' Must Do\n1. Ensure canonical 5-phase structure\n2. Preserve existing phase status/timestamps\n3. Add missing _meta, focus, project fields\n4. Remove obsolete fields\n5. Be IDEMPOTENT (safe to run multiple times)\n6. Create backup before changes\n7. Log all changes\n\n## Test Results\n- Unit/Integration: 1015 passing\n- Golden: 6 failing (need regeneration after output changes)\n\n## Data Integrity Priority\n- NEVER lose task data\n- NEVER corrupt existing projects\n- ALWAYS backup before modification\n- ALWAYS use CLI commands, NOT manual edits",
     "nextAction": "NEXT SESSION: 1) Implement T302 'migrate repair' command, 2) Use it to fix T308 (this project's phases), 3) Run T309 golden test regeneration, 4) Verify all 1015+ tests pass, 5) Commit and release v0.14.0 with repair feature",
@@ -4076,7 +4084,7 @@
     {
       "id": "T302",
       "title": "Implement 'migrate repair' command for full schema compliance",
-      "status": "active",
+      "status": "done",
       "priority": "critical",
       "createdAt": "2025-12-16T20:15:45Z",
       "phase": "core",
@@ -4086,12 +4094,16 @@
         "feature-phase",
         "migration",
         "schema"
+      ],
+      "completedAt": "2025-12-16T21:34:38Z",
+      "notes": [
+        "[COMPLETED 2025-12-16T21:34:38Z] Implemented migrate repair command with schema comparison, repair execution, backup/restore, idempotent operation"
       ]
     },
     {
       "id": "T303",
       "title": "T302.1: Add repair subcommand to scripts/migrate.sh",
-      "status": "pending",
+      "status": "done",
       "priority": "high",
       "createdAt": "2025-12-16T20:16:11Z",
       "phase": "core",
@@ -4103,12 +4115,16 @@
       ],
       "depends": [
         "T302"
+      ],
+      "completedAt": "2025-12-16T21:34:38Z",
+      "notes": [
+        "[COMPLETED 2025-12-16T21:34:38Z] Added cmd_repair handler, --dry-run and --auto flags to scripts/migrate.sh"
       ]
     },
     {
       "id": "T304",
       "title": "T302.2: Implement schema comparison logic in lib/migrate.sh",
-      "status": "pending",
+      "status": "done",
       "priority": "high",
       "createdAt": "2025-12-16T20:16:13Z",
       "phase": "core",
@@ -4120,12 +4136,16 @@
       ],
       "depends": [
         "T302"
+      ],
+      "completedAt": "2025-12-16T21:34:39Z",
+      "notes": [
+        "[COMPLETED 2025-12-16T21:34:39Z] Implemented get_canonical_phases(), compare_phases_structure(), get_repair_actions() in lib/migrate.sh"
       ]
     },
     {
       "id": "T305",
       "title": "T302.3: Implement repair execution functions",
-      "status": "pending",
+      "status": "done",
       "priority": "high",
       "createdAt": "2025-12-16T20:16:15Z",
       "phase": "core",
@@ -4137,6 +4157,10 @@
       ],
       "depends": [
         "T302"
+      ],
+      "completedAt": "2025-12-16T21:34:39Z",
+      "notes": [
+        "[COMPLETED 2025-12-16T21:34:39Z] Implemented execute_repair(), repair_todo_schema() with backup, validation, idempotent operations"
       ]
     },
     {
@@ -4176,7 +4200,7 @@
     {
       "id": "T308",
       "title": "Repair this project's .claude/todo.json phase structure",
-      "status": "pending",
+      "status": "done",
       "priority": "critical",
       "createdAt": "2025-12-16T20:16:37Z",
       "phase": "core",
@@ -4188,12 +4212,16 @@
       ],
       "depends": [
         "T302"
+      ],
+      "completedAt": "2025-12-16T21:34:39Z",
+      "notes": [
+        "[COMPLETED 2025-12-16T21:34:39Z] Fixed this project phases from 4 (setup,core,polish,release) to 5 canonical phases using migrate repair"
       ]
     },
     {
       "id": "T309",
       "title": "Regenerate golden test fixtures after phase structure fixes",
-      "status": "pending",
+      "status": "done",
       "priority": "medium",
       "createdAt": "2025-12-16T20:16:56Z",
       "phase": "core",
@@ -4202,6 +4230,10 @@
         "feature-phase",
         "golden-tests",
         "testing"
+      ],
+      "completedAt": "2025-12-16T21:34:39Z",
+      "notes": [
+        "[COMPLETED 2025-12-16T21:34:39Z] Updated golden fixtures to v2.2.0 format with 5-phase structure, regenerated all golden output files"
       ]
     }
   ],

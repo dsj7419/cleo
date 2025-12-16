@@ -5,6 +5,41 @@ All notable changes to the claude-todo system will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.0] - 2025-12-16
+
+### Added
+- **`migrate repair` command for schema compliance** (T302)
+  - New command: `claude-todo migrate repair [--dry-run|--auto]`
+  - Fixes existing projects with wrong phase structure
+  - Ensures canonical 5-phase structure (setup→core→testing→polish→maintenance)
+  - Preserves existing phase status/timestamps during repair
+  - Idempotent: safe to run multiple times
+  - Creates backup before any modifications
+  - `lib/migrate.sh`: Added `get_canonical_phases()`, `compare_phases_structure()`,
+    `get_repair_actions()`, `execute_repair()`, `repair_todo_schema()`
+  - `scripts/migrate.sh`: Added `cmd_repair()` handler with `--dry-run` and `--auto` flags
+
+- **Phase validation in `validate.sh`**
+  - Multiple active phases detection with auto-fix
+  - Invalid phase status validation (must be pending/active/completed)
+  - currentPhase existence validation
+  - Future timestamp detection in phases
+
+### Changed
+- **Test fixtures updated for 5-phase canonical structure**
+  - `tests/golden/fixtures/todo.json`: Updated to v2.2.0 format with 5 phases
+  - `tests/migration/test-2.2.0-migration.bats`: Updated assertions for 5 phases
+  - `tests/edge-cases/phase-edge-cases.bats`: Updated fixtures and assertions
+  - Regenerated all golden test output files
+
+### Fixed
+- **All phase-edge-cases tests now passing** (was 8 failing, now 0)
+  - Fixed test assertions to match actual error messages
+  - Fixed advance-with-gaps test to use `--skip-notes` flag
+  - Added validation for invalid phase status values
+  - Added validation for nonexistent currentPhase references
+  - Added future timestamp detection
+
 ## [0.13.3] - 2025-12-16
 
 ### Changed
