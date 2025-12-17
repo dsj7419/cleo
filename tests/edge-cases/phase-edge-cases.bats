@@ -479,7 +479,7 @@ EOF
 # =============================================================================
 
 @test "phase-edge: file lock prevents concurrent phase operations" {
-    skip "File locking not yet implemented in phase operations"
+    skip "Requires T350: File locking not yet implemented in phase operations"
 
     create_phase_with_tasks_fixture
 
