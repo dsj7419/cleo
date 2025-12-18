@@ -4,6 +4,8 @@
 **Last Updated**: 2025-12-17
 **Current Version**: v0.16.0 → v0.17.0
 
+> **Format**: This document follows [SPEC-BIBLE-GUIDELINES.md](SPEC-BIBLE-GUIDELINES.md) Implementation Report standards.
+
 ---
 
 ## Authoritative Specifications

@@ -47,7 +47,7 @@
     "csvDelimiter": ",",
     "dateFormat": "iso8601",
     "showCompactTitles": false,
-    "maxTitleLength": 80
+    "maxTitleLength": 85
   },
   "cli": {
     "aliases": {

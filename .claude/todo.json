@@ -47,9 +47,9 @@
       }
     }
   },
-  "lastUpdated": "2025-12-18T00:21:32Z",
+  "lastUpdated": "2025-12-18T00:45:21Z",
   "_meta": {
-    "checksum": "3823517f10912c8d",
+    "checksum": "7828228c853c75b2",
     "configVersion": "2.1.0",
     "lastSessionId": null,
     "activeSession": "session_20251216_213731_392dd7",
@@ -4488,7 +4488,8 @@
         "testing"
       ],
       "notes": [
-        "2025-12-16 20:16:54 UTC: Session 2025-12-16: Migration verified with critical bugs found and fixed:\n1. IFS bug preventing migration detection (FIXED v0.13.1)\n2. Argument list too long with 200+ tasks (FIXED v0.13.1)\n3. Wrong 4-phase structure in migration (FIXED v0.13.2)\n4. Existing projects with wrong phases need 'migrate repair' command (T302 created)\nMigration now works correctly for new projects. Existing projects with wrong 4-phase need repair."
+        "2025-12-16 20:16:54 UTC: Session 2025-12-16: Migration verified with critical bugs found and fixed:\n1. IFS bug preventing migration detection (FIXED v0.13.1)\n2. Argument list too long with 200+ tasks (FIXED v0.13.1)\n3. Wrong 4-phase structure in migration (FIXED v0.13.2)\n4. Existing projects with wrong phases need 'migrate repair' command (T302 created)\nMigration now works correctly for new projects. Existing projects with wrong 4-phase need repair.",
+        "2025-12-18 00:43:46 UTC: Session work: Validated phase enhancement risk analysis - all 4 critical gaps already implemented. Fixed 21 test failures, added 18 new tests, updated phase.md docs (+200 lines), created critical-path.schema.json. All 88 tests passing."
       ],
       "type": "task",
       "parentId": null,
@@ -6241,6 +6242,266 @@
         "T378",
         "T379",
         "T380"
+      ]
+    },
+    {
+      "id": "T382",
+      "title": "Config System Integration & Completion",
+      "status": "pending",
+      "priority": "high",
+      "type": "epic",
+      "parentId": null,
+      "createdAt": "2025-12-18T00:41:57Z",
+      "phase": "core",
+      "description": "Comprehensive integration of the config system. Currently ~40% of config settings are implemented. lib/config.sh exists but is only used by scripts/config.sh - not integrated into other scripts. Global config (~/.claude-todo/config.json) created but not used. Multiple config sections defined in schema but not implemented in code.",
+      "labels": [
+        "config",
+        "integration",
+        "technical-debt"
+      ]
+    },
+    {
+      "id": "T383",
+      "title": "Integrate lib/config.sh into all scripts",
+      "status": "pending",
+      "priority": "high",
+      "type": "task",
+      "parentId": "T382",
+      "createdAt": "2025-12-18T00:42:15Z",
+      "phase": "core",
+      "description": "Currently scripts read config directly with jq (e.g., archive.sh line 192-194, lib/output-format.sh lines 59-67). Need to refactor all scripts to use centralized lib/config.sh functions: get_config_value(), set_config_value(), get_effective_config(). This enables proper priority resolution (CLI > env > project > global > defaults) across all commands.\n\nScripts to update:\n- scripts/archive.sh (reads archive.*)\n- scripts/complete-task.sh (reads archive.autoArchiveOnComplete)  \n- scripts/phase.sh (reads validation.phaseValidation.*)\n- lib/logging.sh (reads logging.*)\n- lib/output-format.sh (reads output.*)\n- All other scripts that should respect config\n\nBenefits:\n- Consistent priority resolution everywhere\n- Global config automatically works\n- Environment variable overrides work\n- Single point of config logic",
+      "labels": [
+        "config",
+        "lib",
+        "refactoring"
+      ]
+    },
+    {
+      "id": "T384",
+      "title": "Implement session.* config settings",
+      "status": "pending",
+      "priority": "medium",
+      "type": "task",
+      "parentId": "T382",
+      "createdAt": "2025-12-18T00:42:27Z",
+      "phase": "core",
+      "description": "Session settings are defined in schema but NOT implemented:\n\nSettings to implement:\n- session.requireSessionNote (boolean, default: true)\n  → Warn if session ends without updating sessionNote\n  → Affects: scripts/session.sh end command\n  \n- session.warnOnNoFocus (boolean, default: true)\n  → Warn if no task is active at session start\n  → Affects: scripts/session.sh start command\n  \n- session.autoStartSession (boolean, default: true)\n  → Automatically log session_start on first read\n  → Affects: scripts/list-tasks.sh, scripts/show.sh, etc.\n  \n- session.sessionTimeoutHours (integer, default: 24)\n  → Hours before orphaned session warning\n  → Affects: scripts/session.sh status command\n\nCurrent state: All these settings exist in config schema but code ignores them.\nLocation: scripts/session.sh, potentially other scripts",
+      "labels": [
+        "config",
+        "feature",
+        "session"
+      ]
+    },
+    {
+      "id": "T385",
+      "title": "Implement defaults.* config settings",
+      "status": "pending",
+      "priority": "medium",
+      "type": "task",
+      "parentId": "T382",
+      "createdAt": "2025-12-18T00:42:36Z",
+      "phase": "core",
+      "description": "Default values for new tasks are defined in schema but NOT used:\n\nSettings to implement:\n- defaults.priority (enum: critical|high|medium|low, default: medium)\n  → Default priority for new tasks when --priority not specified\n  → Affects: scripts/add-task.sh\n  \n- defaults.phase (string, default: core)\n  → Default phase for new tasks when --phase not specified\n  → Affects: scripts/add-task.sh\n  \n- defaults.labels (array, default: [])\n  → Default labels applied to all new tasks\n  → Affects: scripts/add-task.sh\n\nCurrent state: add-task.sh has hardcoded defaults. Should read from config.\n\nImplementation:\n1. Update scripts/add-task.sh to read defaults from config\n2. Use lib/config.sh for proper priority resolution\n3. CLI flags should still override config defaults",
+      "labels": [
+        "config",
+        "defaults",
+        "feature"
+      ]
+    },
+    {
+      "id": "T386",
+      "title": "Implement remaining validation.* config settings",
+      "status": "pending",
+      "priority": "medium",
+      "type": "task",
+      "parentId": "T382",
+      "createdAt": "2025-12-18T00:42:49Z",
+      "phase": "core",
+      "description": "Most validation settings are defined but NOT implemented:\n\nSettings to implement:\n- validation.strictMode (boolean, default: false)\n  → Treat warnings as errors\n  → Affects: scripts/validate.sh, lib/validation.sh\n  \n- validation.checksumEnabled (boolean, default: true)\n  → Enable checksum verification (CRITICAL for anti-hallucination)\n  → Note: Checksums ARE implemented, but this config toggle is ignored\n  → Affects: lib/validation.sh, all write operations\n  \n- validation.enforceAcceptance (boolean, default: true)\n  → Require acceptance criteria for high/critical tasks\n  → Affects: scripts/add-task.sh, scripts/update-task.sh\n  \n- validation.requireDescription (boolean, default: false)\n  → Require description field for all tasks\n  → Affects: scripts/add-task.sh\n  \n- validation.maxActiveTasks (integer, default: 1, max: 1)\n  → Maximum concurrent active tasks\n  → Note: This IS enforced but not configurable (hardcoded to 1)\n  → Affects: scripts/focus.sh\n  \n- validation.validateDependencies (boolean, default: true)\n  → Check all depends[] references exist and are valid\n  → Affects: scripts/add-task.sh, scripts/update-task.sh\n  \n- validation.detectCircularDeps (boolean, default: true)\n  → Detect and block circular dependencies\n  → Affects: dependency validation logic\n\nAlready implemented:\n- validation.phaseValidation.* (used in scripts/phase.sh)",
+      "labels": [
+        "config",
+        "feature",
+        "validation"
+      ]
+    },
+    {
+      "id": "T387",
+      "title": "Implement display.* config settings",
+      "status": "pending",
+      "priority": "low",
+      "type": "task",
+      "parentId": "T382",
+      "createdAt": "2025-12-18T00:43:00Z",
+      "phase": "core",
+      "description": "Display settings are defined in schema but NOT implemented:\n\nSettings to implement:\n- display.showArchiveCount (boolean, default: true)\n  → Show archived task count in status output\n  → Affects: scripts/list-tasks.sh, scripts/dash.sh, scripts/stats.sh\n  \n- display.showLogSummary (boolean, default: true)\n  → Show recent log summary in status/dash views\n  → Affects: scripts/dash.sh, scripts/stats.sh\n  \n- display.warnStaleDays (integer, default: 30)\n  → Warn about tasks pending longer than this many days\n  → Affects: scripts/list-tasks.sh, scripts/dash.sh, scripts/analyze.sh\n\nNote: Some display logic exists but doesn't read these config values.\nNeed to wire up config reading to existing display code.",
+      "labels": [
+        "config",
+        "display",
+        "feature"
+      ]
+    },
+    {
+      "id": "T388",
+      "title": "Implement cli.* config settings",
+      "status": "pending",
+      "priority": "medium",
+      "type": "task",
+      "parentId": "T382",
+      "createdAt": "2025-12-18T00:43:15Z",
+      "phase": "core",
+      "description": "CLI settings are defined in schema but NOT implemented:\n\nSettings to implement:\n- cli.aliases (object, default: {ls:list, done:complete, new:add, edit:update, rm:archive, check:validate})\n  → Command aliases mapping short names to commands\n  → Currently: Hardcoded in install.sh CMD_ALIASES array\n  → Should: Read from global config, allow user customization\n  → Affects: install.sh dispatcher\n  \n- cli.plugins.enabled (boolean, default: true)\n  → Enable plugin discovery and loading\n  → Currently: Not implemented (plugin system is stub)\n  → Affects: install.sh, future plugin loader\n  \n- cli.plugins.directories (array, default: [~/.claude-todo/plugins, ./.claude/plugins])\n  → Directories to scan for plugins\n  → Currently: Not implemented\n  \n- cli.plugins.autoDiscover (boolean, default: true)\n  → Auto-discover plugins from directories\n  → Currently: Not implemented\n  \n- cli.debug.enabled (boolean, default: false)\n  → Enable debug mode (verbose output, validation checks)\n  → Currently: Partially implemented via CLAUDE_TODO_DEBUG env var\n  → Should: Also read from config\n  \n- cli.debug.validateMappings (boolean, default: true)\n  → Validate command-to-script mappings exist\n  → Currently: Not implemented\n  \n- cli.debug.checksumVerify (boolean, default: true)\n  → Verify script checksums for integrity\n  → Currently: Not implemented (checksums generated but not verified)\n  \n- cli.debug.showTimings (boolean, default: false)\n  → Show command execution timings\n  → Currently: Not implemented\n\nPriority: cli.aliases is most useful for users.\ncli.plugins depends on plugin system implementation.\ncli.debug is useful for development/troubleshooting.",
+      "labels": [
+        "cli",
+        "config",
+        "feature"
+      ]
+    },
+    {
+      "id": "T389",
+      "title": "Implement backup.* config settings",
+      "status": "pending",
+      "priority": "low",
+      "type": "task",
+      "parentId": "T382",
+      "createdAt": "2025-12-18T00:43:26Z",
+      "phase": "core",
+      "description": "Backup settings are defined in schema but values are hardcoded:\n\nSettings to implement:\n- backup.enabled (boolean, default: true)\n  → Enable backup system globally\n  → Currently: Always enabled (no toggle)\n  → Affects: lib/backup.sh, all write operations\n  \n- backup.directory (string, default: .claude/backups)\n  → Directory for storing all backup types\n  → Currently: Hardcoded in lib/backup.sh\n  \n- backup.maxSnapshots (integer, default: 10)\n  → Maximum number of snapshot backups to retain\n  → Currently: Hardcoded value\n  \n- backup.maxSafetyBackups (integer, default: 5)\n  → Maximum number of safety backups to retain\n  → Currently: Hardcoded value\n  \n- backup.maxIncremental (integer, default: 10)\n  → Maximum number of incremental backups\n  → Currently: Hardcoded value\n  \n- backup.maxArchiveBackups (integer, default: 3)\n  → Maximum number of archive backups\n  → Currently: Hardcoded value\n  \n- backup.safetyRetentionDays (integer, default: 7)\n  → Days to retain safety backups\n  → Currently: Hardcoded value\n\nImplementation:\n1. Update lib/backup.sh to read settings from config\n2. Use lib/config.sh for priority resolution\n3. Allow users to customize retention policies",
+      "labels": [
+        "backup",
+        "config",
+        "feature"
+      ]
+    },
+    {
+      "id": "T390",
+      "title": "Integrate global config with priority resolution",
+      "status": "pending",
+      "priority": "high",
+      "type": "task",
+      "parentId": null,
+      "createdAt": "2025-12-18T00:43:52Z",
+      "phase": "core",
+      "description": "Global config file exists but is NOT integrated into the system:\n\nCurrent state:\n- ~/.claude-todo/config.json created by install.sh\n- schemas/global-config.schema.json defines structure\n- templates/global-config.template.json provides defaults\n- lib/config.sh has get_config_value() with priority resolution\n- BUT: No scripts actually use global config (they read project config directly)\n\nRequired integration:\n1. All scripts using project config should also check global config\n2. Priority order: CLI > env vars > project config > global config > defaults\n3. lib/config.sh already implements this - need to use it\n\nFiles to update:\n- scripts/archive.sh (currently reads .claude/todo-config.json only)\n- scripts/complete-task.sh\n- scripts/phase.sh  \n- lib/logging.sh\n- lib/output-format.sh\n- lib/backup.sh\n- All other config-aware scripts\n\nGlobal config schema (global-config.schema.json) includes:\n- output.* (format, colors, unicode, progress bars)\n- display.* (showArchiveCount, showLogSummary, warnStaleDays)\n- cli.aliases.* (command shortcuts)\n- cli.plugins.* (plugin directories)\n- cli.debug.* (debug options)\n- defaults.* (priority, labels)\n\nUse case: User sets output.defaultFormat=json globally, applies to ALL projects.",
+      "labels": [
+        "config",
+        "global-config",
+        "integration"
+      ],
+      "depends": [
+        "T382"
+      ]
+    },
+    {
+      "id": "T391",
+      "title": "Review and fix interactive config editor (ct config edit)",
+      "status": "pending",
+      "priority": "medium",
+      "type": "task",
+      "parentId": null,
+      "createdAt": "2025-12-18T00:44:07Z",
+      "phase": "core",
+      "description": "Review the interactive config editor for completeness and usability:\n\nCurrent implementation: scripts/config.sh cmd_edit() function\n\nItems to review:\n1. Menu categories - do they cover all config sections?\n   - Currently shows: Output, Archive, Logging, Validation, Defaults, Session, Display, Backup, CLI\n   - Verify all match actual schema sections\n   \n2. Value editing - does it handle all types correctly?\n   - Booleans (true/false toggle)\n   - Enums (selection from valid values)\n   - Integers (with min/max validation)\n   - Strings (free-form input)\n   - Arrays (for labels, directories)\n   \n3. Scope handling\n   - Project config vs global config editing\n   - --global flag should work with edit subcommand\n   \n4. Validation\n   - Schema validation before save\n   - Type checking on input\n   - Range validation for integers\n   \n5. UX improvements\n   - Clear current value display\n   - Help text for each setting\n   - Undo/cancel support\n   - Confirmation before save\n   \n6. Edge cases\n   - Missing config file (create new?)\n   - Invalid existing config\n   - Permission errors\n\nTest scenarios:\n- Edit project config values\n- Edit global config values  \n- Cancel without saving\n- Invalid input handling\n- Nested settings (validation.phaseValidation.*)",
+      "labels": [
+        "cli",
+        "config",
+        "review",
+        "ui"
+      ],
+      "depends": [
+        "T382"
+      ]
+    },
+    {
+      "id": "T392",
+      "title": "Complete environment variable integration for config",
+      "status": "pending",
+      "priority": "medium",
+      "type": "task",
+      "parentId": null,
+      "createdAt": "2025-12-18T00:44:24Z",
+      "phase": "core",
+      "description": "Environment variables should override config file settings:\n\nCurrent state:\n- lib/config.sh defines ENV_TO_CONFIG mapping\n- docs/commands/config.md documents env vars\n- BUT: Most scripts don't check env vars (read config directly with jq)\n\nDocumented environment variables (need implementation):\n- CLAUDE_TODO_FORMAT → output.defaultFormat\n- CLAUDE_TODO_OUTPUT_DEFAULT_FORMAT → output.defaultFormat  \n- CLAUDE_TODO_OUTPUT_SHOW_COLOR → output.showColor\n- CLAUDE_TODO_OUTPUT_SHOW_UNICODE → output.showUnicode\n- CLAUDE_TODO_OUTPUT_SHOW_PROGRESS_BARS → output.showProgressBars\n- CLAUDE_TODO_ARCHIVE_ENABLED → archive.enabled\n- CLAUDE_TODO_ARCHIVE_DAYS_UNTIL_ARCHIVE → archive.daysUntilArchive\n- CLAUDE_TODO_LOGGING_LEVEL → logging.level\n- CLAUDE_TODO_VALIDATION_STRICT_MODE → validation.strictMode\n- CLAUDE_TODO_SESSION_REQUIRE_SESSION_NOTE → session.requireSessionNote\n- CLAUDE_TODO_DEBUG → cli.debug.enabled\n\nPriority order (highest to lowest):\n1. CLI flags (--format json)\n2. Environment variables (CLAUDE_TODO_FORMAT=json)\n3. Project config (.claude/todo-config.json)\n4. Global config (~/.claude-todo/config.json)\n5. Built-in defaults\n\nImplementation:\n1. Use lib/config.sh get_config_value() which handles env vars\n2. Update all scripts to use this instead of direct jq reads\n3. Test each env var actually works\n4. Document in help output which env vars are supported",
+      "labels": [
+        "config",
+        "env-vars",
+        "integration"
+      ],
+      "depends": [
+        "T382"
+      ]
+    },
+    {
+      "id": "T393",
+      "title": "Update config documentation with implementation status",
+      "status": "pending",
+      "priority": "medium",
+      "type": "task",
+      "parentId": null,
+      "createdAt": "2025-12-18T00:44:37Z",
+      "phase": "polish",
+      "description": "Documentation needs to accurately reflect what's implemented:\n\nCurrent documentation issues:\n1. docs/commands/config.md - describes all features as working\n2. docs/reference/configuration.md - lists all settings without noting which work\n3. CHANGELOG.md - claims full config system implemented\n\nRequired updates:\n\n1. docs/reference/configuration.md\n   - Add 'Implementation Status' column to each setting table\n   - Mark which settings are: Implemented | Partial | Not Implemented\n   - Add section explaining current limitations\n   \n2. docs/commands/config.md\n   - Note which subcommands are fully functional\n   - Document known limitations\n   - Add troubleshooting for common issues\n\n3. Create docs/specs/CONFIG-SYSTEM-SPEC.md\n   - Architecture of config system\n   - Priority resolution logic\n   - Global vs project config\n   - Environment variable mapping\n   - Implementation roadmap\n\n4. Update CLAUDE.md injection\n   - Only show commands that actually work\n   - Remove or mark incomplete features\n\n5. Update schemas documentation\n   - Document which schema fields are enforced\n   - Which are advisory/not yet implemented\n\nAfter implementation tasks complete:\n- Remove implementation status warnings\n- Update to show all features working",
+      "labels": [
+        "config",
+        "documentation"
+      ],
+      "depends": [
+        "T382"
+      ]
+    },
+    {
+      "id": "T394",
+      "title": "Create comprehensive config system tests",
+      "status": "pending",
+      "priority": "medium",
+      "type": "task",
+      "parentId": null,
+      "createdAt": "2025-12-18T00:44:49Z",
+      "phase": "polish",
+      "description": "Config system needs comprehensive test coverage:\n\nTest categories:\n\n1. Unit tests for lib/config.sh\n   - get_config_value() priority resolution\n   - set_config_value() writes correctly\n   - get_effective_config() merges properly\n   - Environment variable detection\n   - Path parsing (dotted paths like output.defaultFormat)\n   \n2. Integration tests for config command\n   - ct config show (all, section, specific value)\n   - ct config get (single value retrieval)\n   - ct config set (update and validate)\n   - ct config list (all keys with values)\n   - ct config reset (restore defaults)\n   - ct config validate (schema validation)\n   - --global flag works for all subcommands\n   - --format json produces valid JSON\n   - --dry-run doesn't modify files\n\n3. Priority resolution tests\n   - CLI flag overrides everything\n   - Env var overrides config files\n   - Project config overrides global\n   - Global config overrides defaults\n   - Test each priority level\n   \n4. Settings implementation tests\n   - Each implemented setting actually affects behavior\n   - archive.* settings control archiving\n   - output.* settings control display\n   - logging.* settings control logging\n   \n5. Error handling tests\n   - Missing config file\n   - Invalid JSON\n   - Schema validation failures\n   - Permission errors\n   - Invalid config paths\n\nLocation: tests/unit/config.bats, tests/integration/config.bats",
+      "labels": [
+        "config",
+        "testing"
+      ],
+      "depends": [
+        "T382"
+      ]
+    },
+    {
+      "id": "T395",
+      "title": "Synchronize project and global config schemas",
+      "status": "pending",
+      "priority": "medium",
+      "type": "task",
+      "parentId": null,
+      "createdAt": "2025-12-18T00:45:02Z",
+      "phase": "core",
+      "description": "Project and global config schemas need synchronization:\n\nCurrent schemas:\n- schemas/config.schema.json (project config - full schema)\n- schemas/global-config.schema.json (global config - subset)\n\nIssues to address:\n1. Ensure global schema is proper subset of project schema\n2. Settings in global should also be in project\n3. Document which settings are global-only vs project-only\n4. Validate both schemas are valid JSON Schema draft-07\n\nSchema sections:\n- output.* - Should be in BOTH (user preferences)\n- display.* - Should be in BOTH (user preferences)\n- cli.* - Should be in BOTH (user preferences)\n- defaults.* - Should be in BOTH (user preferences)\n- archive.* - PROJECT ONLY (project-specific behavior)\n- logging.* - Could be BOTH (but project may override)\n- validation.* - PROJECT ONLY (project-specific rules)\n- session.* - PROJECT ONLY (project-specific behavior)\n- backup.* - PROJECT ONLY (project-specific paths)\n\nDecisions needed:\n- Which settings belong in global config?\n- Which are project-specific only?\n- How to handle conflicts?",
+      "labels": [
+        "config",
+        "review",
+        "schema"
+      ],
+      "depends": [
+        "T382"
+      ]
+    },
+    {
+      "id": "T396",
+      "title": "Fix config reset and initialization behavior",
+      "status": "pending",
+      "priority": "medium",
+      "type": "task",
+      "parentId": null,
+      "createdAt": "2025-12-18T00:45:21Z",
+      "phase": "core",
+      "description": "Config reset and init behaviors need review:\n\nCurrent issues:\n1. ct config reset - Does it work correctly?\n   - Should reset to schema defaults\n   - Should support resetting single section\n   - Should support --global flag\n   - Need confirmation prompt for destructive action\n   \n2. ct init - Config initialization\n   - Creates .claude/todo-config.json from template\n   - Should NOT overwrite existing config\n   - --force should allow overwrite\n   - Should validate created config\n   \n3. install.sh - Global config initialization\n   - Creates ~/.claude-todo/config.json\n   - Currently copies from template\n   - Should NOT overwrite on reinstall\n   - Should offer to merge with existing\n   \n4. Config migration\n   - When schema version changes\n   - Old config files need migration\n   - Add config version field?\n   - Auto-migrate on read?\n\n5. Config validation on load\n   - Should scripts validate config on startup?\n   - What to do with invalid config?\n   - Fallback to defaults? Error out? Warn?\n\nTest scenarios:\n- Fresh install (no config exists)\n- Reinstall (config exists)\n- Upgrade (old schema version)\n- Corrupted config file\n- Missing required fields",
+      "labels": [
+        "config",
+        "feature",
+        "init"
+      ],
+      "depends": [
+        "T382"
       ]
     }
   ],

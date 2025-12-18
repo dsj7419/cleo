@@ -3,9 +3,9 @@
   "version": "2.1.0",
   "project": "claude-todo",
   "_meta": {
-    "totalEntries": 740,
+    "totalEntries": 741,
     "firstEntry": "2025-12-13T07:14:38Z",
-    "lastEntry": "2025-12-18T00:21:32Z",
+    "lastEntry": "2025-12-18T00:43:46Z",
     "entriesPruned": 0
   },
   "entries": [
@@ -18185,6 +18185,321 @@
       },
       "details": {
         "operation": "update"
+      }
+    },
+    {
+      "id": "log-1766018517-7060c1",
+      "timestamp": "2025-12-18T00:41:57Z",
+      "action": "task_created",
+      "taskId": "T382",
+      "actor": "system",
+      "details": {
+        "title": "Config System Integration & Completion",
+        "status": "pending",
+        "priority": "high"
+      },
+      "before": null,
+      "after": {
+        "title": "Config System Integration & Completion",
+        "status": "pending",
+        "priority": "high"
+      }
+    },
+    {
+      "id": "log-1766018535-0a9f9f",
+      "timestamp": "2025-12-18T00:42:15Z",
+      "action": "task_created",
+      "taskId": "T383",
+      "actor": "system",
+      "details": {
+        "title": "Integrate lib/config.sh into all scripts",
+        "status": "pending",
+        "priority": "high"
+      },
+      "before": null,
+      "after": {
+        "title": "Integrate lib/config.sh into all scripts",
+        "status": "pending",
+        "priority": "high"
+      }
+    },
+    {
+      "id": "log-1766018547-c00933",
+      "timestamp": "2025-12-18T00:42:27Z",
+      "action": "task_created",
+      "taskId": "T384",
+      "actor": "system",
+      "details": {
+        "title": "Implement session.* config settings",
+        "status": "pending",
+        "priority": "medium"
+      },
+      "before": null,
+      "after": {
+        "title": "Implement session.* config settings",
+        "status": "pending",
+        "priority": "medium"
+      }
+    },
+    {
+      "id": "log-1766018557-7a7530",
+      "timestamp": "2025-12-18T00:42:37Z",
+      "action": "task_created",
+      "taskId": "T385",
+      "actor": "system",
+      "details": {
+        "title": "Implement defaults.* config settings",
+        "status": "pending",
+        "priority": "medium"
+      },
+      "before": null,
+      "after": {
+        "title": "Implement defaults.* config settings",
+        "status": "pending",
+        "priority": "medium"
+      }
+    },
+    {
+      "id": "log-1766018569-d06f0c",
+      "timestamp": "2025-12-18T00:42:49Z",
+      "action": "task_created",
+      "taskId": "T386",
+      "actor": "system",
+      "details": {
+        "title": "Implement remaining validation.* config settings",
+        "status": "pending",
+        "priority": "medium"
+      },
+      "before": null,
+      "after": {
+        "title": "Implement remaining validation.* config settings",
+        "status": "pending",
+        "priority": "medium"
+      }
+    },
+    {
+      "id": "log-1766018580-949645",
+      "timestamp": "2025-12-18T00:43:00Z",
+      "action": "task_created",
+      "taskId": "T387",
+      "actor": "system",
+      "details": {
+        "title": "Implement display.* config settings",
+        "status": "pending",
+        "priority": "low"
+      },
+      "before": null,
+      "after": {
+        "title": "Implement display.* config settings",
+        "status": "pending",
+        "priority": "low"
+      }
+    },
+    {
+      "id": "log-1766018595-8744f6",
+      "timestamp": "2025-12-18T00:43:15Z",
+      "action": "task_created",
+      "taskId": "T388",
+      "actor": "system",
+      "details": {
+        "title": "Implement cli.* config settings",
+        "status": "pending",
+        "priority": "medium"
+      },
+      "before": null,
+      "after": {
+        "title": "Implement cli.* config settings",
+        "status": "pending",
+        "priority": "medium"
+      }
+    },
+    {
+      "id": "log-1766018607-bfbf7f",
+      "timestamp": "2025-12-18T00:43:27Z",
+      "action": "task_created",
+      "taskId": "T389",
+      "actor": "system",
+      "details": {
+        "title": "Implement backup.* config settings",
+        "status": "pending",
+        "priority": "low"
+      },
+      "before": null,
+      "after": {
+        "title": "Implement backup.* config settings",
+        "status": "pending",
+        "priority": "low"
+      }
+    },
+    {
+      "id": "log_508c165615bc",
+      "timestamp": "2025-12-18T00:43:46Z",
+      "sessionId": "session_20251216_213731_392dd7",
+      "action": "task_updated",
+      "actor": "system",
+      "taskId": "T290",
+      "before": {
+        "title": "Verify v2.1.0 → v2.2.0 migration with testing phase",
+        "status": "active",
+        "priority": "critical",
+        "description": "Test migration from v2.1.0 (no phases or old phase structure) to v2.2.0 (5-phase structure with testing phase). Verify: 1) Existing tasks preserve all fields during migration 2) Phase assignments are correctly added/updated 3) No data loss in task descriptions, notes, dependencies 4) Checksums are correctly recalculated 5) Timestamps are preserved 6) Log entries are created for migration events 7) Archive files are also migrated correctly. Test with real-world fixtures containing various task states.",
+        "phase": "core",
+        "labels": [
+          "data-integrity",
+          "feature-phase",
+          "migration",
+          "testing"
+        ],
+        "files": null,
+        "acceptance": null,
+        "depends": null,
+        "blockedBy": null
+      },
+      "after": {
+        "title": "Verify v2.1.0 → v2.2.0 migration with testing phase",
+        "status": "active",
+        "priority": "critical",
+        "description": "Test migration from v2.1.0 (no phases or old phase structure) to v2.2.0 (5-phase structure with testing phase). Verify: 1) Existing tasks preserve all fields during migration 2) Phase assignments are correctly added/updated 3) No data loss in task descriptions, notes, dependencies 4) Checksums are correctly recalculated 5) Timestamps are preserved 6) Log entries are created for migration events 7) Archive files are also migrated correctly. Test with real-world fixtures containing various task states.",
+        "phase": "core",
+        "labels": [
+          "data-integrity",
+          "feature-phase",
+          "migration",
+          "testing"
+        ],
+        "files": null,
+        "acceptance": null,
+        "depends": null,
+        "blockedBy": null
+      },
+      "details": {
+        "operation": "update"
+      }
+    },
+    {
+      "id": "log-1766018632-5963bc",
+      "timestamp": "2025-12-18T00:43:52Z",
+      "action": "task_created",
+      "taskId": "T390",
+      "actor": "system",
+      "details": {
+        "title": "Integrate global config with priority resolution",
+        "status": "pending",
+        "priority": "high"
+      },
+      "before": null,
+      "after": {
+        "title": "Integrate global config with priority resolution",
+        "status": "pending",
+        "priority": "high"
+      }
+    },
+    {
+      "id": "log-1766018647-fac415",
+      "timestamp": "2025-12-18T00:44:07Z",
+      "action": "task_created",
+      "taskId": "T391",
+      "actor": "system",
+      "details": {
+        "title": "Review and fix interactive config editor (ct config edit)",
+        "status": "pending",
+        "priority": "medium"
+      },
+      "before": null,
+      "after": {
+        "title": "Review and fix interactive config editor (ct config edit)",
+        "status": "pending",
+        "priority": "medium"
+      }
+    },
+    {
+      "id": "log-1766018664-fb8a92",
+      "timestamp": "2025-12-18T00:44:24Z",
+      "action": "task_created",
+      "taskId": "T392",
+      "actor": "system",
+      "details": {
+        "title": "Complete environment variable integration for config",
+        "status": "pending",
+        "priority": "medium"
+      },
+      "before": null,
+      "after": {
+        "title": "Complete environment variable integration for config",
+        "status": "pending",
+        "priority": "medium"
+      }
+    },
+    {
+      "id": "log-1766018677-c9bcd5",
+      "timestamp": "2025-12-18T00:44:37Z",
+      "action": "task_created",
+      "taskId": "T393",
+      "actor": "system",
+      "details": {
+        "title": "Update config documentation with implementation status",
+        "status": "pending",
+        "priority": "medium"
+      },
+      "before": null,
+      "after": {
+        "title": "Update config documentation with implementation status",
+        "status": "pending",
+        "priority": "medium"
+      }
+    },
+    {
+      "id": "log-1766018689-fc047c",
+      "timestamp": "2025-12-18T00:44:49Z",
+      "action": "task_created",
+      "taskId": "T394",
+      "actor": "system",
+      "details": {
+        "title": "Create comprehensive config system tests",
+        "status": "pending",
+        "priority": "medium"
+      },
+      "before": null,
+      "after": {
+        "title": "Create comprehensive config system tests",
+        "status": "pending",
+        "priority": "medium"
+      }
+    },
+    {
+      "id": "log-1766018702-cf026f",
+      "timestamp": "2025-12-18T00:45:02Z",
+      "action": "task_created",
+      "taskId": "T395",
+      "actor": "system",
+      "details": {
+        "title": "Synchronize project and global config schemas",
+        "status": "pending",
+        "priority": "medium"
+      },
+      "before": null,
+      "after": {
+        "title": "Synchronize project and global config schemas",
+        "status": "pending",
+        "priority": "medium"
+      }
+    },
+    {
+      "id": "log-1766018721-067f08",
+      "timestamp": "2025-12-18T00:45:21Z",
+      "action": "task_created",
+      "taskId": "T396",
+      "actor": "system",
+      "details": {
+        "title": "Fix config reset and initialization behavior",
+        "status": "pending",
+        "priority": "medium"
+      },
+      "before": null,
+      "after": {
+        "title": "Fix config reset and initialization behavior",
+        "status": "pending",
+        "priority": "medium"
       }
     }
   ]
