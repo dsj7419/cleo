@@ -34,12 +34,19 @@ This command provides:
 | `complete <slug>` | Complete a phase (active → completed) |
 | `advance` | Complete current phase and start next |
 | `list` | List all phases with status indicators |
+| `rename <old> <new>` | Rename a phase and update all task references |
+| `delete <slug>` | Delete a phase with task reassignment protection |
 
 ## Options
 
-| Option | Description |
-|--------|-------------|
-| `--help`, `-h` | Show help message |
+| Option | Context | Description |
+|--------|---------|-------------|
+| `--help`, `-h` | All | Show help message |
+| `--format`, `-f` | All | Output format: `text` (default) or `json` |
+| `--json` | All | Shorthand for `--format json` |
+| `--rollback` | `set` | Allow moving to a lower-order phase (backward transition) |
+| `--force` | `set`, `advance`, `delete` | Skip confirmation prompts or override threshold checks |
+| `--reassign-to <slug>` | `delete` | Reassign tasks to specified phase before deletion |
 
 ## Exit Codes
 
@@ -83,6 +90,35 @@ Phase set to: polish
 ```
 
 **Use Case**: Switch project focus to a different phase without marking it as started. Useful for planning or when resuming work on a previously started phase.
+
+#### Rollback Detection
+
+Moving to a lower-order phase (e.g., `core` → `setup`) is detected as a rollback and requires explicit confirmation:
+
+```bash
+# Moving backward requires --rollback flag
+claude-todo phase set setup
+
+# Output:
+# ERROR: Rolling back from 'core' (order 2) to 'setup' (order 1) requires --rollback flag
+```
+
+**With confirmation prompt:**
+```bash
+claude-todo phase set setup --rollback
+
+# Output:
+# WARNING: This will rollback from 'Core Development' (order 2) to 'Setup' (order 1).
+# Continue? [y/N]
+```
+
+**Skip confirmation with --force:**
+```bash
+claude-todo phase set setup --rollback --force
+# Phase set to: setup
+```
+
+This safety mechanism prevents accidental phase regression while allowing intentional backtracking for iterative workflows.
 
 ### Start a Phase
 
@@ -159,6 +195,50 @@ Advanced from 'core' to 'polish'
 - No next phase exists (final phase)
 - Incomplete tasks in current phase (if phase is `active`)
 
+#### Advancing with Incomplete Tasks
+
+By default, advancing is blocked when tasks remain incomplete. The system uses configurable threshold and critical task checks:
+
+```bash
+# When tasks are incomplete:
+claude-todo phase advance
+
+# Output:
+# ERROR: Cannot advance - 8 incomplete task(s) in phase 'core'
+#        Completion: 75% (threshold: 90%)
+# HINT: Use 'phase advance --force' to override
+```
+
+**Interactive prompt** (when threshold is met but tasks remain):
+```bash
+claude-todo phase advance
+
+# Output:
+# WARNING: 3 task(s) remain in phase 'core':
+#   - 1 high priority
+#   - 2 medium priority
+#
+# Continue advancing to 'polish'? [y/N]
+```
+
+**Force override** with `--force`:
+```bash
+claude-todo phase advance --force
+
+# Output:
+# WARNING: Forcing advance with 8 incomplete task(s)
+# Advanced from 'core' to 'polish'
+```
+
+**Critical task blocking**: Critical tasks always block advancement regardless of threshold:
+```bash
+# If critical tasks exist:
+# ERROR: Cannot advance - 2 critical task(s) remain in phase 'core' (blockOnCriticalTasks enabled)
+# HINT: Complete critical tasks or set validation.phaseValidation.blockOnCriticalTasks to false
+```
+
+See [Configuration](#phase-validation-configuration) for threshold settings.
+
 **Typical Workflows**:
 ```bash
 # Workflow 1: Advance completes and advances
@@ -167,6 +247,9 @@ claude-todo phase advance  # Completes active phase, starts next
 # Workflow 2: Explicit complete then advance
 claude-todo phase complete setup  # Manually complete
 claude-todo phase advance          # Only starts next (skips completion)
+
+# Workflow 3: Force advance with incomplete tasks
+claude-todo phase advance --force  # Skip threshold check and prompt
 ```
 
 ### List All Phases
@@ -189,6 +272,133 @@ Project Phases:
 - `★` indicates current project phase
 - `[N]` shows phase order
 - Numbers in brackets are from phase `order` field
+
+### Rename a Phase
+
+Rename a phase and atomically update all task references:
+
+```bash
+# Rename 'core' to 'development'
+claude-todo phase rename core development
+```
+
+Output:
+```
+Renaming phase 'core' to 'development'...
+Updated 63 tasks
+Updated project.currentPhase
+Phase renamed successfully
+```
+
+**Behavior**:
+1. Validates old phase exists
+2. Validates new name doesn't already exist
+3. Validates new name format (lowercase alphanumeric with hyphens)
+4. Creates backup before changes
+5. Atomically updates:
+   - Phase definition (copied to new name)
+   - All `task.phase` references
+   - `project.currentPhase` (if matches old name)
+   - `focus.currentPhase` (if matches old name)
+6. Removes old phase definition
+7. Logs the rename operation
+
+**Validation Errors**:
+```bash
+# Old phase doesn't exist
+claude-todo phase rename nonexistent newname
+# ERROR: Phase 'nonexistent' does not exist
+
+# New phase already exists
+claude-todo phase rename core setup
+# ERROR: Phase 'setup' already exists
+
+# Invalid new name format
+claude-todo phase rename core "Core Dev"
+# ERROR: Invalid phase name 'Core Dev'
+# Phase names must be lowercase alphanumeric with hyphens, not starting/ending with hyphen
+```
+
+**Use Cases**:
+- Fix typos in phase names
+- Rename for better clarity (e.g., `core` → `development`)
+- Align naming with external systems
+
+### Delete a Phase
+
+Delete a phase with safety protections:
+
+```bash
+# Delete empty phase
+claude-todo phase delete old-phase --force
+```
+
+**Protection: Task Reassignment Required**
+
+If the phase has tasks, you must specify where to reassign them:
+
+```bash
+# Phase with tasks - error without reassignment
+claude-todo phase delete core --force
+
+# Output:
+# ERROR: Cannot delete 'core': 63 tasks would be orphaned
+#
+# Phase 'core' has 63 tasks:
+#   - 45 pending
+#   - 5 active
+#   - 3 blocked
+#   - 10 done
+#
+# Use: claude-todo phase delete core --reassign-to <phase>
+```
+
+**Delete with reassignment:**
+```bash
+claude-todo phase delete old-phase --reassign-to setup --force
+
+# Output:
+# Phase 'old-phase' has 12 tasks:
+#   - 8 pending
+#   - 4 done
+#
+# Reassigning to 'setup'...
+# Updated 12 tasks
+# Phase 'old-phase' deleted
+```
+
+**Protection: Cannot Delete Current Phase**
+
+```bash
+# Trying to delete the current project phase
+claude-todo phase delete core --force
+
+# Output:
+# ERROR: Cannot delete current project phase 'core'
+# Use 'claude-todo phase set <other-phase>' to change the current phase first
+```
+
+**Protection: --force Required**
+
+All deletions require the `--force` flag for safety:
+
+```bash
+# Without --force
+claude-todo phase delete old-phase
+
+# Output:
+# ERROR: Phase deletion requires --force flag for safety
+# Use: claude-todo phase delete old-phase --force
+```
+
+**Complete Example**:
+```bash
+# Step 1: Change current phase if deleting current
+claude-todo phase set setup
+
+# Step 2: Delete with reassignment and force
+claude-todo phase delete deprecated-phase --reassign-to setup --force
+```
 
 ## Phase Lifecycle
 
@@ -284,6 +494,60 @@ Phases are defined in `.claude/todo.json` under the `project.phases` object:
 | `startedAt` | ISO8601 | When phase was started | Auto-set by `start` |
 | `completedAt` | ISO8601 | When phase was completed | Auto-set by `complete` |
 
+### Phase Validation Configuration
+
+Configure phase advancement behavior in `.claude/todo.json`:
+
+```json
+{
+  "validation": {
+    "phaseValidation": {
+      "phaseAdvanceThreshold": 90,
+      "blockOnCriticalTasks": true
+    }
+  }
+}
+```
+
+| Setting | Type | Default | Description |
+|---------|------|---------|-------------|
+| `phaseAdvanceThreshold` | number | 90 | Minimum completion percentage required to advance (0-100) |
+| `blockOnCriticalTasks` | boolean | true | Always block advancement if critical tasks remain |
+
+**Behavior**:
+
+1. **Threshold Check**: `phase advance` calculates `(done_tasks / total_tasks) * 100`
+   - If below threshold: Error with `HINT: Use 'phase advance --force' to override`
+   - If above threshold but tasks remain: Interactive prompt `Continue? [y/N]`
+
+2. **Critical Task Blocking**: When enabled, critical priority tasks always block advancement
+   - Even `--force` cannot override this
+   - Set `blockOnCriticalTasks: false` to allow forcing past critical tasks
+
+**Examples**:
+
+```json
+// Strict: Require 100% completion, always block on critical
+{
+  "validation": {
+    "phaseValidation": {
+      "phaseAdvanceThreshold": 100,
+      "blockOnCriticalTasks": true
+    }
+  }
+}
+
+// Permissive: Low threshold, allow forcing past critical
+{
+  "validation": {
+    "phaseValidation": {
+      "phaseAdvanceThreshold": 50,
+      "blockOnCriticalTasks": false
+    }
+  }
+}
+```
+
 ## State Storage
 
 ### Project Phase State
@@ -317,6 +581,60 @@ The current phase is also synced to focus state:
 ```
 
 This allows session start/end to restore project phase context.
+
+### Phase History
+
+The `phaseHistory` array tracks all phase transitions for audit trail and analytics:
+
+```json
+{
+  "project": {
+    "phaseHistory": [
+      {
+        "phase": "setup",
+        "transitionType": "started",
+        "timestamp": "2025-12-01T10:00:00Z",
+        "taskCount": 14,
+        "reason": "Phase started via 'phase start'"
+      },
+      {
+        "phase": "setup",
+        "transitionType": "completed",
+        "timestamp": "2025-12-05T18:30:00Z",
+        "taskCount": 14,
+        "reason": "Phase completed via 'phase complete'"
+      },
+      {
+        "phase": "core",
+        "transitionType": "started",
+        "timestamp": "2025-12-05T18:30:00Z",
+        "taskCount": 63,
+        "fromPhase": "setup",
+        "reason": "Phase started via 'phase advance' from setup"
+      }
+    ]
+  }
+}
+```
+
+**Transition Types**:
+- `started` - Phase became active
+- `completed` - Phase was finished
+- `rollback` - Reverted to a previous phase (includes `fromPhase` field)
+
+**Fields**:
+- `phase` - The phase slug being transitioned
+- `transitionType` - Type of transition (started/completed/rollback)
+- `timestamp` - ISO 8601 timestamp when transition occurred
+- `taskCount` - Number of tasks in this phase at transition time
+- `fromPhase` - Previous phase (required for rollback, optional for started via advance)
+- `reason` - Optional context for the transition
+
+Phase history is automatically maintained when using:
+- `phase start` - Adds "started" entry
+- `phase complete` - Adds "completed" entry
+- `phase advance` - Adds both "completed" for current and "started" for next
+- `phase set --rollback` - Adds "rollback" entry
 
 ## Integration with Other Commands
 

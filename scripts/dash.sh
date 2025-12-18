@@ -83,12 +83,19 @@ elif [[ -f "$CLAUDE_TODO_HOME/lib/output-format.sh" ]]; then
   source "$CLAUDE_TODO_HOME/lib/output-format.sh"
 fi
 
+if [[ -f "${LIB_DIR}/exit-codes.sh" ]]; then
+  source "${LIB_DIR}/exit-codes.sh"
+elif [[ -f "$CLAUDE_TODO_HOME/lib/exit-codes.sh" ]]; then
+  source "$CLAUDE_TODO_HOME/lib/exit-codes.sh"
+fi
+
 # Default configuration
 PERIOD_DAYS=7
 OUTPUT_FORMAT="text"
 COMPACT_MODE=false
 SHOW_CHARTS=true
 SECTIONS="all"
+QUIET=false
 
 # File paths
 CLAUDE_DIR=".claude"
@@ -109,6 +116,7 @@ Generate a comprehensive dashboard view of your todo system.
 
 Options:
     -c, --compact     Condensed single-line view
+    -q, --quiet       Suppress decorative output (borders, headers)
     --period DAYS     Stats period in days (default: 7)
     --no-chart        Disable ASCII charts/progress bars
     --sections LIST   Comma-separated: focus,summary,priority,blocked,phases,labels,activity,all
@@ -503,6 +511,45 @@ print_box_line() {
   [[ $padding -lt 0 ]] && padding=0
 
   printf "%s  %b%*s%s\n" "$V" "$content" "$padding" "" "$V"
+}
+
+# Output quiet text format (no decorations, minimal output)
+output_quiet() {
+  local pending=$(count_by_status "pending")
+  local active=$(count_by_status "active")
+  local blocked=$(count_by_status "blocked")
+  local done=$(count_by_status "done")
+  local total=$((pending + active + blocked + done))
+
+  local focus_id
+  focus_id=$(jq -r '.focus.currentTask // ""' "$TODO_FILE" 2>/dev/null)
+
+  local current_phase_info
+  current_phase_info=$(get_current_phase)
+  local current_phase_name
+  current_phase_name=$(echo "$current_phase_info" | jq -r '.name // ""')
+
+  # Output key-value pairs, one per line
+  echo "pending=$pending"
+  echo "active=$active"
+  echo "blocked=$blocked"
+  echo "done=$done"
+  echo "total=$total"
+
+  if [[ -n "$focus_id" && "$focus_id" != "null" ]]; then
+    echo "focus=$focus_id"
+  fi
+
+  if [[ -n "$current_phase_name" && "$current_phase_name" != "null" ]]; then
+    echo "phase=$current_phase_name"
+  fi
+
+  # High priority count
+  local high_count
+  high_count=$(jq -r '[.tasks[] | select((.priority == "critical" or .priority == "high") and .status != "done")] | length' "$TODO_FILE" 2>/dev/null || echo "0")
+  if [[ "$high_count" -gt 0 ]]; then
+    echo "high_priority=$high_count"
+  fi
 }
 
 # Output compact text format (single line)
@@ -1060,6 +1107,10 @@ parse_arguments() {
         fi
         shift 2
         ;;
+      -q|--quiet)
+        QUIET=true
+        shift
+        ;;
       --help|-h)
         usage
         ;;
@@ -1098,7 +1149,9 @@ main() {
       output_json_format
       ;;
     text)
-      if [[ "$COMPACT_MODE" == "true" ]]; then
+      if [[ "$QUIET" == "true" ]]; then
+        output_quiet
+      elif [[ "$COMPACT_MODE" == "true" ]]; then
         output_compact
       else
         output_text_format

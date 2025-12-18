@@ -134,41 +134,51 @@ Recommendations:
 ### JSON Output Example
 ```json
 {
-  "$schema": "https://claude-todo.dev/schemas/critical-path-v1.json",
+  "$schema": "https://claude-todo.dev/schemas/critical-path.schema.json",
   "_meta": {
-    "version": "0.8.0",
-    "command": "analyze critical-path",
-    "timestamp": "2024-12-12T20:00:00Z"
+    "format": "json",
+    "version": "0.16.0",
+    "command": "blockers analyze",
+    "timestamp": "2025-12-17T20:00:00Z"
   },
-  "data": {
-    "critical_path": {
-      "tasks": ["T001", "T002", "T003", "T004"],
-      "length": 4,
-      "estimated_completion": "N/A"
-    },
-    "bottlenecks": [
-      {
-        "task_id": "T001",
-        "impact_score": 4,
-        "blocked_tasks": ["T002", "T003", "T004", "T005"]
-      }
-    ],
-    "recommendations": [
-      {
-        "priority": "high",
-        "message": "Prioritize T001 (blocks 4 tasks)"
-      },
-      {
-        "priority": "medium",
-        "message": "Consider parallel work on independent tasks"
-      }
-    ],
-    "statistics": {
-      "total_tasks": 10,
-      "tasks_on_critical_path": 4,
-      "independent_tasks": 3,
-      "circular_dependencies": 0
+  "summary": {
+    "blockedCount": 5,
+    "maxChainDepth": 4,
+    "totalImpactedTasks": 4,
+    "criticalPathLength": 4,
+    "bottleneckCount": 1
+  },
+  "criticalPath": {
+    "id": "T001",
+    "title": "Task A",
+    "chainDepth": 4,
+    "impactCount": 4
+  },
+  "bottlenecks": [
+    {
+      "id": "T001",
+      "title": "Task A",
+      "impactCount": 4,
+      "blockedTasks": ["T002", "T003", "T004", "T005"]
     }
+  ],
+  "recommendations": {
+    "highImpact": [
+      {
+        "id": "T001",
+        "title": "Task A",
+        "impactCount": 4,
+        "reason": "Unblocking this task will enable 4 other tasks"
+      }
+    ],
+    "quickWins": [
+      {
+        "id": "T005",
+        "title": "Task E",
+        "chainDepth": 1,
+        "reason": "Short dependency chain - quick to unblock"
+      }
+    ]
   }
 }
 ```

@@ -3,9 +3,9 @@
   "version": "2.1.0",
   "project": "claude-todo",
   "_meta": {
-    "totalEntries": 619,
+    "totalEntries": 740,
     "firstEntry": "2025-12-13T07:14:38Z",
-    "lastEntry": "2025-12-17T19:47:27Z",
+    "lastEntry": "2025-12-18T00:21:32Z",
     "entriesPruned": 0
   },
   "entries": [
@@ -16343,6 +16343,1848 @@
         "title": "Implement file locking for concurrent phase operations",
         "status": "pending",
         "priority": "low"
+      }
+    },
+    {
+      "id": "log-1766005782-7eaa75",
+      "timestamp": "2025-12-17T21:09:42Z",
+      "action": "task_created",
+      "taskId": "T351",
+      "actor": "system",
+      "details": {
+        "title": "Test JSON output feature",
+        "status": "pending",
+        "priority": "low"
+      },
+      "before": null,
+      "after": {
+        "title": "Test JSON output feature",
+        "status": "pending",
+        "priority": "low"
+      }
+    },
+    {
+      "id": "log-1766005784-e91288",
+      "timestamp": "2025-12-17T21:09:44Z",
+      "action": "task_created",
+      "taskId": "T352",
+      "actor": "system",
+      "details": {
+        "title": "Test task for JSON output verification",
+        "status": "pending",
+        "priority": "medium"
+      },
+      "before": null,
+      "after": {
+        "title": "Test task for JSON output verification",
+        "status": "pending",
+        "priority": "medium"
+      }
+    },
+    {
+      "id": "log_6e0c57c9b8b3",
+      "timestamp": "2025-12-17T21:09:51Z",
+      "sessionId": "session_20251216_213731_392dd7",
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T352",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-17T21:09:51Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log-1766005797-7c2fbf",
+      "timestamp": "2025-12-17T21:09:57Z",
+      "action": "task_created",
+      "taskId": "T353",
+      "actor": "system",
+      "details": {
+        "title": "Another test task for JSON output",
+        "status": "pending",
+        "priority": "low"
+      },
+      "before": null,
+      "after": {
+        "title": "Another test task for JSON output",
+        "status": "pending",
+        "priority": "low"
+      }
+    },
+    {
+      "id": "log_856ba14328e3",
+      "timestamp": "2025-12-17T21:10:04Z",
+      "sessionId": "session_20251216_213731_392dd7",
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T353",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-17T21:10:04Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log-1766005813-6ac057",
+      "timestamp": "2025-12-17T21:10:13Z",
+      "action": "task_created",
+      "taskId": "T354",
+      "actor": "system",
+      "details": {
+        "title": "Test JSON output clean",
+        "status": "pending",
+        "priority": "low"
+      },
+      "before": null,
+      "after": {
+        "title": "Test JSON output clean",
+        "status": "pending",
+        "priority": "low"
+      }
+    },
+    {
+      "id": "log-1766005817-b09fb0",
+      "timestamp": "2025-12-17T21:10:17Z",
+      "action": "task_created",
+      "taskId": "T355",
+      "actor": "system",
+      "details": {
+        "title": "Fresh test task for JSON",
+        "status": "pending",
+        "priority": "high"
+      },
+      "before": null,
+      "after": {
+        "title": "Fresh test task for JSON",
+        "status": "pending",
+        "priority": "high"
+      }
+    },
+    {
+      "id": "log-1766005819-0ff0b7",
+      "timestamp": "2025-12-17T21:10:19Z",
+      "action": "task_created",
+      "taskId": "T356",
+      "actor": "system",
+      "details": {
+        "title": "Test text output",
+        "status": "pending",
+        "priority": "medium"
+      },
+      "before": null,
+      "after": {
+        "title": "Test text output",
+        "status": "pending",
+        "priority": "medium"
+      }
+    },
+    {
+      "id": "log_3a8fff8a99c9",
+      "timestamp": "2025-12-17T21:10:22Z",
+      "sessionId": "session_20251216_213731_392dd7",
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T355",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-17T21:10:22Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log-1766005826-513121",
+      "timestamp": "2025-12-17T21:10:26Z",
+      "action": "task_created",
+      "taskId": "T357",
+      "actor": "system",
+      "details": {
+        "title": "Test quiet mode",
+        "status": "pending",
+        "priority": "low"
+      },
+      "before": null,
+      "after": {
+        "title": "Test quiet mode",
+        "status": "pending",
+        "priority": "low"
+      }
+    },
+    {
+      "id": "log-1766005845-7f1c6d",
+      "timestamp": "2025-12-17T21:10:45Z",
+      "action": "task_created",
+      "taskId": "T358",
+      "actor": "system",
+      "details": {
+        "title": "Test TTY auto-detect",
+        "status": "pending",
+        "priority": "low"
+      },
+      "before": null,
+      "after": {
+        "title": "Test TTY auto-detect",
+        "status": "pending",
+        "priority": "low"
+      }
+    },
+    {
+      "id": "log-1766005846-e6c109",
+      "timestamp": "2025-12-17T21:10:46Z",
+      "action": "task_created",
+      "taskId": "T359",
+      "actor": "system",
+      "details": {
+        "title": "Final JSON test task",
+        "status": "pending",
+        "priority": "medium"
+      },
+      "before": null,
+      "after": {
+        "title": "Final JSON test task",
+        "status": "pending",
+        "priority": "medium"
+      }
+    },
+    {
+      "id": "log_38580411b04c",
+      "timestamp": "2025-12-17T21:10:52Z",
+      "sessionId": "session_20251216_213731_392dd7",
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T359",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-17T21:10:52Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log-1766005854-5bf751",
+      "timestamp": "2025-12-17T21:10:54Z",
+      "action": "task_created",
+      "taskId": "T360",
+      "actor": "system",
+      "details": {
+        "title": "Test pipe",
+        "status": "pending",
+        "priority": "low"
+      },
+      "before": null,
+      "after": {
+        "title": "Test pipe",
+        "status": "pending",
+        "priority": "low"
+      }
+    },
+    {
+      "id": "log-1766005878-11beb4",
+      "timestamp": "2025-12-17T21:11:18Z",
+      "action": "task_created",
+      "taskId": "T361",
+      "actor": "system",
+      "details": {
+        "title": "Auto format test",
+        "status": "pending",
+        "priority": "low"
+      },
+      "before": null,
+      "after": {
+        "title": "Auto format test",
+        "status": "pending",
+        "priority": "low"
+      }
+    },
+    {
+      "id": "log_b98637cdf40f",
+      "timestamp": "2025-12-17T21:11:26Z",
+      "sessionId": "session_20251216_213731_392dd7",
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T361",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-17T21:11:26Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log-1766005888-3cb3b4",
+      "timestamp": "2025-12-17T21:11:28Z",
+      "action": "task_created",
+      "taskId": "T362",
+      "actor": "system",
+      "details": {
+        "title": "Test pipe JSON",
+        "status": "pending",
+        "priority": "low"
+      },
+      "before": null,
+      "after": {
+        "title": "Test pipe JSON",
+        "status": "pending",
+        "priority": "low"
+      }
+    },
+    {
+      "id": "log-1766005895-7b4986",
+      "timestamp": "2025-12-17T21:11:35Z",
+      "action": "task_created",
+      "taskId": "T363",
+      "actor": "system",
+      "details": {
+        "title": "Test direct pipe",
+        "status": "pending",
+        "priority": "low"
+      },
+      "before": null,
+      "after": {
+        "title": "Test direct pipe",
+        "status": "pending",
+        "priority": "low"
+      }
+    },
+    {
+      "id": "log-1766005898-a20401",
+      "timestamp": "2025-12-17T21:11:38Z",
+      "action": "task_created",
+      "taskId": "T364",
+      "actor": "system",
+      "details": {
+        "title": "Final auto format test",
+        "status": "pending",
+        "priority": "high"
+      },
+      "before": null,
+      "after": {
+        "title": "Final auto format test",
+        "status": "pending",
+        "priority": "high"
+      }
+    },
+    {
+      "id": "log-1766005902-fefd8f",
+      "timestamp": "2025-12-17T21:11:42Z",
+      "action": "task_created",
+      "taskId": "T365",
+      "actor": "system",
+      "details": {
+        "title": "Debug TTY",
+        "status": "pending",
+        "priority": "low"
+      },
+      "before": null,
+      "after": {
+        "title": "Debug TTY",
+        "status": "pending",
+        "priority": "low"
+      }
+    },
+    {
+      "id": "log_54f36f3c1f1e",
+      "timestamp": "2025-12-17T21:11:43Z",
+      "sessionId": "session_20251216_213731_392dd7",
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T364",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-17T21:11:43Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_65a1ca8a058d",
+      "timestamp": "2025-12-17T21:11:48Z",
+      "sessionId": null,
+      "action": "phase_started",
+      "actor": "human",
+      "taskId": null,
+      "before": {
+        "phase": {
+          "slug": "testing",
+          "status": "pending"
+        }
+      },
+      "after": {
+        "phase": {
+          "slug": "testing",
+          "status": "active",
+          "startedAt": "2025-12-17T21:11:48Z"
+        }
+      },
+      "details": {
+        "phase": "testing",
+        "action": "start"
+      }
+    },
+    {
+      "id": "log-1766005911-c8902e",
+      "timestamp": "2025-12-17T21:11:51Z",
+      "action": "task_created",
+      "taskId": "T366",
+      "actor": "system",
+      "details": {
+        "title": "TTY test",
+        "status": "pending",
+        "priority": "low"
+      },
+      "before": null,
+      "after": {
+        "title": "TTY test",
+        "status": "pending",
+        "priority": "low"
+      }
+    },
+    {
+      "id": "log_76311dd63aba",
+      "timestamp": "2025-12-17T21:11:56Z",
+      "sessionId": "session_20251216_213731_392dd7",
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T366",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-17T21:11:56Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_e5ca36c666e7",
+      "timestamp": "2025-12-17T21:12:05Z",
+      "sessionId": null,
+      "action": "phase_changed",
+      "actor": "human",
+      "taskId": null,
+      "before": {
+        "currentPhase": "testing"
+      },
+      "after": {
+        "currentPhase": "core"
+      },
+      "details": {
+        "transitionType": "set",
+        "fromPhase": "testing",
+        "toPhase": "core"
+      }
+    },
+    {
+      "id": "log-1766005934-57b611",
+      "timestamp": "2025-12-17T21:12:14Z",
+      "action": "task_created",
+      "taskId": "T367",
+      "actor": "system",
+      "details": {
+        "title": "Test env format",
+        "status": "pending",
+        "priority": "low"
+      },
+      "before": null,
+      "after": {
+        "title": "Test env format",
+        "status": "pending",
+        "priority": "low"
+      }
+    },
+    {
+      "id": "log_0ecc3caf710a",
+      "timestamp": "2025-12-17T21:13:12Z",
+      "sessionId": "session_20251216_213731_392dd7",
+      "action": "task_updated",
+      "actor": "system",
+      "taskId": "T215",
+      "before": {
+        "title": "T204.1: Configuration Schema Design",
+        "status": "pending",
+        "priority": "high",
+        "description": "Design YAML/JSON configuration schema for reusable consensus framework plugin.\n\n## DELIVERABLE\n`schemas/consensus-research-config.schema.json`\n\n## SCHEMA MUST DEFINE\n- claims: Array of claim definitions (id, title, description, category)\n- evidence_sources: Paths to evidence directories/files\n- agents: Agent configuration (count, types, subagent_type mappings)\n- thresholds: Consensus thresholds (proven, refuted, contested)\n- output: Output directory and file naming conventions\n- gates: HITL gate configuration (which gates, timeout, blocking)\n- phases: Phase definitions (which phases to run, order)\n\n## EXAMPLE CONFIG\n```yaml\nframework: consensus-research\nversion: 1.0\ninvestigation:\n  name: \"claude-todo-claims\"\n  claims_file: ./claims.yaml\n  evidence_dir: ./evidence\n  output_dir: ./consensus-output\nagents:\n  worker_count: 5\n  synthesis_type: project-supervisor-orchestrator\nthresholds:\n  proven: 0.8  # 4/5\n  refuted: 0.4  # 2/5\ngates:\n  - after_phase: 1\n    blocking: true\n    timeout: 24h\n```\n\n## REFERENCES\n- claudedocs/CONSENSUS-FRAMEWORK-SPEC.md (Execution Protocol section)\n- T204 parent task for context",
+        "phase": "setup",
+        "labels": [
+          "consensus-framework",
+          "design",
+          "plugin"
+        ],
+        "files": [
+          "claudedocs/CONSENSUS-FRAMEWORK-SPEC.md"
+        ],
+        "acceptance": null,
+        "depends": [
+          "T204"
+        ],
+        "blockedBy": null
+      },
+      "after": {
+        "title": "T204.1: Configuration Schema Design",
+        "status": "pending",
+        "priority": "high",
+        "description": "Design YAML/JSON configuration schema for reusable consensus framework plugin.\n\n## DELIVERABLE\n`schemas/consensus-research-config.schema.json`\n\n## SCHEMA MUST DEFINE\n- claims: Array of claim definitions (id, title, description, category)\n- evidence_sources: Paths to evidence directories/files\n- agents: Agent configuration (count, types, subagent_type mappings)\n- thresholds: Consensus thresholds (proven, refuted, contested)\n- output: Output directory and file naming conventions\n- gates: HITL gate configuration (which gates, timeout, blocking)\n- phases: Phase definitions (which phases to run, order)\n\n## EXAMPLE CONFIG\n```yaml\nframework: consensus-research\nversion: 1.0\ninvestigation:\n  name: \"claude-todo-claims\"\n  claims_file: ./claims.yaml\n  evidence_dir: ./evidence\n  output_dir: ./consensus-output\nagents:\n  worker_count: 5\n  synthesis_type: project-supervisor-orchestrator\nthresholds:\n  proven: 0.8  # 4/5\n  refuted: 0.4  # 2/5\ngates:\n  - after_phase: 1\n    blocking: true\n    timeout: 24h\n```\n\n## REFERENCES\n- claudedocs/CONSENSUS-FRAMEWORK-SPEC.md (Execution Protocol section)\n- T204 parent task for context",
+        "phase": "setup",
+        "labels": [
+          "consensus-framework",
+          "design",
+          "plugin"
+        ],
+        "files": [
+          "claudedocs/CONSENSUS-FRAMEWORK-SPEC.md"
+        ],
+        "acceptance": null,
+        "depends": [
+          "T204"
+        ],
+        "blockedBy": null
+      },
+      "details": {
+        "operation": "update"
+      }
+    },
+    {
+      "id": "log_0368fa1ddb87",
+      "timestamp": "2025-12-17T21:13:36Z",
+      "sessionId": "session_20251216_213731_392dd7",
+      "action": "task_updated",
+      "actor": "system",
+      "taskId": "T215",
+      "before": {
+        "title": "T204.1: Configuration Schema Design",
+        "status": "pending",
+        "priority": "high",
+        "description": "Design YAML/JSON configuration schema for reusable consensus framework plugin.\n\n## DELIVERABLE\n`schemas/consensus-research-config.schema.json`\n\n## SCHEMA MUST DEFINE\n- claims: Array of claim definitions (id, title, description, category)\n- evidence_sources: Paths to evidence directories/files\n- agents: Agent configuration (count, types, subagent_type mappings)\n- thresholds: Consensus thresholds (proven, refuted, contested)\n- output: Output directory and file naming conventions\n- gates: HITL gate configuration (which gates, timeout, blocking)\n- phases: Phase definitions (which phases to run, order)\n\n## EXAMPLE CONFIG\n```yaml\nframework: consensus-research\nversion: 1.0\ninvestigation:\n  name: \"claude-todo-claims\"\n  claims_file: ./claims.yaml\n  evidence_dir: ./evidence\n  output_dir: ./consensus-output\nagents:\n  worker_count: 5\n  synthesis_type: project-supervisor-orchestrator\nthresholds:\n  proven: 0.8  # 4/5\n  refuted: 0.4  # 2/5\ngates:\n  - after_phase: 1\n    blocking: true\n    timeout: 24h\n```\n\n## REFERENCES\n- claudedocs/CONSENSUS-FRAMEWORK-SPEC.md (Execution Protocol section)\n- T204 parent task for context",
+        "phase": "setup",
+        "labels": [
+          "consensus-framework",
+          "design",
+          "plugin"
+        ],
+        "files": [
+          "claudedocs/CONSENSUS-FRAMEWORK-SPEC.md"
+        ],
+        "acceptance": null,
+        "depends": [
+          "T204"
+        ],
+        "blockedBy": null
+      },
+      "after": {
+        "title": "T204.1: Configuration Schema Design",
+        "status": "pending",
+        "priority": "high",
+        "description": "Design YAML/JSON configuration schema for reusable consensus framework plugin.\n\n## DELIVERABLE\n`schemas/consensus-research-config.schema.json`\n\n## SCHEMA MUST DEFINE\n- claims: Array of claim definitions (id, title, description, category)\n- evidence_sources: Paths to evidence directories/files\n- agents: Agent configuration (count, types, subagent_type mappings)\n- thresholds: Consensus thresholds (proven, refuted, contested)\n- output: Output directory and file naming conventions\n- gates: HITL gate configuration (which gates, timeout, blocking)\n- phases: Phase definitions (which phases to run, order)\n\n## EXAMPLE CONFIG\n```yaml\nframework: consensus-research\nversion: 1.0\ninvestigation:\n  name: \"claude-todo-claims\"\n  claims_file: ./claims.yaml\n  evidence_dir: ./evidence\n  output_dir: ./consensus-output\nagents:\n  worker_count: 5\n  synthesis_type: project-supervisor-orchestrator\nthresholds:\n  proven: 0.8  # 4/5\n  refuted: 0.4  # 2/5\ngates:\n  - after_phase: 1\n    blocking: true\n    timeout: 24h\n```\n\n## REFERENCES\n- claudedocs/CONSENSUS-FRAMEWORK-SPEC.md (Execution Protocol section)\n- T204 parent task for context",
+        "phase": "setup",
+        "labels": [
+          "consensus-framework",
+          "design",
+          "plugin"
+        ],
+        "files": [
+          "claudedocs/CONSENSUS-FRAMEWORK-SPEC.md"
+        ],
+        "acceptance": null,
+        "depends": [
+          "T204"
+        ],
+        "blockedBy": null
+      },
+      "details": {
+        "operation": "update"
+      }
+    },
+    {
+      "id": "log_e044f6f9673f",
+      "timestamp": "2025-12-17T21:13:44Z",
+      "sessionId": "session_20251216_213731_392dd7",
+      "action": "task_updated",
+      "actor": "system",
+      "taskId": "T215",
+      "before": {
+        "title": "T204.1: Configuration Schema Design",
+        "status": "pending",
+        "priority": "high",
+        "description": "Design YAML/JSON configuration schema for reusable consensus framework plugin.\n\n## DELIVERABLE\n`schemas/consensus-research-config.schema.json`\n\n## SCHEMA MUST DEFINE\n- claims: Array of claim definitions (id, title, description, category)\n- evidence_sources: Paths to evidence directories/files\n- agents: Agent configuration (count, types, subagent_type mappings)\n- thresholds: Consensus thresholds (proven, refuted, contested)\n- output: Output directory and file naming conventions\n- gates: HITL gate configuration (which gates, timeout, blocking)\n- phases: Phase definitions (which phases to run, order)\n\n## EXAMPLE CONFIG\n```yaml\nframework: consensus-research\nversion: 1.0\ninvestigation:\n  name: \"claude-todo-claims\"\n  claims_file: ./claims.yaml\n  evidence_dir: ./evidence\n  output_dir: ./consensus-output\nagents:\n  worker_count: 5\n  synthesis_type: project-supervisor-orchestrator\nthresholds:\n  proven: 0.8  # 4/5\n  refuted: 0.4  # 2/5\ngates:\n  - after_phase: 1\n    blocking: true\n    timeout: 24h\n```\n\n## REFERENCES\n- claudedocs/CONSENSUS-FRAMEWORK-SPEC.md (Execution Protocol section)\n- T204 parent task for context",
+        "phase": "setup",
+        "labels": [
+          "consensus-framework",
+          "design",
+          "plugin"
+        ],
+        "files": [
+          "claudedocs/CONSENSUS-FRAMEWORK-SPEC.md"
+        ],
+        "acceptance": null,
+        "depends": [
+          "T204"
+        ],
+        "blockedBy": null
+      },
+      "after": {
+        "title": "T204.1: Configuration Schema Design",
+        "status": "pending",
+        "priority": "high",
+        "description": "Design YAML/JSON configuration schema for reusable consensus framework plugin.\n\n## DELIVERABLE\n`schemas/consensus-research-config.schema.json`\n\n## SCHEMA MUST DEFINE\n- claims: Array of claim definitions (id, title, description, category)\n- evidence_sources: Paths to evidence directories/files\n- agents: Agent configuration (count, types, subagent_type mappings)\n- thresholds: Consensus thresholds (proven, refuted, contested)\n- output: Output directory and file naming conventions\n- gates: HITL gate configuration (which gates, timeout, blocking)\n- phases: Phase definitions (which phases to run, order)\n\n## EXAMPLE CONFIG\n```yaml\nframework: consensus-research\nversion: 1.0\ninvestigation:\n  name: \"claude-todo-claims\"\n  claims_file: ./claims.yaml\n  evidence_dir: ./evidence\n  output_dir: ./consensus-output\nagents:\n  worker_count: 5\n  synthesis_type: project-supervisor-orchestrator\nthresholds:\n  proven: 0.8  # 4/5\n  refuted: 0.4  # 2/5\ngates:\n  - after_phase: 1\n    blocking: true\n    timeout: 24h\n```\n\n## REFERENCES\n- claudedocs/CONSENSUS-FRAMEWORK-SPEC.md (Execution Protocol section)\n- T204 parent task for context",
+        "phase": "setup",
+        "labels": [
+          "consensus-framework",
+          "design",
+          "plugin"
+        ],
+        "files": [
+          "claudedocs/CONSENSUS-FRAMEWORK-SPEC.md"
+        ],
+        "acceptance": null,
+        "depends": [
+          "T204"
+        ],
+        "blockedBy": null
+      },
+      "details": {
+        "operation": "update"
+      }
+    },
+    {
+      "id": "log_09d58373090f",
+      "timestamp": "2025-12-17T21:13:50Z",
+      "sessionId": "session_20251216_213731_392dd7",
+      "action": "task_updated",
+      "actor": "system",
+      "taskId": "T215",
+      "before": {
+        "title": "T204.1: Configuration Schema Design",
+        "status": "pending",
+        "priority": "high",
+        "description": "Design YAML/JSON configuration schema for reusable consensus framework plugin.\n\n## DELIVERABLE\n`schemas/consensus-research-config.schema.json`\n\n## SCHEMA MUST DEFINE\n- claims: Array of claim definitions (id, title, description, category)\n- evidence_sources: Paths to evidence directories/files\n- agents: Agent configuration (count, types, subagent_type mappings)\n- thresholds: Consensus thresholds (proven, refuted, contested)\n- output: Output directory and file naming conventions\n- gates: HITL gate configuration (which gates, timeout, blocking)\n- phases: Phase definitions (which phases to run, order)\n\n## EXAMPLE CONFIG\n```yaml\nframework: consensus-research\nversion: 1.0\ninvestigation:\n  name: \"claude-todo-claims\"\n  claims_file: ./claims.yaml\n  evidence_dir: ./evidence\n  output_dir: ./consensus-output\nagents:\n  worker_count: 5\n  synthesis_type: project-supervisor-orchestrator\nthresholds:\n  proven: 0.8  # 4/5\n  refuted: 0.4  # 2/5\ngates:\n  - after_phase: 1\n    blocking: true\n    timeout: 24h\n```\n\n## REFERENCES\n- claudedocs/CONSENSUS-FRAMEWORK-SPEC.md (Execution Protocol section)\n- T204 parent task for context",
+        "phase": "setup",
+        "labels": [
+          "consensus-framework",
+          "design",
+          "plugin"
+        ],
+        "files": [
+          "claudedocs/CONSENSUS-FRAMEWORK-SPEC.md"
+        ],
+        "acceptance": null,
+        "depends": [
+          "T204"
+        ],
+        "blockedBy": null
+      },
+      "after": {
+        "title": "T204.1: Configuration Schema Design",
+        "status": "pending",
+        "priority": "high",
+        "description": "Design YAML/JSON configuration schema for reusable consensus framework plugin.\n\n## DELIVERABLE\n`schemas/consensus-research-config.schema.json`\n\n## SCHEMA MUST DEFINE\n- claims: Array of claim definitions (id, title, description, category)\n- evidence_sources: Paths to evidence directories/files\n- agents: Agent configuration (count, types, subagent_type mappings)\n- thresholds: Consensus thresholds (proven, refuted, contested)\n- output: Output directory and file naming conventions\n- gates: HITL gate configuration (which gates, timeout, blocking)\n- phases: Phase definitions (which phases to run, order)\n\n## EXAMPLE CONFIG\n```yaml\nframework: consensus-research\nversion: 1.0\ninvestigation:\n  name: \"claude-todo-claims\"\n  claims_file: ./claims.yaml\n  evidence_dir: ./evidence\n  output_dir: ./consensus-output\nagents:\n  worker_count: 5\n  synthesis_type: project-supervisor-orchestrator\nthresholds:\n  proven: 0.8  # 4/5\n  refuted: 0.4  # 2/5\ngates:\n  - after_phase: 1\n    blocking: true\n    timeout: 24h\n```\n\n## REFERENCES\n- claudedocs/CONSENSUS-FRAMEWORK-SPEC.md (Execution Protocol section)\n- T204 parent task for context",
+        "phase": "setup",
+        "labels": [
+          "consensus-framework",
+          "design",
+          "plugin"
+        ],
+        "files": [
+          "claudedocs/CONSENSUS-FRAMEWORK-SPEC.md"
+        ],
+        "acceptance": null,
+        "depends": [
+          "T204"
+        ],
+        "blockedBy": null
+      },
+      "details": {
+        "operation": "update"
+      }
+    },
+    {
+      "id": "log_1720c31ba1fa",
+      "timestamp": "2025-12-17T22:40:02Z",
+      "sessionId": null,
+      "action": "phase_changed",
+      "actor": "human",
+      "taskId": null,
+      "before": {
+        "currentPhase": "core"
+      },
+      "after": {
+        "currentPhase": "setup"
+      },
+      "details": {
+        "transitionType": "set",
+        "fromPhase": "core",
+        "toPhase": "setup"
+      }
+    },
+    {
+      "id": "log_bf091b638748",
+      "timestamp": "2025-12-17T22:40:09Z",
+      "sessionId": null,
+      "action": "phase_changed",
+      "actor": "human",
+      "taskId": null,
+      "before": {
+        "currentPhase": "setup"
+      },
+      "after": {
+        "currentPhase": "core"
+      },
+      "details": {
+        "transitionType": "set",
+        "fromPhase": "setup",
+        "toPhase": "core"
+      }
+    },
+    {
+      "id": "log_aa42d0b7f237",
+      "timestamp": "2025-12-17T22:40:11Z",
+      "sessionId": null,
+      "action": "phase_changed",
+      "actor": "human",
+      "taskId": null,
+      "before": {
+        "currentPhase": "core"
+      },
+      "after": {
+        "currentPhase": "setup"
+      },
+      "details": {
+        "transitionType": "set",
+        "fromPhase": "core",
+        "toPhase": "setup"
+      }
+    },
+    {
+      "id": "log_0ee2cd24cf53",
+      "timestamp": "2025-12-17T22:40:13Z",
+      "sessionId": null,
+      "action": "phase_changed",
+      "actor": "human",
+      "taskId": null,
+      "before": {
+        "currentPhase": "setup"
+      },
+      "after": {
+        "currentPhase": "polish"
+      },
+      "details": {
+        "transitionType": "set",
+        "fromPhase": "setup",
+        "toPhase": "polish"
+      }
+    },
+    {
+      "id": "log_bd748ce6cce8",
+      "timestamp": "2025-12-17T22:40:22Z",
+      "sessionId": null,
+      "action": "phase_changed",
+      "actor": "human",
+      "taskId": null,
+      "before": {
+        "currentPhase": "polish"
+      },
+      "after": {
+        "currentPhase": "setup"
+      },
+      "details": {
+        "transitionType": "set",
+        "fromPhase": "polish",
+        "toPhase": "setup"
+      }
+    },
+    {
+      "id": "log_d2052518b8c1",
+      "timestamp": "2025-12-17T22:40:49Z",
+      "sessionId": null,
+      "action": "phase_changed",
+      "actor": "human",
+      "taskId": null,
+      "before": {
+        "currentPhase": "setup"
+      },
+      "after": {
+        "currentPhase": "core"
+      },
+      "details": {
+        "transitionType": "set",
+        "fromPhase": "setup",
+        "toPhase": "core"
+      }
+    },
+    {
+      "id": "log_f86d87694b6e",
+      "timestamp": "2025-12-17T22:40:54Z",
+      "sessionId": null,
+      "action": "phase_changed",
+      "actor": "human",
+      "taskId": null,
+      "before": {
+        "currentPhase": "core"
+      },
+      "after": {
+        "currentPhase": "setup"
+      },
+      "details": {
+        "transitionType": "set",
+        "fromPhase": "core",
+        "toPhase": "setup"
+      }
+    },
+    {
+      "id": "log_21e72c6bd969",
+      "timestamp": "2025-12-17T22:40:54Z",
+      "sessionId": null,
+      "action": "phase_changed",
+      "actor": "human",
+      "taskId": null,
+      "before": {
+        "currentPhase": "setup"
+      },
+      "after": {
+        "currentPhase": "core"
+      },
+      "details": {
+        "transitionType": "set",
+        "fromPhase": "setup",
+        "toPhase": "core"
+      }
+    },
+    {
+      "id": "log_6d542798c66e",
+      "timestamp": "2025-12-17T22:40:54Z",
+      "sessionId": null,
+      "action": "phase_changed",
+      "actor": "human",
+      "taskId": null,
+      "before": {
+        "currentPhase": "core"
+      },
+      "after": {
+        "currentPhase": "core"
+      },
+      "details": {
+        "transitionType": "set",
+        "fromPhase": "core",
+        "toPhase": "core"
+      }
+    },
+    {
+      "id": "log_2ebc10b8d5db",
+      "timestamp": "2025-12-17T22:40:54Z",
+      "sessionId": null,
+      "action": "phase_changed",
+      "actor": "human",
+      "taskId": null,
+      "before": {
+        "currentPhase": "core"
+      },
+      "after": {
+        "currentPhase": "setup"
+      },
+      "details": {
+        "transitionType": "set",
+        "fromPhase": "core",
+        "toPhase": "setup"
+      }
+    },
+    {
+      "id": "log_14f1ff062786",
+      "timestamp": "2025-12-17T22:40:54Z",
+      "sessionId": null,
+      "action": "phase_changed",
+      "actor": "human",
+      "taskId": null,
+      "before": {
+        "currentPhase": "setup"
+      },
+      "after": {
+        "currentPhase": "core"
+      },
+      "details": {
+        "transitionType": "set",
+        "fromPhase": "setup",
+        "toPhase": "core"
+      }
+    },
+    {
+      "id": "log_34ae0b650c51",
+      "timestamp": "2025-12-17T22:40:54Z",
+      "sessionId": null,
+      "action": "phase_changed",
+      "actor": "human",
+      "taskId": null,
+      "before": {
+        "currentPhase": "core"
+      },
+      "after": {
+        "currentPhase": "setup"
+      },
+      "details": {
+        "transitionType": "set",
+        "fromPhase": "core",
+        "toPhase": "setup"
+      }
+    },
+    {
+      "id": "log_a236e715fa8e",
+      "timestamp": "2025-12-17T22:40:54Z",
+      "sessionId": null,
+      "action": "phase_changed",
+      "actor": "human",
+      "taskId": null,
+      "before": {
+        "currentPhase": "setup"
+      },
+      "after": {
+        "currentPhase": "core"
+      },
+      "details": {
+        "transitionType": "set",
+        "fromPhase": "setup",
+        "toPhase": "core"
+      }
+    },
+    {
+      "id": "log_a21b6c013f36",
+      "timestamp": "2025-12-17T22:40:55Z",
+      "sessionId": null,
+      "action": "phase_changed",
+      "actor": "human",
+      "taskId": null,
+      "before": {
+        "currentPhase": "core"
+      },
+      "after": {
+        "currentPhase": "core"
+      },
+      "details": {
+        "transitionType": "set",
+        "fromPhase": "core",
+        "toPhase": "core"
+      }
+    },
+    {
+      "id": "log_39b8add59d3d",
+      "timestamp": "2025-12-17T22:41:16Z",
+      "sessionId": "session_20251216_213731_392dd7",
+      "action": "focus_changed",
+      "actor": "claude",
+      "taskId": null,
+      "before": null,
+      "after": {
+        "currentTask": "T204"
+      },
+      "details": null
+    },
+    {
+      "id": "log_9d0a3e39257c",
+      "timestamp": "2025-12-17T22:41:25Z",
+      "sessionId": null,
+      "action": "phase_changed",
+      "actor": "human",
+      "taskId": null,
+      "before": {
+        "currentPhase": "setup"
+      },
+      "after": {
+        "currentPhase": "setup"
+      },
+      "details": {
+        "transitionType": "set",
+        "fromPhase": "setup",
+        "toPhase": "setup"
+      }
+    },
+    {
+      "id": "log_707af50668e6",
+      "timestamp": "2025-12-17T22:41:25Z",
+      "sessionId": null,
+      "action": "phase_changed",
+      "actor": "human",
+      "taskId": null,
+      "before": {
+        "currentPhase": "setup"
+      },
+      "after": {
+        "currentPhase": "core"
+      },
+      "details": {
+        "transitionType": "set",
+        "fromPhase": "setup",
+        "toPhase": "core"
+      }
+    },
+    {
+      "id": "log_6e39bb4639dd",
+      "timestamp": "2025-12-17T22:41:25Z",
+      "sessionId": null,
+      "action": "phase_changed",
+      "actor": "human",
+      "taskId": null,
+      "before": {
+        "currentPhase": "core"
+      },
+      "after": {
+        "currentPhase": "setup"
+      },
+      "details": {
+        "transitionType": "set",
+        "fromPhase": "core",
+        "toPhase": "setup"
+      }
+    },
+    {
+      "id": "log_398b1a158a1b",
+      "timestamp": "2025-12-17T22:41:25Z",
+      "sessionId": null,
+      "action": "phase_changed",
+      "actor": "human",
+      "taskId": null,
+      "before": {
+        "currentPhase": "setup"
+      },
+      "after": {
+        "currentPhase": "core"
+      },
+      "details": {
+        "transitionType": "set",
+        "fromPhase": "setup",
+        "toPhase": "core"
+      }
+    },
+    {
+      "id": "log_1a6f9902809c",
+      "timestamp": "2025-12-17T22:41:25Z",
+      "sessionId": null,
+      "action": "phase_changed",
+      "actor": "human",
+      "taskId": null,
+      "before": {
+        "currentPhase": "core"
+      },
+      "after": {
+        "currentPhase": "setup"
+      },
+      "details": {
+        "transitionType": "set",
+        "fromPhase": "core",
+        "toPhase": "setup"
+      }
+    },
+    {
+      "id": "log_3e144a0f60d2",
+      "timestamp": "2025-12-17T22:41:26Z",
+      "sessionId": null,
+      "action": "phase_changed",
+      "actor": "human",
+      "taskId": null,
+      "before": {
+        "currentPhase": "setup"
+      },
+      "after": {
+        "currentPhase": "core"
+      },
+      "details": {
+        "transitionType": "set",
+        "fromPhase": "setup",
+        "toPhase": "core"
+      }
+    },
+    {
+      "id": "log_c880cb9afab2",
+      "timestamp": "2025-12-17T22:41:26Z",
+      "sessionId": null,
+      "action": "phase_changed",
+      "actor": "human",
+      "taskId": null,
+      "before": {
+        "currentPhase": "core"
+      },
+      "after": {
+        "currentPhase": "setup"
+      },
+      "details": {
+        "transitionType": "set",
+        "fromPhase": "core",
+        "toPhase": "setup"
+      }
+    },
+    {
+      "id": "log_377611b5fb6e",
+      "timestamp": "2025-12-17T22:41:47Z",
+      "sessionId": null,
+      "action": "phase_changed",
+      "actor": "human",
+      "taskId": null,
+      "before": {
+        "currentPhase": "setup"
+      },
+      "after": {
+        "currentPhase": "core"
+      },
+      "details": {
+        "transitionType": "set",
+        "fromPhase": "setup",
+        "toPhase": "core"
+      }
+    },
+    {
+      "id": "log_6a764bd99f8e",
+      "timestamp": "2025-12-17T22:41:56Z",
+      "sessionId": null,
+      "action": "phase_changed",
+      "actor": "human",
+      "taskId": null,
+      "before": {
+        "currentPhase": "core"
+      },
+      "after": {
+        "currentPhase": "core"
+      },
+      "details": {
+        "transitionType": "set",
+        "fromPhase": "core",
+        "toPhase": "core"
+      }
+    },
+    {
+      "id": "log_bd33d1d10c77",
+      "timestamp": "2025-12-17T22:42:07Z",
+      "sessionId": null,
+      "action": "phase_changed",
+      "actor": "human",
+      "taskId": null,
+      "before": {
+        "currentPhase": "core"
+      },
+      "after": {
+        "currentPhase": "polish"
+      },
+      "details": {
+        "transitionType": "set",
+        "fromPhase": "core",
+        "toPhase": "polish"
+      }
+    },
+    {
+      "id": "log_c01f3b622279",
+      "timestamp": "2025-12-17T22:42:07Z",
+      "sessionId": null,
+      "action": "phase_changed",
+      "actor": "human",
+      "taskId": null,
+      "before": {
+        "currentPhase": "polish"
+      },
+      "after": {
+        "currentPhase": "core"
+      },
+      "details": {
+        "transitionType": "set",
+        "fromPhase": "polish",
+        "toPhase": "core"
+      }
+    },
+    {
+      "id": "log_f917a33b90fb",
+      "timestamp": "2025-12-17T22:42:11Z",
+      "sessionId": "session_20251216_213731_392dd7",
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T204",
+      "before": {
+        "status": "active",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-17T22:42:10Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log-1766011331-a19961",
+      "timestamp": "2025-12-17T22:42:11Z",
+      "action": "task_created",
+      "taskId": "T368",
+      "actor": "system",
+      "details": {
+        "title": "New test task without prefix",
+        "status": "pending",
+        "priority": "medium"
+      },
+      "before": null,
+      "after": {
+        "title": "New test task without prefix",
+        "status": "pending",
+        "priority": "medium"
+      }
+    },
+    {
+      "id": "log-1766011337-1106a5",
+      "timestamp": "2025-12-17T22:42:17Z",
+      "action": "task_created",
+      "taskId": "T369",
+      "actor": "system",
+      "details": {
+        "title": "New test task without prefix",
+        "status": "pending",
+        "priority": "medium"
+      },
+      "before": null,
+      "after": {
+        "title": "New test task without prefix",
+        "status": "pending",
+        "priority": "medium"
+      }
+    },
+    {
+      "id": "log-1766011348-bfe474",
+      "timestamp": "2025-12-17T22:42:28Z",
+      "action": "task_created",
+      "taskId": "T370",
+      "actor": "system",
+      "details": {
+        "title": "Another new task for testing default-phase flag",
+        "status": "pending",
+        "priority": "medium"
+      },
+      "before": null,
+      "after": {
+        "title": "Another new task for testing default-phase flag",
+        "status": "pending",
+        "priority": "medium"
+      }
+    },
+    {
+      "id": "log_d798f51a0e69",
+      "timestamp": "2025-12-17T22:42:41Z",
+      "sessionId": null,
+      "action": "phase_changed",
+      "actor": "human",
+      "taskId": null,
+      "before": {
+        "currentPhase": "core"
+      },
+      "after": {
+        "currentPhase": "setup"
+      },
+      "details": {
+        "transitionType": "set",
+        "fromPhase": "core",
+        "toPhase": "setup"
+      }
+    },
+    {
+      "id": "log_ac141dc17637",
+      "timestamp": "2025-12-17T22:42:52Z",
+      "sessionId": null,
+      "action": "phase_changed",
+      "actor": "human",
+      "taskId": null,
+      "before": {
+        "currentPhase": "setup"
+      },
+      "after": {
+        "currentPhase": "testing"
+      },
+      "details": {
+        "transitionType": "set",
+        "fromPhase": "setup",
+        "toPhase": "testing"
+      }
+    },
+    {
+      "id": "log_e5f57ac8f90c",
+      "timestamp": "2025-12-17T22:43:02Z",
+      "sessionId": null,
+      "action": "phase_changed",
+      "actor": "human",
+      "taskId": null,
+      "before": {
+        "currentPhase": "testing"
+      },
+      "after": {
+        "currentPhase": "core"
+      },
+      "details": {
+        "transitionType": "set",
+        "fromPhase": "testing",
+        "toPhase": "core"
+      }
+    },
+    {
+      "id": "log_69d49038c1b2",
+      "timestamp": "2025-12-17T22:43:02Z",
+      "sessionId": "session_20251216_213731_392dd7",
+      "action": "focus_changed",
+      "actor": "claude",
+      "taskId": null,
+      "before": null,
+      "after": {
+        "currentTask": "T290"
+      },
+      "details": null
+    },
+    {
+      "id": "log-1766011393-d9cf78",
+      "timestamp": "2025-12-17T22:43:13Z",
+      "action": "task_created",
+      "taskId": "T371",
+      "actor": "system",
+      "details": {
+        "title": "Task with no phase change during session",
+        "status": "pending",
+        "priority": "medium"
+      },
+      "before": null,
+      "after": {
+        "title": "Task with no phase change during session",
+        "status": "pending",
+        "priority": "medium"
+      }
+    },
+    {
+      "id": "log_f3afdc211eb8",
+      "timestamp": "2025-12-17T22:43:18Z",
+      "sessionId": null,
+      "action": "phase_changed",
+      "actor": "human",
+      "taskId": null,
+      "before": {
+        "currentPhase": "core"
+      },
+      "after": {
+        "currentPhase": "polish"
+      },
+      "details": {
+        "transitionType": "set",
+        "fromPhase": "core",
+        "toPhase": "polish"
+      }
+    },
+    {
+      "id": "log-1766011398-0c4c65",
+      "timestamp": "2025-12-17T22:43:18Z",
+      "action": "task_created",
+      "taskId": "T372",
+      "actor": "system",
+      "details": {
+        "title": "Task after phase change",
+        "status": "pending",
+        "priority": "medium"
+      },
+      "before": null,
+      "after": {
+        "title": "Task after phase change",
+        "status": "pending",
+        "priority": "medium"
+      }
+    },
+    {
+      "id": "log_58cb5a3b660b",
+      "timestamp": "2025-12-17T22:43:29Z",
+      "sessionId": null,
+      "action": "phase_changed",
+      "actor": "human",
+      "taskId": null,
+      "before": {
+        "currentPhase": "polish"
+      },
+      "after": {
+        "currentPhase": "core"
+      },
+      "details": {
+        "transitionType": "set",
+        "fromPhase": "polish",
+        "toPhase": "core"
+      }
+    },
+    {
+      "id": "log_a0165b5feb29",
+      "timestamp": "2025-12-17T22:43:34Z",
+      "sessionId": null,
+      "action": "phase_changed",
+      "actor": "human",
+      "taskId": null,
+      "before": {
+        "currentPhase": "core"
+      },
+      "after": {
+        "currentPhase": "polish"
+      },
+      "details": {
+        "transitionType": "set",
+        "fromPhase": "core",
+        "toPhase": "polish"
+      }
+    },
+    {
+      "id": "log-1766011414-858aff",
+      "timestamp": "2025-12-17T22:43:34Z",
+      "action": "task_created",
+      "taskId": "T373",
+      "actor": "system",
+      "details": {
+        "title": "Task after phase change to polish",
+        "status": "pending",
+        "priority": "medium"
+      },
+      "before": null,
+      "after": {
+        "title": "Task after phase change to polish",
+        "status": "pending",
+        "priority": "medium"
+      }
+    },
+    {
+      "id": "log_3b9502fbc8cd",
+      "timestamp": "2025-12-17T22:43:48Z",
+      "sessionId": "session_20251216_213731_392dd7",
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T369",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-17T22:43:47Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_f6825c5eb73c",
+      "timestamp": "2025-12-17T22:43:48Z",
+      "sessionId": "session_20251216_213731_392dd7",
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T370",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-17T22:43:48Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_a46e86598e6f",
+      "timestamp": "2025-12-17T22:43:48Z",
+      "sessionId": "session_20251216_213731_392dd7",
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T371",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-17T22:43:48Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_0ec95eecd3ad",
+      "timestamp": "2025-12-17T22:43:48Z",
+      "sessionId": "session_20251216_213731_392dd7",
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T372",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-17T22:43:48Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_458bf45b5aac",
+      "timestamp": "2025-12-17T22:43:49Z",
+      "sessionId": "session_20251216_213731_392dd7",
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T373",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-17T22:43:49Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log-1766011531-80a535",
+      "timestamp": "2025-12-17T22:45:31Z",
+      "action": "task_created",
+      "taskId": "T374",
+      "actor": "system",
+      "details": {
+        "title": "Final test task for phase preservation",
+        "status": "pending",
+        "priority": "medium"
+      },
+      "before": null,
+      "after": {
+        "title": "Final test task for phase preservation",
+        "status": "pending",
+        "priority": "medium"
+      }
+    },
+    {
+      "id": "log_24e9b4662e85",
+      "timestamp": "2025-12-17T22:45:44Z",
+      "sessionId": "session_20251216_213731_392dd7",
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T374",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-17T22:45:44Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_f23d86a1ab3f",
+      "timestamp": "2025-12-17T22:48:24Z",
+      "sessionId": null,
+      "action": "phase_changed",
+      "actor": "human",
+      "taskId": null,
+      "before": {
+        "currentPhase": "polish"
+      },
+      "after": {
+        "currentPhase": "maintenance"
+      },
+      "details": {
+        "transitionType": "set",
+        "fromPhase": "polish",
+        "toPhase": "maintenance"
+      }
+    },
+    {
+      "id": "log-1766011704-d2d2cc",
+      "timestamp": "2025-12-17T22:48:24Z",
+      "action": "task_created",
+      "taskId": "T375",
+      "actor": "system",
+      "details": {
+        "title": "Task after phase change to maintenance",
+        "status": "pending",
+        "priority": "medium"
+      },
+      "before": null,
+      "after": {
+        "title": "Task after phase change to maintenance",
+        "status": "pending",
+        "priority": "medium"
+      }
+    },
+    {
+      "id": "log_7900a59fa141",
+      "timestamp": "2025-12-17T22:48:37Z",
+      "sessionId": "session_20251216_213731_392dd7",
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T375",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-17T22:48:37Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_b14aae997c68",
+      "timestamp": "2025-12-17T23:43:45Z",
+      "sessionId": null,
+      "action": "validation_run",
+      "actor": "system",
+      "taskId": null,
+      "before": null,
+      "after": null,
+      "details": {
+        "fixType": "phase_conflict_resolution",
+        "selectedPhase": "core",
+        "totalActivePhases": 2,
+        "resolutionMethod": "auto_selected"
+      }
+    },
+    {
+      "id": "log-1766017271-0d8f9e",
+      "timestamp": "2025-12-18T00:21:11Z",
+      "action": "task_created",
+      "taskId": "T376",
+      "actor": "system",
+      "details": {
+        "title": "Research: Fuzzy task search command for LLM agents",
+        "status": "pending",
+        "priority": "medium"
+      },
+      "before": null,
+      "after": {
+        "title": "Research: Fuzzy task search command for LLM agents",
+        "status": "pending",
+        "priority": "medium"
+      }
+    },
+    {
+      "id": "log-1766017273-29a502",
+      "timestamp": "2025-12-18T00:21:13Z",
+      "action": "task_created",
+      "taskId": "T377",
+      "actor": "system",
+      "details": {
+        "title": "Extract CLI wrapper logic to lib/cli-utils.sh",
+        "status": "pending",
+        "priority": "low"
+      },
+      "before": null,
+      "after": {
+        "title": "Extract CLI wrapper logic to lib/cli-utils.sh",
+        "status": "pending",
+        "priority": "low"
+      }
+    },
+    {
+      "id": "log-1766017275-5a3bb7",
+      "timestamp": "2025-12-18T00:21:15Z",
+      "action": "task_created",
+      "taskId": "T378",
+      "actor": "system",
+      "details": {
+        "title": "LLM-Agent-First Phase 1: Foundation libs integration (13 commands)",
+        "status": "pending",
+        "priority": "critical"
+      },
+      "before": null,
+      "after": {
+        "title": "LLM-Agent-First Phase 1: Foundation libs integration (13 commands)",
+        "status": "pending",
+        "priority": "critical"
+      }
+    },
+    {
+      "id": "log-1766017277-62c083",
+      "timestamp": "2025-12-18T00:21:17Z",
+      "action": "task_created",
+      "taskId": "T379",
+      "actor": "system",
+      "details": {
+        "title": "LLM-Agent-First Phase 2: resolve_format() integration (15 commands)",
+        "status": "pending",
+        "priority": "high"
+      },
+      "before": null,
+      "after": {
+        "title": "LLM-Agent-First Phase 2: resolve_format() integration (15 commands)",
+        "status": "pending",
+        "priority": "high"
+      }
+    },
+    {
+      "id": "log-1766017279-91a86e",
+      "timestamp": "2025-12-18T00:21:19Z",
+      "action": "task_created",
+      "taskId": "T380",
+      "actor": "system",
+      "details": {
+        "title": "LLM-Agent-First Phase 3: Error handling standardization (22 commands)",
+        "status": "pending",
+        "priority": "high"
+      },
+      "before": null,
+      "after": {
+        "title": "LLM-Agent-First Phase 3: Error handling standardization (22 commands)",
+        "status": "pending",
+        "priority": "high"
+      }
+    },
+    {
+      "id": "log-1766017290-fb9944",
+      "timestamp": "2025-12-18T00:21:30Z",
+      "action": "task_created",
+      "taskId": "T381",
+      "actor": "system",
+      "details": {
+        "title": "LLM-Agent-First Phase 4: Write command polish (--dry-run, shortcuts)",
+        "status": "pending",
+        "priority": "medium"
+      },
+      "before": null,
+      "after": {
+        "title": "LLM-Agent-First Phase 4: Write command polish (--dry-run, shortcuts)",
+        "status": "pending",
+        "priority": "medium"
+      }
+    },
+    {
+      "id": "log_7f083b7082e6",
+      "timestamp": "2025-12-18T00:21:31Z",
+      "sessionId": "session_20251216_213731_392dd7",
+      "action": "task_updated",
+      "actor": "system",
+      "taskId": "T379",
+      "before": {
+        "title": "LLM-Agent-First Phase 2: resolve_format() integration (15 commands)",
+        "status": "pending",
+        "priority": "high",
+        "description": "Add resolve_format() call and missing --format/--quiet flags to: analyze, blockers, dash, exists, export, extract, history, inject, labels, migrate-backups, next, phases, show, stats, sync, validate. See LLM-AGENT-FIRST-IMPLEMENTATION-REPORT.md Section 7.2 Phase 2.",
+        "phase": "core",
+        "labels": [
+          "compliance",
+          "llm-agent-first"
+        ],
+        "files": null,
+        "acceptance": null,
+        "depends": null,
+        "blockedBy": null
+      },
+      "after": {
+        "title": "LLM-Agent-First Phase 2: resolve_format() integration (15 commands)",
+        "status": "pending",
+        "priority": "high",
+        "description": "Add resolve_format() call and missing --format/--quiet flags to: analyze, blockers, dash, exists, export, extract, history, inject, labels, migrate-backups, next, phases, show, stats, sync, validate. See LLM-AGENT-FIRST-IMPLEMENTATION-REPORT.md Section 7.2 Phase 2.",
+        "phase": "core",
+        "labels": [
+          "compliance",
+          "llm-agent-first"
+        ],
+        "files": null,
+        "acceptance": null,
+        "depends": [
+          "T378"
+        ],
+        "blockedBy": null
+      },
+      "details": {
+        "operation": "update"
+      }
+    },
+    {
+      "id": "log_aedf3c7c0da1",
+      "timestamp": "2025-12-18T00:21:32Z",
+      "sessionId": "session_20251216_213731_392dd7",
+      "action": "task_updated",
+      "actor": "system",
+      "taskId": "T380",
+      "before": {
+        "title": "LLM-Agent-First Phase 3: Error handling standardization (22 commands)",
+        "status": "pending",
+        "priority": "high",
+        "description": "Replace echo ERROR with output_error() and add $schema to JSON outputs in remaining commands. See LLM-AGENT-FIRST-IMPLEMENTATION-REPORT.md Section 7.2 Phase 3.",
+        "phase": "core",
+        "labels": [
+          "compliance",
+          "llm-agent-first"
+        ],
+        "files": null,
+        "acceptance": null,
+        "depends": null,
+        "blockedBy": null
+      },
+      "after": {
+        "title": "LLM-Agent-First Phase 3: Error handling standardization (22 commands)",
+        "status": "pending",
+        "priority": "high",
+        "description": "Replace echo ERROR with output_error() and add $schema to JSON outputs in remaining commands. See LLM-AGENT-FIRST-IMPLEMENTATION-REPORT.md Section 7.2 Phase 3.",
+        "phase": "core",
+        "labels": [
+          "compliance",
+          "llm-agent-first"
+        ],
+        "files": null,
+        "acceptance": null,
+        "depends": [
+          "T379"
+        ],
+        "blockedBy": null
+      },
+      "details": {
+        "operation": "update"
       }
     }
   ]

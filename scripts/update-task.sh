@@ -7,6 +7,19 @@ TODO_FILE="${TODO_FILE:-.claude/todo.json}"
 CONFIG_FILE="${CONFIG_FILE:-.claude/todo-config.json}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LOG_SCRIPT="${SCRIPT_DIR}/log.sh"
+CLAUDE_TODO_HOME="${CLAUDE_TODO_HOME:-$HOME/.claude-todo}"
+
+# Source version from central location
+if [[ -f "$CLAUDE_TODO_HOME/VERSION" ]]; then
+  VERSION="$(cat "$CLAUDE_TODO_HOME/VERSION" | tr -d '[:space:]')"
+elif [[ -f "$SCRIPT_DIR/../VERSION" ]]; then
+  VERSION="$(cat "$SCRIPT_DIR/../VERSION" | tr -d '[:space:]')"
+else
+  VERSION="0.16.0"
+fi
+
+# Command name for JSON output
+COMMAND_NAME="update"
 
 # Source logging library for should_use_color function
 LIB_DIR="${SCRIPT_DIR}/../lib"
@@ -26,6 +39,42 @@ if [[ -f "$LIB_DIR/file-ops.sh" ]]; then
   # shellcheck source=../lib/file-ops.sh
   source "$LIB_DIR/file-ops.sh"
 fi
+
+# Source output formatting library
+if [[ -f "$LIB_DIR/output-format.sh" ]]; then
+  # shellcheck source=../lib/output-format.sh
+  source "$LIB_DIR/output-format.sh"
+fi
+
+# Source exit codes library (after validation.sh due to shared EXIT_SUCCESS)
+if [[ -f "$LIB_DIR/exit-codes.sh" ]]; then
+  # shellcheck source=../lib/exit-codes.sh
+  source "$LIB_DIR/exit-codes.sh"
+fi
+
+# Source error JSON library
+if [[ -f "$LIB_DIR/error-json.sh" ]]; then
+  # shellcheck source=../lib/error-json.sh
+  source "$LIB_DIR/error-json.sh"
+fi
+
+# Fallback exit codes if libraries not loaded (for robustness)
+: "${EXIT_SUCCESS:=0}"
+: "${EXIT_INVALID_INPUT:=2}"
+: "${EXIT_FILE_ERROR:=3}"
+: "${EXIT_NOT_FOUND:=4}"
+: "${EXIT_VALIDATION_ERROR:=6}"
+: "${EXIT_NO_CHANGE:=102}"
+
+# Fallback error codes if error-json.sh not loaded
+: "${E_INPUT_MISSING:=E_INPUT_MISSING}"
+: "${E_TASK_NOT_FOUND:=E_TASK_NOT_FOUND}"
+: "${E_TASK_INVALID_ID:=E_TASK_INVALID_ID}"
+: "${E_TASK_INVALID_STATUS:=E_TASK_INVALID_STATUS}"
+: "${E_NOT_INITIALIZED:=E_NOT_INITIALIZED}"
+: "${E_VALIDATION_REQUIRED:=E_VALIDATION_REQUIRED}"
+: "${E_VALIDATION_SCHEMA:=E_VALIDATION_SCHEMA}"
+: "${E_FILE_WRITE_ERROR:=E_FILE_WRITE_ERROR}"
 
 # Colors (respects NO_COLOR and FORCE_COLOR environment variables per https://no-color.org)
 if declare -f should_use_color >/dev/null 2>&1 && should_use_color; then
@@ -69,6 +118,11 @@ CLEAR_DEPENDS=false
 NOTE_TO_ADD=""
 ADD_PHASE=false
 
+# Output control
+FORMAT=""
+QUIET=false
+DRY_RUN=false
+
 usage() {
   cat << 'EOF'
 Usage: claude-todo update TASK_ID [OPTIONS]
@@ -93,7 +147,7 @@ Array Field Options (append by default):
       --set-labels LABELS   Replace all labels with these
       --clear-labels        Remove all labels
 
-  -f, --files FILES         Append comma-separated file paths
+      --files FILES         Append comma-separated file paths
       --set-files FILES     Replace all files with these
       --clear-files         Remove all files
 
@@ -107,6 +161,13 @@ Array Field Options (append by default):
 
   -n, --notes NOTE          Add a timestamped note (appends only)
 
+Output Options:
+      --format FORMAT       Output format: text, json (default: auto-detect)
+      --human               Force human-readable text output
+      --json                Force JSON output (for agent integration)
+  -q, --quiet               Suppress non-essential output
+      --dry-run             Preview changes without applying
+
 General Options:
   -h, --help                Show this help
 
@@ -117,11 +178,16 @@ Examples:
   claude-todo update T004 --phase new-phase --add-phase
   claude-todo update T004 --blocked-by "Waiting for API spec"
   claude-todo update T005 --notes "Started implementation"
+  claude-todo update T001 --json               # JSON output for agents
+  claude-todo update T001 --dry-run            # Preview changes
 
 Exit Codes:
-  0 = Success
-  1 = Invalid arguments or validation failure
-  2 = File operation failure
+  0   = Success
+  2   = Invalid input or arguments
+  3   = File operation failure
+  4   = Task not found
+  6   = Validation error
+  102 = No changes (dry-run or no-op)
 EOF
   exit 0
 }
@@ -355,8 +421,8 @@ while [[ $# -gt 0 ]]; do
       CLEAR_LABELS=true
       shift
       ;;
-    # Files
-    -f|--files)
+    # Files (long-form only to avoid conflict with --format)
+    --files)
       FILES_TO_ADD="$2"
       shift 2
       ;;
@@ -399,6 +465,27 @@ while [[ $# -gt 0 ]]; do
       NOTE_TO_ADD="$2"
       shift 2
       ;;
+    # Output control
+    --format)
+      FORMAT="$2"
+      shift 2
+      ;;
+    --human)
+      FORMAT="text"
+      shift
+      ;;
+    --json)
+      FORMAT="json"
+      shift
+      ;;
+    -q|--quiet)
+      QUIET=true
+      shift
+      ;;
+    --dry-run)
+      DRY_RUN=true
+      shift
+      ;;
     -h|--help)
       usage
       ;;
@@ -422,32 +509,56 @@ done
 # Main execution
 check_deps
 
+# Resolve output format (CLI > env > config > TTY-aware default)
+if declare -f resolve_format >/dev/null 2>&1; then
+  FORMAT=$(resolve_format "$FORMAT" "true" "text,json")
+else
+  # Fallback if library not loaded
+  FORMAT="${FORMAT:-text}"
+fi
+
 # Validate task ID provided
 if [[ -z "$TASK_ID" ]]; then
-  log_error "Task ID is required"
-  echo "Usage: claude-todo update TASK_ID [OPTIONS]" >&2
-  echo "Use --help for more information" >&2
-  exit 1
+  if [[ "$FORMAT" == "json" ]]; then
+    output_error "$E_INPUT_MISSING" "Task ID is required" "$EXIT_INVALID_INPUT" true "Provide task ID: claude-todo update TASK_ID [OPTIONS]"
+  else
+    log_error "Task ID is required"
+    echo "Usage: claude-todo update TASK_ID [OPTIONS]" >&2
+    echo "Use --help for more information" >&2
+  fi
+  exit "${EXIT_INVALID_INPUT:-2}"
 fi
 
 # Validate task ID format
 if [[ ! "$TASK_ID" =~ ^T[0-9]{3,}$ ]]; then
-  log_error "Invalid task ID format: $TASK_ID (must be T### format)"
-  exit 1
+  if [[ "$FORMAT" == "json" ]]; then
+    output_error "$E_TASK_INVALID_ID" "Invalid task ID format: $TASK_ID (must be T### format)" "$EXIT_INVALID_INPUT" true "Use format T### (e.g., T001, T042)"
+  else
+    log_error "Invalid task ID format: $TASK_ID (must be T### format)"
+  fi
+  exit "${EXIT_INVALID_INPUT:-2}"
 fi
 
 # Check todo file exists
 if [[ ! -f "$TODO_FILE" ]]; then
-  log_error "Todo file not found: $TODO_FILE"
-  echo "Run claude-todo init first to initialize the todo system" >&2
-  exit 1
+  if [[ "$FORMAT" == "json" ]]; then
+    output_error "$E_NOT_INITIALIZED" "Todo file not found: $TODO_FILE" "$EXIT_FILE_ERROR" true "Run 'claude-todo init' first"
+  else
+    log_error "Todo file not found: $TODO_FILE"
+    echo "Run claude-todo init first to initialize the todo system" >&2
+  fi
+  exit "${EXIT_FILE_ERROR:-3}"
 fi
 
 # Check task exists
 TASK=$(jq --arg id "$TASK_ID" '.tasks[] | select(.id == $id)' "$TODO_FILE")
 if [[ -z "$TASK" ]]; then
-  log_error "Task $TASK_ID not found"
-  exit 1
+  if [[ "$FORMAT" == "json" ]]; then
+    output_error "$E_TASK_NOT_FOUND" "Task $TASK_ID not found" "$EXIT_NOT_FOUND" true "Run 'claude-todo list' to see available tasks"
+  else
+    log_error "Task $TASK_ID not found"
+  fi
+  exit "${EXIT_NOT_FOUND:-4}"
 fi
 
 # Get current status for transition validation
@@ -455,9 +566,13 @@ CURRENT_STATUS=$(echo "$TASK" | jq -r '.status')
 
 # Check if task is already done
 if [[ "$CURRENT_STATUS" == "done" ]]; then
-  log_error "Cannot update completed task $TASK_ID"
-  log_info "Completed tasks are immutable. Create a new task if needed."
-  exit 1
+  if [[ "$FORMAT" == "json" ]]; then
+    output_error "$E_TASK_INVALID_STATUS" "Cannot update completed task $TASK_ID" "$EXIT_VALIDATION_ERROR" false "Completed tasks are immutable. Create a new task if needed."
+  else
+    log_error "Cannot update completed task $TASK_ID"
+    log_info "Completed tasks are immutable. Create a new task if needed."
+  fi
+  exit "${EXIT_VALIDATION_ERROR:-6}"
 fi
 
 # Normalize labels to remove duplicates
@@ -502,8 +617,12 @@ if [[ -n "$DEPENDS_TO_ADD" || -n "$DEPENDS_TO_SET" ]]; then
 
   if [[ -n "$FINAL_DEPS" ]]; then
     if ! check_circular_dependencies "$TODO_FILE" "$TASK_ID" "$FINAL_DEPS"; then
-      log_error "Cannot update task: would create circular dependency"
-      exit 1
+      if [[ "$FORMAT" == "json" ]]; then
+        output_error "$E_VALIDATION_SCHEMA" "Cannot update task: would create circular dependency" "$EXIT_VALIDATION_ERROR" true "Review dependency chain and remove circular references"
+      else
+        log_error "Cannot update task: would create circular dependency"
+      fi
+      exit "${EXIT_VALIDATION_ERROR:-6}"
     fi
   fi
 fi
@@ -516,22 +635,31 @@ if [[ -z "$NEW_TITLE" && -z "$NEW_STATUS" && -z "$NEW_PRIORITY" && \
       -z "$ACCEPTANCE_TO_ADD" && -z "$ACCEPTANCE_TO_SET" && "$CLEAR_ACCEPTANCE" == false && \
       -z "$DEPENDS_TO_ADD" && -z "$DEPENDS_TO_SET" && "$CLEAR_DEPENDS" == false && \
       -z "$NOTE_TO_ADD" ]]; then
-  log_error "No updates specified"
-  echo "Use --help to see available options" >&2
-  exit 1
+  if [[ "$FORMAT" == "json" ]]; then
+    output_error "$E_INPUT_MISSING" "No updates specified" "$EXIT_INVALID_INPUT" true "Provide at least one update option (--title, --status, --priority, etc.)"
+  else
+    log_error "No updates specified"
+    echo "Use --help to see available options" >&2
+  fi
+  exit "${EXIT_INVALID_INPUT:-2}"
 fi
 
 # Check single active task constraint
 if [[ "$NEW_STATUS" == "active" && "$CURRENT_STATUS" != "active" ]]; then
   active_count=$(jq '[.tasks[] | select(.status == "active")] | length' "$TODO_FILE")
   if [[ "$active_count" -gt 0 ]]; then
-    log_error "Cannot set status to active: only ONE active task allowed"
-    echo "Current active task: $(jq -r '[.tasks[] | select(.status == "active")][0].id' "$TODO_FILE")" >&2
-    exit 1
+    current_active=$(jq -r '[.tasks[] | select(.status == "active")][0].id' "$TODO_FILE")
+    if [[ "$FORMAT" == "json" ]]; then
+      output_error "$E_VALIDATION_REQUIRED" "Cannot set status to active: only ONE active task allowed (current: $current_active)" "$EXIT_VALIDATION_ERROR" true "Use 'claude-todo focus set $TASK_ID' to change active task"
+    else
+      log_error "Cannot set status to active: only ONE active task allowed"
+      echo "Current active task: $current_active" >&2
+    fi
+    exit "${EXIT_VALIDATION_ERROR:-6}"
   fi
 fi
 
-# Capture before state for logging
+# Capture before state for logging and JSON output
 BEFORE_STATE=$(echo "$TASK" | jq '{
   title, status, priority, description, phase,
   labels, files, acceptance, depends, blockedBy
@@ -539,6 +667,9 @@ BEFORE_STATE=$(echo "$TASK" | jq '{
 
 # Build changes list for display
 CHANGES=()
+
+# Initialize JSON changes object for structured output
+CHANGES_JSON="{}"
 
 # Create timestamp
 TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
@@ -548,113 +679,150 @@ JQ_UPDATES=""
 
 # Scalar fields
 if [[ -n "$NEW_TITLE" ]]; then
+  OLD_TITLE=$(echo "$TASK" | jq -r '.title')
   JQ_UPDATES="$JQ_UPDATES | .title = \$new_title"
-  CHANGES+=("title: '$(echo "$TASK" | jq -r '.title')' → '$NEW_TITLE'")
+  CHANGES+=("title: '$OLD_TITLE' → '$NEW_TITLE'")
+  CHANGES_JSON=$(echo "$CHANGES_JSON" | jq --arg before "$OLD_TITLE" --arg after "$NEW_TITLE" '.title = {before: $before, after: $after}')
 fi
 
 if [[ -n "$NEW_STATUS" ]]; then
   JQ_UPDATES="$JQ_UPDATES | .status = \$new_status"
   CHANGES+=("status: $CURRENT_STATUS → $NEW_STATUS")
+  CHANGES_JSON=$(echo "$CHANGES_JSON" | jq --arg before "$CURRENT_STATUS" --arg after "$NEW_STATUS" '.status = {before: $before, after: $after}')
 fi
 
 if [[ -n "$NEW_PRIORITY" ]]; then
   OLD_PRIORITY=$(echo "$TASK" | jq -r '.priority // "medium"')
   JQ_UPDATES="$JQ_UPDATES | .priority = \$new_priority"
   CHANGES+=("priority: $OLD_PRIORITY → $NEW_PRIORITY")
+  CHANGES_JSON=$(echo "$CHANGES_JSON" | jq --arg before "$OLD_PRIORITY" --arg after "$NEW_PRIORITY" '.priority = {before: $before, after: $after}')
 fi
 
 if [[ -n "$NEW_DESCRIPTION" ]]; then
+  OLD_DESCRIPTION=$(echo "$TASK" | jq -r '.description // ""')
   JQ_UPDATES="$JQ_UPDATES | .description = \$new_description"
   CHANGES+=("description: updated")
+  CHANGES_JSON=$(echo "$CHANGES_JSON" | jq --arg before "$OLD_DESCRIPTION" --arg after "$NEW_DESCRIPTION" '.description = {before: $before, after: $after}')
 fi
 
 if [[ -n "$NEW_PHASE" ]]; then
-  OLD_PHASE=$(echo "$TASK" | jq -r '.phase // "(none)"')
+  OLD_PHASE=$(echo "$TASK" | jq -r '.phase // null')
+  OLD_PHASE_DISPLAY=$(echo "$TASK" | jq -r '.phase // "(none)"')
   JQ_UPDATES="$JQ_UPDATES | .phase = \$new_phase"
-  CHANGES+=("phase: $OLD_PHASE → $NEW_PHASE")
+  CHANGES+=("phase: $OLD_PHASE_DISPLAY → $NEW_PHASE")
+  CHANGES_JSON=$(echo "$CHANGES_JSON" | jq --arg before "$OLD_PHASE" --arg after "$NEW_PHASE" '.phase = {before: (if $before == "null" then null else $before end), after: $after}')
 fi
 
 if [[ -n "$NEW_BLOCKED_BY" ]]; then
+  OLD_BLOCKED_BY=$(echo "$TASK" | jq -r '.blockedBy // null')
   JQ_UPDATES="$JQ_UPDATES | .blockedBy = \$new_blocked_by | .status = \"blocked\""
   CHANGES+=("blockedBy: set to '$NEW_BLOCKED_BY'")
   CHANGES+=("status: $CURRENT_STATUS → blocked")
+  CHANGES_JSON=$(echo "$CHANGES_JSON" | jq --arg before "$OLD_BLOCKED_BY" --arg after "$NEW_BLOCKED_BY" '.blockedBy = {before: (if $before == "null" then null else $before end), after: $after}')
+  CHANGES_JSON=$(echo "$CHANGES_JSON" | jq --arg before "$CURRENT_STATUS" '.status = {before: $before, after: "blocked"}')
 fi
 
 # Labels array
 if [[ "$CLEAR_LABELS" == true ]]; then
+  OLD_LABELS=$(echo "$TASK" | jq -c '.labels // []')
   JQ_UPDATES="$JQ_UPDATES | del(.labels)"
   CHANGES+=("labels: cleared")
+  CHANGES_JSON=$(echo "$CHANGES_JSON" | jq --argjson before "$OLD_LABELS" '.labels = {before: $before, after: [], action: "cleared"}')
 elif [[ -n "$LABELS_TO_SET" ]]; then
+  OLD_LABELS=$(echo "$TASK" | jq -c '.labels // []')
   IFS=',' read -ra label_array <<< "$LABELS_TO_SET"
   labels_json=$(printf '%s\n' "${label_array[@]}" | jq -R . | jq -s 'map(gsub("^\\s+|\\s+$";""))')
   JQ_UPDATES="$JQ_UPDATES | .labels = $labels_json"
   CHANGES+=("labels: replaced with [$LABELS_TO_SET]")
+  CHANGES_JSON=$(echo "$CHANGES_JSON" | jq --argjson before "$OLD_LABELS" --argjson after "$labels_json" '.labels = {before: $before, after: $after, action: "replaced"}')
 elif [[ -n "$LABELS_TO_ADD" ]]; then
+  OLD_LABELS=$(echo "$TASK" | jq -c '.labels // []')
   IFS=',' read -ra label_array <<< "$LABELS_TO_ADD"
   labels_json=$(printf '%s\n' "${label_array[@]}" | jq -R . | jq -s 'map(gsub("^\\s+|\\s+$";""))')
   JQ_UPDATES="$JQ_UPDATES | .labels = ((.labels // []) + $labels_json | unique)"
   CHANGES+=("labels: added [$LABELS_TO_ADD]")
+  CHANGES_JSON=$(echo "$CHANGES_JSON" | jq --argjson before "$OLD_LABELS" --argjson added "$labels_json" '.labels = {before: $before, added: $added, action: "appended"}')
 fi
 
 # Files array
 if [[ "$CLEAR_FILES" == true ]]; then
+  OLD_FILES=$(echo "$TASK" | jq -c '.files // []')
   JQ_UPDATES="$JQ_UPDATES | del(.files)"
   CHANGES+=("files: cleared")
+  CHANGES_JSON=$(echo "$CHANGES_JSON" | jq --argjson before "$OLD_FILES" '.files = {before: $before, after: [], action: "cleared"}')
 elif [[ -n "$FILES_TO_SET" ]]; then
+  OLD_FILES=$(echo "$TASK" | jq -c '.files // []')
   IFS=',' read -ra files_array <<< "$FILES_TO_SET"
   files_json=$(printf '%s\n' "${files_array[@]}" | jq -R . | jq -s 'map(gsub("^\\s+|\\s+$";""))')
   JQ_UPDATES="$JQ_UPDATES | .files = $files_json"
   CHANGES+=("files: replaced")
+  CHANGES_JSON=$(echo "$CHANGES_JSON" | jq --argjson before "$OLD_FILES" --argjson after "$files_json" '.files = {before: $before, after: $after, action: "replaced"}')
 elif [[ -n "$FILES_TO_ADD" ]]; then
+  OLD_FILES=$(echo "$TASK" | jq -c '.files // []')
   IFS=',' read -ra files_array <<< "$FILES_TO_ADD"
   files_json=$(printf '%s\n' "${files_array[@]}" | jq -R . | jq -s 'map(gsub("^\\s+|\\s+$";""))')
   JQ_UPDATES="$JQ_UPDATES | .files = ((.files // []) + $files_json | unique)"
   CHANGES+=("files: added [$FILES_TO_ADD]")
+  CHANGES_JSON=$(echo "$CHANGES_JSON" | jq --argjson before "$OLD_FILES" --argjson added "$files_json" '.files = {before: $before, added: $added, action: "appended"}')
 fi
 
 # Acceptance array
 if [[ "$CLEAR_ACCEPTANCE" == true ]]; then
+  OLD_ACCEPTANCE=$(echo "$TASK" | jq -c '.acceptance // []')
   JQ_UPDATES="$JQ_UPDATES | del(.acceptance)"
   CHANGES+=("acceptance: cleared")
+  CHANGES_JSON=$(echo "$CHANGES_JSON" | jq --argjson before "$OLD_ACCEPTANCE" '.acceptance = {before: $before, after: [], action: "cleared"}')
 elif [[ -n "$ACCEPTANCE_TO_SET" ]]; then
+  OLD_ACCEPTANCE=$(echo "$TASK" | jq -c '.acceptance // []')
   IFS=',' read -ra acc_array <<< "$ACCEPTANCE_TO_SET"
   acc_json=$(printf '%s\n' "${acc_array[@]}" | jq -R . | jq -s 'map(gsub("^\\s+|\\s+$";""))')
   JQ_UPDATES="$JQ_UPDATES | .acceptance = $acc_json"
   CHANGES+=("acceptance: replaced")
+  CHANGES_JSON=$(echo "$CHANGES_JSON" | jq --argjson before "$OLD_ACCEPTANCE" --argjson after "$acc_json" '.acceptance = {before: $before, after: $after, action: "replaced"}')
 elif [[ -n "$ACCEPTANCE_TO_ADD" ]]; then
+  OLD_ACCEPTANCE=$(echo "$TASK" | jq -c '.acceptance // []')
   IFS=',' read -ra acc_array <<< "$ACCEPTANCE_TO_ADD"
   acc_json=$(printf '%s\n' "${acc_array[@]}" | jq -R . | jq -s 'map(gsub("^\\s+|\\s+$";""))')
   JQ_UPDATES="$JQ_UPDATES | .acceptance = ((.acceptance // []) + $acc_json)"
   CHANGES+=("acceptance: added criteria")
+  CHANGES_JSON=$(echo "$CHANGES_JSON" | jq --argjson before "$OLD_ACCEPTANCE" --argjson added "$acc_json" '.acceptance = {before: $before, added: $added, action: "appended"}')
 fi
 
 # Depends array
 if [[ "$CLEAR_DEPENDS" == true ]]; then
+  OLD_DEPENDS=$(echo "$TASK" | jq -c '.depends // []')
   JQ_UPDATES="$JQ_UPDATES | del(.depends)"
   CHANGES+=("depends: cleared")
+  CHANGES_JSON=$(echo "$CHANGES_JSON" | jq --argjson before "$OLD_DEPENDS" '.depends = {before: $before, after: [], action: "cleared"}')
 elif [[ -n "$DEPENDS_TO_SET" ]]; then
+  OLD_DEPENDS=$(echo "$TASK" | jq -c '.depends // []')
   IFS=',' read -ra dep_array <<< "$DEPENDS_TO_SET"
   dep_json=$(printf '%s\n' "${dep_array[@]}" | jq -R . | jq -s 'map(gsub("^\\s+|\\s+$";""))')
   JQ_UPDATES="$JQ_UPDATES | .depends = $dep_json"
   CHANGES+=("depends: replaced with [$DEPENDS_TO_SET]")
+  CHANGES_JSON=$(echo "$CHANGES_JSON" | jq --argjson before "$OLD_DEPENDS" --argjson after "$dep_json" '.depends = {before: $before, after: $after, action: "replaced"}')
 elif [[ -n "$DEPENDS_TO_ADD" ]]; then
+  OLD_DEPENDS=$(echo "$TASK" | jq -c '.depends // []')
   IFS=',' read -ra dep_array <<< "$DEPENDS_TO_ADD"
   dep_json=$(printf '%s\n' "${dep_array[@]}" | jq -R . | jq -s 'map(gsub("^\\s+|\\s+$";""))')
   JQ_UPDATES="$JQ_UPDATES | .depends = ((.depends // []) + $dep_json | unique)"
   CHANGES+=("depends: added [$DEPENDS_TO_ADD]")
+  CHANGES_JSON=$(echo "$CHANGES_JSON" | jq --argjson before "$OLD_DEPENDS" --argjson added "$dep_json" '.depends = {before: $before, added: $added, action: "appended"}')
 fi
 
 # Notes (always append with timestamp)
 if [[ -n "$NOTE_TO_ADD" ]]; then
   timestamp_note="$(date -u +"%Y-%m-%d %H:%M:%S UTC"): $NOTE_TO_ADD"
+  OLD_NOTES_COUNT=$(echo "$TASK" | jq 'if .notes then .notes | length else 0 end')
   JQ_UPDATES="$JQ_UPDATES | .notes = ((.notes // []) + [\"$timestamp_note\"])"
   CHANGES+=("notes: added entry")
+  CHANGES_JSON=$(echo "$CHANGES_JSON" | jq --arg note "$timestamp_note" --argjson before_count "$OLD_NOTES_COUNT" '.notes = {added: $note, beforeCount: $before_count, action: "appended"}')
 fi
 
 # Strip leading pipe if present
 JQ_UPDATES="${JQ_UPDATES# | }"
 
-# Perform the update
+# Calculate what the updated task would look like (for dry-run and JSON output)
 UPDATED_TODO=$(jq --arg id "$TASK_ID" \
   --arg new_title "$NEW_TITLE" \
   --arg new_status "$NEW_STATUS" \
@@ -671,6 +839,52 @@ UPDATED_TODO=$(jq --arg id "$TASK_ID" \
   .lastUpdated = \$ts
 " "$TODO_FILE")
 
+# Get the updated task for output
+UPDATED_TASK=$(echo "$UPDATED_TODO" | jq --arg id "$TASK_ID" '.tasks[] | select(.id == $id)')
+
+# Handle dry-run mode
+if [[ "$DRY_RUN" == true ]]; then
+  if [[ "$FORMAT" == "json" ]]; then
+    # JSON dry-run output
+    jq -n \
+      --arg version "$VERSION" \
+      --arg command "$COMMAND_NAME" \
+      --arg timestamp "$TIMESTAMP" \
+      --arg task_id "$TASK_ID" \
+      --argjson changes "$CHANGES_JSON" \
+      --argjson task "$UPDATED_TASK" \
+      '{
+        "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+        "_meta": {
+          "format": "json",
+          "command": $command,
+          "timestamp": $timestamp,
+          "version": $version,
+          "dryRun": true
+        },
+        "success": true,
+        "taskId": $task_id,
+        "changes": $changes,
+        "task": $task,
+        "message": "Dry run - no changes applied"
+      }'
+  else
+    # Text dry-run output
+    if [[ "$QUIET" != true ]]; then
+      log_info "[DRY RUN] Would update task $TASK_ID"
+      echo ""
+      echo -e "${BLUE}Task ID:${NC} $TASK_ID"
+      echo -e "${BLUE}Changes (not applied):${NC}"
+      for change in "${CHANGES[@]}"; do
+        echo "  • $change"
+      done
+      echo ""
+      echo "Use without --dry-run to apply changes."
+    fi
+  fi
+  exit "${EXIT_NO_CHANGE:-102}"
+fi
+
 # Recalculate checksum
 NEW_TASKS=$(echo "$UPDATED_TODO" | jq -c '.tasks')
 NEW_CHECKSUM=$(echo "$NEW_TASKS" | sha256sum | cut -c1-16)
@@ -681,36 +895,80 @@ FINAL_JSON=$(echo "$UPDATED_TODO" | jq --arg checksum "$NEW_CHECKSUM" '
 
 # Atomic write using library's save_json with file locking
 if ! save_json "$TODO_FILE" "$FINAL_JSON"; then
-  log_error "Failed to write todo file"
-  exit 2
+  if [[ "$FORMAT" == "json" ]]; then
+    output_error "$E_FILE_WRITE_ERROR" "Failed to write todo file" "$EXIT_FILE_ERROR" false "Check file permissions and disk space"
+  else
+    log_error "Failed to write todo file"
+  fi
+  exit "${EXIT_FILE_ERROR:-3}"
 fi
 
-# Capture after state
+# Capture after state (re-read from file to get actual saved state)
 AFTER_STATE=$(jq --arg id "$TASK_ID" '.tasks[] | select(.id == $id) | {
   title, status, priority, description, phase,
   labels, files, acceptance, depends, blockedBy
 }' "$TODO_FILE")
 
-# Log the operation
+# Get full updated task for JSON output
+FINAL_TASK=$(jq --arg id "$TASK_ID" '.tasks[] | select(.id == $id)' "$TODO_FILE")
+
+# Log the operation (suppress output in JSON mode to keep stdout clean)
 if [[ -f "$LOG_SCRIPT" ]]; then
-  "$LOG_SCRIPT" \
-    --action "task_updated" \
-    --task-id "$TASK_ID" \
-    --before "$BEFORE_STATE" \
-    --after "$AFTER_STATE" \
-    --details '{"operation":"update"}' \
-    --actor "system" 2>/dev/null || log_warn "Failed to write log entry"
+  if [[ "$FORMAT" == "json" ]]; then
+    "$LOG_SCRIPT" \
+      --action "task_updated" \
+      --task-id "$TASK_ID" \
+      --before "$BEFORE_STATE" \
+      --after "$AFTER_STATE" \
+      --details '{"operation":"update"}' \
+      --actor "system" >/dev/null 2>&1 || true
+  else
+    "$LOG_SCRIPT" \
+      --action "task_updated" \
+      --task-id "$TASK_ID" \
+      --before "$BEFORE_STATE" \
+      --after "$AFTER_STATE" \
+      --details '{"operation":"update"}' \
+      --actor "system" 2>/dev/null || log_warn "Failed to write log entry"
+  fi
 fi
 
 # Success output
-log_info "Task $TASK_ID updated successfully"
-echo ""
-echo -e "${BLUE}Task ID:${NC} $TASK_ID"
-echo -e "${BLUE}Changes:${NC}"
-for change in "${CHANGES[@]}"; do
-  echo "  • $change"
-done
-echo ""
-echo "View with: jq '.tasks[] | select(.id == \"$TASK_ID\")' $TODO_FILE"
+if [[ "$FORMAT" == "json" ]]; then
+  # JSON success output
+  jq -n \
+    --arg version "$VERSION" \
+    --arg command "$COMMAND_NAME" \
+    --arg timestamp "$TIMESTAMP" \
+    --arg task_id "$TASK_ID" \
+    --argjson changes "$CHANGES_JSON" \
+    --argjson task "$FINAL_TASK" \
+    '{
+      "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+      "_meta": {
+        "format": "json",
+        "command": $command,
+        "timestamp": $timestamp,
+        "version": $version
+      },
+      "success": true,
+      "taskId": $task_id,
+      "changes": $changes,
+      "task": $task
+    }'
+else
+  # Text success output
+  if [[ "$QUIET" != true ]]; then
+    log_info "Task $TASK_ID updated successfully"
+    echo ""
+    echo -e "${BLUE}Task ID:${NC} $TASK_ID"
+    echo -e "${BLUE}Changes:${NC}"
+    for change in "${CHANGES[@]}"; do
+      echo "  • $change"
+    done
+    echo ""
+    echo "View with: jq '.tasks[] | select(.id == \"$TASK_ID\")' $TODO_FILE"
+  fi
+fi
 
-exit 0
+exit "${EXIT_SUCCESS:-0}"

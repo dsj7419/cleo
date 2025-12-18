@@ -69,10 +69,17 @@ elif [[ -f "$CLAUDE_TODO_HOME/lib/output-format.sh" ]]; then
   source "$CLAUDE_TODO_HOME/lib/output-format.sh"
 fi
 
+if [[ -f "${LIB_DIR}/exit-codes.sh" ]]; then
+  source "${LIB_DIR}/exit-codes.sh"
+elif [[ -f "$CLAUDE_TODO_HOME/lib/exit-codes.sh" ]]; then
+  source "$CLAUDE_TODO_HOME/lib/exit-codes.sh"
+fi
+
 # Default configuration
 SHOW_EXPLAIN=false
 SUGGESTION_COUNT=1
 OUTPUT_FORMAT="text"
+QUIET=false
 
 # File paths
 CLAUDE_DIR=".claude"
@@ -90,8 +97,9 @@ Suggest the next task to work on based on priority and dependencies.
 
 Options:
     -e, --explain     Show detailed reasoning for suggestion
-    -n, --count N     Show top N suggestions (default: 1)
+    -c, --count N     Show top N suggestions (default: 1)
     -f, --format FORMAT   Output format: text | json (default: text)
+    -q, --quiet       Suppress decorative output (headers, footers)
     -h, --help        Show this help message
 
 Algorithm:
@@ -300,6 +308,33 @@ get_suggestions() {
 # Output Formatters
 #####################################################################
 
+# Output quiet text format (minimal, no decorations)
+output_text_quiet() {
+  local suggestions="$1"
+  local count
+  count=$(echo "$suggestions" | jq -r 'length')
+
+  if [[ "$count" -eq 0 ]]; then
+    # In quiet mode, just output nothing for no suggestions
+    return
+  fi
+
+  # Output just the essential task info: ID, title, priority, phase
+  echo "$suggestions" | jq -c '.[]' | while read -r task; do
+    local task_id title priority phase
+    task_id=$(echo "$task" | jq -r '.id')
+    title=$(echo "$task" | jq -r '.title')
+    priority=$(echo "$task" | jq -r '.priority')
+    phase=$(echo "$task" | jq -r '.phase // ""')
+
+    if [[ -n "$phase" && "$phase" != "null" ]]; then
+      echo "$task_id $title [$priority] ($phase)"
+    else
+      echo "$task_id $title [$priority]"
+    fi
+  done
+}
+
 # Output text format
 output_text_format() {
   local suggestions="$1"
@@ -474,6 +509,7 @@ output_json_format() {
     --argjson requestedCount "$SUGGESTION_COUNT" \
     --arg version "$VERSION" \
     '{
+      "$schema": "https://claude-todo.dev/schemas/output.schema.json",
       "_meta": {
         "format": "json",
         "version": $version,
@@ -517,7 +553,7 @@ parse_arguments() {
         SHOW_EXPLAIN=true
         shift
         ;;
-      --count|-n)
+      --count|-c)
         SUGGESTION_COUNT="$2"
         if ! [[ "$SUGGESTION_COUNT" =~ ^[0-9]+$ ]] || [[ "$SUGGESTION_COUNT" -lt 1 ]]; then
           echo "[ERROR] --count must be a positive integer" >&2
@@ -531,6 +567,10 @@ parse_arguments() {
           exit 1
         fi
         shift 2
+        ;;
+      --quiet|-q)
+        QUIET=true
+        shift
         ;;
       --help|-h)
         usage
@@ -574,7 +614,9 @@ main() {
       output_json_format "$suggestions"
       ;;
     text)
-      if [[ "$SHOW_EXPLAIN" == "true" ]]; then
+      if [[ "$QUIET" == "true" ]]; then
+        output_text_quiet "$suggestions"
+      elif [[ "$SHOW_EXPLAIN" == "true" ]]; then
         output_explain_format "$suggestions"
       else
         output_text_format "$suggestions"

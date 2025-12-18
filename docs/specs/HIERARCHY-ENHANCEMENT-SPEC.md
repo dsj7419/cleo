@@ -1,8 +1,19 @@
 # Hierarchy Enhancement Specification
 
-**Version**: 1.0.0
-**Status**: DRAFT → REVIEW
-**Target**: v0.15.0 (Phase 1), v0.16.0 (Phase 2)
+**Version**: 1.2.0
+**Status**: APPROVED
+**Target**: v0.17.0 (Phase 1), v0.18.0 (Phase 2)
+
+---
+
+## Authoritative References
+
+> **IMPORTANT**: This specification defines hierarchy FEATURES (types, parent-child relationships, automation).
+> For ID SYSTEM DESIGN (format, guarantees, anti-hallucination), see the authoritative source:
+>
+> **[LLM-TASK-ID-SYSTEM-DESIGN-SPEC.md](LLM-TASK-ID-SYSTEM-DESIGN-SPEC.md)** - The immutable ID system bible
+>
+> Any conflict between this document and the ID spec: **ID spec wins**.
 
 ---
 
@@ -17,6 +28,7 @@ This specification defines hierarchical task management for claude-todo, designe
 3. **HITL as Decision Maker** - Humans initiate and approve; agents execute and organize
 4. **Always Be Shipping** - Smallest completable increment, continuous delivery
 5. **Anti-Hallucination** - Every feature has validation guardrails
+6. **Flat ID Stability** - IDs never change; hierarchy via `parentId` field (see [ID Spec](LLM-TASK-ID-SYSTEM-DESIGN-SPEC.md))
 
 ---
 
@@ -156,18 +168,18 @@ Fix: Group related tasks under a new epic, or complete existing tasks
 
 ### 3.3 ID System
 
-**Format**: Sequential flat IDs with visual hierarchy
+> **See [LLM-TASK-ID-SYSTEM-DESIGN-SPEC.md](LLM-TASK-ID-SYSTEM-DESIGN-SPEC.md) for complete ID system design.**
 
-**IDs**: `T001`, `T002`, `T003` (unchanged)
+**Summary** (authoritative details in ID spec):
 
-**Hierarchy**: Stored in `parentId` field, displayed via `--tree`
+| Aspect | Design | Rationale |
+|--------|--------|-----------|
+| **Format** | `T001`, `T002`, `T003` | Simple, bounded pattern for anti-hallucination |
+| **Hierarchy** | `parentId` field | Decouples identity from structure |
+| **Guarantees** | Unique, Immutable, Stable, Sequential, Referenceable, Recoverable | See ID spec Part 1.2 |
+| **NOT** | `T001.1.2` hierarchical IDs | Violates stability; breaks references on restructure |
 
-**Why NOT hierarchical IDs** (`T001.1.2`):
-- Breaks when restructuring
-- Complex to parse and validate
-- Migration nightmare when moving tasks
-- Flat IDs are stable references
-
+**Example**:
 ```json
 {
   "id": "T005",
@@ -176,7 +188,7 @@ Fix: Group related tasks under a new epic, or complete existing tasks
 }
 ```
 
-**Display**:
+**Display** (visual hierarchy without changing IDs):
 ```
 T001 [epic] Authentication System
 ├─ T002 [task] JWT middleware
@@ -185,9 +197,13 @@ T001 [epic] Authentication System
     └─ T005 [subtask] Add session timeout config
 ```
 
+**Key Insight**: Reparenting T005 to T002 changes `parentId`, NOT the ID itself. All external references (`"Fixes T005"`) remain valid.
+
 ---
 
 ## Part 4: Schema Changes
+
+> **Cross-reference**: [LLM-TASK-ID-SYSTEM-DESIGN-SPEC.md](LLM-TASK-ID-SYSTEM-DESIGN-SPEC.md) Part 4 contains the authoritative schema diff and validation rules.
 
 ### 4.1 New Fields (todo.schema.json v2.3.0)
 
@@ -437,7 +453,9 @@ Fix with: claude-todo validate --fix-orphans
 
 ## Part 7: Anti-Hallucination Guardrails
 
-### 7.1 Pre-Operation Validation
+> **Cross-reference**: [LLM-TASK-ID-SYSTEM-DESIGN-SPEC.md](LLM-TASK-ID-SYSTEM-DESIGN-SPEC.md) Part 5 covers ID-specific anti-hallucination design (bounded ID space, existence validation, agent-optimized errors).
+
+### 7.1 Pre-Operation Validation (Hierarchy-Specific)
 
 | Operation | Validations |
 |-----------|-------------|
@@ -518,7 +536,9 @@ Suggested: T002 - JWT middleware
 
 ## Part 9: Implementation Plan
 
-### Phase 1: Core Hierarchy (v0.15.0)
+> **Version Reconciliation**: Original targets were v0.15.0/v0.16.0, but v0.16.0 was released for version management features. Plan reconciled to v0.17.0/v0.18.0 to align with LLM-Agent-First implementation.
+
+### Phase 1: Core Hierarchy (v0.17.0)
 
 **Scope**: Schema, validation, basic commands
 
@@ -547,7 +567,7 @@ tests/integration/hierarchy.bats  # NEW: hierarchy integration tests
 docs/commands/hierarchy.md        # NEW: hierarchy documentation
 ```
 
-### Phase 2: Automation & UX (v0.16.0)
+### Phase 2: Automation & UX (v0.18.0)
 
 **Scope**: Auto-behaviors, advanced commands, polish
 
@@ -582,9 +602,9 @@ docs/guides/hierarchy-workflow.md
 
 ### Patch Releases
 
-**v0.15.1**: Bug fixes from Phase 1 feedback
-**v0.15.2**: Performance optimization for large hierarchies
-**v0.16.1**: Bug fixes from Phase 2 feedback
+**v0.17.1**: Bug fixes from Phase 1 feedback
+**v0.17.2**: Performance optimization for large hierarchies
+**v0.18.1**: Bug fixes from Phase 2 feedback
 
 ---
 
@@ -615,18 +635,36 @@ docs/guides/hierarchy-workflow.md
 
 ---
 
-## Part 11: Open Questions
+## Part 11: Design Decisions (Resolved)
 
-### Resolved
-- **Q**: Feature type needed? **A**: No, use labels
-- **Q**: Hierarchical IDs? **A**: No, flat IDs + parentId
-- **Q**: Max depth? **A**: 3 levels
-- **Q**: Max siblings? **A**: 7
+All major design questions have been resolved. See [LLM-TASK-ID-SYSTEM-DESIGN-SPEC.md](LLM-TASK-ID-SYSTEM-DESIGN-SPEC.md) for ID system rationale.
 
-### To Discuss
-1. **Hash IDs for multi-agent**: Defer to v1.0.0 or implement in Phase 2?
-2. **Cascade delete**: When deleting epic, delete children or orphan them?
-3. **Archive behavior**: Archive parent archives children?
+### ID System (RESOLVED - see ID spec)
+
+| Question | Decision | Rationale |
+|----------|----------|-----------|
+| Hierarchical IDs (`T001.1.2`)? | **NO** | Violates stability; breaks references on restructure |
+| Flat IDs (`T001`)? | **YES** | Simple, bounded, stable, LLM-friendly |
+| Hierarchy storage? | `parentId` field | Decouples identity from structure |
+| Hash IDs for multi-agent? | **DEFERRED to v1.0.0** | Flat sequential IDs sufficient with checksum-based coordination |
+
+### Hierarchy Features (RESOLVED)
+
+| Question | Decision | Rationale |
+|----------|----------|-----------|
+| Feature type needed? | **NO** | Use labels; avoids classification ambiguity |
+| Max depth? | **3 levels** | Cognitive limit; deeper = navigation overhead |
+| Max siblings? | **7 children** | 4-5 in working memory + buffer |
+| Story type needed? | **NO** | Scrum artifact; agents don't need personas |
+
+### Operational Behaviors (RESOLVED)
+
+| Question | Decision | Rationale |
+|----------|----------|-----------|
+| Cascade delete epic? | **NO** - orphan children | Preserve work; user decides cleanup |
+| Archive parent archives children? | **NO** - warn only | Children may still be relevant |
+| Auto-complete parent? | **YES** - configurable mode | `auto` / `suggest` / `off` in config |
+| Orphan handling? | **Detect + repair options** | `--unlink` (flatten) or `--delete` |
 
 ---
 
@@ -747,6 +785,26 @@ claude-todo promote TXXX
 # Validation
 claude-todo validate --fix-orphans [--unlink|--delete]
 ```
+
+---
+
+## Version History
+
+| Version | Date | Change |
+|---------|------|--------|
+| 1.0.0 | 2025-01-16 | Initial draft |
+| 1.1.0 | 2025-01-17 | APPROVED: Added ID spec references; resolved all open questions; updated status |
+| 1.2.0 | 2025-01-17 | Version reconciliation: v0.15.0/v0.16.0 → v0.17.0/v0.18.0 |
+
+---
+
+## Related Specifications
+
+| Document | Relationship |
+|----------|--------------|
+| **[LLM-TASK-ID-SYSTEM-DESIGN-SPEC.md](LLM-TASK-ID-SYSTEM-DESIGN-SPEC.md)** | **AUTHORITATIVE** for ID system design; this spec defers to it |
+| **[LLM-AGENT-FIRST-SPEC.md](LLM-AGENT-FIRST-SPEC.md)** | LLM-first design principles underlying both specs |
+| **[LLM-TASK-ID-SYSTEM-DESIGN-IMPLEMENTATION-REPORT.md](LLM-TASK-ID-SYSTEM-DESIGN-IMPLEMENTATION-REPORT.md)** | Tracks implementation status against all LLM specs |
 
 ---
 

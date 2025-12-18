@@ -5,6 +5,114 @@ All notable changes to the claude-todo system will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.18.0] - 2025-12-17
+
+### Added
+- **Configuration Management System**
+  - **`config` command** - Unified interface for viewing and modifying settings
+    - `config show [PATH]` - Display configuration (all, section, or specific value)
+    - `config set PATH VALUE` - Update configuration with validation
+    - `config get PATH` - Get single value (scripting-friendly)
+    - `config list` - List all keys with current values
+    - `config reset [SECTION]` - Reset to defaults
+    - `config edit` - Interactive numbered menu editor
+    - `config validate` - Validate config against schema
+  - **Global configuration support** (`~/.claude-todo/config.json`)
+    - User preferences shared across all projects
+    - CLI aliases, output settings, debug options
+    - New schema: `schemas/global-config.schema.json`
+  - **Configuration priority hierarchy**:
+    1. CLI flags (highest priority)
+    2. Environment variables (`CLAUDE_TODO_*`)
+    3. Project config (`.claude/todo-config.json`)
+    4. Global config (`~/.claude-todo/config.json`)
+    5. Built-in defaults (lowest priority)
+  - **Environment variable mapping** - Documented `CLAUDE_TODO_*` variables
+    - `CLAUDE_TODO_FORMAT` → `output.defaultFormat`
+    - `CLAUDE_TODO_OUTPUT_SHOW_COLOR` → `output.showColor`
+    - See `docs/commands/config.md` for full list
+  - **lib/config.sh** - Core configuration resolution library
+    - `get_config_value()` - Priority-aware value retrieval
+    - `set_config_value()` - Validated config updates
+    - `get_effective_config()` - Merged config with all layers
+  - **Interactive config editor** - Simple numbered menus for humans
+    - Category selection (Output, Archive, Validation, etc.)
+    - Type-aware input (boolean, enum, number)
+    - Dry-run preview before save
+
+- **Improved "Did you mean" suggestions**
+  - Multi-strategy matching for unknown commands:
+    - Substring match (original)
+    - Prefix match (e.g., "fo" → "focus")
+    - First letter match
+    - Common commands fallback
+
+### Changed
+- **install.sh** - Added config command registration and global config initialization
+- **Documentation updates**:
+  - `docs/commands/config.md` - Comprehensive command documentation
+  - `docs/reference/configuration.md` - Added Config Command section
+  - `docs/QUICK-REFERENCE.md` - Added CONFIGURATION section
+  - `docs/INDEX.md` - Added config command to Command Reference
+  - `templates/CLAUDE-INJECTION.md` - Added config commands to essentials
+
+## [0.17.0] - 2025-12-17
+
+### Added
+- **Task Hierarchy System (Phase 1)** - Epic → Task → Subtask relationships
+  - **Schema v2.3.0**: New task fields `type`, `parentId`, `size`
+    - `type`: Task classification (`epic`, `task`, `subtask`)
+    - `parentId`: Parent task reference (e.g., `T001`)
+    - `size`: Scope-based sizing (`small`, `medium`, `large`)
+  - **lib/hierarchy.sh**: Core hierarchy validation library
+    - `validate_parent_exists()`, `validate_max_depth()`, `validate_max_siblings()`
+    - `validate_parent_type()`, `validate_no_circular_reference()`
+    - `get_task_depth()`, `get_children()`, `get_descendants()`, `infer_task_type()`
+  - **Hierarchy constraints**:
+    - Maximum depth: 3 levels (epic → task → subtask)
+    - Maximum siblings: 7 children per parent
+    - Subtasks cannot have children
+  - **CLI flags for `add` command**:
+    - `--type TYPE` / `-t`: Task type (epic, task, subtask)
+    - `--parent ID`: Parent task ID for hierarchy
+    - `--size SIZE`: Scope-based size (small, medium, large)
+  - **CLI flags for `list` command**:
+    - `--type TYPE` / `-t`: Filter by task type
+    - `--parent ID`: Filter by parent ID
+    - `--children ID`: Show direct children of task
+    - `--tree`: Hierarchical tree view
+  - **Exit codes 10-15** for hierarchy errors:
+    - 10: `EXIT_PARENT_NOT_FOUND` - Parent task ID doesn't exist
+    - 11: `EXIT_DEPTH_EXCEEDED` - Exceeds max depth of 3 levels
+    - 12: `EXIT_SIBLING_LIMIT` - Parent has max 7 children
+    - 13: `EXIT_INVALID_PARENT_TYPE` - Subtask cannot be parent
+    - 14: `EXIT_CIRCULAR_REFERENCE` - Task cannot be its own ancestor
+    - 15: `EXIT_ORPHAN_DETECTED` - Parent no longer exists
+  - **Error codes in lib/error-json.sh**: E_PARENT_NOT_FOUND, E_DEPTH_EXCEEDED,
+    E_SIBLING_LIMIT, E_INVALID_PARENT_TYPE, E_CIRCULAR_REFERENCE, E_ORPHAN_DETECTED
+  - **docs/migration/v2.3.0-migration-guide.md**: Comprehensive migration guide
+
+- **LLM-Agent-First Improvements**
+  - **TTY auto-detection**: Format automatically resolved based on output context
+    - TTY output → text format (human-readable)
+    - Pipe/redirect → JSON format (machine-readable)
+    - Respects `CLAUDE_TODO_FORMAT` environment variable override
+  - **Exit codes 20-22** for concurrency errors:
+    - 20: `EXIT_CHECKSUM_MISMATCH`
+    - 21: `EXIT_CONCURRENT_MODIFICATION`
+    - 22: `EXIT_ID_COLLISION`
+
+### Changed
+- **Schema Version**: Bumped to 2.3.0
+- **Migration**: `migrate_todo_to_2_3_0()` added to lib/migrate.sh
+  - Converts `epic-*` labels to `type: "epic"`
+  - Converts `subtask-*` labels to `type: "subtask"`
+  - Adds `type`, `parentId`, `size` fields to all tasks
+- **Documentation updates**:
+  - `docs/commands/add.md`: Hierarchy options section
+  - `docs/commands/list.md`: Hierarchy filters section
+  - `docs/INDEX.md`: Updated hierarchy spec version, added v2.3.0 migration guide
+
 ## [0.16.0] - 2025-12-17
 
 ### Added

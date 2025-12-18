@@ -1,9 +1,9 @@
 {
   "$schema": "./schemas/todo.schema.json",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "project": {
     "name": "claude-todo",
-    "currentPhase": "core",
+    "currentPhase": "maintenance",
     "phases": {
       "setup": {
         "name": "Setup & Foundation",
@@ -25,8 +25,8 @@
         "order": 3,
         "name": "Testing & Validation",
         "description": "Comprehensive testing, validation, and quality assurance",
-        "status": "pending",
-        "startedAt": null,
+        "status": "completed",
+        "startedAt": "2025-12-17T21:11:48Z",
         "completedAt": null
       },
       "polish": {
@@ -47,22 +47,22 @@
       }
     }
   },
-  "lastUpdated": "2025-12-17T20:29:38Z",
+  "lastUpdated": "2025-12-18T00:21:32Z",
   "_meta": {
-    "checksum": "215281c9b97a7ee1",
+    "checksum": "3823517f10912c8d",
     "configVersion": "2.1.0",
     "lastSessionId": null,
     "activeSession": "session_20251216_213731_392dd7",
-    "lastModified": "2025-12-17T05:37:31Z",
+    "lastModified": "2025-12-17T22:43:02Z",
     "version": "2.2.0",
     "schemaVersion": "2.2.0"
   },
   "focus": {
-    "currentTask": null,
+    "currentTask": "T290",
     "blockedUntil": null,
     "sessionNote": "v0.14.0 Production Testing Complete - All 5 scenarios passed",
     "nextAction": "NEXT SESSION: 1) Implement T302 'migrate repair' command, 2) Use it to fix T308 (this project's phases), 3) Run T309 golden test regeneration, 4) Verify all 1015+ tests pass, 5) Commit and release v0.14.0 with repair feature",
-    "currentPhase": "core"
+    "currentPhase": "maintenance"
   },
   "tasks": [
     {
@@ -80,7 +80,10 @@
         "2025-12-09 01:15:23 UTC: Testing update script",
         "2025-12-09 01:17:53 UTC: Verified update command works through CLI"
       ],
-      "completedAt": "2025-12-12T19:41:28Z"
+      "completedAt": "2025-12-12T19:41:28Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T045",
@@ -93,7 +96,10 @@
         "documentation",
         "task-management"
       ],
-      "completedAt": "2025-12-12T16:56:59Z"
+      "completedAt": "2025-12-12T16:56:59Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T046",
@@ -106,7 +112,10 @@
         "documentation",
         "task-management"
       ],
-      "completedAt": "2025-12-12T16:57:33Z"
+      "completedAt": "2025-12-12T16:57:33Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T047",
@@ -119,7 +128,10 @@
         "installation",
         "task-management"
       ],
-      "completedAt": "2025-12-12T16:57:56Z"
+      "completedAt": "2025-12-12T16:57:56Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T048",
@@ -135,7 +147,10 @@
       "notes": [
         "2025-12-12 18:47:26 UTC: Updated via test"
       ],
-      "completedAt": "2025-12-12T18:47:26Z"
+      "completedAt": "2025-12-12T18:47:26Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T049",
@@ -149,7 +164,10 @@
         "feature",
         "release-050"
       ],
-      "completedAt": "2025-12-12T19:47:09Z"
+      "completedAt": "2025-12-12T19:47:09Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T050",
@@ -163,7 +181,10 @@
         "cli",
         "release-060"
       ],
-      "completedAt": "2025-12-12T19:47:10Z"
+      "completedAt": "2025-12-12T19:47:10Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T051",
@@ -177,7 +198,10 @@
         "plugins",
         "release-060"
       ],
-      "completedAt": "2025-12-12T19:47:10Z"
+      "completedAt": "2025-12-12T19:47:10Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T052",
@@ -191,7 +215,10 @@
         "cli",
         "release-060"
       ],
-      "completedAt": "2025-12-12T19:47:10Z"
+      "completedAt": "2025-12-12T19:47:10Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T053",
@@ -205,7 +232,10 @@
         "config",
         "release-060"
       ],
-      "completedAt": "2025-12-12T19:47:10Z"
+      "completedAt": "2025-12-12T19:47:10Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T054",
@@ -217,7 +247,10 @@
         "v0.6.0",
         "feature"
       ],
-      "completedAt": "2025-12-12T19:58:16Z"
+      "completedAt": "2025-12-12T19:58:16Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T055",
@@ -230,7 +263,10 @@
         "schema",
         "bug-fix"
       ],
-      "completedAt": "2025-12-12T19:59:37Z"
+      "completedAt": "2025-12-12T19:59:37Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T056",
@@ -242,7 +278,10 @@
         "v0.6.1",
         "documentation"
       ],
-      "completedAt": "2025-12-12T19:59:37Z"
+      "completedAt": "2025-12-12T19:59:37Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T057",
@@ -254,7 +293,10 @@
         "v0.6.1",
         "documentation"
       ],
-      "completedAt": "2025-12-12T19:59:37Z"
+      "completedAt": "2025-12-12T19:59:37Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T058",
@@ -272,7 +314,10 @@
       "completedAt": "2025-12-13T08:08:21Z",
       "notes": [
         "[COMPLETED 2025-12-13T08:08:21Z] Verified: Short flags implemented in list-tasks.sh (-s, -p, -l, -f, -c, -v, -q), add-task.sh (-s, -p, -d, -l, -P, -D, -q), export.sh (-f, -s, -p, -l, -m, -o, -d, -q). All documented in --help."
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T059",
@@ -293,7 +338,10 @@
           "content": "Verified implemented during v0.8.3 review"
         }
       ],
-      "completedAt": "2025-12-13T07:57:23Z"
+      "completedAt": "2025-12-13T07:57:23Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T060",
@@ -314,7 +362,10 @@
           "content": "Verified implemented during v0.8.3 review"
         }
       ],
-      "completedAt": "2025-12-13T07:57:23Z"
+      "completedAt": "2025-12-13T07:57:23Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T061",
@@ -335,7 +386,10 @@
           "content": "Verified implemented during v0.8.3 review"
         }
       ],
-      "completedAt": "2025-12-13T07:57:23Z"
+      "completedAt": "2025-12-13T07:57:23Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T062",
@@ -354,7 +408,10 @@
       "completedAt": "2025-12-13T08:08:22Z",
       "notes": [
         "[COMPLETED 2025-12-13T08:08:22Z] Verified: JSONL streaming output works. list-tasks.sh --format jsonl outputs each task as separate JSON line with _type field. Proper streaming format."
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T063",
@@ -375,7 +432,10 @@
           "content": "Verified implemented during v0.8.3 review"
         }
       ],
-      "completedAt": "2025-12-13T07:57:23Z"
+      "completedAt": "2025-12-13T07:57:23Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T064",
@@ -396,7 +456,10 @@
           "content": "Verified implemented during v0.8.3 review"
         }
       ],
-      "completedAt": "2025-12-13T07:57:23Z"
+      "completedAt": "2025-12-13T07:57:23Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T065",
@@ -417,7 +480,10 @@
           "content": "Verified implemented during v0.8.3 review"
         }
       ],
-      "completedAt": "2025-12-13T07:57:23Z"
+      "completedAt": "2025-12-13T07:57:23Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T066",
@@ -438,7 +504,10 @@
           "content": "Verified implemented during v0.8.3 review"
         }
       ],
-      "completedAt": "2025-12-13T07:57:23Z"
+      "completedAt": "2025-12-13T07:57:23Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T067",
@@ -459,7 +528,10 @@
           "content": "Verified implemented during v0.8.3 review"
         }
       ],
-      "completedAt": "2025-12-13T07:57:23Z"
+      "completedAt": "2025-12-13T07:57:23Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T068",
@@ -480,7 +552,10 @@
           "content": "Verified implemented during v0.8.3 review"
         }
       ],
-      "completedAt": "2025-12-13T07:57:23Z"
+      "completedAt": "2025-12-13T07:57:23Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T069",
@@ -499,7 +574,10 @@
         "2025-12-13 08:08:32 UTC: Phase 4 verification: No phases.sh script exists. Phases are displayed in 'dash' command but no dedicated management command. Needs implementation.",
         "[COMPLETED 2025-12-13T08:14:31Z] Implemented: scripts/phases.sh with list, show, stats subcommands. Supports text and JSON output. Shows progress bars, status counts, priority breakdown."
       ],
-      "completedAt": "2025-12-13T08:14:31Z"
+      "completedAt": "2025-12-13T08:14:31Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T070",
@@ -520,7 +598,10 @@
           "content": "Verified implemented during v0.8.3 review"
         }
       ],
-      "completedAt": "2025-12-13T07:57:23Z"
+      "completedAt": "2025-12-13T07:57:23Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T071",
@@ -541,7 +622,10 @@
           "content": "Verified implemented during v0.8.3 review"
         }
       ],
-      "completedAt": "2025-12-13T07:57:23Z"
+      "completedAt": "2025-12-13T07:57:23Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T072",
@@ -562,7 +646,10 @@
           "content": "Verified implemented during v0.8.3 review"
         }
       ],
-      "completedAt": "2025-12-13T07:57:23Z"
+      "completedAt": "2025-12-13T07:57:23Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T073",
@@ -580,7 +667,10 @@
       "completedAt": "2025-12-13T08:12:41Z",
       "notes": [
         "[COMPLETED 2025-12-13T08:12:41Z] Verified: find_critical_path() in lib/analysis.sh works correctly. Tested with 4-level dependency chain, returns proper path and length. Used by blockers-command.sh analyze."
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T074",
@@ -598,7 +688,10 @@
         "2025-12-13 08:08:33 UTC: Phase 4 verification: No cache files (.cache*) found, no caching code in lib/*.sh. Index caching not implemented.",
         "[COMPLETED 2025-12-13T08:15:43Z] Implemented: lib/cache.sh with checksum-based staleness detection, lazy regeneration, O(1) lookups. Cache files in .claude/.cache/ (labels.index.json, phases.index.json, checksum.txt, metadata.json). Tested with 68 labels and 2 phases."
       ],
-      "completedAt": "2025-12-13T08:15:43Z"
+      "completedAt": "2025-12-13T08:15:43Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T075",
@@ -616,7 +709,10 @@
       "completedAt": "2025-12-13T21:37:49Z",
       "notes": [
         "[COMPLETED 2025-12-13T21:37:49Z] Created docs/ci-cd-integration.md (858 lines) for GitHub Actions, GitLab CI, Jenkins, Azure DevOps. Updated docs/INDEX.md."
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T076",
@@ -634,7 +730,10 @@
       "completedAt": "2025-12-13T21:37:51Z",
       "notes": [
         "[COMPLETED 2025-12-13T21:37:51Z] Created benchmark-performance.sh, PERFORMANCE.md. Optimized list-tasks.sh with early filtering and pagination. Optimized stats.sh O(n²) to O(n)."
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T077",
@@ -651,7 +750,10 @@
       "completedAt": "2025-12-13T08:08:23Z",
       "notes": [
         "[COMPLETED 2025-12-13T08:08:23Z] Verified: 796 BATS tests across 25 test files. Coverage: unit tests for all commands, integration tests for workflow, circular-deps, error-recovery, archive-atomic."
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T078",
@@ -669,7 +771,10 @@
         "2025-12-13 08:08:34 UTC: Phase 4 verification: No golden files (*.expected, *.golden, *snapshot*) found in tests/. Golden file regression testing not implemented.",
         "[COMPLETED 2025-12-13T08:17:20Z] Implemented: tests/golden/ with 16 golden file tests covering list, stats, labels, phases, dash, deps, blockers, export commands. UPDATE_GOLDEN=1 workflow. Timestamp/checksum normalization. All tests passing."
       ],
-      "completedAt": "2025-12-13T08:17:20Z"
+      "completedAt": "2025-12-13T08:17:20Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T132",
@@ -692,7 +797,10 @@
         }
       ],
       "phase": "core",
-      "completedAt": "2025-12-13T19:28:24Z"
+      "completedAt": "2025-12-13T19:28:24Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T133",
@@ -712,7 +820,10 @@
           "content": "Verified fixed during v0.8.3 comprehensive review"
         }
       ],
-      "completedAt": "2025-12-13T07:58:27Z"
+      "completedAt": "2025-12-13T07:58:27Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T134",
@@ -732,7 +843,10 @@
           "content": "Fixed and verified during v0.8.3 comprehensive fix"
         }
       ],
-      "completedAt": "2025-12-13T07:57:23Z"
+      "completedAt": "2025-12-13T07:57:23Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T135",
@@ -749,7 +863,10 @@
       "completedAt": "2025-12-13T08:12:41Z",
       "notes": [
         "[COMPLETED 2025-12-13T08:12:41Z] Verified: Archive correctly cleans orphaned dependencies. Tested: T001 archived, T002's depends changed from [T001] to null, T003's from [T001,T002] to [T002]. Code in archive.sh lines 249-258."
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T136",
@@ -769,7 +886,10 @@
           "content": "Verified fixed during v0.8.3 comprehensive review"
         }
       ],
-      "completedAt": "2025-12-13T07:58:27Z"
+      "completedAt": "2025-12-13T07:58:27Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T137",
@@ -789,7 +909,10 @@
           "content": "Verified fixed during v0.8.3 comprehensive review"
         }
       ],
-      "completedAt": "2025-12-13T07:58:27Z"
+      "completedAt": "2025-12-13T07:58:27Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T138",
@@ -809,7 +932,10 @@
           "content": "Verified fixed during v0.8.3 comprehensive review"
         }
       ],
-      "completedAt": "2025-12-13T07:58:27Z"
+      "completedAt": "2025-12-13T07:58:27Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T139",
@@ -829,7 +955,10 @@
           "content": "Fixed and verified during v0.8.3 comprehensive fix"
         }
       ],
-      "completedAt": "2025-12-13T07:57:23Z"
+      "completedAt": "2025-12-13T07:57:23Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T140",
@@ -849,7 +978,10 @@
           "content": "Fixed and verified during v0.8.3 comprehensive fix"
         }
       ],
-      "completedAt": "2025-12-13T07:57:23Z"
+      "completedAt": "2025-12-13T07:57:23Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T141",
@@ -869,7 +1001,10 @@
           "content": "Verified fixed during v0.8.3 comprehensive review"
         }
       ],
-      "completedAt": "2025-12-13T07:58:27Z"
+      "completedAt": "2025-12-13T07:58:27Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T142",
@@ -889,7 +1024,10 @@
           "content": "Verified fixed during v0.8.3 comprehensive review"
         }
       ],
-      "completedAt": "2025-12-13T07:58:27Z"
+      "completedAt": "2025-12-13T07:58:27Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T143",
@@ -909,7 +1047,10 @@
           "content": "Fixed and verified during v0.8.3 comprehensive fix"
         }
       ],
-      "completedAt": "2025-12-13T07:57:23Z"
+      "completedAt": "2025-12-13T07:57:23Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T144",
@@ -926,7 +1067,10 @@
         "validation"
       ],
       "phase": "core",
-      "completedAt": "2025-12-13T19:28:24Z"
+      "completedAt": "2025-12-13T19:28:24Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T145",
@@ -948,7 +1092,10 @@
         "2025-12-13 18:56:08 UTC: Investigation complete. Tests are passing. Implementation was fixed in commit fc0fd7e (v0.8.3). Archive script correctly implements orphaned dependency cleanup at lines 249-259. All 24 unit tests and 14 integration tests passing.",
         "[COMPLETED 2025-12-13T18:56:45Z] Tests already passing. Implementation fixed in commit fc0fd7e (v0.8.3). Archive script correctly cleans orphaned dependencies at lines 249-259. Manual verification confirms: T001/T002 archived → T003/T004 dependencies removed, T005 partial cleanup works correctly. All 24 unit + 14 integration tests passing."
       ],
-      "completedAt": "2025-12-13T18:56:45Z"
+      "completedAt": "2025-12-13T18:56:45Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T146",
@@ -969,7 +1116,10 @@
       "notes": [
         "2025-12-13 18:42:49 UTC: Reference docs: claudedocs/FILE-LOCKING-ANALYSIS.md, claudedocs/file-locking-quick-reference.md"
       ],
-      "completedAt": "2025-12-13T19:28:24Z"
+      "completedAt": "2025-12-13T19:28:24Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T147",
@@ -986,7 +1136,10 @@
         "v0.9.6"
       ],
       "phase": "core",
-      "completedAt": "2025-12-13T19:28:24Z"
+      "completedAt": "2025-12-13T19:28:24Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T148",
@@ -998,7 +1151,10 @@
       "completedAt": "2025-12-13T18:50:59Z",
       "notes": [
         "[COMPLETED 2025-12-13T18:50:59Z] Test task - cleaning up"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T149",
@@ -1014,7 +1170,10 @@
       "completedAt": "2025-12-13T16:12:12Z",
       "notes": [
         "[COMPLETED 2025-12-13T16:12:12Z] Test completion"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T150",
@@ -1030,7 +1189,10 @@
       "completedAt": "2025-12-13T18:50:59Z",
       "notes": [
         "[COMPLETED 2025-12-13T18:50:59Z] Test task - cleaning up"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T151",
@@ -1042,7 +1204,10 @@
       "completedAt": "2025-12-13T18:50:59Z",
       "notes": [
         "[COMPLETED 2025-12-13T18:50:59Z] Test task - cleaning up"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T152",
@@ -1060,7 +1225,10 @@
       "completedAt": "2025-12-13T18:40:11Z",
       "notes": [
         "[COMPLETED 2025-12-13T18:40:11Z] Implemented rotation logic in complete-task.sh (lines 185-203). MAX_COMPLETE_BACKUPS=10 with mtime-based sorting. Cross-platform support for GNU find and macOS stat. Commit: ebdf524"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T153",
@@ -1078,7 +1246,10 @@
       "completedAt": "2025-12-13T18:40:12Z",
       "notes": [
         "[COMPLETED 2025-12-13T18:40:12Z] Changed BACKUP_DIR from '.claude/.backups' to '.backups' (relative path). Fixes nested directory bug. Updated file-ops.sh line 24. Cleaned up legacy .claude/.claude/ directory. Commit: ebdf524"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T154",
@@ -1096,7 +1267,10 @@
       "completedAt": "2025-12-13T18:40:14Z",
       "notes": [
         "[COMPLETED 2025-12-13T18:40:14Z] Added safe_find_sorted_by_mtime() function to platform-compat.sh (lines 309-337). Updated file-ops.sh rotate_backups(), restore_backup(), list_backups() to use mtime sorting. Cross-platform: GNU find -printf + BSD stat fallback. Commit: ebdf524"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T155",
@@ -1114,7 +1288,10 @@
       "completedAt": "2025-12-13T18:40:15Z",
       "notes": [
         "[COMPLETED 2025-12-13T18:40:15Z] Created comprehensive docs/commands/restore.md (937 lines). Includes: full command reference, step-by-step procedures, recovery scenarios, troubleshooting, best practices. Modeled after backup.md. Commit: ebdf524"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T156",
@@ -1137,7 +1314,10 @@
       "completedAt": "2025-12-13T18:40:26Z",
       "notes": [
         "[COMPLETED 2025-12-13T18:40:26Z] Updated docs/QUICK-REFERENCE.md with restore commands. Added: claude-todo restore <backup-path>, --file, --force options. Updated docs/INDEX.md with restore.md reference. Commit: ebdf524"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T157",
@@ -1159,7 +1339,10 @@
       "completedAt": "2025-12-13T18:40:27Z",
       "notes": [
         "[COMPLETED 2025-12-13T18:40:27Z] All tests verified: 1) Syntax validation passed (5 files), 2) Rotation working (log shows 'Rotating N old backup(s)'), 3) No nested directories after cleanup, 4) safe_find_sorted_by_mtime exists and exported, 5) BATS 96.6% pass rate (27 pre-existing failures unrelated to backup changes). Commit: ebdf524"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T158",
@@ -1180,7 +1363,10 @@
       "completedAt": "2025-12-13T18:40:28Z",
       "notes": [
         "[COMPLETED 2025-12-13T18:40:28Z] VERSION bumped 0.9.4 → 0.9.5. CHANGELOG.md updated with: Fixed complete-task.sh rotation, Fixed file-ops.sh path bug, Fixed safe_find edge cases, Added docs/commands/restore.md. Commit: ebdf524"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T159",
@@ -1197,7 +1383,10 @@
         "v0.9.6"
       ],
       "phase": "core",
-      "completedAt": "2025-12-13T19:28:24Z"
+      "completedAt": "2025-12-13T19:28:24Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T160",
@@ -1218,7 +1407,10 @@
         "2025-12-13 19:04:44 UTC: Investigation: All validation.bats tests passing (28/28 ok). Need to identify which specific tests are actually failing per task description.",
         "2025-12-13 19:06:38 UTC: FIXED: Added schema version validation (check 7.5) and required field validation (check 7.6) to validate.sh. Both failing tests now pass. No regressions in existing tests."
       ],
-      "completedAt": "2025-12-13T19:28:24Z"
+      "completedAt": "2025-12-13T19:28:24Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T161",
@@ -1237,7 +1429,10 @@
         "2025-12-13 18:42:51 UTC: Reference docs: claudedocs/BACKUP-ARCHITECTURE.md, claudedocs/BACKUP-SYSTEM-STATUS.md",
         "[COMPLETED 2025-12-13T21:37:48Z] Created lib/backup.sh (872 lines) with 10 public functions. Added safe_checksum() to platform-compat.sh. All tests passing."
       ],
-      "completedAt": "2025-12-13T21:37:48Z"
+      "completedAt": "2025-12-13T21:37:48Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T162",
@@ -1258,7 +1453,10 @@
       "completedAt": "2025-12-13T22:38:15Z",
       "notes": [
         "[COMPLETED 2025-12-13T22:38:15Z] Integrated complete-task.sh, archive.sh, migrate.sh, init.sh with lib/backup.sh. Fallback patterns for backward compatibility. Wave 2 validation passed."
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T163",
@@ -1279,7 +1477,10 @@
       "completedAt": "2025-12-13T22:38:17Z",
       "notes": [
         "[COMPLETED 2025-12-13T22:38:17Z] Created .claude/backups/{snapshot,safety,incremental,archive,migration}/ taxonomy. Templates and .gitignore updated. Wave 2 validation passed."
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T164",
@@ -1300,7 +1501,10 @@
       "completedAt": "2025-12-13T22:37:49Z",
       "notes": [
         "[COMPLETED 2025-12-13T22:37:49Z] Implemented migrate-backups.sh with detection, dry-run, migration, cleanup. 15/15 unit tests passing. CLI integrated. Code reviewed."
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T165",
@@ -1322,7 +1526,10 @@
       "completedAt": "2025-12-13T22:37:51Z",
       "notes": [
         "[COMPLETED 2025-12-13T22:37:51Z] Extended config schema with backup section (7 properties), updated template, comprehensive documentation. All validation tests passing."
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T166",
@@ -1340,7 +1547,10 @@
       "completedAt": "2025-12-13T19:38:30Z",
       "notes": [
         "[COMPLETED 2025-12-13T19:38:30Z] Implemented master dependency check in install.sh with validate_all_dependencies function"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T167",
@@ -1358,7 +1568,10 @@
       "completedAt": "2025-12-13T19:38:31Z",
       "notes": [
         "[COMPLETED 2025-12-13T19:38:31Z] Added jq check to export.sh and migrate.sh with platform-specific install hints"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T168",
@@ -1375,7 +1588,10 @@
       "completedAt": "2025-12-13T19:38:33Z",
       "notes": [
         "[COMPLETED 2025-12-13T19:38:33Z] Added bash version check to platform-compat.sh - requires bash 4.0+"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T169",
@@ -1401,7 +1617,10 @@
       "completedAt": "2025-12-13T19:38:34Z",
       "notes": [
         "[COMPLETED 2025-12-13T19:38:34Z] Implemented --install-deps auto-installer with platform detection and package manager support"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T170",
@@ -1418,7 +1637,10 @@
       "completedAt": "2025-12-13T19:38:35Z",
       "notes": [
         "[COMPLETED 2025-12-13T19:38:35Z] Added sha256sum/shasum cross-platform check with fallback support"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T171",
@@ -1435,7 +1657,10 @@
       "completedAt": "2025-12-13T19:38:44Z",
       "notes": [
         "[COMPLETED 2025-12-13T19:38:44Z] Added tar check to dependency-check.sh module"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T172",
@@ -1452,7 +1677,10 @@
       "completedAt": "2025-12-13T19:38:46Z",
       "notes": [
         "[COMPLETED 2025-12-13T19:38:46Z] Added flock check to dependency-check.sh module with macOS brew hint"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T173",
@@ -1469,7 +1697,10 @@
       "completedAt": "2025-12-13T19:38:47Z",
       "notes": [
         "[COMPLETED 2025-12-13T19:38:47Z] Added numfmt/gnumfmt cross-platform check to dependency-check.sh"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T174",
@@ -1486,7 +1717,10 @@
       "completedAt": "2025-12-13T19:38:49Z",
       "notes": [
         "[COMPLETED 2025-12-13T19:38:49Z] Added date/find POSIX tools check to dependency-check.sh module"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T175",
@@ -1505,7 +1739,10 @@
       "completedAt": "2025-12-13T19:53:06Z",
       "notes": [
         "[COMPLETED 2025-12-13T19:53:06Z] Implemented character count display in title validation error. Shows format: Title too long (145/120 characters). Validated and tested."
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T176",
@@ -1524,7 +1761,10 @@
       "completedAt": "2025-12-13T19:53:08Z",
       "notes": [
         "[COMPLETED 2025-12-13T19:53:08Z] Documented --notes and --skip-notes requirements in complete-task.sh help, QUICK-REFERENCE.md, and TODO_Task_Management.md. Added Complete Options table."
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T177",
@@ -1544,7 +1784,10 @@
       "completedAt": "2025-12-13T19:53:09Z",
       "notes": [
         "[COMPLETED 2025-12-13T19:53:09Z] Added --add-phase flag to add-task.sh and update-task.sh. Phase validation now lists valid phases on error. add_new_phase() creates phases on-the-fly with auto-generated names."
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T178",
@@ -1563,7 +1806,10 @@
       "completedAt": "2025-12-14T01:02:57Z",
       "notes": [
         "[COMPLETED 2025-12-14T01:02:57Z] Implemented --archived flag for list command. Shows archived tasks from todo-archive.json with [ARCHIVED] indicator. Supports all existing filters (status, priority, label, format). Tested with text, JSON, and compact output formats."
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T179",
@@ -1582,7 +1828,10 @@
       "completedAt": "2025-12-14T01:05:16Z",
       "notes": [
         "[COMPLETED 2025-12-14T01:05:16Z] Implemented log list and log show subcommands with filtering (action, task-id, actor, since), pagination (limit), and JSON/text output formats. Commands work correctly on properly migrated log entries."
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T180",
@@ -1601,7 +1850,10 @@
       "completedAt": "2025-12-14T01:25:44Z",
       "notes": [
         "[COMPLETED 2025-12-14T01:25:44Z] Implemented log schema migration: operation→action, user→actor, task_id→taskId. Fixed ID format migration. 9/9 unit tests pass."
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T181",
@@ -1620,7 +1872,10 @@
       "completedAt": "2025-12-14T01:20:02Z",
       "notes": [
         "[COMPLETED 2025-12-14T01:20:02Z] Implemented history command with completion timeline, phase/label analytics, velocity metrics, and flexible date ranges. Supports text/JSON output formats."
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T182",
@@ -1639,7 +1894,10 @@
       "completedAt": "2025-12-14T01:25:49Z",
       "notes": [
         "[COMPLETED 2025-12-14T01:25:49Z] Enhanced dashboard with Archive section and Recent Completions. Shows today/week/month completion counts. JSON output includes archive+completions."
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T183",
@@ -1656,7 +1914,10 @@
       "completedAt": "2025-12-14T04:42:54Z",
       "notes": [
         "[COMPLETED 2025-12-14T04:42:54Z] Completed comprehensive web UI specification including:\n- Information architecture (7 primary routes)\n- Kanban board design with 5 columns (weaving metaphor)\n- Thread card component specification\n- Dashboard layout with 6 widgets\n- Pattern view (dependency graph) design\n- Fabric view (archive timeline) design\n- Spool view (backlog prioritization)\n- Sessions view (history and analytics)\n- Visual design system (colors, typography, icons, spacing)\n- Responsive design strategy (mobile/tablet/desktop)\n- CLI-web sync architecture with conflict resolution\n- WCAG 2.1 AA accessibility requirements\n- Performance targets and optimization strategies\n- Technology stack recommendations\n- 6-phase implementation roadmap\n- ASCII wireframes for all major views\n- Complete component hierarchy\n- API endpoint specifications\n\nDeliverable: docs/nexus-loom/WEB-UI-SPEC.md (50,119 tokens)"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T184",
@@ -1675,7 +1936,10 @@
         "2025-12-15 04:33:45 UTC: DOCS: claudedocs/CONSENSUS-FRAMEWORK-SPEC.md contains full framework design, evidence standards, artifact templates. Read this first when resuming.",
         "2025-12-15 05:33:02 UTC: Phase 1 complete. Evidence baseline: claudedocs/consensus/phase1-evidence.md"
       ],
-      "completedAt": "2025-12-15T05:33:02Z"
+      "completedAt": "2025-12-15T05:33:02Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T185",
@@ -1697,7 +1961,10 @@
         "2025-12-15 04:34:05 UTC: TARGET DOCS TO READ: docs/TODO_Task_Management.md (primary LLM instructions), docs/usage.md (user-facing), CLAUDE.md (project injected). Cross-reference for contradictions.",
         "2025-12-15 05:32:48 UTC: Indexed 44 docs, ~545KB, 23,970 lines"
       ],
-      "completedAt": "2025-12-15T05:32:48Z"
+      "completedAt": "2025-12-15T05:32:48Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T186",
@@ -1719,7 +1986,10 @@
         "2025-12-15 04:34:07 UTC: TARGET CODE: lib/file-ops.sh (atomic writes, locking), lib/logging.sh, lib/validation.sh, lib/backup.sh, lib/output-format.sh, scripts/*.sh. Use Serena MCP for symbol analysis.",
         "2025-12-15 05:32:51 UTC: 12 lib files (221KB), 25 scripts (397KB), 20,695 LOC"
       ],
-      "completedAt": "2025-12-15T05:32:51Z"
+      "completedAt": "2025-12-15T05:32:51Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T187",
@@ -1740,7 +2010,10 @@
       "notes": [
         "2025-12-15 05:32:52 UTC: TEST: jq limit PASS, exists MISSING, log rotate NOT INTEGRATED"
       ],
-      "completedAt": "2025-12-15T05:32:53Z"
+      "completedAt": "2025-12-15T05:32:53Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T188",
@@ -1761,7 +2034,10 @@
       "notes": [
         "2025-12-15 05:32:54 UTC: METRIC: 125 tasks @ 845 bytes/task, 58.8% overhead"
       ],
-      "completedAt": "2025-12-15T05:32:54Z"
+      "completedAt": "2025-12-15T05:32:54Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T189",
@@ -1787,7 +2063,10 @@
         "2025-12-15 05:34:22 UTC: Phase 2 starting: spawning 5 worker agents in parallel",
         "2025-12-15 05:42:34 UTC: Phase 2 COMPLETE. 5 agents finished: T190 Technical, T191 Design, T192 Docs, T193 Impl, T194 Challenge. Artifacts: claudedocs/consensus/agent-*-findings.md"
       ],
-      "completedAt": "2025-12-15T05:42:35Z"
+      "completedAt": "2025-12-15T05:42:35Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T190",
@@ -1809,7 +2088,10 @@
         "2025-12-15 04:34:09 UTC: CLAIMS OWNED: T205 (jq bug), T206 (8M projection), T207 (59% overhead). Evidence in claudedocs/CONSENSUS-FRAMEWORK-SPEC.md Evidence Standards section.",
         "2025-12-15 05:41:37 UTC: COMPLETE: agent-technical-findings.md generated. Claims: T205=REFUTED (jq uses --argjson), T206=REFUTED (realistic 940K tokens), T207=CONTESTED (40.4% vs 59%)"
       ],
-      "completedAt": "2025-12-15T05:41:49Z"
+      "completedAt": "2025-12-15T05:41:49Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T191",
@@ -1831,7 +2113,10 @@
         "2025-12-15 04:34:10 UTC: CLAIMS OWNED: T208 (23 commands), T209 (TodoWrite simpler), T212 (auto-archive), T213 (exists cmd). Compare with ~/.claude/TODO_Task_Management.md command reference.",
         "2025-12-15 05:41:38 UTC: COMPLETE: agent-design-findings.md generated. Claims: T208=REFUTED (23 < git/docker/kubectl), T209=CONTESTED (complementary not competitive)"
       ],
-      "completedAt": "2025-12-15T05:41:50Z"
+      "completedAt": "2025-12-15T05:41:50Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T192",
@@ -1853,7 +2138,10 @@
         "2025-12-15 04:34:08 UTC: REVIEW: docs/TODO_Task_Management.md lines 5-13 (Anti-Hallucination Rules), CLAUDE.md Task Management section. Evaluate CLI-only rule effectiveness and JSON read safety.",
         "2025-12-15 05:41:40 UTC: COMPLETE: agent-docs-findings.md generated. Claims: T210=CONTESTED (prevents corruption not semantic), T211=REFUTED (multi-writer staleness risk)"
       ],
-      "completedAt": "2025-12-15T05:41:50Z"
+      "completedAt": "2025-12-15T05:41:50Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T193",
@@ -1876,7 +2164,10 @@
         "2025-12-15 05:41:41 UTC: COMPLETE: agent-impl-findings.md generated. Claims: T212=CONTESTED (config schema bug), T213=PROVEN (command missing), T214=PROVEN (orphaned code)",
         "[COMPLETED 2025-12-16T01:54:12Z] Completed via TodoWrite session sync"
       ],
-      "completedAt": "2025-12-16T01:54:12Z"
+      "completedAt": "2025-12-16T01:54:12Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T194",
@@ -1898,7 +2189,10 @@
       "notes": [
         "2025-12-15 05:41:42 UTC: COMPLETE: agent-challenge-findings.md (628 lines). Top 5 challenges: T205 shell limits, T212 config gap, T206 tokens/bytes, methodology bias, T207 cherry-picking"
       ],
-      "completedAt": "2025-12-15T05:41:50Z"
+      "completedAt": "2025-12-15T05:41:50Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T195",
@@ -1926,7 +2220,10 @@
         "2025-12-15 16:03:17 UTC: Starting Phase 3: Spawning Synthesis Agent to consolidate 5 worker outputs",
         "2025-12-15 16:09:38 UTC: Phase 3 complete. Outputs: synthesis-conflicts.md, synthesis-voting-matrix.md. HITL gate required for 3 contested issues."
       ],
-      "completedAt": "2025-12-15T16:09:40Z"
+      "completedAt": "2025-12-15T16:09:40Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T196",
@@ -1947,7 +2244,10 @@
       "notes": [
         "2025-12-15 16:09:26 UTC: DOC: claudedocs/consensus/synthesis-voting-matrix.md - All agents presented findings"
       ],
-      "completedAt": "2025-12-15T16:09:26Z"
+      "completedAt": "2025-12-15T16:09:26Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T197",
@@ -1968,7 +2268,10 @@
       "notes": [
         "2025-12-15 16:09:28 UTC: DOC: claudedocs/consensus/synthesis-conflicts.md - Cross-examination complete"
       ],
-      "completedAt": "2025-12-15T16:09:28Z"
+      "completedAt": "2025-12-15T16:09:28Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T198",
@@ -1989,7 +2292,10 @@
       "notes": [
         "2025-12-15 16:09:37 UTC: VOTING COMPLETE - PROVEN: T213,T214 | REFUTED: T205,T208,T211 | CONTESTED: T207,T209,T210,T212 | UNCLEAR: T206"
       ],
-      "completedAt": "2025-12-15T16:09:37Z"
+      "completedAt": "2025-12-15T16:09:37Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T199",
@@ -2014,7 +2320,10 @@
         "2025-12-15 16:40:16 UTC: Starting Phase 4: Generating final artifacts with HITL decisions incorporated",
         "2025-12-15 16:50:12 UTC: Phase 4 complete. All artifacts generated: CONSENSUS-REPORT.md, 2 feature specs, doc-corrections.md, evidence-dossiers.md"
       ],
-      "completedAt": "2025-12-15T16:50:12Z"
+      "completedAt": "2025-12-15T16:50:12Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T200",
@@ -2035,7 +2344,10 @@
       "notes": [
         "2025-12-15 16:49:57 UTC: DOC: claudedocs/consensus/CONSENSUS-REPORT.md"
       ],
-      "completedAt": "2025-12-15T16:49:57Z"
+      "completedAt": "2025-12-15T16:49:57Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T201",
@@ -2056,7 +2368,10 @@
       "notes": [
         "2025-12-15 16:49:59 UTC: DOC: feature-spec-exists-command.md, feature-spec-log-rotation.md"
       ],
-      "completedAt": "2025-12-15T16:49:59Z"
+      "completedAt": "2025-12-15T16:49:59Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T202",
@@ -2077,7 +2392,10 @@
       "notes": [
         "2025-12-15 16:50:08 UTC: DOC: claudedocs/consensus/doc-corrections.md"
       ],
-      "completedAt": "2025-12-15T16:50:08Z"
+      "completedAt": "2025-12-15T16:50:08Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T203",
@@ -2098,12 +2416,15 @@
       "notes": [
         "2025-12-15 16:50:10 UTC: DOC: claudedocs/consensus/evidence-dossiers.md"
       ],
-      "completedAt": "2025-12-15T16:50:10Z"
+      "completedAt": "2025-12-15T16:50:10Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T204",
       "title": "FEATURE: Multi-Phase Consensus Research Framework Plugin",
-      "status": "pending",
+      "status": "done",
       "priority": "high",
       "createdAt": "2025-12-15T04:30:21Z",
       "phase": "setup",
@@ -2121,11 +2442,16 @@
         "2025-12-15 05:01:44 UTC: MISSING: Configuration schema, Parameterized prompt templates, State management, Output JSON schemas, Integration specs, Error recovery, Invocation modes - need abstraction for reusability",
         "2025-12-15 05:03:32 UTC: SUBTASKS CREATED: T215 (Config Schema), T216 (Prompt Templates), T217 (State Management), T218 (Output Schemas), T219 (Integration Points), T220 (Error Recovery), T221 (Invocation Modes)",
         "2025-12-15 16:53:33 UTC: DEFERRED: Plugin implementation after core fixes. Depends on T213, T214 implementation first. SPEC: CONSENSUS-FRAMEWORK-SPEC.md (Future Plugin Design section)",
-        "2025-12-16 01:54:13 UTC: Progressed during TodoWrite session"
+        "2025-12-16 01:54:13 UTC: Progressed during TodoWrite session",
+        "[COMPLETED 2025-12-17T22:42:10Z] Completed via TodoWrite session sync"
       ],
       "files": [
         "claudedocs/CONSENSUS-FRAMEWORK-SPEC.md"
-      ]
+      ],
+      "completedAt": "2025-12-17T22:42:10Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T205",
@@ -2144,7 +2470,10 @@
         "2025-12-15 16:53:18 UTC: VERDICT: REFUTED (5/5) - jq uses stdin, no arg limit. DOC: evidence-dossiers.md#t205",
         "2025-12-15 18:48:46 UTC: VERDICT: REFUTED - See CONSENSUS-REPORT.md for evidence"
       ],
-      "completedAt": "2025-12-15T18:48:46Z"
+      "completedAt": "2025-12-15T18:48:46Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T206",
@@ -2163,7 +2492,10 @@
         "2025-12-15 16:40:03 UTC: HITL DECISION: REFUTED - Storage interpretation applies. Growth is ~12KB/year, not 8M tokens.",
         "2025-12-15 18:48:46 UTC: VERDICT: REFUTED - See CONSENSUS-REPORT.md for evidence"
       ],
-      "completedAt": "2025-12-15T18:48:46Z"
+      "completedAt": "2025-12-15T18:48:46Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T207",
@@ -2182,7 +2514,10 @@
         "2025-12-15 16:40:07 UTC: HITL DECISION: REFUTED - 59% overhead acceptable for feature set provided.",
         "2025-12-15 18:48:46 UTC: VERDICT: REFUTED - See CONSENSUS-REPORT.md for evidence"
       ],
-      "completedAt": "2025-12-15T18:48:46Z"
+      "completedAt": "2025-12-15T18:48:46Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T208",
@@ -2201,7 +2536,10 @@
         "2025-12-15 16:53:18 UTC: VERDICT: REFUTED - 23 commands appropriate for feature set. DOC: evidence-dossiers.md#t208",
         "2025-12-15 18:48:47 UTC: VERDICT: REFUTED - See CONSENSUS-REPORT.md for evidence"
       ],
-      "completedAt": "2025-12-15T18:48:47Z"
+      "completedAt": "2025-12-15T18:48:47Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T209",
@@ -2220,7 +2558,10 @@
         "2025-12-15 16:53:18 UTC: VERDICT: CONTESTED - Context-dependent comparison. DOC: evidence-dossiers.md#t209",
         "2025-12-15 18:38:48 UTC: VERDICT: CONTESTED - Systems are complementary (TodoWrite for ephemeral session tasks, claude-todo for project management). No action needed."
       ],
-      "completedAt": "2025-12-15T18:38:48Z"
+      "completedAt": "2025-12-15T18:38:48Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T210",
@@ -2239,7 +2580,10 @@
         "2025-12-15 16:40:05 UTC: HITL DECISION: CONTESTED - Data integrity placement OK. ACTION: Verify anti-hallucination section has correct placement.",
         "[COMPLETED 2025-12-15T18:38:28Z] Renamed 'Anti-Hallucination Rules' to 'Data Integrity Rules' in docs/TODO_Task_Management.md and ~/.claude/TODO_Task_Management.md. Updated rationale to explain staleness prevention in multi-writer environment. Updated CLAUDE-INJECTION.md template."
       ],
-      "completedAt": "2025-12-15T18:38:28Z"
+      "completedAt": "2025-12-15T18:38:28Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T211",
@@ -2258,7 +2602,10 @@
         "2025-12-15 16:53:18 UTC: VERDICT: REFUTED - JSON reads already allowed per docs. DOC: evidence-dossiers.md#t211",
         "2025-12-15 18:48:47 UTC: VERDICT: REFUTED - See CONSENSUS-REPORT.md for evidence"
       ],
-      "completedAt": "2025-12-15T18:48:47Z"
+      "completedAt": "2025-12-15T18:48:47Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T212",
@@ -2277,7 +2624,10 @@
         "2025-12-15 16:53:19 UTC: VERDICT: CONTESTED - Feature exists but config schema bug (wrong field name). DOC: evidence-dossiers.md#t212",
         "[COMPLETED 2025-12-15T18:36:59Z] Fixed auto-archive schema mismatch: added autoArchiveOnComplete to schema/template/docs. Code now matches schema convention (camelCase)."
       ],
-      "completedAt": "2025-12-15T18:36:59Z"
+      "completedAt": "2025-12-15T18:36:59Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T213",
@@ -2297,7 +2647,10 @@
         "2025-12-15 17:19:28 UTC: IMPLEMENTED: scripts/exists.sh + install.sh updates. All tests pass: basic, verbose, quiet, json, archive search modes.",
         "[COMPLETED 2025-12-15T17:19:39Z] Implemented exists command per feature spec. All tests pass."
       ],
-      "completedAt": "2025-12-15T17:19:39Z"
+      "completedAt": "2025-12-15T17:19:39Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T214",
@@ -2317,7 +2670,10 @@
         "2025-12-15 17:29:12 UTC: IMPLEMENTED: session.sh integration + log rotate subcommand. Auto-rotation on session end, manual via 'claude-todo log rotate'",
         "[COMPLETED 2025-12-15T17:29:13Z] Log rotation integrated per feature spec. Session.sh calls check_and_rotate_log, manual command via log rotate."
       ],
-      "completedAt": "2025-12-15T17:29:13Z"
+      "completedAt": "2025-12-15T17:29:13Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T215",
@@ -2340,7 +2696,10 @@
       ],
       "files": [
         "claudedocs/CONSENSUS-FRAMEWORK-SPEC.md"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T216",
@@ -2363,7 +2722,10 @@
       ],
       "files": [
         "claudedocs/CONSENSUS-FRAMEWORK-SPEC.md"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T217",
@@ -2386,7 +2748,10 @@
       ],
       "files": [
         "claudedocs/CONSENSUS-FRAMEWORK-SPEC.md"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T218",
@@ -2409,7 +2774,10 @@
       ],
       "files": [
         "claudedocs/CONSENSUS-FRAMEWORK-SPEC.md"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T219",
@@ -2432,7 +2800,10 @@
       ],
       "files": [
         "claudedocs/CONSENSUS-FRAMEWORK-SPEC.md"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T220",
@@ -2455,7 +2826,10 @@
       ],
       "files": [
         "claudedocs/CONSENSUS-FRAMEWORK-SPEC.md"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T221",
@@ -2478,7 +2852,10 @@
       ],
       "files": [
         "claudedocs/CONSENSUS-FRAMEWORK-SPEC.md"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T222",
@@ -2487,7 +2864,11 @@
       "priority": "low",
       "createdAt": "2025-12-15T05:36:00Z",
       "description": "Create test task to verify auto-archive on complete",
-      "completedAt": "2025-12-15T05:36:04Z"
+      "completedAt": "2025-12-15T05:36:04Z",
+      "type": "task",
+      "parentId": null,
+      "size": null,
+      "labels": []
     },
     {
       "id": "T223",
@@ -2496,7 +2877,11 @@
       "priority": "low",
       "createdAt": "2025-12-15T05:36:12Z",
       "description": "Test if auto-archive works with new config field",
-      "completedAt": "2025-12-15T05:36:14Z"
+      "completedAt": "2025-12-15T05:36:14Z",
+      "type": "task",
+      "parentId": null,
+      "size": null,
+      "labels": []
     },
     {
       "id": "T224",
@@ -2513,7 +2898,10 @@
       "completedAt": "2025-12-15T19:35:18Z",
       "notes": [
         "[COMPLETED 2025-12-15T19:35:18Z] Integrated history command: added to CMD_MAP, CMD_DESC, help list. Created docs/commands/history.md. Updated docs/INDEX.md. Command tested working with text and JSON output."
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T225",
@@ -2531,7 +2919,10 @@
       "completedAt": "2025-12-15T19:51:39Z",
       "notes": [
         "[COMPLETED 2025-12-15T19:51:39Z] Implemented show command: scripts/show.sh (420 lines), docs/commands/show.md, updated TODO_Task_Management.md with Task Inspection section, updated CLAUDE-INJECTION.md template. Features: full task details, dependency info, --history, --related, --include-archive, JSON output."
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T226",
@@ -2549,7 +2940,10 @@
       "completedAt": "2025-12-15T20:09:24Z",
       "notes": [
         "[COMPLETED 2025-12-15T20:09:24Z] Documentation completeness audit completed. Created 12 new docs/commands/*.md files (add, archive, complete, focus, init, list, migrate, migrate-backups, session, stats, update, validate). Updated INDEX.md with 25 total command refs (added 13). Added history and migrate-backups to TODO_Task_Management.md. Verified CLAUDE-INJECTION.md points to TODO_Task_Management.md. All 25 command docs validated."
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T227",
@@ -2571,7 +2965,10 @@
         "2025-12-15 21:44:14 UTC: All 6 subtasks complete (T228-T233). Research findings saved to Serena memory. Key design: intentionally lossy transformation with ID prefix for round-trip, hybrid hook architecture (command+prompt hooks), claude-todo authoritative for metadata, TodoWrite authoritative for session progress.",
         "[COMPLETED 2025-12-15T21:44:14Z] Research complete: TodoWrite sync integration designed with tiered injection, ID-prefix tracking, hybrid hooks, and conflict resolution protocol"
       ],
-      "completedAt": "2025-12-15T21:44:14Z"
+      "completedAt": "2025-12-15T21:44:14Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T228",
@@ -2593,7 +2990,10 @@
         "2025-12-15 21:41:15 UTC: Schema analysis complete. Key findings: (1) No stable IDs in TodoWrite - uses array position only, (2) Status mapping: completed→done, in_progress→active, pending→pending, blocked has no equivalent, (3) All rich metadata lost (priority, labels, phase, deps, notes), (4) TodoWrite allows multiple in_progress vs claude-todo single active",
         "[COMPLETED 2025-12-15T21:41:22Z] Documented TodoWrite schema limitations and identified 4 critical integration challenges"
       ],
-      "completedAt": "2025-12-15T21:41:22Z"
+      "completedAt": "2025-12-15T21:41:22Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T229",
@@ -2616,7 +3016,10 @@
         "2025-12-15 21:41:39 UTC: Design complete: (1) Tiered injection - focused task + deps + same-phase high-priority up to 8 tasks, (2) Hybrid trigger via SessionStart hook calling export command, (3) Format: embed task ID in content prefix for round-trip tracking, status mapping with blocked→pending+prefix",
         "[COMPLETED 2025-12-15T21:41:40Z] Injection mechanism designed with tiered selection, hook trigger, and ID-embedded content format"
       ],
-      "completedAt": "2025-12-15T21:41:40Z"
+      "completedAt": "2025-12-15T21:41:40Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T230",
@@ -2639,7 +3042,10 @@
         "2025-12-15 21:42:02 UTC: Design complete: (1) ID recovery via [T###] prefix parsing, (2) Diff detection categorizes: completed, progressed, new_tasks, removed, unchanged, (3) Merge actions: complete→ct complete, new→ct add with session-created label, (4) Session state file tracks injected tasks for diff calculation",
         "[COMPLETED 2025-12-15T21:42:02Z] Extraction/merge strategy designed with ID parsing, diff detection, and session state tracking"
       ],
-      "completedAt": "2025-12-15T21:42:02Z"
+      "completedAt": "2025-12-15T21:42:02Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T231",
@@ -2661,7 +3067,10 @@
         "2025-12-15 21:42:27 UTC: Analysis complete: 10+ fields map to 3 TodoWrite fields. Only ID (via prefix) and status are round-trippable. Design accepts lossy transformation - full metadata stays in claude-todo. Priority/blocked optionally encoded in content prefix.",
         "[COMPLETED 2025-12-15T21:42:27Z] Documented complete field mapping with intentionally lossy design philosophy"
       ],
-      "completedAt": "2025-12-15T21:42:27Z"
+      "completedAt": "2025-12-15T21:42:27Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T232",
@@ -2683,7 +3092,10 @@
         "2025-12-15 21:42:52 UTC: Protocol designed with 5 conflict scenarios (status divergence, external delete, concurrent mod, ID collision, session overlap). Resolution: claude-todo authoritative for existence/metadata, TodoWrite authoritative for session progress. Warn-don't-fail strategy with conflict logging.",
         "[COMPLETED 2025-12-15T21:42:52Z] Conflict resolution protocol complete with decision tree and logging format"
       ],
-      "completedAt": "2025-12-15T21:42:52Z"
+      "completedAt": "2025-12-15T21:42:52Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T233",
@@ -2705,7 +3117,10 @@
         "2025-12-15 21:43:20 UTC: Architecture: Hybrid hooks (command + prompt-based). Key insight: hooks cannot call TodoWrite directly - must instruct Claude via prompt hooks. SessionStart prepares inject file, prompt-hook tells Claude to call TodoWrite. SessionEnd prompts Claude to output state, command hook merges.",
         "[COMPLETED 2025-12-15T21:43:20Z] Hook integration architecture designed with hybrid command/prompt-based approach"
       ],
-      "completedAt": "2025-12-15T21:43:20Z"
+      "completedAt": "2025-12-15T21:43:20Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T234",
@@ -2726,7 +3141,10 @@
       "completedAt": "2025-12-15T22:13:28Z",
       "notes": [
         "[COMPLETED 2025-12-15T22:13:28Z] Script implemented with tiered selection, ID prefix embedding, and session state tracking"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T235",
@@ -2747,7 +3165,10 @@
       "completedAt": "2025-12-15T22:13:28Z",
       "notes": [
         "[COMPLETED 2025-12-15T22:13:28Z] Script implemented with ID parsing, diff detection, and merge logic"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T236",
@@ -2769,7 +3190,10 @@
       "completedAt": "2025-12-15T22:13:28Z",
       "notes": [
         "[COMPLETED 2025-12-15T22:13:28Z] Orchestrator implemented with inject/extract/status/clear subcommands"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T237",
@@ -2788,7 +3212,10 @@
       "completedAt": "2025-12-15T22:29:08Z",
       "notes": [
         "[COMPLETED 2025-12-15T22:29:08Z] All 21 TodoWrite sync tests now pass. Fixed: (1) log functions return code with --quiet, (2) test assertions for WARN vs warning, (3) added --quiet flag to tests needing clean JSON output"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T238",
@@ -2805,7 +3232,10 @@
       "completedAt": "2025-12-15T22:35:53Z",
       "notes": [
         "[COMPLETED 2025-12-15T22:35:53Z] Fixed all 17 pre-existing failures: (1) migrate.sh readonly variable error - added source guard, (2) add-task.sh log field names - changed operation→action, user→actor, task_id→taskId, (3) add-task.sh action value - changed 'create' to 'task_created'. All 850 tests now pass."
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T239",
@@ -2821,7 +3251,10 @@
         "sync",
         "todowrite",
         "v0.14.0"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T240",
@@ -2839,7 +3272,10 @@
       "completedAt": "2025-12-16T15:27:18Z",
       "notes": [
         "[COMPLETED 2025-12-16T15:27:18Z] Schema design complete - project.phases in todo.schema.json"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T241",
@@ -2856,7 +3292,10 @@
       "completedAt": "2025-12-16T15:27:41Z",
       "notes": [
         "[COMPLETED 2025-12-16T15:27:41Z] todo.schema.json updated with project object structure for schema v2.2.0"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T242",
@@ -2873,7 +3312,10 @@
       "completedAt": "2025-12-16T15:27:18Z",
       "notes": [
         "[COMPLETED 2025-12-16T15:27:18Z] log.schema.json has phase_started, phase_completed, phase_advanced actions"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T243",
@@ -2890,7 +3332,10 @@
       "completedAt": "2025-12-16T15:27:19Z",
       "notes": [
         "[COMPLETED 2025-12-16T15:27:19Z] archive.schema.json has phaseSummary field"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T244",
@@ -2908,7 +3353,10 @@
       "completedAt": "2025-12-16T15:27:19Z",
       "notes": [
         "[COMPLETED 2025-12-16T15:27:19Z] config.schema.json has phaseValidation settings"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T245",
@@ -2926,7 +3374,10 @@
       "completedAt": "2025-12-16T15:27:19Z",
       "notes": [
         "[COMPLETED 2025-12-16T15:27:19Z] todo.template.json has project.phases structure with 4 default phases"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T246",
@@ -2946,7 +3397,10 @@
       "completedAt": "2025-12-16T15:27:19Z",
       "notes": [
         "[COMPLETED 2025-12-16T15:27:19Z] lib/phase-tracking.sh created with 12 core functions (270 lines)"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T247",
@@ -2967,7 +3421,10 @@
       "completedAt": "2025-12-16T15:27:19Z",
       "notes": [
         "[COMPLETED 2025-12-16T15:27:19Z] lib/validation.sh has validate_phase_* functions"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T248",
@@ -2988,7 +3445,10 @@
       "completedAt": "2025-12-16T15:27:20Z",
       "notes": [
         "[COMPLETED 2025-12-16T15:27:20Z] lib/cache.sh has phase indexing functions"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T249",
@@ -3009,7 +3469,10 @@
       "completedAt": "2025-12-16T15:27:20Z",
       "notes": [
         "[COMPLETED 2025-12-16T15:27:20Z] lib/logging.sh has phase action logging"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T250",
@@ -3031,7 +3494,10 @@
       "completedAt": "2025-12-16T05:07:10Z",
       "notes": [
         "[COMPLETED 2025-12-16T05:07:10Z] Created scripts/phase.sh with show/set/start/complete/advance/list subcommands"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T251",
@@ -3051,7 +3517,10 @@
       "completedAt": "2025-12-16T05:09:08Z",
       "notes": [
         "[COMPLETED 2025-12-16T05:09:08Z] Added phase command to install.sh CLI wrapper - CMD_MAP, CMD_DESC, and help display"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T252",
@@ -3072,7 +3541,10 @@
       "completedAt": "2025-12-16T05:07:10Z",
       "notes": [
         "[COMPLETED 2025-12-16T05:07:10Z] Added currentPhase indicator using project.currentPhase"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T253",
@@ -3093,7 +3565,10 @@
       "completedAt": "2025-12-16T05:07:10Z",
       "notes": [
         "[COMPLETED 2025-12-16T05:07:10Z] Integrated currentPhase for task scoring (+10 phase bonus)"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T254",
@@ -3114,7 +3589,10 @@
       "completedAt": "2025-12-16T05:07:10Z",
       "notes": [
         "[COMPLETED 2025-12-16T05:07:10Z] Added current phase display in header and phase summary sections"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T255",
@@ -3136,7 +3614,10 @@
       "completedAt": "2025-12-16T05:07:11Z",
       "notes": [
         "[COMPLETED 2025-12-16T05:07:11Z] Added phase inheritance from project.currentPhase"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T256",
@@ -3158,7 +3639,10 @@
       "completedAt": "2025-12-16T05:09:09Z",
       "notes": [
         "[COMPLETED 2025-12-16T05:09:09Z] focus.sh now updates project.currentPhase on focus set, displays phase in focus show"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T257",
@@ -3179,7 +3663,10 @@
       "completedAt": "2025-12-16T05:18:50Z",
       "notes": [
         "[COMPLETED 2025-12-16T05:18:50Z] Added --phase option to inject-todowrite.sh, phase markers, metadata preservation"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T258",
@@ -3201,7 +3688,10 @@
       "completedAt": "2025-12-16T05:18:50Z",
       "notes": [
         "[COMPLETED 2025-12-16T05:18:50Z] Added phase inheritance to extract-todowrite.sh from focused task metadata"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T259",
@@ -3223,7 +3713,10 @@
       "completedAt": "2025-12-16T05:18:50Z",
       "notes": [
         "[COMPLETED 2025-12-16T05:18:50Z] Added task_metadata to sync state file with phase/priority/status"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T260",
@@ -3243,7 +3736,10 @@
       "completedAt": "2025-12-16T05:18:50Z",
       "notes": [
         "[COMPLETED 2025-12-16T05:18:50Z] Created migrate_todo_to_2_2_0() function for project string->object migration"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T261",
@@ -3263,7 +3759,10 @@
       "completedAt": "2025-12-16T05:18:51Z",
       "notes": [
         "[COMPLETED 2025-12-16T05:18:51Z] Added v2.2.0 detection and auto-migration trigger in migrate.sh and validation.sh"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T262",
@@ -3284,7 +3783,10 @@
       "completedAt": "2025-12-16T05:18:51Z",
       "notes": [
         "[COMPLETED 2025-12-16T05:18:51Z] Added migrate rollback command with safety backup and --backup-id option"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T263",
@@ -3305,7 +3807,10 @@
       "completedAt": "2025-12-16T05:26:04Z",
       "notes": [
         "[COMPLETED 2025-12-16T05:26:04Z] Created tests/unit/phase-commands.bats with 54 tests for all phase subcommands"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T264",
@@ -3326,7 +3831,10 @@
       "completedAt": "2025-12-16T05:43:17Z",
       "notes": [
         "[COMPLETED 2025-12-16T05:43:17Z] Created tests/unit/test-phase-tracking.bats (21KB)"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T265",
@@ -3349,7 +3857,10 @@
       "completedAt": "2025-12-16T05:43:18Z",
       "notes": [
         "[COMPLETED 2025-12-16T05:43:18Z] Created tests/integration/phase-sync.bats (19KB)"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T266",
@@ -3372,7 +3883,10 @@
       "completedAt": "2025-12-16T05:43:20Z",
       "notes": [
         "[COMPLETED 2025-12-16T05:43:20Z] Created tests/migration/test-2.2.0-migration.bats (20KB)"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T267",
@@ -3394,7 +3908,10 @@
       "completedAt": "2025-12-16T05:45:49Z",
       "notes": [
         "[COMPLETED 2025-12-16T05:45:49Z] Created tests/edge-cases/phase-edge-cases.bats with 16 edge case tests covering validation, boundaries, and error scenarios"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T268",
@@ -3417,7 +3934,10 @@
       "completedAt": "2025-12-16T05:46:46Z",
       "notes": [
         "[COMPLETED 2025-12-16T05:46:46Z] Added 12 phase workflow integration tests to tests/integration/workflow.bats covering full lifecycle, inheritance, focus updates, and command integration"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T269",
@@ -3440,7 +3960,10 @@
       "completedAt": "2025-12-16T05:47:52Z",
       "notes": [
         "[COMPLETED 2025-12-16T05:47:52Z] Updated tests/golden/schema-validation.bats with 7 additional v2.2.0 edge case tests for phase validation, bringing total to 30+ phase-related tests"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T270",
@@ -3460,7 +3983,10 @@
       "completedAt": "2025-12-16T05:24:01Z",
       "notes": [
         "[COMPLETED 2025-12-16T05:24:01Z] Created comprehensive docs/commands/phase.md with all subcommands (show, set, start, complete, advance, list), usage examples, integration patterns, phase lifecycle explanation, and audit logging. Updated INDEX.md to reference the new documentation."
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T271",
@@ -3480,7 +4006,10 @@
       "completedAt": "2025-12-16T05:48:55Z",
       "notes": [
         "[COMPLETED 2025-12-16T05:48:55Z] Updated docs/commands/phases.md with v2.2.0 project-level phase tracking, lifecycle states, and phase command integration"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T272",
@@ -3502,7 +4031,10 @@
       "completedAt": "2025-12-16T15:28:11Z",
       "notes": [
         "[COMPLETED 2025-12-16T15:28:11Z] docs/commands/sync.md has phase filtering documentation"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T273",
@@ -3525,7 +4057,10 @@
       "completedAt": "2025-12-16T15:28:59Z",
       "notes": [
         "[COMPLETED 2025-12-16T15:28:59Z] docs/usage.md contains phase workflow documentation"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T274",
@@ -3547,7 +4082,10 @@
       "completedAt": "2025-12-16T15:53:20Z",
       "notes": [
         "[COMPLETED 2025-12-16T15:53:20Z] Added Phase Tracking System section, updated ToC, System Invariants, Directory Structure, Script Reference, Library Functions with phase system details for v2.2.0"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T275",
@@ -3571,7 +4109,10 @@
       "completedAt": "2025-12-16T15:54:34Z",
       "notes": [
         "[COMPLETED 2025-12-16T15:54:34Z] Added Phase Operation Data Flows section with: Phase Set, Task Inheritance, Phase Listing, TodoWrite Sync filtering flows, and Phase Operations file matrix"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T276",
@@ -3594,7 +4135,10 @@
       "completedAt": "2025-12-16T15:56:01Z",
       "notes": [
         "[COMPLETED 2025-12-16T15:56:01Z] Updated SCHEMAS.md to v2.2.0: new project object structure, phase definitions, focus.currentPhase, phase log action types"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T277",
@@ -3616,7 +4160,10 @@
       "completedAt": "2025-12-16T05:23:23Z",
       "notes": [
         "[COMPLETED 2025-12-16T05:23:23Z] Added comprehensive phase command documentation to QUICK-REFERENCE.md including:\n- Phase management commands (show/set/start/complete/advance/list) in Essential Commands\n- Phase analytics commands (phases/phases show/phases stats) in separate section\n- New Phase Workflow Guide section with concepts, typical workflow, and phase options table\n- Updated Phase 3 Command Documentation table with phases.md link\n- Distinguished between project-level (phase) and task-level (phases) commands"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T278",
@@ -3637,7 +4184,10 @@
       "completedAt": "2025-12-16T15:56:37Z",
       "notes": [
         "[COMPLETED 2025-12-16T15:56:37Z] Added Phase Tracking section with commands: phases, phase set, phase show, list --phase filter"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T279",
@@ -3658,7 +4208,10 @@
       "completedAt": "2025-12-16T15:57:20Z",
       "notes": [
         "[COMPLETED 2025-12-16T15:57:20Z] Added phase tracking commands to Commands section, updated Key Files with phase-tracking.sh and phase scripts, updated injection to v0.13.0 with phase commands"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T280",
@@ -3681,7 +4234,10 @@
       "completedAt": "2025-12-16T05:43:21Z",
       "notes": [
         "[COMPLETED 2025-12-16T05:43:21Z] Created docs/migration/v2.2.0-migration-guide.md (14KB)"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T281",
@@ -3708,7 +4264,10 @@
       "completedAt": "2025-12-16T05:55:32Z",
       "notes": [
         "[COMPLETED 2025-12-16T05:55:32Z] Fixed 5 test failures caused by v2.2.0 schema changes:\n- add-task.bats: Updated phase setup to use project.phases instead of .phases (2 tests)\n- list-tasks.bats: Updated phase setup for 'all optional fields' test\n- update-task.bats: Updated phase setup for 'update task phase' test  \n- error-recovery.bats: Added create_empty_todo and allow exit 2 for missing config test\n\nRemaining 10 failures in phase-sync.bats are Wave 6-7 integration tests for incomplete currentPhase features (expected)."
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T282",
@@ -3729,7 +4288,10 @@
       "completedAt": "2025-12-16T16:01:16Z",
       "notes": [
         "[COMPLETED 2025-12-16T16:01:16Z] Created phase-workflow-e2e.bats with 8 tests covering: full phase lifecycle, phase commands, validation, dashboard, next task, sync, multiple active phases, phase set. All tests passing."
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T283",
@@ -3750,7 +4312,10 @@
       "completedAt": "2025-12-16T05:56:37Z",
       "notes": [
         "[COMPLETED 2025-12-16T05:56:37Z] Updated VERSION file from 0.12.9 to 2.2.0. Verified CLI wrapper (install.sh lines 409-410) already includes both 'phases' and 'phase' command mappings. No additional changes needed."
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T284",
@@ -3771,7 +4336,10 @@
       "completedAt": "2025-12-16T05:57:28Z",
       "notes": [
         "[COMPLETED 2025-12-16T05:57:28Z] Created CHANGELOG entry for v2.2.0 with:\n- Project-level phase tracking system (schema, commands, validation)\n- Library enhancements (phase-tracking.sh, validation, cache)\n- Migration support for v2.2.0 schema\n- Test fixes for phase-related tests\n- Schema version bump and safe jq operations for null handling"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T285",
@@ -3791,7 +4359,10 @@
       "completedAt": "2025-12-16T05:58:14Z",
       "notes": [
         "[COMPLETED 2025-12-16T05:58:14Z] Updated README.md with v2.2.0 phase feature:\n- Bumped version badge from 0.12.9 to 2.2.0\n- Added 'Project Phase Tracking' to Key Features (top of list)\n- Created new 'Phase Tracking (v2.2.0+)' section with usage examples\n- Showcased: phase creation, lifecycle mgmt, stats, filtering, benefits\n- Positioned after Debug Mode section, before Architecture"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T286",
@@ -3814,7 +4385,10 @@
       "completedAt": "2025-12-16T16:01:54Z",
       "notes": [
         "[COMPLETED 2025-12-16T16:01:54Z] Performance tests passed: 100 tasks/5 phases. Read phase: 21ms, list phases: 23ms, filter by phase: 23ms, count per phase: 27ms. All within acceptable limits."
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T287",
@@ -3845,7 +4419,10 @@
       "completedAt": "2025-12-16T16:02:42Z",
       "notes": [
         "[COMPLETED 2025-12-16T16:02:42Z] Review complete: 27 command docs, 111 INDEX.md links, ARCHITECTURE/DATA-FLOWS/SCHEMAS all at v2.2.0, injection at v0.13.0, phase terminology consistent (pending/active/completed)."
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T288",
@@ -3871,7 +4448,10 @@
         "2025-12-17 19:47:18 UTC: All 1124 tests passing, 0 failures. Golden files regenerated for v2.2.0 schema. Documentation enhanced with clear update triggers and troubleshooting.",
         "[COMPLETED 2025-12-17T19:47:26Z] v2.2.0 release ready: 1124 tests passing (0 failures), golden files regenerated, documentation enhanced with update triggers and troubleshooting guide."
       ],
-      "completedAt": "2025-12-17T19:47:26Z"
+      "completedAt": "2025-12-17T19:47:26Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T289",
@@ -3888,12 +4468,15 @@
         "2025-12-16 15:50:27 UTC: Investigation complete: _meta.version IS present in template (line 44), correctly set to 2.2.0. Used by validate.sh and migrate.sh. No action needed.",
         "[COMPLETED 2025-12-16T15:50:58Z] Verified: _meta.version IS in template (line 44, 2.2.0). Used by validate.sh and migrate.sh. No changes needed."
       ],
-      "completedAt": "2025-12-16T15:50:58Z"
+      "completedAt": "2025-12-16T15:50:58Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T290",
       "title": "Verify v2.1.0 → v2.2.0 migration with testing phase",
-      "status": "pending",
+      "status": "active",
       "priority": "critical",
       "createdAt": "2025-12-16T16:14:36Z",
       "phase": "core",
@@ -3906,7 +4489,10 @@
       ],
       "notes": [
         "2025-12-16 20:16:54 UTC: Session 2025-12-16: Migration verified with critical bugs found and fixed:\n1. IFS bug preventing migration detection (FIXED v0.13.1)\n2. Argument list too long with 200+ tasks (FIXED v0.13.1)\n3. Wrong 4-phase structure in migration (FIXED v0.13.2)\n4. Existing projects with wrong phases need 'migrate repair' command (T302 created)\nMigration now works correctly for new projects. Existing projects with wrong 4-phase need repair."
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T291",
@@ -3928,7 +4514,10 @@
       ],
       "notes": [
         "2025-12-16 17:32:19 UTC: COMPLETED: Fixed phase-sync.bats (28/28 pass). Updated: 1) phases.sh to read .project.phases 2) focus.sh to sync both project.currentPhase and focus.currentPhase 3) phases JSON output includes status field"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T292",
@@ -3946,7 +4535,10 @@
       ],
       "depends": [
         "T290"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T293",
@@ -3964,7 +4556,10 @@
       ],
       "depends": [
         "T290"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T294",
@@ -3984,7 +4579,10 @@
       ],
       "notes": [
         "2025-12-16 17:32:22 UTC: IN PROGRESS: Test 773 'handles missing project.phases field' still failing. Need to handle edge case where project.phases is undefined/null in phase-commands.bats"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T295",
@@ -3999,7 +4597,10 @@
         "feature-phase",
         "migration",
         "testing"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T296",
@@ -4016,7 +4617,10 @@
       ],
       "notes": [
         "2025-12-16 17:32:17 UTC: COMPLETED: Added _update_fixture_checksum() to fixtures.bash. Fixed all fixture generators to compute valid SHA256 checksums. 28 validation tests now pass."
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T297",
@@ -4029,7 +4633,10 @@
       "labels": [
         "documentation",
         "feature-phase"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T298",
@@ -4043,7 +4650,10 @@
         "blocking",
         "feature-phase",
         "release-management"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T299",
@@ -4056,7 +4666,11 @@
       "completedAt": "2025-12-16T20:17:12Z",
       "notes": [
         "[COMPLETED 2025-12-16T20:17:12Z] FIXED in previous session: tests/test_helper/fixtures.bash now uses canonical 5-phase structure (setup→core→testing→polish→maintenance). Verified create_empty_todo() and create_empty_todo_no_phases() both have correct 5-phase."
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null,
+      "labels": []
     },
     {
       "id": "T300",
@@ -4073,7 +4687,10 @@
         "2025-12-16 19:13:52 UTC: Updated for testing",
         "[COMPLETED 2025-12-16T19:14:12Z] Verified add/update/complete commands work correctly"
       ],
-      "completedAt": "2025-12-16T19:14:12Z"
+      "completedAt": "2025-12-16T19:14:12Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T301",
@@ -4089,7 +4706,10 @@
         "dry-violation",
         "solid-violation",
         "tech-debt"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T302",
@@ -4108,7 +4728,10 @@
       "completedAt": "2025-12-16T21:34:38Z",
       "notes": [
         "[COMPLETED 2025-12-16T21:34:38Z] Implemented migrate repair command with schema comparison, repair execution, backup/restore, idempotent operation"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T303",
@@ -4129,7 +4752,10 @@
       "completedAt": "2025-12-16T21:34:38Z",
       "notes": [
         "[COMPLETED 2025-12-16T21:34:38Z] Added cmd_repair handler, --dry-run and --auto flags to scripts/migrate.sh"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T304",
@@ -4150,7 +4776,10 @@
       "completedAt": "2025-12-16T21:34:39Z",
       "notes": [
         "[COMPLETED 2025-12-16T21:34:39Z] Implemented get_canonical_phases(), compare_phases_structure(), get_repair_actions() in lib/migrate.sh"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T305",
@@ -4171,7 +4800,10 @@
       "completedAt": "2025-12-16T21:34:39Z",
       "notes": [
         "[COMPLETED 2025-12-16T21:34:39Z] Implemented execute_repair(), repair_todo_schema() with backup, validation, idempotent operations"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T306",
@@ -4192,7 +4824,10 @@
       "completedAt": "2025-12-16T22:04:08Z",
       "notes": [
         "[COMPLETED 2025-12-16T22:04:08Z] Documented migrate repair command in CHANGELOG v0.14.0 with full usage and implementation details"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T307",
@@ -4213,7 +4848,10 @@
       "completedAt": "2025-12-16T22:04:08Z",
       "notes": [
         "[COMPLETED 2025-12-16T22:04:08Z] All 1124 tests passing. Added phase validation tests in phase-edge-cases.bats and updated migration tests in test-2.2.0-migration.bats"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T308",
@@ -4234,7 +4872,10 @@
       "completedAt": "2025-12-16T21:34:39Z",
       "notes": [
         "[COMPLETED 2025-12-16T21:34:39Z] Fixed this project phases from 4 (setup,core,polish,release) to 5 canonical phases using migrate repair"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T309",
@@ -4252,7 +4893,10 @@
       "completedAt": "2025-12-16T21:34:39Z",
       "notes": [
         "[COMPLETED 2025-12-16T21:34:39Z] Updated golden fixtures to v2.2.0 format with 5-phase structure, regenerated all golden output files"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T310",
@@ -4270,7 +4914,10 @@
       ],
       "notes": [
         "2025-12-17 00:02:40 UTC: Related finding from T311 production testing: T314 (migrate repair doesn't update checksum) demonstrates the fragmentation between repair and validate --fix responsibilities. This supports Option C (Hybrid) approach where repair handles structural fixes but delegates checksum/validation concerns to validate."
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T311",
@@ -4289,7 +4936,10 @@
       "notes": [
         "2025-12-16 23:53:23 UTC: PRODUCTION TESTING RESULTS v0.14.0\n\n=== SCENARIO 1: Fresh Project Setup ===\n✅ PASS\n- init: Creates 5-phase structure correctly\n- add: Works with phases, dependencies, labels\n- focus: Auto-switches project phase\n- session start/end: Works correctly\n- complete: With notes, clears focus\n- phases/phase: Display and advance work\n\n=== SCENARIO 2: Migration ===\n✅ PASS\n- migrate status: Detects old v2.1.0 schema\n- migrate run --auto: Upgrades to v2.2.0, creates 5-phase structure\n- migrate repair --dry-run: Shows all needed fixes\n- migrate repair --auto: Fixes phase structure, preserves data\n- Idempotent: Second repair shows 'no repairs needed'\n\n=== SCENARIO 3: Complex Workflow ===\n✅ PASS\n- Multiple tasks with dependencies\n- Blocked tasks (manual and dependency-based)\n- deps command: Shows dependency graph\n- blockers: Shows blocked tasks with reasons\n- archive: Respects retention rules\n- export --format json/todowrite\n- next --explain: Scoring breakdown\n\n=== SCENARIO 4: Edge Cases ===\n✅ PASS\n- Special characters in titles: ✅\n- Emoji in titles: ✅\n- Newlines correctly rejected: ✅\n- 108 tasks: Performance acceptable\n- exists command: Correct exit codes\n- validate at scale: 1.5s for 108 tasks\n\n=== SCENARIO 5: Error Recovery ===\n✅ PASS\n- Checksum corruption detected\n- validate --fix recovers checksum\n- backup/restore cycle works\n- Full data recovery from corrupted file\n\n=== BUGS FOUND ===\n1. COSMETIC: 'readonly variable' warnings when validation.sh sourced multiple times\n2. BUG: migrate repair doesn't update checksum after modifications (requires validate --fix)\n3. BUG: TodoWrite export activeForm conjugation broken ('Coring', 'Testinging')"
       ],
-      "completedAt": "2025-12-16T23:53:29Z"
+      "completedAt": "2025-12-16T23:53:29Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T312",
@@ -4306,7 +4956,10 @@
       ],
       "notes": [
         "2025-12-17 00:08:32 UTC: ## Comprehensive Documentation Audit Complete (2025-12-16)\n\n### Audit Methodology\n- Deployed 12 parallel documentation audit subagents\n- Covered all 27 command docs, architecture, schemas, guides\n- 2 meta-synthesis agents consolidated findings\n\n### Key Metrics\n- **Overall Accuracy**: 84%\n- **Critical Gaps**: 10 issues\n- **Major Gaps**: 11 issues\n- **Total Findings**: 50+ items\n\n### CRITICAL BUGS FOUND (P0)\n1. **stats.sh**: Uses obsolete log schema field 'operation' instead of 'action' - period metrics return 0\n2. **session --format**: Documented but only --json implemented\n3. **session/phase defaults**: Documentation doesn't match implementation\n\n### UNDOCUMENTED COMMANDS (P1)\n- migrate repair, migrate rollback, sync --clear, log rotate\n- list --notes/--files/--acceptance/--flat\n- sync --phase, --no-save-state\n\n### STALE DOCUMENTATION (P1)\n- QUICK-REFERENCE.md shows v0.8.2 (should be v0.14.0)\n- 9 newer commands missing from QUICK-REFERENCE\n- configuration.md uses deprecated script names\n- SCHEMAS.md missing phase validation config (4 properties)\n\n### RECOMMENDED TASK BREAKDOWN\n- T313: Fix stats.sh log schema bug (P0)\n- T314: Fix session command docs (P0)\n- T315: Remove updatedAt from JSON examples (P0)\n- T316: Document migrate repair/rollback (P1)\n- T317-T322: Document missing options (P1)\n- T323-T327: Architecture/consistency fixes (P2)\n- T328-T331: New guides and workflows (P3)\n\nSee synthesis reports for full action items."
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T313",
@@ -4320,7 +4973,10 @@
         "bugs",
         "cosmetic",
         "v0.14.1"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T314",
@@ -4335,7 +4991,10 @@
         "data-integrity",
         "migration",
         "v0.14.1"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T315",
@@ -4350,7 +5009,10 @@
         "sync",
         "todowrite",
         "v0.14.1"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T316",
@@ -4371,7 +5033,10 @@
       "completedAt": "2025-12-17T06:12:55Z",
       "notes": [
         "[COMPLETED 2025-12-17T06:12:55Z] Fixed obsolete log schema field: operation → action in all jq queries. Period-based metrics now work correctly."
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T317",
@@ -4392,7 +5057,10 @@
       "completedAt": "2025-12-17T06:10:45Z",
       "notes": [
         "[COMPLETED 2025-12-17T06:10:45Z] Fixed session.md documentation: removed incorrect --format option references and updated default behavior from status to help"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T318",
@@ -4413,7 +5081,10 @@
       "completedAt": "2025-12-17T06:10:42Z",
       "notes": [
         "[COMPLETED 2025-12-17T06:10:42Z] Removed updatedAt field from JSON example on line 115. Verified no other instances exist. JSON structure remains valid with proper formatting."
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T319",
@@ -4434,7 +5105,10 @@
       "completedAt": "2025-12-17T06:12:57Z",
       "notes": [
         "[COMPLETED 2025-12-17T06:12:57Z] Added comprehensive documentation for migrate repair and migrate rollback commands with examples, options, and use cases."
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T320",
@@ -4455,7 +5129,10 @@
       "completedAt": "2025-12-17T06:12:59Z",
       "notes": [
         "[COMPLETED 2025-12-17T06:12:59Z] Documented --notes, --files, --acceptance, --flat options with examples and output formatting details."
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T321",
@@ -4479,7 +5156,10 @@
       "completedAt": "2025-12-17T06:13:01Z",
       "notes": [
         "[COMPLETED 2025-12-17T06:13:01Z] Documented --clear, --phase, --no-save-state options with use cases and workflow examples."
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T322",
@@ -4500,7 +5180,10 @@
       "completedAt": "2025-12-17T06:13:03Z",
       "notes": [
         "[COMPLETED 2025-12-17T06:13:03Z] Removed 9 deprecated script references (todo-add.sh, todo-complete.sh, todo-list.sh, etc.) Updated to claude-todo commands."
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T323",
@@ -4521,7 +5204,10 @@
       "completedAt": "2025-12-17T06:13:05Z",
       "notes": [
         "[COMPLETED 2025-12-17T06:13:05Z] Updated version to v0.15.0 and added 9 missing commands: dash, next, labels, phases, phase, deps, blockers, exists, history."
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T324",
@@ -4542,7 +5228,10 @@
       "completedAt": "2025-12-17T06:13:06Z",
       "notes": [
         "[COMPLETED 2025-12-17T06:13:06Z] Added phase validation config section with 4 properties: enforcePhaseOrder, phaseAdvanceThreshold, blockOnCriticalTasks, warnPhaseContext."
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T325",
@@ -4563,7 +5252,10 @@
       "completedAt": "2025-12-17T06:13:08Z",
       "notes": [
         "[COMPLETED 2025-12-17T06:13:08Z] Expanded script reference from 11 to 33 scripts across 9 categories. Added Analysis, Session, TodoWrite, Migration, and Development Utilities sections."
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T326",
@@ -4584,7 +5276,10 @@
       "completedAt": "2025-12-17T06:13:10Z",
       "notes": [
         "[COMPLETED 2025-12-17T06:13:10Z] Added exit code sections to 7 command docs: phase, phases, init, history, log, dash, next. Pattern: 0=success, 1=error."
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T327",
@@ -4599,7 +5294,10 @@
         "feature",
         "v0.15.0"
       ],
-      "completedAt": "2025-12-17T05:43:09Z"
+      "completedAt": "2025-12-17T05:43:09Z",
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T328",
@@ -4613,7 +5311,10 @@
         "epic-type",
         "hierarchy",
         "v0.15.0"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T329",
@@ -4630,7 +5331,10 @@
       ],
       "depends": [
         "T328"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T330",
@@ -4647,7 +5351,10 @@
       ],
       "depends": [
         "T328"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T331",
@@ -4664,7 +5371,10 @@
       ],
       "depends": [
         "T328"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T332",
@@ -4681,7 +5391,10 @@
       ],
       "depends": [
         "T329"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T333",
@@ -4699,7 +5412,10 @@
       "depends": [
         "T329",
         "T330"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T334",
@@ -4717,7 +5433,10 @@
       "depends": [
         "T329",
         "T330"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T335",
@@ -4734,7 +5453,10 @@
       ],
       "depends": [
         "T330"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T336",
@@ -4752,7 +5474,10 @@
       "depends": [
         "T330",
         "T331"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T337",
@@ -4770,7 +5495,10 @@
       "depends": [
         "T333",
         "T334"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T338",
@@ -4788,7 +5516,10 @@
       "depends": [
         "T333",
         "T334"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T339",
@@ -4805,7 +5536,10 @@
       ],
       "depends": [
         "T328"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T340",
@@ -4822,7 +5556,10 @@
       ],
       "depends": [
         "T339"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T341",
@@ -4839,7 +5576,10 @@
       ],
       "depends": [
         "T339"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T342",
@@ -4856,7 +5596,10 @@
       ],
       "depends": [
         "T339"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T343",
@@ -4873,7 +5616,10 @@
       ],
       "depends": [
         "T339"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T344",
@@ -4890,7 +5636,10 @@
       ],
       "depends": [
         "T339"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T345",
@@ -4907,7 +5656,10 @@
       ],
       "depends": [
         "T339"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T346",
@@ -4924,7 +5676,10 @@
       ],
       "depends": [
         "T339"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T347",
@@ -4941,7 +5696,10 @@
       ],
       "depends": [
         "T339"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T348",
@@ -4958,7 +5716,10 @@
       ],
       "depends": [
         "T339"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T349",
@@ -4980,7 +5741,10 @@
         "T342",
         "T343",
         "T344"
-      ]
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
     },
     {
       "id": "T350",
@@ -4994,6 +5758,489 @@
         "enhancement",
         "feature-phase",
         "testing"
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
+    },
+    {
+      "id": "T351",
+      "title": "Test JSON output feature",
+      "status": "pending",
+      "priority": "low",
+      "createdAt": "2025-12-17T21:09:42Z",
+      "phase": "core",
+      "labels": [
+        "json-output",
+        "test"
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
+    },
+    {
+      "id": "T352",
+      "title": "Test task for JSON output verification",
+      "status": "done",
+      "priority": "medium",
+      "createdAt": "2025-12-17T21:09:44Z",
+      "phase": "core",
+      "description": "Testing the new JSON output feature in complete command",
+      "completedAt": "2025-12-17T21:09:51Z",
+      "type": "task",
+      "parentId": null,
+      "size": null,
+      "labels": []
+    },
+    {
+      "id": "T353",
+      "title": "Another test task for JSON output",
+      "status": "done",
+      "priority": "low",
+      "createdAt": "2025-12-17T21:09:57Z",
+      "phase": "core",
+      "description": "Testing JSON",
+      "completedAt": "2025-12-17T21:10:04Z",
+      "type": "task",
+      "parentId": null,
+      "size": null,
+      "labels": []
+    },
+    {
+      "id": "T354",
+      "title": "Test JSON output clean",
+      "status": "pending",
+      "priority": "low",
+      "createdAt": "2025-12-17T21:10:13Z",
+      "phase": "core",
+      "labels": [
+        "json-clean",
+        "test"
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
+    },
+    {
+      "id": "T355",
+      "title": "Fresh test task for JSON",
+      "status": "done",
+      "priority": "high",
+      "createdAt": "2025-12-17T21:10:17Z",
+      "phase": "core",
+      "description": "Testing JSON output fresh",
+      "completedAt": "2025-12-17T21:10:22Z",
+      "type": "task",
+      "parentId": null,
+      "size": null,
+      "labels": []
+    },
+    {
+      "id": "T356",
+      "title": "Test text output",
+      "status": "pending",
+      "priority": "medium",
+      "createdAt": "2025-12-17T21:10:18Z",
+      "phase": "core",
+      "labels": [
+        "test",
+        "text-output"
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
+    },
+    {
+      "id": "T357",
+      "title": "Test quiet mode",
+      "status": "pending",
+      "priority": "low",
+      "createdAt": "2025-12-17T21:10:26Z",
+      "phase": "core",
+      "type": "task",
+      "parentId": null,
+      "size": null,
+      "labels": []
+    },
+    {
+      "id": "T358",
+      "title": "Test TTY auto-detect",
+      "status": "pending",
+      "priority": "low",
+      "createdAt": "2025-12-17T21:10:45Z",
+      "phase": "core",
+      "labels": [
+        "auto-detect",
+        "test"
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
+    },
+    {
+      "id": "T359",
+      "title": "Final JSON test task",
+      "status": "done",
+      "priority": "medium",
+      "createdAt": "2025-12-17T21:10:46Z",
+      "phase": "core",
+      "description": "Final test",
+      "completedAt": "2025-12-17T21:10:52Z",
+      "type": "task",
+      "parentId": null,
+      "size": null,
+      "labels": []
+    },
+    {
+      "id": "T360",
+      "title": "Test pipe",
+      "status": "pending",
+      "priority": "low",
+      "createdAt": "2025-12-17T21:10:54Z",
+      "phase": "core",
+      "type": "task",
+      "parentId": null,
+      "size": null,
+      "labels": []
+    },
+    {
+      "id": "T361",
+      "title": "Auto format test",
+      "status": "done",
+      "priority": "low",
+      "createdAt": "2025-12-17T21:11:18Z",
+      "phase": "core",
+      "description": "Testing auto format detection",
+      "completedAt": "2025-12-17T21:11:26Z",
+      "type": "task",
+      "parentId": null,
+      "size": null,
+      "labels": []
+    },
+    {
+      "id": "T362",
+      "title": "Test pipe JSON",
+      "status": "pending",
+      "priority": "low",
+      "createdAt": "2025-12-17T21:11:28Z",
+      "phase": "core",
+      "type": "task",
+      "parentId": null,
+      "size": null,
+      "labels": []
+    },
+    {
+      "id": "T363",
+      "title": "Test direct pipe",
+      "status": "pending",
+      "priority": "low",
+      "createdAt": "2025-12-17T21:11:35Z",
+      "phase": "core",
+      "type": "task",
+      "parentId": null,
+      "size": null,
+      "labels": []
+    },
+    {
+      "id": "T364",
+      "title": "Final auto format test",
+      "status": "done",
+      "priority": "high",
+      "createdAt": "2025-12-17T21:11:38Z",
+      "phase": "core",
+      "description": "Testing auto",
+      "completedAt": "2025-12-17T21:11:43Z",
+      "type": "task",
+      "parentId": null,
+      "size": null,
+      "labels": []
+    },
+    {
+      "id": "T365",
+      "title": "Debug TTY",
+      "status": "pending",
+      "priority": "low",
+      "createdAt": "2025-12-17T21:11:42Z",
+      "phase": "core",
+      "type": "task",
+      "parentId": null,
+      "size": null,
+      "labels": []
+    },
+    {
+      "id": "T366",
+      "title": "TTY test",
+      "status": "done",
+      "priority": "low",
+      "createdAt": "2025-12-17T21:11:51Z",
+      "phase": "testing",
+      "description": "Testing TTY detection",
+      "completedAt": "2025-12-17T21:11:56Z",
+      "type": "task",
+      "parentId": null,
+      "size": null,
+      "labels": []
+    },
+    {
+      "id": "T367",
+      "title": "Test env format",
+      "status": "pending",
+      "priority": "low",
+      "createdAt": "2025-12-17T21:12:14Z",
+      "phase": "core",
+      "type": "task",
+      "parentId": null,
+      "size": null,
+      "labels": []
+    },
+    {
+      "id": "T368",
+      "title": "New test task without prefix",
+      "status": "pending",
+      "priority": "medium",
+      "createdAt": "2025-12-17T22:42:11Z",
+      "phase": "setup",
+      "description": "Created during TodoWrite session",
+      "labels": [
+        "session-created"
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
+    },
+    {
+      "id": "T369",
+      "title": "New test task without prefix",
+      "status": "done",
+      "priority": "medium",
+      "createdAt": "2025-12-17T22:42:17Z",
+      "phase": "core",
+      "description": "Created during TodoWrite session",
+      "labels": [
+        "session-created"
+      ],
+      "completedAt": "2025-12-17T22:43:47Z",
+      "notes": [
+        "[COMPLETED 2025-12-17T22:43:47Z] Test cleanup"
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
+    },
+    {
+      "id": "T370",
+      "title": "Another new task for testing default-phase flag",
+      "status": "done",
+      "priority": "medium",
+      "createdAt": "2025-12-17T22:42:28Z",
+      "phase": "polish",
+      "description": "Created during TodoWrite session",
+      "labels": [
+        "session-created"
+      ],
+      "completedAt": "2025-12-17T22:43:48Z",
+      "notes": [
+        "[COMPLETED 2025-12-17T22:43:48Z] Test cleanup"
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
+    },
+    {
+      "id": "T371",
+      "title": "Task with no phase change during session",
+      "status": "done",
+      "priority": "medium",
+      "createdAt": "2025-12-17T22:43:12Z",
+      "phase": "core",
+      "description": "Created during TodoWrite session",
+      "labels": [
+        "session-created"
+      ],
+      "completedAt": "2025-12-17T22:43:48Z",
+      "notes": [
+        "[COMPLETED 2025-12-17T22:43:48Z] Test cleanup"
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
+    },
+    {
+      "id": "T372",
+      "title": "Task after phase change",
+      "status": "done",
+      "priority": "medium",
+      "createdAt": "2025-12-17T22:43:18Z",
+      "phase": "core",
+      "description": "Created during TodoWrite session",
+      "labels": [
+        "session-created"
+      ],
+      "completedAt": "2025-12-17T22:43:48Z",
+      "notes": [
+        "[COMPLETED 2025-12-17T22:43:48Z] Test cleanup"
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
+    },
+    {
+      "id": "T373",
+      "title": "Task after phase change to polish",
+      "status": "done",
+      "priority": "medium",
+      "createdAt": "2025-12-17T22:43:34Z",
+      "phase": "core",
+      "description": "Created during TodoWrite session",
+      "labels": [
+        "session-created"
+      ],
+      "completedAt": "2025-12-17T22:43:49Z",
+      "notes": [
+        "[COMPLETED 2025-12-17T22:43:49Z] Test cleanup"
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
+    },
+    {
+      "id": "T374",
+      "title": "Final test task for phase preservation",
+      "status": "done",
+      "priority": "medium",
+      "createdAt": "2025-12-17T22:45:31Z",
+      "phase": "polish",
+      "description": "Created during TodoWrite session",
+      "labels": [
+        "session-created"
+      ],
+      "completedAt": "2025-12-17T22:45:44Z",
+      "notes": [
+        "[COMPLETED 2025-12-17T22:45:44Z] Cleanup"
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
+    },
+    {
+      "id": "T375",
+      "title": "Task after phase change to maintenance",
+      "status": "done",
+      "priority": "medium",
+      "createdAt": "2025-12-17T22:48:24Z",
+      "phase": "polish",
+      "description": "Created during TodoWrite session",
+      "labels": [
+        "session-created"
+      ],
+      "completedAt": "2025-12-17T22:48:37Z",
+      "notes": [
+        "[COMPLETED 2025-12-17T22:48:37Z] Test cleanup"
+      ],
+      "type": "task",
+      "parentId": null,
+      "size": null
+    },
+    {
+      "id": "T376",
+      "title": "Research: Fuzzy task search command for LLM agents",
+      "status": "pending",
+      "priority": "medium",
+      "type": "task",
+      "parentId": null,
+      "createdAt": "2025-12-18T00:21:11Z",
+      "phase": "polish",
+      "description": "Research whether a 'find' command for fuzzy task searching would benefit LLM agents by: 1) Reducing context window usage, 2) Providing better task discovery, 3) Enabling smarter suggestions. Evaluate prior art in other CLI tools.",
+      "labels": [
+        "context-optimization",
+        "llm-agent-first",
+        "research"
+      ]
+    },
+    {
+      "id": "T377",
+      "title": "Extract CLI wrapper logic to lib/cli-utils.sh",
+      "status": "pending",
+      "priority": "low",
+      "type": "task",
+      "parentId": null,
+      "createdAt": "2025-12-18T00:21:13Z",
+      "phase": "polish",
+      "description": "Move the command resolution and suggestion logic from the inline WRAPPER_EOF in install.sh to a dedicated lib/cli-utils.sh for better maintainability and testing.",
+      "labels": [
+        "llm-agent-first",
+        "refactoring"
+      ]
+    },
+    {
+      "id": "T378",
+      "title": "LLM-Agent-First Phase 1: Foundation libs integration (13 commands)",
+      "status": "pending",
+      "priority": "critical",
+      "type": "task",
+      "parentId": null,
+      "createdAt": "2025-12-18T00:21:15Z",
+      "phase": "core",
+      "description": "Add source exit-codes.sh, error-json.sh, output-format.sh and COMMAND_NAME to: analyze, blockers, exists, export, extract, history, inject, labels, list, migrate-backups, phases, stats, sync, validate. See LLM-AGENT-FIRST-IMPLEMENTATION-REPORT.md Section 7.2 Phase 1.",
+      "labels": [
+        "compliance",
+        "llm-agent-first"
+      ]
+    },
+    {
+      "id": "T379",
+      "title": "LLM-Agent-First Phase 2: resolve_format() integration (15 commands)",
+      "status": "pending",
+      "priority": "high",
+      "type": "task",
+      "parentId": null,
+      "createdAt": "2025-12-18T00:21:17Z",
+      "phase": "core",
+      "description": "Add resolve_format() call and missing --format/--quiet flags to: analyze, blockers, dash, exists, export, extract, history, inject, labels, migrate-backups, next, phases, show, stats, sync, validate. See LLM-AGENT-FIRST-IMPLEMENTATION-REPORT.md Section 7.2 Phase 2.",
+      "labels": [
+        "compliance",
+        "llm-agent-first"
+      ],
+      "depends": [
+        "T378"
+      ]
+    },
+    {
+      "id": "T380",
+      "title": "LLM-Agent-First Phase 3: Error handling standardization (22 commands)",
+      "status": "pending",
+      "priority": "high",
+      "type": "task",
+      "parentId": null,
+      "createdAt": "2025-12-18T00:21:19Z",
+      "phase": "core",
+      "description": "Replace echo ERROR with output_error() and add $schema to JSON outputs in remaining commands. See LLM-AGENT-FIRST-IMPLEMENTATION-REPORT.md Section 7.2 Phase 3.",
+      "labels": [
+        "compliance",
+        "llm-agent-first"
+      ],
+      "depends": [
+        "T379"
+      ]
+    },
+    {
+      "id": "T381",
+      "title": "LLM-Agent-First Phase 4: Write command polish (--dry-run, shortcuts)",
+      "status": "pending",
+      "priority": "medium",
+      "type": "task",
+      "parentId": null,
+      "createdAt": "2025-12-18T00:21:29Z",
+      "phase": "polish",
+      "description": "Add/complete --dry-run to add, complete, inject. Add --json/--human shortcuts to remaining commands. See LLM-AGENT-FIRST-IMPLEMENTATION-REPORT.md Section 7.2 Phase 4.",
+      "labels": [
+        "compliance",
+        "llm-agent-first"
+      ],
+      "depends": [
+        "T378",
+        "T379",
+        "T380"
       ]
     }
   ],

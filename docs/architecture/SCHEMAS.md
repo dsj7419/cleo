@@ -45,6 +45,7 @@ Required properties:
 
 Optional properties:
 - `currentPhase` (string or null) - Active phase slug (pattern: `^[a-z][a-z0-9-]*$`)
+- `phaseHistory` (array) - Chronological phase transition log for audit trail
 
 Example:
 ```json
@@ -78,6 +79,46 @@ Each phase in `project.phases` has the following structure:
 - `pending` - Phase not yet started
 - `active` - Currently working on this phase (only ONE phase can be active)
 - `completed` - Phase work finished
+
+### Phase History Entry Object
+
+Each entry in `project.phaseHistory` tracks a phase transition:
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `phase` | string | **Yes** | Phase slug (pattern: `^[a-z][a-z0-9-]*$`) |
+| `transitionType` | string | **Yes** | `started`, `completed`, or `rollback` |
+| `timestamp` | string | **Yes** | When transition occurred (ISO 8601) |
+| `taskCount` | integer | **Yes** | Tasks in phase at transition time (min: 0) |
+| `fromPhase` | string or null | No | Previous phase (required for rollback) |
+| `reason` | string | No | Context for transition (max 500 chars) |
+
+**Transition Types**:
+- `started` - Phase became active
+- `completed` - Phase work finished
+- `rollback` - Reverted to earlier phase (requires `fromPhase`)
+
+Example:
+```json
+{
+  "phaseHistory": [
+    {
+      "phase": "setup",
+      "transitionType": "completed",
+      "timestamp": "2025-12-05T18:30:00Z",
+      "taskCount": 14
+    },
+    {
+      "phase": "core",
+      "transitionType": "started",
+      "timestamp": "2025-12-05T18:30:00Z",
+      "taskCount": 63,
+      "fromPhase": "setup",
+      "reason": "Phase started via 'phase advance' from setup"
+    }
+  ]
+}
+```
 
 ### Task Object Definition
 

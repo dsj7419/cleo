@@ -367,7 +367,7 @@ export_json() {
       --arg status "$status_filter" \
       --argjson max "$max_tasks" \
       '{
-        "$schema": "https://claude-todo.dev/schemas/output-v2.json",
+        "$schema": "https://claude-todo.dev/schemas/output.schema.json",
         "_meta": {
           "format": "json",
           "version": $version,

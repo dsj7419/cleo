@@ -66,6 +66,7 @@ if [[ -z "${VALID_ACTIONS:-}" ]]; then
         "phase_started"
         "phase_completed"
         "phase_rollback"
+        "phase_deleted"
     )
 fi
 
@@ -686,6 +687,31 @@ log_phase_rollback() {
     log_operation "phase_rollback" "human" "null" "$before" "$after" "$details" "$session_id"
 }
 
+log_phase_deleted() {
+    local phase_slug="$1"
+    local reassign_to="${2:-none}"
+    local task_count="${3:-0}"
+    local session_id="${4:-null}"
+    local before
+    local after
+    local details
+
+    before=$(jq -n --arg phase "$phase_slug" '{deletedPhase: $phase}')
+    after=$(jq -n '{deletedPhase: null}')
+
+    if [[ "$reassign_to" != "none" ]]; then
+        details=$(jq -n \
+            --arg phase "$phase_slug" \
+            --arg reassign "$reassign_to" \
+            --argjson count "$task_count" \
+            '{operation: "delete", deletedPhase: $phase, tasksReassigned: $count, reassignedTo: $reassign}')
+    else
+        details=$(jq -n --arg phase "$phase_slug" '{operation: "delete", deletedPhase: $phase}')
+    fi
+
+    log_operation "phase_deleted" "system" "null" "$before" "$after" "$details" "$session_id"
+}
+
 # ============================================================================
 # LOG MIGRATION
 # ============================================================================
@@ -858,5 +884,6 @@ export -f log_phase_changed
 export -f log_phase_started
 export -f log_phase_completed
 export -f log_phase_rollback
+export -f log_phase_deleted
 export -f handle_log_error
 export -f migrate_log_entries

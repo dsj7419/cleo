@@ -2,6 +2,10 @@
 # validation.sh - Core validation library for claude-todo system
 # Provides schema validation and anti-hallucination checks
 
+# Source guard to prevent multiple inclusion
+[[ -n "${_VALIDATION_SH_INCLUDED:-}" ]] && return 0
+readonly _VALIDATION_SH_INCLUDED=1
+
 set -euo pipefail
 
 # ============================================================================

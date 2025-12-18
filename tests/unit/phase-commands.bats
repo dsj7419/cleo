@@ -101,7 +101,7 @@ EOF
 
 @test "phase --help shows usage" {
     create_phase_fixture
-    run bash "$PHASE_SCRIPT" --help
+    run bash "$PHASE_SCRIPT" --human --help
     assert_success
     assert_output --partial "Usage:"
     assert_output --partial "claude-todo phase"
@@ -109,28 +109,28 @@ EOF
 
 @test "phase -h shows usage" {
     create_phase_fixture
-    run bash "$PHASE_SCRIPT" -h
+    run bash "$PHASE_SCRIPT" --human -h
     assert_success
     assert_output --partial "Usage:"
 }
 
 @test "phase help shows all subcommands" {
     create_phase_fixture
-    run bash "$PHASE_SCRIPT" --help
+    run bash "$PHASE_SCRIPT" --human --help
     assert_success
     assert_output_contains_all "show" "set" "start" "complete" "advance" "list"
 }
 
 @test "phase without arguments shows usage" {
     create_phase_fixture
-    run bash "$PHASE_SCRIPT"
+    run bash "$PHASE_SCRIPT" --human
     assert_failure
     assert_output --partial "Usage:"
 }
 
 @test "phase with unknown subcommand shows error" {
     create_phase_fixture
-    run bash "$PHASE_SCRIPT" unknown
+    run bash "$PHASE_SCRIPT" --human unknown
     assert_failure
     assert_output --partial "ERROR"
     assert_output --partial "Unknown subcommand"
@@ -142,7 +142,7 @@ EOF
 
 @test "phase show displays current phase" {
     create_phase_fixture "setup" "active"
-    run bash "$PHASE_SCRIPT" show
+    run bash "$PHASE_SCRIPT" --human show
     assert_success
     assert_output --partial "Current Phase: setup"
     assert_output --partial "Setup & Foundation"
@@ -150,14 +150,14 @@ EOF
 
 @test "phase show displays phase status" {
     create_phase_fixture "setup" "active"
-    run bash "$PHASE_SCRIPT" show
+    run bash "$PHASE_SCRIPT" --human show
     assert_success
     assert_output --partial "Status: active"
 }
 
 @test "phase show displays started timestamp" {
     create_phase_fixture "setup" "active"
-    run bash "$PHASE_SCRIPT" show
+    run bash "$PHASE_SCRIPT" --human show
     assert_success
     assert_output --partial "Started:"
 }
@@ -167,7 +167,7 @@ EOF
     # Manually set currentPhase to null
     jq '.project.currentPhase = null' "$TODO_FILE" > "${TODO_FILE}.tmp" && mv "${TODO_FILE}.tmp" "$TODO_FILE"
 
-    run bash "$PHASE_SCRIPT" show
+    run bash "$PHASE_SCRIPT" --human show
     assert_failure
     assert_output --partial "No current phase set"
 }
@@ -178,7 +178,7 @@ EOF
 
 @test "phase set changes current phase" {
     create_phase_fixture "setup" "active"
-    run bash "$PHASE_SCRIPT" set core
+    run bash "$PHASE_SCRIPT" --human set core
     assert_success
     assert_output --partial "Phase set to: core"
 
@@ -199,7 +199,7 @@ EOF
 
 @test "phase set requires phase slug argument" {
     create_phase_fixture
-    run bash "$PHASE_SCRIPT" set
+    run bash "$PHASE_SCRIPT" --human set
     assert_failure
     assert_output --partial "ERROR"
     assert_output --partial "phase slug required"
@@ -207,7 +207,7 @@ EOF
 
 @test "phase set validates phase exists" {
     create_phase_fixture
-    run bash "$PHASE_SCRIPT" set nonexistent
+    run bash "$PHASE_SCRIPT" --human set nonexistent
     assert_failure
     assert_output --partial "ERROR"
     assert_output --partial "does not exist"
@@ -229,7 +229,7 @@ EOF
 
 @test "phase start activates pending phase" {
     create_phase_fixture "setup" "active"
-    run bash "$PHASE_SCRIPT" start core
+    run bash "$PHASE_SCRIPT" --human start core
     assert_success
     assert_output --partial "Started phase: core"
 
@@ -268,7 +268,7 @@ EOF
 
 @test "phase start requires phase slug argument" {
     create_phase_fixture
-    run bash "$PHASE_SCRIPT" start
+    run bash "$PHASE_SCRIPT" --human start
     assert_failure
     assert_output --partial "ERROR"
     assert_output --partial "phase slug required"
@@ -276,7 +276,7 @@ EOF
 
 @test "phase start only works on pending phases" {
     create_phase_fixture "setup" "active"
-    run bash "$PHASE_SCRIPT" start setup
+    run bash "$PHASE_SCRIPT" --human start setup
     assert_failure
     assert_output --partial "ERROR"
     assert_output --partial "Can only start pending phases"
@@ -284,7 +284,7 @@ EOF
 
 @test "phase start rejects completed phases" {
     create_phase_fixture "setup" "completed"
-    run bash "$PHASE_SCRIPT" start setup
+    run bash "$PHASE_SCRIPT" --human start setup
     assert_failure
     assert_output --partial "ERROR"
     assert_output --partial "Can only start pending phases"
@@ -296,7 +296,7 @@ EOF
 
 @test "phase complete marks active phase as completed" {
     create_phase_fixture "setup" "active"
-    run bash "$PHASE_SCRIPT" complete setup
+    run bash "$PHASE_SCRIPT" --human complete setup
     assert_success
     assert_output --partial "Completed phase: setup"
 
@@ -317,7 +317,7 @@ EOF
 
 @test "phase complete requires phase slug argument" {
     create_phase_fixture
-    run bash "$PHASE_SCRIPT" complete
+    run bash "$PHASE_SCRIPT" --human complete
     assert_failure
     assert_output --partial "ERROR"
     assert_output --partial "phase slug required"
@@ -325,7 +325,7 @@ EOF
 
 @test "phase complete only works on active phases" {
     create_phase_fixture "setup" "active"
-    run bash "$PHASE_SCRIPT" complete core
+    run bash "$PHASE_SCRIPT" --human complete core
     assert_failure
     assert_output --partial "ERROR"
     assert_output --partial "Can only complete active phases"
@@ -333,7 +333,7 @@ EOF
 
 @test "phase complete rejects pending phases" {
     create_phase_fixture "setup" "active"
-    run bash "$PHASE_SCRIPT" complete core
+    run bash "$PHASE_SCRIPT" --human complete core
     assert_failure
     assert_output --partial "Can only complete active phases"
     assert_output --partial "current: pending"
@@ -341,7 +341,7 @@ EOF
 
 @test "phase complete rejects already completed phases" {
     create_phase_fixture "setup" "completed"
-    run bash "$PHASE_SCRIPT" complete setup
+    run bash "$PHASE_SCRIPT" --human complete setup
     assert_failure
     assert_output --partial "Can only complete active phases"
 }
@@ -352,7 +352,7 @@ EOF
 
 @test "phase advance completes current and starts next" {
     create_phase_fixture "setup" "active"
-    run bash "$PHASE_SCRIPT" advance
+    run bash "$PHASE_SCRIPT" --human advance
     assert_success
     assert_output --partial "Advanced from 'setup' to 'core'"
 
@@ -387,7 +387,7 @@ EOF
 
 @test "phase advance fails if no next phase exists" {
     create_phase_fixture "polish" "active"
-    run bash "$PHASE_SCRIPT" advance
+    run bash "$PHASE_SCRIPT" --human advance
     assert_failure
     assert_output --partial "No more phases"
 }
@@ -396,7 +396,7 @@ EOF
     create_phase_fixture "null" "pending"
     jq '.project.currentPhase = null' "$TODO_FILE" > "${TODO_FILE}.tmp" && mv "${TODO_FILE}.tmp" "$TODO_FILE"
 
-    run bash "$PHASE_SCRIPT" advance
+    run bash "$PHASE_SCRIPT" --human advance
     assert_failure
     assert_output --partial "ERROR"
     assert_output --partial "No current phase set"
@@ -422,7 +422,7 @@ EOF
 
 @test "phase list displays all phases" {
     create_phase_fixture "setup" "active"
-    run bash "$PHASE_SCRIPT" list
+    run bash "$PHASE_SCRIPT" --human list
     assert_success
     assert_output --partial "Project Phases:"
     assert_output_contains_all "setup" "core" "polish"
@@ -430,7 +430,7 @@ EOF
 
 @test "phase list shows phase names" {
     create_phase_fixture "setup" "active"
-    run bash "$PHASE_SCRIPT" list
+    run bash "$PHASE_SCRIPT" --human list
     assert_success
     assert_output --partial "Setup & Foundation"
     assert_output --partial "Core Development"
@@ -439,7 +439,7 @@ EOF
 
 @test "phase list shows phase status" {
     create_phase_fixture "setup" "active"
-    run bash "$PHASE_SCRIPT" list
+    run bash "$PHASE_SCRIPT" --human list
     assert_success
     assert_output --partial "(active)"
     assert_output --partial "(pending)"
@@ -447,7 +447,7 @@ EOF
 
 @test "phase list marks current phase with star" {
     create_phase_fixture "setup" "active"
-    run bash "$PHASE_SCRIPT" list
+    run bash "$PHASE_SCRIPT" --human list
     assert_success
     # Current phase should have star marker
     assert_output --regexp "★.*setup"
@@ -455,7 +455,7 @@ EOF
 
 @test "phase list shows phases in order" {
     create_phase_fixture "setup" "active"
-    run bash "$PHASE_SCRIPT" list
+    run bash "$PHASE_SCRIPT" --human list
     assert_success
     assert_output --partial "[1]"
     assert_output --partial "[2]"
@@ -470,7 +470,7 @@ EOF
         .project.phases.core.status = "active" |
         .project.phases.core.startedAt = "2025-12-05T10:00:00Z"' "$TODO_FILE" > "${TODO_FILE}.tmp" && mv "${TODO_FILE}.tmp" "$TODO_FILE"
 
-    run bash "$PHASE_SCRIPT" list
+    run bash "$PHASE_SCRIPT" --human list
     assert_success
     assert_output --partial "(completed)"
     assert_output --partial "(active)"
@@ -485,15 +485,15 @@ EOF
     create_phase_fixture "setup" "pending"
 
     # Start setup phase
-    run bash "$PHASE_SCRIPT" start setup
+    run bash "$PHASE_SCRIPT" --human start setup
     assert_success
 
     # Complete setup phase
-    run bash "$PHASE_SCRIPT" complete setup
+    run bash "$PHASE_SCRIPT" --human complete setup
     assert_success
 
     # Start core phase
-    run bash "$PHASE_SCRIPT" start core
+    run bash "$PHASE_SCRIPT" --human start core
     assert_success
 
     # Verify final state
@@ -586,7 +586,8 @@ EOF
         "completedAt": null
     }' "$TODO_FILE" > "${TODO_FILE}.tmp" && mv "${TODO_FILE}.tmp" "$TODO_FILE"
 
-    run bash "$PHASE_SCRIPT" set pre-setup
+    # Moving to lower-order phase requires --rollback flag (Scenario 6: Rollback Detection)
+    run bash "$PHASE_SCRIPT" --human set pre-setup --rollback --force
     assert_success
 }
 
@@ -623,22 +624,17 @@ EOF
 # Validation Tests
 # =============================================================================
 
-@test "phase start creates phase if it doesn't exist" {
-    # Note: start_phase doesn't validate existence - jq creates missing phases
-    # This test documents current behavior (may want to add validation later)
+@test "phase start validates phase exists" {
+    # Scenario 7: Phase operations validate phase exists before proceeding
     create_phase_fixture
-    run bash "$PHASE_SCRIPT" start new-phase
-    assert_success
-
-    # Verify phase was created as active
-    local phase_status
-    phase_status=$(jq -r '.project.phases["new-phase"].status' "$TODO_FILE")
-    [[ "$phase_status" == "active" ]]
+    run bash "$PHASE_SCRIPT" --human start new-phase
+    assert_failure
+    assert_output --partial "does not exist"
 }
 
 @test "phase complete validates phase exists before completing" {
     create_phase_fixture
-    run bash "$PHASE_SCRIPT" complete invalid-phase
+    run bash "$PHASE_SCRIPT" --human complete invalid-phase
     assert_failure
 }
 
@@ -656,4 +652,242 @@ EOF
     # Verify timestamp is set
     started_at=$(jq -r '.project.phases.setup.startedAt' "$TODO_FILE")
     [[ "$started_at" != "null" ]]
+}
+
+# =============================================================================
+# Rollback Detection Tests (Scenario 6)
+# =============================================================================
+
+@test "phase set detects rollback to lower-order phase" {
+    create_phase_fixture "core" "active"
+    # Update setup to have lower order and make core active
+    jq '.project.phases.core.status = "active" | .project.phases.core.startedAt = "2025-12-01T10:00:00Z"' \
+        "$TODO_FILE" > "${TODO_FILE}.tmp" && mv "${TODO_FILE}.tmp" "$TODO_FILE"
+
+    # Set current phase to core (order 2), try to go back to setup (order 1)
+    run bash "$PHASE_SCRIPT" --human set setup
+    assert_failure
+    assert_output --partial "rollback"
+    assert_output --partial "--rollback flag"
+}
+
+@test "phase set allows rollback with --rollback flag" {
+    create_phase_fixture "core" "active"
+    jq '.project.phases.core.status = "active" | .project.currentPhase = "core"' \
+        "$TODO_FILE" > "${TODO_FILE}.tmp" && mv "${TODO_FILE}.tmp" "$TODO_FILE"
+
+    run bash "$PHASE_SCRIPT" --human set setup --rollback --force
+    assert_success
+
+    # Verify phase changed
+    local current_phase
+    current_phase=$(jq -r '.project.currentPhase' "$TODO_FILE")
+    [[ "$current_phase" == "setup" ]]
+}
+
+@test "phase set rollback requires confirmation in interactive mode" {
+    create_phase_fixture "core" "active"
+    jq '.project.phases.core.status = "active" | .project.currentPhase = "core"' \
+        "$TODO_FILE" > "${TODO_FILE}.tmp" && mv "${TODO_FILE}.tmp" "$TODO_FILE"
+
+    # Without --force, should prompt (but in non-interactive, should fail)
+    run bash "$PHASE_SCRIPT" --json set setup --rollback
+    assert_failure
+    assert_output --partial "E_PHASE_ROLLBACK_REQUIRES_FORCE"
+}
+
+# =============================================================================
+# Phase Advance --force Tests (Scenario 4)
+# =============================================================================
+
+@test "phase advance blocks with incomplete tasks" {
+    create_phase_fixture "setup" "active"
+    # Add an incomplete task in setup phase
+    jq '.tasks += [{"id": "T001", "title": "Test task", "status": "pending", "phase": "setup", "priority": "medium"}]' \
+        "$TODO_FILE" > "${TODO_FILE}.tmp" && mv "${TODO_FILE}.tmp" "$TODO_FILE"
+
+    run bash "$PHASE_SCRIPT" --human advance
+    assert_failure
+    assert_output --partial "Cannot advance"
+    assert_output --partial "incomplete"
+}
+
+@test "phase advance --force skips incomplete task check" {
+    create_phase_fixture "setup" "active"
+    # Add an incomplete task in setup phase
+    jq '.tasks += [{"id": "T001", "title": "Test task", "status": "pending", "phase": "setup", "priority": "medium"}]' \
+        "$TODO_FILE" > "${TODO_FILE}.tmp" && mv "${TODO_FILE}.tmp" "$TODO_FILE"
+
+    run bash "$PHASE_SCRIPT" --human advance --force
+    assert_success
+
+    # Verify advanced to core
+    local current_phase
+    current_phase=$(jq -r '.project.currentPhase' "$TODO_FILE")
+    [[ "$current_phase" == "core" ]]
+}
+
+@test "phase advance blocks on critical tasks even with --force" {
+    create_phase_fixture "setup" "active"
+    # Add a critical incomplete task
+    jq '.tasks += [{"id": "T001", "title": "Critical task", "status": "pending", "phase": "setup", "priority": "critical"}]' \
+        "$TODO_FILE" > "${TODO_FILE}.tmp" && mv "${TODO_FILE}.tmp" "$TODO_FILE"
+
+    run bash "$PHASE_SCRIPT" --human advance --force
+    assert_failure
+    assert_output --partial "critical"
+}
+
+# =============================================================================
+# Phase Rename Tests (Scenario 7)
+# =============================================================================
+
+@test "phase rename updates phase definition" {
+    create_phase_fixture "setup" "active"
+
+    run bash "$PHASE_SCRIPT" --human rename setup foundation
+    assert_success
+    assert_output --partial "renamed successfully"
+
+    # Verify old phase gone, new phase exists
+    local old_exists new_exists
+    old_exists=$(jq -r '.project.phases.setup // "null"' "$TODO_FILE")
+    new_exists=$(jq -r '.project.phases.foundation.name' "$TODO_FILE")
+    [[ "$old_exists" == "null" ]]
+    [[ "$new_exists" == "Setup & Foundation" ]]
+}
+
+@test "phase rename updates all task references" {
+    create_phase_fixture "setup" "active"
+    # Add tasks with setup phase
+    jq '.tasks = [
+        {"id": "T001", "title": "Task 1", "status": "pending", "phase": "setup"},
+        {"id": "T002", "title": "Task 2", "status": "done", "phase": "setup"},
+        {"id": "T003", "title": "Task 3", "status": "active", "phase": "core"}
+    ]' "$TODO_FILE" > "${TODO_FILE}.tmp" && mv "${TODO_FILE}.tmp" "$TODO_FILE"
+
+    run bash "$PHASE_SCRIPT" --human rename setup foundation
+    assert_success
+
+    # Verify task phases updated
+    local setup_count foundation_count core_count
+    setup_count=$(jq '[.tasks[] | select(.phase == "setup")] | length' "$TODO_FILE")
+    foundation_count=$(jq '[.tasks[] | select(.phase == "foundation")] | length' "$TODO_FILE")
+    core_count=$(jq '[.tasks[] | select(.phase == "core")] | length' "$TODO_FILE")
+    [[ "$setup_count" == "0" ]]
+    [[ "$foundation_count" == "2" ]]
+    [[ "$core_count" == "1" ]]
+}
+
+@test "phase rename updates currentPhase" {
+    create_phase_fixture "setup" "active"
+
+    bash "$PHASE_SCRIPT" rename setup foundation
+
+    local current_phase
+    current_phase=$(jq -r '.project.currentPhase' "$TODO_FILE")
+    [[ "$current_phase" == "foundation" ]]
+}
+
+@test "phase rename rejects duplicate name" {
+    create_phase_fixture "setup" "active"
+
+    run bash "$PHASE_SCRIPT" --human rename setup core
+    assert_failure
+    assert_output --partial "already exists"
+}
+
+@test "phase rename rejects non-existent phase" {
+    create_phase_fixture "setup" "active"
+
+    run bash "$PHASE_SCRIPT" --human rename nonexistent newname
+    assert_failure
+    assert_output --partial "does not exist"
+}
+
+@test "phase rename validates new name format" {
+    create_phase_fixture "setup" "active"
+
+    run bash "$PHASE_SCRIPT" --human rename setup "Invalid Name"
+    assert_failure
+    assert_output --partial "Invalid phase name"
+}
+
+# =============================================================================
+# Phase Delete Tests (Scenario 7)
+# =============================================================================
+
+@test "phase delete requires --force flag" {
+    create_phase_fixture "core" "active"
+    jq '.project.currentPhase = "core"' "$TODO_FILE" > "${TODO_FILE}.tmp" && mv "${TODO_FILE}.tmp" "$TODO_FILE"
+
+    run bash "$PHASE_SCRIPT" --human delete setup
+    assert_failure
+    assert_output --partial "--force"
+}
+
+@test "phase delete removes empty phase" {
+    create_phase_fixture "core" "active"
+    jq '.project.currentPhase = "core"' "$TODO_FILE" > "${TODO_FILE}.tmp" && mv "${TODO_FILE}.tmp" "$TODO_FILE"
+
+    run bash "$PHASE_SCRIPT" --human delete polish --force
+    assert_success
+    assert_output --partial "deleted"
+
+    # Verify phase removed
+    local phase_exists
+    phase_exists=$(jq -r '.project.phases.polish // "null"' "$TODO_FILE")
+    [[ "$phase_exists" == "null" ]]
+}
+
+@test "phase delete blocks when tasks exist without reassignment" {
+    create_phase_fixture "core" "active"
+    jq '.project.currentPhase = "core" | .tasks = [
+        {"id": "T001", "title": "Task", "status": "pending", "phase": "setup"}
+    ]' "$TODO_FILE" > "${TODO_FILE}.tmp" && mv "${TODO_FILE}.tmp" "$TODO_FILE"
+
+    run bash "$PHASE_SCRIPT" --human delete setup --force
+    assert_failure
+    assert_output --partial "orphaned"
+    assert_output --partial "--reassign-to"
+}
+
+@test "phase delete with --reassign-to moves tasks" {
+    create_phase_fixture "core" "active"
+    jq '.project.currentPhase = "core" | .tasks = [
+        {"id": "T001", "title": "Task 1", "status": "pending", "phase": "setup"},
+        {"id": "T002", "title": "Task 2", "status": "done", "phase": "setup"}
+    ]' "$TODO_FILE" > "${TODO_FILE}.tmp" && mv "${TODO_FILE}.tmp" "$TODO_FILE"
+
+    run bash "$PHASE_SCRIPT" --human delete setup --reassign-to core --force
+    assert_success
+
+    # Verify tasks moved to core
+    local core_count
+    core_count=$(jq '[.tasks[] | select(.phase == "core")] | length' "$TODO_FILE")
+    [[ "$core_count" == "2" ]]
+
+    # Verify setup phase removed
+    local phase_exists
+    phase_exists=$(jq -r '.project.phases.setup // "null"' "$TODO_FILE")
+    [[ "$phase_exists" == "null" ]]
+}
+
+@test "phase delete rejects deleting current phase" {
+    create_phase_fixture "setup" "active"
+
+    run bash "$PHASE_SCRIPT" --human delete setup --force
+    assert_failure
+    assert_output --partial "current project phase"
+}
+
+@test "phase delete validates reassign target exists" {
+    create_phase_fixture "core" "active"
+    jq '.project.currentPhase = "core" | .tasks = [
+        {"id": "T001", "title": "Task", "status": "pending", "phase": "setup"}
+    ]' "$TODO_FILE" > "${TODO_FILE}.tmp" && mv "${TODO_FILE}.tmp" "$TODO_FILE"
+
+    run bash "$PHASE_SCRIPT" --human delete setup --reassign-to nonexistent --force
+    assert_failure
+    assert_output --partial "does not exist"
 }

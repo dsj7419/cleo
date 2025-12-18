@@ -86,10 +86,12 @@ teardown() {
   run bash "$SCRIPTS_DIR/log.sh" list --action task_created --format json
   assert_success
 
-  # Verify JSON structure using jq
-  echo "$output" | jq -e '.[].id' >/dev/null
-  echo "$output" | jq -e '.[].timestamp' >/dev/null
-  echo "$output" | jq -e '.[].action' >/dev/null
+  # Verify JSON envelope structure using jq
+  echo "$output" | jq -e '._meta.command' >/dev/null
+  echo "$output" | jq -e '.success' >/dev/null
+  echo "$output" | jq -e '.entries[].id' >/dev/null
+  echo "$output" | jq -e '.entries[].timestamp' >/dev/null
+  echo "$output" | jq -e '.entries[].action' >/dev/null
 }
 
 @test "log show: should display specific log entry details" {
@@ -154,7 +156,8 @@ teardown() {
   run bash "$ADD_SCRIPT" "Human readable test" --description "Human test"
   assert_success
 
-  run bash "$SCRIPTS_DIR/log.sh" list --action task_created --limit 1
+  # Explicitly request text format (tests run in non-TTY context where default is JSON)
+  run bash "$SCRIPTS_DIR/log.sh" list --action task_created --limit 1 --format text
   assert_success
 
   # Check for readable timestamp format (YYYY-MM-DD HH:MM:SS)

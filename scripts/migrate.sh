@@ -17,22 +17,47 @@ fi
 # shellcheck source=lib/migrate.sh
 source "$LIB_DIR/migrate.sh"
 
+# Source output formatting and error libraries
+if [[ -f "$LIB_DIR/output-format.sh" ]]; then
+  # shellcheck source=../lib/output-format.sh
+  source "$LIB_DIR/output-format.sh"
+fi
+if [[ -f "$LIB_DIR/exit-codes.sh" ]]; then
+  # shellcheck source=../lib/exit-codes.sh
+  source "$LIB_DIR/exit-codes.sh"
+fi
+if [[ -f "$LIB_DIR/error-json.sh" ]]; then
+  # shellcheck source=../lib/error-json.sh
+  source "$LIB_DIR/error-json.sh"
+fi
+
+# Global variables
+FORMAT=""
+QUIET=false
+COMMAND_NAME="migrate"
+
 # ============================================================================
 # DEPENDENCY CHECK (T167)
 # ============================================================================
 # jq is required for all migration operations
-if ! command -v jq &>/dev/null; then
-    echo "ERROR: jq is required for migration operations but not found." >&2
-    echo "" >&2
-    echo "Install jq:" >&2
-    case "$(uname -s)" in
-        Linux*)  echo "  sudo apt install jq  (Debian/Ubuntu)" >&2
-                 echo "  sudo yum install jq  (RHEL/CentOS)" >&2 ;;
-        Darwin*) echo "  brew install jq" >&2 ;;
-        *)       echo "  See: https://stedolan.github.io/jq/download/" >&2 ;;
-    esac
-    exit 1
-fi
+check_jq_dependency() {
+    if ! command -v jq &>/dev/null; then
+        if [[ "$FORMAT" == "json" ]] && declare -f output_error &>/dev/null; then
+            output_error "$E_DEPENDENCY_MISSING" "jq is required for migration operations but not found" "${EXIT_DEPENDENCY_ERROR:-5}" false "Install jq: apt install jq (Debian) or brew install jq (macOS)"
+        else
+            echo "ERROR: jq is required for migration operations but not found." >&2
+            echo "" >&2
+            echo "Install jq:" >&2
+            case "$(uname -s)" in
+                Linux*)  echo "  sudo apt install jq  (Debian/Ubuntu)" >&2
+                         echo "  sudo yum install jq  (RHEL/CentOS)" >&2 ;;
+                Darwin*) echo "  brew install jq" >&2 ;;
+                *)       echo "  See: https://stedolan.github.io/jq/download/" >&2 ;;
+            esac
+        fi
+        exit "${EXIT_DEPENDENCY_ERROR:-1}"
+    fi
+}
 
 # ============================================================================
 # USAGE
@@ -58,6 +83,10 @@ Options:
   --backup              Create backup before migration (default)
   --no-backup           Skip backup creation
   --force               Force migration even if versions match
+  -f, --format FMT      Output format: text, json (default: auto-detect)
+  --human               Force human-readable text output
+  --json                Force JSON output
+  -q, --quiet           Suppress non-essential output
   -h, --help            Show this help message
 
 Rollback Options:
@@ -67,6 +96,13 @@ Rollback Options:
 Repair Options:
   --dry-run             Show what would be repaired without making changes
   --auto                Auto-repair without confirmation
+
+JSON Output:
+  {
+    "_meta": {"command": "migrate", "timestamp": "..."},
+    "success": true,
+    "migrations": [{"from": "1.0", "to": "2.0", "applied": true}]
+  }
 
 Examples:
   # Check migration status
@@ -92,6 +128,9 @@ Examples:
 
   # Auto-repair schema issues
   claude-todo migrate repair --auto
+
+  # JSON output for scripting
+  claude-todo migrate status --json
 
 Schema Versions:
   todo:    $SCHEMA_VERSION_TODO
@@ -143,12 +182,88 @@ cmd_status() {
     local claude_dir="$project_dir/.claude"
 
     if [[ ! -d "$claude_dir" ]]; then
-        echo "ERROR: No .claude directory found in $project_dir" >&2
-        echo "Run 'claude-todo init' to initialize the project" >&2
-        exit 1
+        if [[ "$FORMAT" == "json" ]] && declare -f output_error &>/dev/null; then
+            output_error "$E_NOT_INITIALIZED" "No .claude directory found in $project_dir" "${EXIT_NOT_FOUND:-4}" true "Run 'claude-todo init' to initialize the project"
+        else
+            echo "ERROR: No .claude directory found in $project_dir" >&2
+            echo "Run 'claude-todo init' to initialize the project" >&2
+        fi
+        exit "${EXIT_NOT_FOUND:-1}"
     fi
 
-    show_migration_status "$claude_dir"
+    if [[ "$FORMAT" == "json" ]]; then
+        # JSON output
+        local files_json="[]"
+        local files=(
+            "$claude_dir/todo.json:todo"
+            "$claude_dir/todo-config.json:config"
+            "$claude_dir/todo-archive.json:archive"
+            "$claude_dir/todo-log.json:log"
+        )
+
+        for file_spec in "${files[@]}"; do
+            IFS=':' read -r file file_type <<< "$file_spec"
+
+            if [[ ! -f "$file" ]]; then
+                continue
+            fi
+
+            local current_version expected_version status_text needs_migration
+            current_version=$(detect_file_version "$file")
+            expected_version=$(get_expected_version "$file_type")
+
+            local status
+            check_compatibility "$file" "$file_type" && status=$? || status=$?
+
+            case $status in
+                0) status_text="current"; needs_migration=false ;;
+                1) status_text="outdated"; needs_migration=true ;;
+                2) status_text="incompatible"; needs_migration=true ;;
+                *) status_text="unknown"; needs_migration=false ;;
+            esac
+
+            files_json=$(echo "$files_json" | jq \
+                --arg type "$file_type" \
+                --arg file "$file" \
+                --arg current "$current_version" \
+                --arg expected "$expected_version" \
+                --arg status "$status_text" \
+                --argjson needsMigration "$needs_migration" \
+                '. + [{
+                    "type": $type,
+                    "file": $file,
+                    "currentVersion": $current,
+                    "expectedVersion": $expected,
+                    "status": $status,
+                    "needsMigration": $needsMigration
+                }]')
+        done
+
+        jq -n \
+            --arg timestamp "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
+            --arg projectDir "$project_dir" \
+            --argjson files "$files_json" \
+            '{
+                "_meta": {
+                    "command": "migrate",
+                    "subcommand": "status",
+                    "timestamp": $timestamp,
+                    "format": "json"
+                },
+                "success": true,
+                "projectDir": $projectDir,
+                "files": $files,
+                "targetVersions": {
+                    "todo": $ENV.SCHEMA_VERSION_TODO,
+                    "config": $ENV.SCHEMA_VERSION_CONFIG,
+                    "archive": $ENV.SCHEMA_VERSION_ARCHIVE,
+                    "log": $ENV.SCHEMA_VERSION_LOG
+                }
+            }' | jq --arg todo "$SCHEMA_VERSION_TODO" --arg config "$SCHEMA_VERSION_CONFIG" --arg archive "$SCHEMA_VERSION_ARCHIVE" --arg log "$SCHEMA_VERSION_LOG" \
+            '.targetVersions = {"todo": $todo, "config": $config, "archive": $archive, "log": $log}'
+    else
+        show_migration_status "$claude_dir"
+    fi
 }
 
 # Check if migration is needed
@@ -157,8 +272,12 @@ cmd_check() {
     local claude_dir="$project_dir/.claude"
 
     if [[ ! -d "$claude_dir" ]]; then
-        echo "ERROR: No .claude directory found" >&2
-        exit 1
+        if [[ "$FORMAT" == "json" ]] && declare -f output_error &>/dev/null; then
+            output_error "$E_NOT_INITIALIZED" "No .claude directory found" "${EXIT_NOT_FOUND:-4}" true "Run 'claude-todo init' to initialize the project"
+        else
+            echo "ERROR: No .claude directory found" >&2
+        fi
+        exit "${EXIT_NOT_FOUND:-1}"
     fi
 
     local needs_migration=false
@@ -183,17 +302,48 @@ cmd_check() {
             needs_migration=true
             break
         elif [[ $status -eq 2 ]]; then
-            echo "ERROR: Incompatible version found in $file" >&2
+            if [[ "$FORMAT" == "json" ]]; then
+                jq -n \
+                    --arg timestamp "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
+                    --arg file "$file" \
+                    '{
+                        "_meta": {"command": "migrate", "subcommand": "check", "timestamp": $timestamp, "format": "json"},
+                        "success": false,
+                        "error": {
+                            "code": "E_INCOMPATIBLE_VERSION",
+                            "message": ("Incompatible version found in " + $file),
+                            "file": $file
+                        }
+                    }'
+            else
+                echo "ERROR: Incompatible version found in $file" >&2
+            fi
             exit 1
         fi
     done
 
-    if [[ "$needs_migration" == "true" ]]; then
-        echo "Migration needed"
-        exit 1
+    if [[ "$FORMAT" == "json" ]]; then
+        jq -n \
+            --arg timestamp "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
+            --argjson needed "$needs_migration" \
+            '{
+                "_meta": {"command": "migrate", "subcommand": "check", "timestamp": $timestamp, "format": "json"},
+                "success": true,
+                "migrationNeeded": $needed
+            }'
+        if [[ "$needs_migration" == "true" ]]; then
+            exit 1
+        else
+            exit 0
+        fi
     else
-        echo "All files up to date"
-        exit 0
+        if [[ "$needs_migration" == "true" ]]; then
+            echo "Migration needed"
+            exit 1
+        else
+            echo "All files up to date"
+            exit 0
+        fi
     fi
 }
 
@@ -681,6 +831,22 @@ main() {
                 dry_run=true
                 shift
                 ;;
+            -f|--format)
+                FORMAT="$2"
+                shift 2
+                ;;
+            --human)
+                FORMAT="text"
+                shift
+                ;;
+            --json)
+                FORMAT="json"
+                shift
+                ;;
+            -q|--quiet)
+                QUIET=true
+                shift
+                ;;
             -h|--help)
                 show_usage
                 exit 0
@@ -690,6 +856,16 @@ main() {
                 ;;
         esac
     done
+
+    # Resolve output format (CLI > env > config > TTY-aware default)
+    if declare -f resolve_format &>/dev/null; then
+        FORMAT=$(resolve_format "$FORMAT")
+    else
+        FORMAT="${FORMAT:-text}"
+    fi
+
+    # Check jq dependency after format is resolved
+    check_jq_dependency
 
     case "$command" in
         "status")

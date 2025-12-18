@@ -1,9 +1,34 @@
 # Claude-TODO LLM-Agent-First Specification
 
-> **Comprehensive analysis, architecture, and implementation plan for LLM-agent-first CLI design**
+> **Authoritative standard for LLM-agent-first CLI design**
 >
-> **Version**: 1.0 | **Target**: v0.17.0 | **Generated**: 2025-12-17
-> **Analysis Scope**: 28 commands, 150+ flags, reference implementation study
+> **Version**: 2.1 | **Updated**: 2025-12-17
+> **Scope**: 30 commands, universal standards for agent automation
+
+---
+
+## RFC 2119 Conformance
+
+This specification uses RFC 2119 keywords to indicate requirement levels:
+
+| Keyword | Meaning |
+|---------|---------|
+| **MUST** | Absolute requirement. Non-compliance is a specification violation. |
+| **MUST NOT** | Absolute prohibition. |
+| **SHALL** | Equivalent to MUST. |
+| **SHOULD** | Recommended but not mandatory. Valid reasons may exist to ignore. |
+| **SHOULD NOT** | Discouraged but not prohibited. |
+| **MAY** | Optional. Implementations can choose to include or omit. |
+
+---
+
+## Related Specifications
+
+| Document | Relationship |
+|----------|--------------|
+| **[LLM-TASK-ID-SYSTEM-DESIGN-SPEC.md](LLM-TASK-ID-SYSTEM-DESIGN-SPEC.md)** | **AUTHORITATIVE** for task ID format, validation, error codes 10-22 |
+| **[HIERARCHY-ENHANCEMENT-SPEC.md](HIERARCHY-ENHANCEMENT-SPEC.md)** | Hierarchy features (type, parentId, size) affecting JSON output |
+| **[LLM-TASK-ID-SYSTEM-DESIGN-IMPLEMENTATION-REPORT.md](LLM-TASK-ID-SYSTEM-DESIGN-IMPLEMENTATION-REPORT.md)** | Tracks implementation status against all LLM specs |
 
 ---
 
@@ -11,141 +36,146 @@
 
 ### Mission Statement
 
-Transform claude-todo from **human-first** (text default, JSON opt-in) to **LLM-agent-first** (JSON default, human opt-in) to enable zero-friction autonomous agent workflows.
+Design CLI tools with **LLM-agent-first** principles: JSON output by default for non-TTY contexts, human output opt-in, structured errors, and consistent behavior across all commands.
 
-### Current State Assessment
+### Core Principles
 
-| Metric | Current | Target | Gap |
-|--------|---------|--------|-----|
-| Commands with JSON support | 22/28 (79%) | 28/28 (100%) | 6 commands |
-| Default output format | `text` (human) | `json` (non-TTY) | Architecture change |
-| Commands with `--quiet` | 5/28 (18%) | 28/28 (100%) | 23 commands |
-| Commands with `--format` | 9/28 (32%) | 28/28 (100%) | 19 commands |
-| Standardized error JSON | 0% | 100% | Not implemented |
-| JSON envelope consistency | 73% | 100% | 27% variation |
-| TTY auto-detection for format | No | Yes | Not implemented |
-| Flag consistency score | 43% | 100% | Significant work |
-
-### Critical Gaps
-
-| Gap | Severity | Impact |
-|-----|----------|--------|
-| Write commands have NO JSON | 🔴 Critical | Agents must re-query after every mutation |
-| TTY auto-detection not used | 🔴 Critical | Manual `--format json` required everywhere |
-| No standardized error JSON | 🔴 Critical | Must parse colored text with regex |
-| `phase.sh` has ZERO JSON | 🟡 High | Phase lifecycle blocked from automation |
-| Flag consistency at 43% | 🟡 High | Inconsistent behavior across commands |
-| Short flag conflicts (`-f`, `-n`) | 🟠 Medium | Scripting confusion |
+| Principle | Requirement |
+|-----------|-------------|
+| **JSON by Default** | Non-TTY output MUST default to JSON |
+| **Human Opt-In** | Human-readable output via explicit `--human` flag |
+| **Structured Errors** | All errors MUST return JSON with error codes |
+| **Consistent Flags** | All commands MUST support `--format` and `--quiet` |
+| **Documented Exit Codes** | Every exit code MUST be a defined constant |
+| **Schema Validation** | All JSON MUST include `$schema` field |
 
 ### Reference Implementation
 
-**`analyze.sh`** (v0.16.0) is the **gold standard** for LLM-agent-first design:
-- **JSON output is DEFAULT** (`OUTPUT_MODE="json"` line 74)
-- Human output requires explicit `--human` flag (opt-in for HITL)
+**`analyze.sh`** exemplifies the gold standard for LLM-agent-first design:
+- **JSON output is DEFAULT** (human requires explicit `--human` flag)
 - Comprehensive `_meta` envelope with version, timestamp, algorithm
 - Structured recommendations with `action_order`, `recommendation.command`
 - Exit codes documented (0=success, 1=error, 2=no tasks)
 
 ---
 
-## Part 1: Command Analysis
+## Part 1: Command Inventory
 
-### Tier 1: Production-Ready for Agents (8-10/10)
+### All Commands (30 total)
 
-| Command | Score | JSON | Quiet | Key Strength |
-|---------|-------|------|-------|--------------|
-| `analyze` | **10/10** | Default | N/A | **Reference implementation** - JSON default |
-| `list` | 9/10 | Full | Yes | Most comprehensive format support |
-| `exists` | 9/10 | Full | Yes | Perfect exit codes (4 explicit constants) |
-| `validate` | 9/10 | Full | Yes | Auto-fix with atomic writes |
-| `stats` | 9/10 | Full | No | Cleanest JSON structure |
-| `labels` | 9/10 | Full | No | Co-occurrence analysis |
-| `blockers` | 9/10 | Full | Yes | Critical path analysis |
-| `export` | 8/10 | Multi | Yes | 5 format options |
+| # | Command | Script | Category | Requirements |
+|---|---------|--------|----------|--------------|
+| 1 | `add` | `add-task.sh` | Write | JSON output, `--format`, `--quiet` |
+| 2 | `analyze` | `analyze.sh` | Read | JSON default, `--human` opt-in |
+| 3 | `archive` | `archive.sh` | Write | JSON output, `--format`, `--quiet`, `--dry-run` |
+| 4 | `backup` | `backup.sh` | Maintenance | JSON output, `--format`, `--quiet` |
+| 5 | `blockers` | `blockers-command.sh` | Read | JSON output, `--format`, `--quiet` |
+| 6 | `complete` | `complete-task.sh` | Write | JSON output, `--format`, `--quiet`, `--dry-run` |
+| 7 | `dash` | `dash.sh` | Read | JSON output, `--format`, `--quiet` |
+| 8 | `deps` | `deps-command.sh` | Read | JSON output, `--format`, `--quiet` |
+| 9 | `exists` | `exists.sh` | Read | JSON output, `--format`, `--quiet` |
+| 10 | `export` | `export.sh` | Read | Multi-format, `--quiet` |
+| 11 | `extract` | `extract-todowrite.sh` | Sync | JSON output, `--format`, `--quiet`, `--dry-run` |
+| 12 | `focus` | `focus.sh` | Write | JSON output, `--format`, `--quiet` |
+| 13 | `history` | `history.sh` | Read | JSON output, `--format`, `--quiet` |
+| 14 | `init` | `init.sh` | Setup | JSON output, `--format`, `--quiet` |
+| 15 | `inject` | `inject-todowrite.sh` | Sync | JSON output, `--format`, `--quiet`, `--dry-run` |
+| 16 | `labels` | `labels.sh` | Read | JSON output, `--format`, `--quiet` |
+| 17 | `list` | `list-tasks.sh` | Read | JSON output, `--format`, `--quiet` |
+| 18 | `log` | `log.sh` | Read | JSON output, `--format`, `--quiet` |
+| 19 | `migrate` | `migrate.sh` | Maintenance | JSON output, `--format`, `--quiet`, `--dry-run` |
+| 20 | `migrate-backups` | `migrate-backups.sh` | Maintenance | JSON output, `--format`, `--quiet`, `--dry-run` |
+| 21 | `next` | `next.sh` | Read | JSON output, `--format`, `--quiet` |
+| 22 | `phase` | `phase.sh` | Write | JSON output, `--format`, `--quiet` |
+| 23 | `phases` | `phases.sh` | Read | JSON output, `--format`, `--quiet` |
+| 24 | `restore` | `restore.sh` | Maintenance | JSON output, `--format`, `--quiet`, `--dry-run` |
+| 25 | `session` | `session.sh` | Write | JSON output, `--format`, `--quiet` |
+| 26 | `show` | `show.sh` | Read | JSON output, `--format`, `--quiet` |
+| 27 | `stats` | `stats.sh` | Read | JSON output, `--format`, `--quiet` |
+| 28 | `sync` | `sync-todowrite.sh` | Sync | JSON output, `--format`, `--quiet`, `--dry-run` |
+| 29 | `update` | `update-task.sh` | Write | JSON output, `--format`, `--quiet`, `--dry-run` |
+| 30 | `validate` | `validate.sh` | Maintenance | JSON output, `--format`, `--quiet` |
 
-### Tier 2: Usable with Limitations (5-7/10)
+### Command Categories
 
-| Command | Score | Issues | Fix Needed |
-|---------|-------|--------|------------|
-| `show` | 7/10 | No quiet mode | Add `--quiet` |
-| `next` | 8/10 | No quiet mode | Add `--quiet` |
-| `history` | 8/10 | Missing `_meta.timestamp` | Fix envelope |
-| `deps` | 8/10 | No `--format` flag | Add `--format` |
-| `dash` | 6/10 | Complex output | Add `--quiet` |
-| `log` | 7/10 | Raw array, no envelope | Add `_meta` |
-| `session` | 5/10 | Partial JSON (subcommands only) | Global `--format` |
-| `phases` | 6/10 | Heavy human formatting | Add `--format` |
-
-### Tier 3: Requires Enhancement (1-4/10)
-
-| Command | Score | Critical Issues |
-|---------|-------|-----------------|
-| `focus` | 4/10 | Only `show` has JSON; no global `--format` |
-| `backup` | 4/10 | No JSON output mode |
-| `add` | **2/10** | **No JSON output** - cannot get created task |
-| `update` | **1/10** | **No output control whatsoever** |
-| `complete` | **2/10** | **No JSON confirmation** |
-| `restore` | 3/10 | Interactive only, no dry-run |
-| `migrate` | 2/10 | Text-only status |
-| `init` | 2/10 | Procedural, no output |
-| `phase` | **2/10** | **ZERO JSON output** in any subcommand |
-| `archive` | 2/10 | Statistics as text only |
+| Category | Commands | Special Requirements |
+|----------|----------|---------------------|
+| **Write** | add, archive, complete, focus, phase, session, update | MUST return created/updated object, MUST support `--dry-run` |
+| **Read** | analyze, blockers, dash, deps, exists, export, history, labels, list, log, next, phases, show, stats | MUST support filtering, MUST return structured data |
+| **Sync** | extract, inject, sync | MUST support `--dry-run`, MUST report conflicts |
+| **Maintenance** | backup, init, migrate, migrate-backups, restore, validate | MUST report status, SHOULD support `--dry-run` |
+| **Setup** | init | MUST be idempotent |
 
 ---
 
 ## Part 2: Gap Analysis
 
-### Gap 1: Write Commands Have NO JSON Output
+### Gap 1: JSON Output Inconsistencies
 
-**Impact**: Agents must re-query after every mutation
+**Impact**: Agents need consistent JSON envelope across all commands
 
-| Command | Current Output | Agent Workaround |
-|---------|----------------|------------------|
-| `add` | Text + task ID | `ct show $(ct add "Task" -q) --format json` |
-| `update` | Text summary | `ct list --format json` after update |
-| `complete` | Text confirmation | `ct show $id --format json` after |
-| `archive` | Text stats | `ct stats --format json` after |
+| Command | Current Output | Required Fix |
+|---------|----------------|--------------|
+| `add` | Has JSON but missing `$schema` | Add schema, standardize envelope |
+| `update` | Has JSON but inconsistent | Standardize envelope |
+| `complete` | Has JSON output | Standardize envelope |
+| `archive` | Has JSON output | Standardize envelope |
+| `phase` subcommands | Partial JSON | Complete JSON for all subcommands |
 
-**Required JSON Output**:
+**Required JSON Output** (v0.17.0 hierarchy fields):
 
 ```json
-// ct add "Task" --format json
+// ct add "Task" --parent T001 --format json
 {
+  "$schema": "https://claude-todo.dev/schemas/output.schema.json",
   "_meta": {"command": "add", "timestamp": "...", "version": "..."},
   "success": true,
-  "task": {"id": "T042", "title": "...", "status": "pending", "createdAt": "..."}
+  "task": {
+    "id": "T042",
+    "type": "task",
+    "parentId": "T001",
+    "size": null,
+    "title": "...",
+    "status": "pending",
+    "createdAt": "..."
+  }
 }
 
 // ct update T042 --priority high --format json
 {
+  "$schema": "https://claude-todo.dev/schemas/output.schema.json",
   "_meta": {"command": "update", "timestamp": "..."},
   "success": true,
   "taskId": "T042",
   "changes": {"priority": {"before": "medium", "after": "high"}},
-  "task": {/* full updated task */}
+  "task": {
+    "id": "T042",
+    "type": "task",
+    "parentId": "T001",
+    "priority": "high",
+    /* ... full updated task */
+  }
 }
 
 // ct complete T042 --format json
 {
+  "$schema": "https://claude-todo.dev/schemas/output.schema.json",
   "_meta": {"command": "complete", "timestamp": "..."},
   "success": true,
   "taskId": "T042",
   "completedAt": "2025-12-17T10:00:00Z",
-  "cycleTimeDays": 3.5
+  "cycleTimeDays": 3.5,
+  "parentAutoComplete": false
 }
 ```
 
-### Gap 2: TTY Auto-Detection Not Used for Format
+### Gap 2: TTY Auto-Detection Inconsistent
 
-**Location**: `lib/output-format.sh` line 251
+**Location**: `lib/output-format.sh` `resolve_format()`
 
-**Current**:
-```bash
-# Default fallback if nothing resolved
-[[ -z "$resolved_format" ]] && resolved_format="text"
-```
+**Current Issue**: Not all scripts call `resolve_format()` or respect its result.
 
-**Required**:
+**Required Behavior**:
 ```bash
 # Default fallback: TTY-aware auto-detection
 if [[ -z "$resolved_format" ]]; then
@@ -157,43 +187,53 @@ if [[ -z "$resolved_format" ]]; then
 fi
 ```
 
-### Gap 3: No Standardized Error JSON Format
+**MUST** be implemented in ALL commands via `resolve_format()` call.
 
-**Current**: Errors output as text regardless of `--format json`
+### Gap 3: Standardized Error JSON Format
 
-```bash
-# Current behavior
-echo -e "${RED}[ERROR]${NC} Task ID required" >&2
-```
+**Current Status**: Error JSON implemented in `lib/error-json.sh`
 
-**Required Error JSON**:
+**Error JSON Envelope** (IMPLEMENTED):
 ```json
+// Task not found
 {
-  "_meta": {"command": "exists", "timestamp": "...", "version": "..."},
+  "$schema": "https://claude-todo.dev/schemas/error.schema.json",
+  "_meta": {"command": "show", "timestamp": "...", "version": "..."},
   "success": false,
   "error": {
     "code": "E_TASK_NOT_FOUND",
     "message": "Task T999 does not exist",
-    "exitCode": 1,
+    "exitCode": 4,
     "recoverable": false,
     "suggestion": "Use 'ct exists' to verify task ID"
   }
 }
-```
 
-### Gap 4: Phase Commands Have ZERO JSON Output
-
-**`phase.sh`** subcommands (show, set, start, complete, advance, list) all output text only.
-
-**Current**:
-```bash
-claude-todo phase show
-# Output: "Current Phase: core\n  Name: Core Development\n  Status: active"
-```
-
-**Required**:
-```json
+// Hierarchy error
 {
+  "$schema": "https://claude-todo.dev/schemas/error.schema.json",
+  "_meta": {"command": "add", "timestamp": "...", "version": "..."},
+  "success": false,
+  "error": {
+    "code": "E_PARENT_NOT_FOUND",
+    "message": "Parent task T999 does not exist",
+    "exitCode": 10,
+    "recoverable": true,
+    "suggestion": "Use 'ct list --type epic,task' to find valid parents",
+    "context": {"requestedParent": "T999"}
+  }
+}
+```
+
+### Gap 4: Phase Commands Need Full JSON
+
+**`phase.sh`** subcommands MUST output JSON when `--format json` is specified.
+
+**Required for each subcommand**:
+```json
+// phase show --format json
+{
+  "$schema": "https://claude-todo.dev/schemas/output.schema.json",
   "_meta": {"command": "phase show", "timestamp": "..."},
   "success": true,
   "currentPhase": {
@@ -219,124 +259,242 @@ claude-todo phase show
 
 | Flag | Current Coverage | Target |
 |------|-----------------|--------|
-| `--format` | 9/28 (32%) | 100% |
-| `--quiet` | 5/28 (18%) | 100% |
-| `--verbose` | 2/28 (7%) | All display commands |
-| `--dry-run` | 3/28 (11%) | All write operations |
+| `--format` | 17/30 (57%) | 100% |
+| `--quiet` | 21/30 (70%) | 100% |
+| `--verbose` | 2/30 (7%) | All display commands |
+| `--dry-run` | 3/30 (10%) | All write operations |
 
 ---
 
 ## Part 3: Standardized Systems
 
-### 3.1 Exit Code Standard
+### 3.1 Exit Code Standard (AUTHORITATIVE)
 
-Create `lib/exit-codes.sh`:
+**File**: `lib/exit-codes.sh`
 
-```bash
-#!/usr/bin/env bash
-# lib/exit-codes.sh - Standardized exit codes for claude-todo
+**Exit Code Ranges**:
+- `0`: Success
+- `1-9`: General errors
+- `10-19`: Hierarchy errors (see LLM-TASK-ID-SYSTEM-DESIGN-SPEC)
+- `20-29`: Concurrency errors
+- `100+`: Special conditions (not errors)
 
-# SUCCESS CODES
-readonly EXIT_SUCCESS=0           # Operation completed successfully
+#### Complete Exit Code Table
 
-# ERROR CODES (1-99)
-readonly EXIT_GENERAL_ERROR=1     # Unspecified error (backward compat)
-readonly EXIT_INVALID_INPUT=2     # Invalid user input/arguments
-readonly EXIT_FILE_ERROR=3        # File system operation failed
-readonly EXIT_NOT_FOUND=4         # Requested resource not found
-readonly EXIT_DEPENDENCY_ERROR=5  # Missing dependency (jq, etc.)
-readonly EXIT_VALIDATION_ERROR=6  # Data validation failed
-readonly EXIT_LOCK_TIMEOUT=7      # Failed to acquire file lock
+| Code | Constant | Meaning | Recoverable | Example |
+|------|----------|---------|-------------|---------|
+| **General (0-9)** |
+| 0 | `EXIT_SUCCESS` | Operation completed successfully | N/A | Task created |
+| 1 | `EXIT_GENERAL_ERROR` | Unspecified error | Yes | Unknown failure |
+| 2 | `EXIT_INVALID_INPUT` | Invalid user input/arguments | Yes | Missing required arg |
+| 3 | `EXIT_FILE_ERROR` | File system operation failed | No | Permission denied |
+| 4 | `EXIT_NOT_FOUND` | Requested resource not found | Yes | Task ID not found |
+| 5 | `EXIT_DEPENDENCY_ERROR` | Missing dependency | No | jq not installed |
+| 6 | `EXIT_VALIDATION_ERROR` | Data validation failed | Yes | Schema violation |
+| 7 | `EXIT_LOCK_TIMEOUT` | Failed to acquire lock | Yes | Concurrent write |
+| 8 | `EXIT_CONFIG_ERROR` | Configuration error | Yes | Invalid config |
+| **Hierarchy (10-19)** |
+| 10 | `EXIT_PARENT_NOT_FOUND` | parentId references non-existent task | Yes | --parent T999 invalid |
+| 11 | `EXIT_DEPTH_EXCEEDED` | Max hierarchy depth (3) exceeded | Yes | Too deeply nested |
+| 12 | `EXIT_SIBLING_LIMIT` | Max siblings (7) exceeded | Yes | Parent has 7 children |
+| 13 | `EXIT_INVALID_PARENT_TYPE` | subtask cannot have children | Yes | subtask as parent |
+| 14 | `EXIT_CIRCULAR_REFERENCE` | Task would be ancestor of itself | No | Cycle detected |
+| 15 | `EXIT_ORPHAN_DETECTED` | Task has invalid parentId | Yes | Parent was deleted |
+| **Concurrency (20-29)** |
+| 20 | `EXIT_CHECKSUM_MISMATCH` | File modified externally | Yes | Retry operation |
+| 21 | `EXIT_CONCURRENT_MODIFICATION` | Multi-agent conflict | Yes | Retry with backoff |
+| 22 | `EXIT_ID_COLLISION` | ID generation conflict | Yes | Regenerate ID |
+| **Special (100+)** |
+| 100 | `EXIT_NO_DATA` | No data to process (not error) | N/A | Empty query result |
+| 101 | `EXIT_ALREADY_EXISTS` | Resource already exists | N/A | Task ID exists |
+| 102 | `EXIT_NO_CHANGE` | No changes needed | N/A | Update was no-op |
 
-# SPECIAL CODES (100+)
-readonly EXIT_NO_DATA=100         # No data to process (not an error)
-readonly EXIT_ALREADY_EXISTS=101  # Resource already exists
-readonly EXIT_NO_CHANGE=102       # No changes needed/made
+#### Exit Code Semantics (AUTHORITATIVE)
 
-export EXIT_SUCCESS EXIT_GENERAL_ERROR EXIT_INVALID_INPUT EXIT_FILE_ERROR
-export EXIT_NOT_FOUND EXIT_DEPENDENCY_ERROR EXIT_VALIDATION_ERROR EXIT_LOCK_TIMEOUT
-export EXIT_NO_DATA EXIT_ALREADY_EXISTS EXIT_NO_CHANGE
-```
+Commands **MUST** use the following exit codes:
 
-### 3.2 Error JSON Library
+| Scenario | Exit Code | Error Code |
+|----------|-----------|------------|
+| Task not found | 4 | `E_TASK_NOT_FOUND` |
+| Invalid task ID format | 2 | `E_TASK_INVALID_ID` |
+| File not readable | 3 | `E_FILE_READ_ERROR` |
+| Missing required argument | 2 | `E_INPUT_MISSING` |
+| JSON schema validation failed | 6 | `E_VALIDATION_SCHEMA` |
+| Parent task not found (hierarchy) | 10 | `E_PARENT_NOT_FOUND` |
+| Would create circular reference | 14 | `E_CIRCULAR_REFERENCE` |
+| Lock acquisition timeout | 7 | N/A (no E_ code) |
+| Empty query result | 100 | N/A (not an error) |
 
-Create `lib/error-json.sh`:
+### 3.2 Error Code Standard (AUTHORITATIVE)
 
-```bash
-#!/usr/bin/env bash
-# lib/error-json.sh - Standardized error JSON output
+**File**: `lib/error-json.sh`
 
-source "${LIB_DIR:-$(dirname "$0")}/exit-codes.sh"
+**Convention**: All error codes use `E_` prefix.
 
-# output_error - Format-aware error output
-output_error() {
-  local error_code="$1" message="$2" exit_code="${3:-1}"
-  local recoverable="${4:-false}" suggestion="${5:-}"
-  local command="${COMMAND_NAME:-unknown}"
-  local version="${VERSION:-unknown}"
+#### Complete Error Code Table (29 codes)
 
-  if [[ "${FORMAT:-text}" == "json" ]]; then
-    jq -n \
-      --arg version "$version" \
-      --arg command "$command" \
-      --arg timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-      --arg code "$error_code" \
-      --arg msg "$message" \
-      --argjson exit "$exit_code" \
-      --argjson rec "$recoverable" \
-      --arg sug "$suggestion" \
-      '{
-        "$schema": "https://claude-todo.dev/schemas/error-v1.json",
-        "_meta": {"format": "json", "version": $version, "command": $command, "timestamp": $timestamp},
-        "success": false,
-        "error": {
-          "code": $code,
-          "message": $msg,
-          "exitCode": $exit,
-          "recoverable": $rec,
-          "suggestion": (if $sug != "" then $sug else null end)
-        }
-      }'
-  else
-    echo -e "${RED:-}[ERROR]${NC:-} $message" >&2
-    [[ -n "$suggestion" ]] && echo -e "${DIM:-}Suggestion: $suggestion${NC:-}" >&2
-  fi
-  return "$exit_code"
-}
+| Category | Code | Exit Code | Description |
+|----------|------|-----------|-------------|
+| **Task Errors** |
+| | `E_TASK_NOT_FOUND` | 4 | Task ID does not exist |
+| | `E_TASK_ALREADY_EXISTS` | 101 | Task ID already exists |
+| | `E_TASK_INVALID_ID` | 2 | Task ID format is invalid |
+| | `E_TASK_INVALID_STATUS` | 2 | Status value not in enum |
+| **File Errors** |
+| | `E_FILE_NOT_FOUND` | 4 | File does not exist |
+| | `E_FILE_READ_ERROR` | 3 | Cannot read file |
+| | `E_FILE_WRITE_ERROR` | 3 | Cannot write file |
+| | `E_FILE_PERMISSION` | 3 | Permission denied |
+| **Validation Errors** |
+| | `E_VALIDATION_SCHEMA` | 6 | JSON schema validation failed |
+| | `E_VALIDATION_CHECKSUM` | 6 | Checksum mismatch |
+| | `E_VALIDATION_REQUIRED` | 6 | Required field missing |
+| **Input Errors** |
+| | `E_INPUT_MISSING` | 2 | Required argument missing |
+| | `E_INPUT_INVALID` | 2 | Argument value invalid |
+| | `E_INPUT_FORMAT` | 2 | Argument format incorrect |
+| **Dependency Errors** |
+| | `E_DEPENDENCY_MISSING` | 5 | Required tool not installed |
+| | `E_DEPENDENCY_VERSION` | 5 | Tool version incompatible |
+| **Phase Errors** |
+| | `E_PHASE_NOT_FOUND` | 4 | Phase slug does not exist |
+| | `E_PHASE_INVALID` | 2 | Phase definition invalid |
+| **Session Errors** |
+| | `E_SESSION_ACTIVE` | 101 | Session already active |
+| | `E_SESSION_NOT_ACTIVE` | 4 | No active session |
+| **General Errors** |
+| | `E_UNKNOWN` | 1 | Unknown/unspecified error |
+| | `E_NOT_INITIALIZED` | 4 | Project not initialized |
+| **Hierarchy Errors** |
+| | `E_PARENT_NOT_FOUND` | 10 | Parent task does not exist |
+| | `E_DEPTH_EXCEEDED` | 11 | Hierarchy depth limit exceeded |
+| | `E_SIBLING_LIMIT` | 12 | Sibling limit exceeded |
+| | `E_INVALID_PARENT_TYPE` | 13 | Parent type cannot have children |
+| | `E_CIRCULAR_REFERENCE` | 14 | Would create cycle |
+| | `E_ORPHAN_DETECTED` | 15 | Task references invalid parent |
+| **Concurrency Errors** |
+| | `E_CHECKSUM_MISMATCH` | 20 | File modified during operation |
+| | `E_CONCURRENT_MODIFICATION` | 21 | Multi-agent conflict detected |
+| | `E_ID_COLLISION` | 22 | Generated ID already exists |
 
-export -f output_error
-```
+### 3.3 JSON Schema Standard
 
-### 3.3 JSON Envelope Standard
+#### Schema Files
 
-All JSON outputs must follow this envelope:
+| Schema | File | Status | Purpose |
+|--------|------|--------|---------|
+| Task Data | `schemas/todo.schema.json` | EXISTS | Task/project data validation |
+| Archive | `schemas/archive.schema.json` | EXISTS | Archived tasks validation |
+| Log | `schemas/log.schema.json` | EXISTS | Audit log validation |
+| Config | `schemas/config.schema.json` | EXISTS | Configuration validation |
+| Response | `schemas/output.schema.json` | EXISTS | Success response envelope |
+| Error | `schemas/error.schema.json` | EXISTS | Error response envelope |
+| Critical Path | `schemas/critical-path.schema.json` | EXISTS | Critical path analysis response |
+
+#### Response Schema (`schemas/output.schema.json`)
 
 ```json
 {
-  "$schema": "https://claude-todo.dev/schemas/output-v2.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://claude-todo.dev/schemas/output.schema.json",
+  "title": "Claude-TODO Response Envelope",
+  "type": "object",
+  "required": ["_meta", "success"],
+  "properties": {
+    "$schema": {"type": "string"},
+    "_meta": {
+      "type": "object",
+      "required": ["command", "timestamp", "version"],
+      "properties": {
+        "format": {"type": "string", "const": "json"},
+        "version": {"type": "string"},
+        "command": {"type": "string"},
+        "timestamp": {"type": "string", "format": "date-time"},
+        "checksum": {"type": "string"},
+        "execution_ms": {"type": "integer", "minimum": 0}
+      }
+    },
+    "success": {"type": "boolean"},
+    "summary": {"type": "object"},
+    "data": {},
+    "task": {"type": "object"},
+    "tasks": {"type": "array"},
+    "warnings": {"type": "array"}
+  }
+}
+```
+
+#### Error Schema (`schemas/error.schema.json`)
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://claude-todo.dev/schemas/error.schema.json",
+  "title": "Claude-TODO Error Envelope",
+  "type": "object",
+  "required": ["_meta", "success", "error"],
+  "properties": {
+    "$schema": {"type": "string"},
+    "_meta": {
+      "type": "object",
+      "required": ["command", "timestamp", "version"],
+      "properties": {
+        "format": {"type": "string", "const": "json"},
+        "version": {"type": "string"},
+        "command": {"type": "string"},
+        "timestamp": {"type": "string", "format": "date-time"}
+      }
+    },
+    "success": {"const": false},
+    "error": {
+      "type": "object",
+      "required": ["code", "message", "exitCode"],
+      "properties": {
+        "code": {"type": "string", "pattern": "^E_[A-Z_]+$"},
+        "message": {"type": "string"},
+        "exitCode": {"type": "integer", "minimum": 1},
+        "recoverable": {"type": "boolean"},
+        "suggestion": {"type": ["string", "null"]},
+        "context": {"type": "object"}
+      }
+    }
+  }
+}
+```
+
+### 3.4 JSON Envelope Standard (AUTHORITATIVE)
+
+All JSON outputs **MUST** follow this envelope:
+
+```json
+{
+  "$schema": "https://claude-todo.dev/schemas/output.schema.json",
   "_meta": {
     "format": "json",
     "version": "<version>",
     "command": "<command-name>",
     "timestamp": "<ISO-8601>",
-    "checksum": "<sha256>",      // Optional
-    "execution_ms": <ms>          // Optional
+    "checksum": "<sha256>",      // OPTIONAL: For data integrity
+    "execution_ms": <ms>         // OPTIONAL: For performance monitoring
   },
   "success": true,
-  "summary": {},
-  "data": []
+  "summary": {},                  // OPTIONAL: Aggregated stats
+  "data": []                      // OR task/tasks/etc depending on command
 }
 ```
 
-**Envelope Compliance Fixes Needed**:
+#### Required `_meta` Fields
 
-| Command | Issue | Fix |
-|---------|-------|-----|
-| `analyze.sh` | Missing `_meta.format`, `_meta.command` | Add fields |
-| `history.sh` | Missing `_meta.timestamp` | Add timestamp |
-| All commands | Only 4/9 have `$schema` | Add schema URL |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `format` | string | **MUST** | Always `"json"` for JSON output |
+| `version` | string | **MUST** | claude-todo version (e.g., `"0.17.0"`) |
+| `command` | string | **MUST** | Command name (e.g., `"add"`, `"list"`) |
+| `timestamp` | string | **MUST** | ISO-8601 UTC timestamp |
+| `checksum` | string | MAY | SHA256 of file for integrity |
+| `execution_ms` | integer | MAY | Execution time in milliseconds |
 
-### 3.4 Universal Flag Standard
+### 3.5 Universal Flag Standard (AUTHORITATIVE)
 
 | Flag | Long Form | Purpose | Default | Commands |
 |------|-----------|---------|---------|----------|
@@ -344,178 +502,114 @@ All JSON outputs must follow this envelope:
 | `-q` | `--quiet` | Suppress non-essential output | false | ALL |
 | `-v` | `--verbose` | Detailed output | false | ALL read commands |
 | | `--human` | Force human-readable | false | ALL |
+| | `--json` | Force JSON (shortcut for `--format json`) | false | ALL |
 | | `--dry-run` | Preview changes | false | ALL write commands |
 | | `--force` | Skip confirmations | false | Destructive commands |
 
----
+#### Format Values
 
-## Part 4: Implementation Plan
-
-### Phase 1: Foundation (P1 - CRITICAL)
-
-**Goal**: Enable closed-loop agent automation for all write operations.
-
-| Task | File | Changes |
-|------|------|---------|
-| Create `lib/exit-codes.sh` | New file | Exit code constants |
-| Create `lib/error-json.sh` | New file | Error JSON functions |
-| TTY auto-detection for format | `lib/output-format.sh:251` | Modify `resolve_format()` |
-| JSON output for `add` | `scripts/add-task.sh` | Add format flag, JSON output |
-| JSON output for `update` | `scripts/update-task.sh` | Add format flag, diff output |
-| JSON output for `complete` | `scripts/complete-task.sh` | Add format flag, JSON output |
-| JSON output for `archive` | `scripts/archive.sh` | Add format flag, JSON output |
-| JSON for all `phase` subcommands | `scripts/phase.sh` | Complete rewrite of output |
-
-### Phase 2: Standardization (P2 - HIGH)
-
-**Goal**: Consistent flags and envelopes across all commands.
-
-| Task | Scope |
-|------|-------|
-| Add `--quiet` to 23 commands | All scripts without `--quiet` |
-| Add `--format` to 19 commands | All scripts without `--format` |
-| Fix JSON envelope inconsistencies | `analyze.sh`, `history.sh`, others |
-| Add `$schema` to all JSON outputs | All commands with JSON |
-| Resolve `-f` flag conflict | `update-task.sh` |
-| Resolve `-n` flag conflict | `next.sh` |
-| Source `exit-codes.sh` everywhere | All scripts |
-
-### Phase 3: Polish (P3 - MEDIUM)
-
-**Goal**: Complete LLM-agent optimization with full coverage.
-
-| Task | Scope |
-|------|-------|
-| Add `--verbose` to display commands | `show.sh`, `stats.sh`, `dash.sh` |
-| Add `--dry-run` to write commands | `update.sh`, `complete.sh`, `restore.sh`, `migrate.sh` |
-| Add `--human` flag universally | All commands |
-| Update all documentation | `docs/commands/*.md` |
-| Create agent workflow examples | New documentation |
-| Add JSON schema files | `schemas/` |
+| Format | Description | Use Case |
+|--------|-------------|----------|
+| `text` | Human-readable colored output | Interactive terminal |
+| `json` | Machine-readable JSON envelope | Agent automation |
+| `jsonl` | JSON Lines (one object per line) | Streaming/logging |
+| `markdown` | Markdown formatted | Documentation |
+| `table` | ASCII table | Terminal display |
 
 ---
 
-## Part 5: Command Implementation Details
+## Part 4: Required Libraries
 
-### Write Commands (P1)
+### Foundation Libraries
 
-#### `add-task.sh` Implementation
+All commands **MUST** source these libraries:
 
-**Add flag parsing** (after line 93):
+| Library | Purpose | Required By |
+|---------|---------|-------------|
+| `lib/exit-codes.sh` | Standardized exit code constants | ALL commands |
+| `lib/error-json.sh` | Format-aware error output | ALL commands |
+| `lib/output-format.sh` | TTY-aware format resolution | ALL commands |
+
+### Library Integration Pattern
+
 ```bash
-FORMAT=""
-# ... in while loop:
--f|--format) FORMAT="$2"; shift 2 ;;
---human) FORMAT="text" ;;
-```
+#!/usr/bin/env bash
+set -euo pipefail
 
-**Add format resolution**:
-```bash
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LIB_DIR="$(dirname "$SCRIPT_DIR")/lib"
+
+# MUST source these libraries
+source "${LIB_DIR}/exit-codes.sh"
+source "${LIB_DIR}/error-json.sh"
 source "${LIB_DIR}/output-format.sh"
-FORMAT=$(resolve_format "$FORMAT")
-```
 
-**Replace output** (after task creation):
-```bash
-if [[ "$FORMAT" == "json" ]]; then
-  TASK_JSON=$(jq --arg id "$NEW_ID" '.tasks[] | select(.id == $id)' "$TODO_FILE")
-  jq -n \
-    --arg version "$VERSION" \
-    --arg timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-    --argjson task "$TASK_JSON" \
-    '{
-      "$schema": "https://claude-todo.dev/schemas/output-v2.json",
-      "_meta": {"format": "json", "version": $version, "command": "add", "timestamp": $timestamp},
-      "success": true,
-      "task": $task
-    }'
-elif [[ "$QUIET" == true ]]; then
-  echo "$NEW_ID"
-else
-  echo -e "${GREEN}Task added:${NC} $NEW_ID - \"$TITLE\""
-fi
-```
-
-#### `update-task.sh` Implementation
-
-**Capture before-state** (before applying changes):
-```bash
-BEFORE_STATE=$(jq --arg id "$TASK_ID" '.tasks[] | select(.id == $id)' "$TODO_FILE")
-```
-
-**Track changes** (as each field is updated):
-```bash
-CHANGES_JSON="{}"
-if [[ -n "$NEW_PRIORITY" ]]; then
-  old_priority=$(echo "$BEFORE_STATE" | jq -r '.priority')
-  CHANGES_JSON=$(echo "$CHANGES_JSON" | jq --arg old "$old_priority" --arg new "$NEW_PRIORITY" \
-    '.priority = {before: $old, after: $new}')
-fi
-# ... repeat for each field
-```
-
-**JSON output**:
-```bash
-if [[ "$FORMAT" == "json" ]]; then
-  AFTER_STATE=$(jq --arg id "$TASK_ID" '.tasks[] | select(.id == $id)' "$TODO_FILE")
-  jq -n \
-    --arg taskId "$TASK_ID" \
-    --argjson changes "$CHANGES_JSON" \
-    --argjson task "$AFTER_STATE" \
-    '{
-      "_meta": {...},
-      "success": true,
-      "taskId": $taskId,
-      "changes": $changes,
-      "task": $task
-    }'
-fi
-```
-
-#### `phase.sh` Implementation
-
-**Add global format handling**:
-```bash
-FORMAT=""
-parse_global_args() {
-  while [[ $# -gt 0 ]]; do
-    case "$1" in
-      -f|--format) FORMAT="$2"; shift 2 ;;
-      --human) FORMAT="text"; shift ;;
-      *) break ;;
-    esac
-  done
-}
-```
-
-**Update each subcommand** (example for `cmd_show`):
-```bash
-cmd_show() {
-  local current_phase phase_info
-  current_phase=$(get_current_phase "$TODO_FILE")
-
-  if [[ "$FORMAT" == "json" ]]; then
-    phase_info=$(get_phase "$current_phase" "$TODO_FILE")
-    jq -n \
-      --arg slug "$current_phase" \
-      --argjson info "$phase_info" \
-      '{
-        "_meta": {"command": "phase show", "timestamp": (now | todate)},
-        "success": true,
-        "currentPhase": ($info + {slug: $slug})
-      }'
-  else
-    echo "Current Phase: $current_phase"
-    # ... existing text output
-  fi
-}
+# MUST set command name for error reporting
+COMMAND_NAME="<command>"
 ```
 
 ---
 
-## Part 6: Testing Strategy
+## Part 5: Write Command Requirements
 
-### Exit Code Testing
+### All Write Commands MUST:
+
+1. **Return the created/updated object** in JSON output
+2. **Include `$schema` field** pointing to `output.schema.json`
+3. **Include complete `_meta` envelope**
+4. **Support `--dry-run`** to preview changes without executing
+5. **Use `output_error()`** for all error conditions
+
+### JSON Output Examples
+
+#### `add` Command Output
+```json
+{
+  "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+  "_meta": {"format": "json", "version": "0.17.0", "command": "add", "timestamp": "..."},
+  "success": true,
+  "task": {"id": "T042", "type": "task", "parentId": null, "title": "...", "status": "pending"}
+}
+```
+
+#### `update` Command Output
+```json
+{
+  "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+  "_meta": {"format": "json", "version": "0.17.0", "command": "update", "timestamp": "..."},
+  "success": true,
+  "taskId": "T042",
+  "changes": {"priority": {"before": "medium", "after": "high"}},
+  "task": {"id": "T042", "priority": "high", "...": "..."}
+}
+```
+
+#### `complete` Command Output
+```json
+{
+  "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+  "_meta": {"format": "json", "version": "0.17.0", "command": "complete", "timestamp": "..."},
+  "success": true,
+  "taskId": "T042",
+  "completedAt": "2025-12-17T10:00:00Z",
+  "cycleTimeDays": 3.5
+}
+```
+
+### Subcommand Requirements (e.g., `phase.sh`)
+
+Commands with subcommands **MUST**:
+- Accept `--format` flag **before** the subcommand
+- Each subcommand **MUST** respect the FORMAT variable
+- Each subcommand **MUST** output proper JSON envelope
+
+---
+
+## Part 6: Testing Requirements (AUTHORITATIVE)
+
+### 6.1 Exit Code Testing
+
+All commands **MUST** have tests verifying:
 
 ```bash
 #!/usr/bin/env bash
@@ -530,9 +624,15 @@ ct show T999 2>/dev/null
 # Test invalid input
 ct add 2>/dev/null
 [[ $? -eq 2 ]] || echo "FAIL: add without title should exit 2"
+
+# Test hierarchy errors
+ct add "Task" --parent T999 2>/dev/null
+[[ $? -eq 10 ]] || echo "FAIL: invalid parent should exit 10"
 ```
 
-### JSON Output Testing
+### 6.2 JSON Output Testing
+
+All commands with JSON output **MUST** have tests verifying:
 
 ```bash
 #!/usr/bin/env bash
@@ -541,6 +641,7 @@ result=$(ct add "JSON Test" --format json)
 echo "$result" | jq -e '.success == true' || echo "FAIL: success should be true"
 echo "$result" | jq -e '.task.id' || echo "FAIL: should have task.id"
 echo "$result" | jq -e '._meta.command == "add"' || echo "FAIL: should have _meta.command"
+echo "$result" | jq -e '."$schema"' || echo "FAIL: should have $schema"
 
 # Test error JSON
 result=$(ct show T999 --format json 2>&1)
@@ -548,7 +649,7 @@ echo "$result" | jq -e '.success == false' || echo "FAIL: should be unsuccessful
 echo "$result" | jq -e '.error.code' || echo "FAIL: should have error.code"
 ```
 
-### TTY Detection Testing
+### 6.3 TTY Detection Testing
 
 ```bash
 #!/usr/bin/env bash
@@ -559,7 +660,20 @@ format=$(ct list | jq -r '._meta.format' 2>/dev/null)
 # Explicit --human should override
 output=$(ct list --human | head -1)
 [[ "$output" != "{" ]] || echo "FAIL: --human should output text"
+
+# Environment variable should work
+CLAUDE_TODO_FORMAT=json ct list | jq -e '._meta' || echo "FAIL: env var should work"
 ```
+
+### 6.4 Test Coverage Requirements
+
+| Category | Minimum Coverage | Commands |
+|----------|-----------------|----------|
+| Exit codes | 100% of defined codes | All |
+| JSON envelope | All required fields | All JSON-enabled |
+| Error JSON | All error codes used | All |
+| Flag parsing | All flags | All |
+| TTY detection | Auto-detect + overrides | All format-enabled |
 
 ---
 
@@ -577,8 +691,8 @@ export CLAUDE_TODO_AGENT_MODE=1
 ### Query Patterns (Work Today)
 
 ```bash
-# Task listing
-ct list --format json | jq '.tasks[]'
+# Task listing (auto-JSON when piped)
+ct list | jq '.tasks[]'
 
 # Analysis (already JSON default!)
 ct analyze | jq '.recommendations'
@@ -590,19 +704,7 @@ ct show T001 --format json
 ct validate --json --quiet && echo "Valid"
 ```
 
-### Write Patterns (Current Workaround)
-
-```bash
-# Create and get full task (requires 2 commands today)
-task_id=$(ct add "Task" -q)
-ct show "$task_id" --format json
-
-# Update and verify
-ct update T001 --priority high
-ct show T001 --format json
-```
-
-### Write Patterns (After v0.17.0)
+### Write Patterns (v0.17.0)
 
 ```bash
 # Single command returns complete result
@@ -611,112 +713,378 @@ task_id=$(echo "$task_json" | jq -r '.task.id')
 
 # Update returns changes + updated task
 ct update T001 --priority high | jq '.changes'
+
+# Complete returns confirmation
+ct complete T001 | jq '.cycleTimeDays'
 ```
 
 ---
 
-## Part 8: Success Metrics
+## Part 8: Compliance Metrics
 
-### Before Implementation
+### Required Metrics for Full Compliance
 
-| Metric | Value |
-|--------|-------|
-| Agent workflow steps per mutation | 2x (command + verify) |
-| Commands requiring `--format json` | 27/28 |
-| Error parsing method | Regex on colored text |
-| Write confirmation available | No |
-| Average command score | 5.4/10 |
+| Metric | Required Value |
+|--------|----------------|
+| Agent workflow steps per mutation | 1x (command returns result) |
+| Commands requiring explicit `--format json` | 0/30 (auto-detect via TTY) |
+| Error handling method | JSON with `E_` error codes |
+| Write confirmation in response | YES (full object returned) |
+| Exit code coverage | 100% (all codes are constants) |
+| `$schema` field presence | 100% of JSON outputs |
+| `_meta` envelope presence | 100% of JSON outputs |
 
-### After Implementation
+### Compliance Definition
 
-| Metric | Value |
-|--------|-------|
-| Agent workflow steps per mutation | 1x (command with result) |
-| Commands requiring `--format json` | 0/28 (auto-detect) |
-| Error parsing method | JSON field access |
-| Write confirmation available | Yes |
-| Average command score | 10/10 |
+A command is **fully compliant** when it:
 
-### Quantified Impact
-
-- **50% reduction** in agent API calls
-- **100% reliability** in error handling
-- **Zero manual flags** in agent context
-- **100% scriptability** with documented exit codes
+1. Sources all required libraries (`exit-codes.sh`, `error-json.sh`, `output-format.sh`)
+2. Calls `resolve_format()` after argument parsing
+3. Supports `--format`, `--quiet`, `--json`, `--human` flags
+4. Returns JSON with `$schema` and `_meta` envelope
+5. Uses `output_error()` for all errors
+6. Uses exit code constants (no magic numbers)
+7. (Write commands) Supports `--dry-run`
+8. (Write commands) Returns created/updated object
 
 ---
 
-## Part 9: Complete Command Matrix
+## Part 9: Command Compliance Requirements
 
-| Command | JSON | Quiet | Format | Dry-Run | Before | After |
-|---------|------|-------|--------|---------|--------|-------|
-| add | ❌→✅ | ✅ | ❌→✅ | ❌ | 2/10 | 10/10 |
-| update | ❌→✅ | ❌→✅ | ❌→✅ | ❌→✅ | 1/10 | 10/10 |
-| complete | ❌→✅ | ❌→✅ | ❌→✅ | ❌→✅ | 2/10 | 10/10 |
-| archive | ❌→✅ | ❌→✅ | ❌→✅ | ✅ | 2/10 | 10/10 |
-| phase | ❌→✅ | ❌→✅ | ❌→✅ | N/A | 2/10 | 10/10 |
-| init | ❌→✅ | ❌→✅ | ❌→✅ | N/A | 2/10 | 10/10 |
-| migrate | ❌→✅ | ❌→✅ | ❌→✅ | ❌→✅ | 2/10 | 10/10 |
-| restore | ❌→✅ | ❌→✅ | ❌→✅ | ❌→✅ | 3/10 | 10/10 |
-| backup | ❌→✅ | ❌→✅ | ❌→✅ | N/A | 4/10 | 10/10 |
-| focus | ⚠️→✅ | ❌→✅ | ❌→✅ | N/A | 4/10 | 10/10 |
-| session | ⚠️→✅ | ❌→✅ | ❌→✅ | N/A | 5/10 | 10/10 |
-| phases | ⚠️→✅ | ❌→✅ | ❌→✅ | N/A | 6/10 | 10/10 |
-| dash | ✅ | ❌→✅ | ✅ | N/A | 6/10 | 10/10 |
-| show | ✅ | ❌→✅ | ✅ | N/A | 7/10 | 10/10 |
-| log | ✅ | ❌→✅ | ❌→✅ | N/A | 7/10 | 10/10 |
-| sync | ⚠️ | ✅ | ❌→✅ | ✅ | 7/10 | 10/10 |
-| history | ✅ | ❌→✅ | ✅ | N/A | 8/10 | 10/10 |
-| deps | ✅ | ❌→✅ | ❌→✅ | N/A | 8/10 | 10/10 |
-| next | ✅ | ❌→✅ | ✅ | N/A | 8/10 | 10/10 |
-| export | ✅ | ✅ | ✅ | N/A | 8/10 | 10/10 |
-| blockers | ✅ | ✅ | ❌→✅ | N/A | 9/10 | 10/10 |
-| labels | ✅ | ❌→✅ | ❌→✅ | N/A | 9/10 | 10/10 |
-| stats | ✅ | ❌→✅ | ✅ | N/A | 9/10 | 10/10 |
-| validate | ✅ | ✅ | ✅ | N/A | 9/10 | 10/10 |
-| exists | ✅ | ✅ | ✅ | N/A | 9/10 | 10/10 |
-| list | ✅ | ✅ | ✅ | N/A | 9/10 | 10/10 |
-| analyze | ✅ | ❌→✅ | ✅ | N/A | 10/10 | 10/10 |
+All commands **MUST** meet these requirements:
 
-**Legend**: ✅ = Has | ❌ = Missing | ⚠️ = Partial | →✅ = After implementation
+| Command | JSON | Quiet | Format | Dry-Run | exit-codes | error-json | resolve_format |
+|---------|------|-------|--------|---------|------------|------------|----------------|
+| add | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| analyze | ✅ | N/A | ✅ | N/A | ✅ | ✅ | ✅ |
+| archive | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| backup | ✅ | ✅ | ✅ | N/A | ✅ | ✅ | ✅ |
+| blockers | ✅ | ✅ | ✅ | N/A | ✅ | ✅ | ✅ |
+| complete | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| dash | ✅ | ✅ | ✅ | N/A | ✅ | ✅ | ✅ |
+| deps | ✅ | ✅ | ✅ | N/A | ✅ | ✅ | ✅ |
+| exists | ✅ | ✅ | ✅ | N/A | ✅ | ✅ | ✅ |
+| export | ✅ | ✅ | ✅ | N/A | ✅ | ✅ | ✅ |
+| extract | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| focus | ✅ | ✅ | ✅ | N/A | ✅ | ✅ | ✅ |
+| history | ✅ | ✅ | ✅ | N/A | ✅ | ✅ | ✅ |
+| init | ✅ | ✅ | ✅ | N/A | ✅ | ✅ | ✅ |
+| inject | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| labels | ✅ | ✅ | ✅ | N/A | ✅ | ✅ | ✅ |
+| list | ✅ | ✅ | ✅ | N/A | ✅ | ✅ | ✅ |
+| log | ✅ | ✅ | ✅ | N/A | ✅ | ✅ | ✅ |
+| migrate | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| migrate-backups | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| next | ✅ | ✅ | ✅ | N/A | ✅ | ✅ | ✅ |
+| phase | ✅ | ✅ | ✅ | N/A | ✅ | ✅ | ✅ |
+| phases | ✅ | ✅ | ✅ | N/A | ✅ | ✅ | ✅ |
+| restore | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| session | ✅ | ✅ | ✅ | N/A | ✅ | ✅ | ✅ |
+| show | ✅ | ✅ | ✅ | N/A | ✅ | ✅ | ✅ |
+| stats | ✅ | ✅ | ✅ | N/A | ✅ | ✅ | ✅ |
+| sync | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| update | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| validate | ✅ | ✅ | ✅ | N/A | ✅ | ✅ | ✅ |
 
-**Final Target: 28/28 commands at 10/10 = 100% LLM-Agent-First**
+**Legend**: ✅ = REQUIRED | N/A = Not Applicable for this command type
+
+**All 30 commands MUST achieve 100% compliance with applicable requirements.**
 
 ---
 
-## Part 10: Files Reference
+## Part 10: Development Workflow (AUTHORITATIVE)
 
-### New Files to Create
+### Adding a New Command
+
+When adding a new command to claude-todo, **MUST** follow this checklist:
+
+#### 1. Foundation
+
+- [ ] Source `lib/exit-codes.sh` at script start
+- [ ] Source `lib/error-json.sh` at script start
+- [ ] Source `lib/output-format.sh` at script start
+- [ ] Set `COMMAND_NAME` variable for error reporting
+
+#### 2. Flag Parsing
+
+- [ ] Implement `--format` flag (text|json|jsonl|markdown|table)
+- [ ] Implement `--quiet` flag (suppress non-essential output)
+- [ ] Implement `--human` shortcut (sets format=text)
+- [ ] Implement `--json` shortcut (sets format=json)
+- [ ] For write commands: implement `--dry-run`
+- [ ] For destructive commands: implement `--force`
+- [ ] Call `resolve_format()` after parsing all arguments
+
+#### 3. JSON Output
+
+- [ ] Include `$schema` field in all JSON outputs
+- [ ] Include complete `_meta` envelope (format, version, command, timestamp)
+- [ ] Include `success` boolean field
+- [ ] For task operations: include full task object with hierarchy fields
+- [ ] For errors: use `output_error()` from error-json.sh
+
+#### 4. Exit Codes
+
+- [ ] Use constants from `lib/exit-codes.sh` (never magic numbers)
+- [ ] Document all possible exit codes in command help
+- [ ] Return `EXIT_SUCCESS` (0) on success
+- [ ] Return appropriate error code on failure
+- [ ] Return special codes (100+) for non-error conditions
+
+#### 5. Testing
+
+- [ ] Add unit tests for flag parsing
+- [ ] Add unit tests for JSON output structure
+- [ ] Add unit tests for all exit codes
+- [ ] Add integration tests for TTY detection
+- [ ] Verify JSON validates against schema
+
+#### 6. Documentation
+
+- [ ] Update this spec's command matrix
+- [ ] Add command to `docs/commands/` if user-facing
+- [ ] Document exit codes in help text
+- [ ] Document JSON output format in help text
+
+### Code Template
+
+```bash
+#!/usr/bin/env bash
+# <command>.sh - <description>
+set -euo pipefail
+
+# ============================================================================
+# SETUP
+# ============================================================================
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LIB_DIR="$(dirname "$SCRIPT_DIR")/lib"
+
+# Source required libraries
+source "${LIB_DIR}/exit-codes.sh"
+source "${LIB_DIR}/error-json.sh"
+source "${LIB_DIR}/output-format.sh"
+
+# Command identification (for error reporting)
+COMMAND_NAME="<command>"
+
+# ============================================================================
+# FLAG DEFAULTS
+# ============================================================================
+
+FORMAT=""        # Resolved after parsing
+QUIET=false
+VERBOSE=false
+DRY_RUN=false
+
+# ============================================================================
+# ARGUMENT PARSING
+# ============================================================================
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -f|--format)  FORMAT="$2"; shift 2 ;;
+    --json)       FORMAT="json"; shift ;;
+    --human)      FORMAT="text"; shift ;;
+    -q|--quiet)   QUIET=true; shift ;;
+    -v|--verbose) VERBOSE=true; shift ;;
+    --dry-run)    DRY_RUN=true; shift ;;
+    -h|--help)    show_help; exit 0 ;;
+    *)            # Handle positional args
+                  shift ;;
+  esac
+done
+
+# Resolve format (TTY-aware auto-detection)
+FORMAT=$(resolve_format "$FORMAT")
+
+# ============================================================================
+# MAIN LOGIC
+# ============================================================================
+
+main() {
+  # Your implementation here
+
+  # Success output
+  if [[ "$FORMAT" == "json" ]]; then
+    jq -n \
+      --arg version "$VERSION" \
+      --arg cmd "$COMMAND_NAME" \
+      --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+      '{
+        "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+        "_meta": {
+          "format": "json",
+          "version": $version,
+          "command": $cmd,
+          "timestamp": $ts
+        },
+        "success": true,
+        "data": {}
+      }'
+  else
+    [[ "$QUIET" != true ]] && echo "Success message"
+  fi
+
+  exit $EXIT_SUCCESS
+}
+
+# Error handling example
+handle_error() {
+  output_error "E_TASK_NOT_FOUND" "Task $1 not found" $EXIT_NOT_FOUND true \
+    "Use 'ct list' to see available tasks"
+  exit $EXIT_NOT_FOUND
+}
+
+main "$@"
+```
+
+---
+
+## Part 11: Backward Compatibility Policy
+
+### Deprecation Process
+
+1. **Announcement**: Document deprecation in release notes
+2. **Warning Period**: Output deprecation warning for 2 minor versions
+3. **Removal**: Remove in next major version
+
+### Breaking Change Categories
+
+| Category | Policy |
+|----------|--------|
+| Exit code value changes | **NEVER** change without major version |
+| Error code string changes | **NEVER** change (add new, deprecate old) |
+| JSON field removal | 2-version warning, then remove |
+| JSON field rename | Add new, deprecate old, remove after 2 versions |
+| Flag removal | 2-version warning, then remove |
+| Default behavior change | Document clearly, consider `--legacy` flag |
+
+### JSON Stability Guarantees
+
+| Field | Stability |
+|-------|-----------|
+| `$schema` | Stable (version in URL) |
+| `_meta.version` | Stable |
+| `_meta.command` | Stable |
+| `_meta.timestamp` | Stable |
+| `success` | Stable |
+| `error.code` | Stable (never change values) |
+| `error.exitCode` | Stable (never change values) |
+| Command-specific fields | See individual command docs |
+
+---
+
+## Part 12: Compliance Validation Checklist
+
+### Per-Command Checklist
+
+Use this checklist to validate each command's compliance:
+
+```markdown
+## Command: <name>
+
+### Foundation
+- [ ] Sources `lib/exit-codes.sh`
+- [ ] Sources `lib/error-json.sh`
+- [ ] Sources `lib/output-format.sh`
+- [ ] Sets `COMMAND_NAME` variable
+
+### Flags
+- [ ] Has `--format` flag
+- [ ] Has `--quiet` flag
+- [ ] Has `--json` shortcut
+- [ ] Has `--human` shortcut
+- [ ] Calls `resolve_format()` after arg parsing
+- [ ] (Write commands) Has `--dry-run`
+
+### JSON Output
+- [ ] Includes `$schema` field
+- [ ] Includes `_meta.format` field
+- [ ] Includes `_meta.version` field
+- [ ] Includes `_meta.command` field
+- [ ] Includes `_meta.timestamp` field
+- [ ] Includes `success` boolean
+- [ ] (Task operations) Includes hierarchy fields
+
+### Exit Codes
+- [ ] Uses constants (no magic numbers)
+- [ ] Returns 0 on success
+- [ ] Returns correct code on each error type
+- [ ] Documents exit codes in help
+
+### Errors
+- [ ] Uses `output_error()` for errors
+- [ ] Uses correct `E_` error codes
+- [ ] Includes suggestions where helpful
+
+### Testing
+- [ ] Has exit code tests
+- [ ] Has JSON structure tests
+- [ ] Has TTY detection tests
+```
+
+### Automated Compliance Check
+
+A compliance check script **SHOULD** be created at `dev/check-compliance.sh`:
+
+```bash
+#!/usr/bin/env bash
+# Check all commands for LLM-Agent-First compliance
+
+PASS=0
+FAIL=0
+
+for script in scripts/*.sh; do
+  cmd=$(basename "$script" .sh)
+
+  # Check required sources
+  grep -q "exit-codes.sh" "$script" || { echo "FAIL: $cmd missing exit-codes.sh"; ((FAIL++)); continue; }
+  grep -q "error-json.sh" "$script" || { echo "FAIL: $cmd missing error-json.sh"; ((FAIL++)); continue; }
+  grep -q "resolve_format" "$script" || { echo "FAIL: $cmd missing resolve_format"; ((FAIL++)); continue; }
+
+  # Check flags
+  grep -q "\-\-format" "$script" || { echo "WARN: $cmd missing --format flag"; }
+  grep -q "\-\-quiet\|\-q" "$script" || { echo "WARN: $cmd missing --quiet flag"; }
+
+  echo "PASS: $cmd"
+  ((PASS++))
+done
+
+echo "Results: $PASS passed, $FAIL failed"
+```
+
+---
+
+## Part 13: Files Reference
+
+### Required Library Files
 
 | File | Purpose |
 |------|---------|
-| `lib/exit-codes.sh` | Standardized exit code constants |
-| `lib/error-json.sh` | Error JSON output functions |
-| `schemas/output-v2.json` | Output JSON schema |
-| `schemas/error-v1.json` | Error JSON schema |
+| `lib/exit-codes.sh` | Exit code constants (17 codes) |
+| `lib/error-json.sh` | Error JSON output (29 error codes) |
+| `lib/output-format.sh` | Format resolution with TTY detection |
+| `lib/hierarchy.sh` | Hierarchy validation functions |
 
-### Files to Modify
+### Required Schema Files
 
-| File | Changes |
+| File | Purpose |
 |------|---------|
-| `lib/output-format.sh:251` | TTY auto-detection in `resolve_format()` |
-| `scripts/add-task.sh` | Add `--format`, JSON output |
-| `scripts/update-task.sh` | Add `--format`, `--quiet`, `--dry-run`, JSON output |
-| `scripts/complete-task.sh` | Add `--format`, `--quiet`, JSON output |
-| `scripts/archive.sh` | Add `--format`, `--quiet`, JSON output |
-| `scripts/phase.sh` | Complete JSON support for all subcommands |
-| `scripts/init.sh` | Add `--format`, JSON output |
-| `scripts/migrate.sh` | Add `--format`, JSON output |
-| `scripts/restore.sh` | Add `--format`, `--dry-run`, JSON output |
-| `scripts/backup.sh` | Add `--format`, JSON output |
-| All 28 scripts | Source `exit-codes.sh`, standardize exit codes |
-| 23 scripts | Add `--quiet` flag |
-| 19 scripts | Add `--format` flag |
+| `schemas/todo.schema.json` | Task data schema |
+| `schemas/archive.schema.json` | Archive data schema |
+| `schemas/log.schema.json` | Audit log schema |
+| `schemas/config.schema.json` | Configuration schema |
+| `schemas/output.schema.json` | Success response envelope |
+| `schemas/error.schema.json` | Error response envelope |
+| `schemas/critical-path.schema.json` | Critical path analysis response |
 
-### Reference Implementations (Study These)
+### Reference Implementations
 
-| File | Strength |
-|------|----------|
+These commands exemplify best practices:
+
+| File | Why Study It |
+|------|--------------|
 | `scripts/analyze.sh` | **Gold standard** - JSON default, `--human` flag |
 | `scripts/exists.sh` | Perfect exit codes pattern |
 | `scripts/list-tasks.sh` | Comprehensive JSON envelope |
@@ -724,5 +1092,54 @@ ct update T001 --priority high | jq '.changes'
 
 ---
 
-*Specification v1.0 for claude-todo v0.17.0*
-*Consolidated from analysis reports and implementation planning*
+## Appendix A: Quick Reference Card
+
+### Exit Code Quick Reference
+
+```
+0   SUCCESS              100 NO_DATA (not error)
+1   GENERAL_ERROR        101 ALREADY_EXISTS (not error)
+2   INVALID_INPUT        102 NO_CHANGE (not error)
+3   FILE_ERROR
+4   NOT_FOUND            10  PARENT_NOT_FOUND
+5   DEPENDENCY_ERROR     11  DEPTH_EXCEEDED
+6   VALIDATION_ERROR     12  SIBLING_LIMIT
+7   LOCK_TIMEOUT         13  INVALID_PARENT_TYPE
+8   CONFIG_ERROR         14  CIRCULAR_REFERENCE
+                         15  ORPHAN_DETECTED
+                         20  CHECKSUM_MISMATCH
+                         21  CONCURRENT_MODIFICATION
+                         22  ID_COLLISION
+```
+
+### Error Code Quick Reference
+
+```
+Task:       E_TASK_NOT_FOUND, E_TASK_ALREADY_EXISTS, E_TASK_INVALID_ID, E_TASK_INVALID_STATUS
+File:       E_FILE_NOT_FOUND, E_FILE_READ_ERROR, E_FILE_WRITE_ERROR, E_FILE_PERMISSION
+Validation: E_VALIDATION_SCHEMA, E_VALIDATION_CHECKSUM, E_VALIDATION_REQUIRED
+Input:      E_INPUT_MISSING, E_INPUT_INVALID, E_INPUT_FORMAT
+Hierarchy:  E_PARENT_NOT_FOUND, E_DEPTH_EXCEEDED, E_SIBLING_LIMIT, E_INVALID_PARENT_TYPE,
+            E_CIRCULAR_REFERENCE, E_ORPHAN_DETECTED
+Concurrency: E_CHECKSUM_MISMATCH, E_CONCURRENT_MODIFICATION, E_ID_COLLISION
+Phase:      E_PHASE_NOT_FOUND, E_PHASE_INVALID
+Session:    E_SESSION_ACTIVE, E_SESSION_NOT_ACTIVE
+General:    E_UNKNOWN, E_NOT_INITIALIZED, E_DEPENDENCY_MISSING, E_DEPENDENCY_VERSION
+```
+
+### JSON Envelope Quick Reference
+
+```json
+{
+  "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+  "_meta": {"format": "json", "version": "0.17.0", "command": "add", "timestamp": "2025-12-17T12:00:00Z"},
+  "success": true,
+  "task": {"id": "T001", "type": "task", "parentId": null, "size": null, ...}
+}
+```
+
+---
+
+*Specification v2.1 - Authoritative Standard for LLM-Agent-First CLI Design*
+*Applicable to: claude-todo and any LLM-agent-first CLI project*
+*Last updated: 2025-12-17*

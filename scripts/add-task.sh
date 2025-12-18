@@ -28,6 +28,28 @@ if [[ -f "$LIB_DIR/file-ops.sh" ]]; then
   source "$LIB_DIR/file-ops.sh"
 fi
 
+# Source output formatting library for format-aware output
+if [[ -f "$LIB_DIR/output-format.sh" ]]; then
+  # shellcheck source=../lib/output-format.sh
+  source "$LIB_DIR/output-format.sh"
+fi
+
+# Source error JSON library for structured error output (includes exit-codes.sh)
+if [[ -f "$LIB_DIR/error-json.sh" ]]; then
+  # shellcheck source=../lib/error-json.sh
+  source "$LIB_DIR/error-json.sh"
+elif [[ -f "$LIB_DIR/exit-codes.sh" ]]; then
+  # Fallback: source exit codes directly if error-json.sh not available
+  # shellcheck source=../lib/exit-codes.sh
+  source "$LIB_DIR/exit-codes.sh"
+fi
+
+# Source hierarchy library for parent/type/depth validation (v0.17.0)
+if [[ -f "$LIB_DIR/hierarchy.sh" ]]; then
+  # shellcheck source=../lib/hierarchy.sh
+  source "$LIB_DIR/hierarchy.sh"
+fi
+
 # Colors (respects NO_COLOR and FORCE_COLOR environment variables per https://no-color.org)
 if declare -f should_use_color >/dev/null 2>&1 && should_use_color; then
   RED='\033[0;31m'
@@ -50,6 +72,11 @@ DEPENDS=""
 NOTES=""
 QUIET=false
 ADD_PHASE=false
+FORMAT=""
+# Hierarchy fields (v0.17.0)
+TASK_TYPE=""     # epic|task|subtask - inferred if not specified
+PARENT_ID=""     # Parent task ID for hierarchy
+SIZE=""          # small|medium|large - optional scope-based size (NOT time)
 
 usage() {
   cat << 'EOF'
@@ -74,8 +101,29 @@ Options:
       --acceptance CRITERIA Comma-separated acceptance criteria
   -D, --depends IDS         Comma-separated task IDs (e.g., T001,T002)
       --notes NOTE          Initial note entry
+
+Hierarchy Options (v0.17.0):
+  -t, --type TYPE           Task type: epic|task|subtask
+                            Default: inferred from --parent (task if root)
+      --parent ID           Parent task ID (e.g., T001) for hierarchy
+                            Epics/tasks can have children, subtasks cannot
+      --size SIZE           Scope-based size: small|medium|large (NOT time)
+                            small=1-2 files, medium=3-7 files, large=8+ files
+
+Output Options:
   -q, --quiet               Suppress messages, output only task ID
+  -f, --format FORMAT       Output format: text|json (default: auto-detect)
+      --human               Force human-readable text output
+      --json                Force JSON output (for LLM agents)
   -h, --help                Show this help
+
+Output Formats:
+  text    Human-readable colored output (default for TTY)
+  json    Machine-readable JSON with full task object (default for pipes/agents)
+
+  When no format is specified:
+    - Interactive terminal (TTY) → text format
+    - Pipe/redirect/agent context → JSON format
 
 Examples:
   claude-todo add "Implement authentication"
@@ -84,11 +132,25 @@ Examples:
   claude-todo add "Add tests" -P new-phase --add-phase
   claude-todo add "Implement auth" --acceptance "User can login,Session persists"
   claude-todo add "Quick task" -q  # Outputs only: T042
+  claude-todo add "New task" --json  # JSON output with full task object
+
+Hierarchy Examples (v0.17.0):
+  claude-todo add "Auth System" --type epic --size large
+  claude-todo add "Login endpoint" --parent T001 --size medium
+  claude-todo add "Validate email" --parent T002 --type subtask --size small
 
 Exit Codes:
-  0 = Success
-  1 = Invalid arguments or validation failure
-  2 = File operation failure
+  0  = Success (EXIT_SUCCESS)
+  2  = Invalid input or arguments (EXIT_INVALID_INPUT)
+  3  = File operation failure (EXIT_FILE_ERROR)
+  4  = Resource not found (EXIT_NOT_FOUND)
+  5  = Missing dependency (EXIT_DEPENDENCY_ERROR)
+  6  = Validation error (EXIT_VALIDATION_ERROR)
+  7  = Lock timeout (EXIT_LOCK_TIMEOUT)
+  10 = Parent task not found (EXIT_PARENT_NOT_FOUND)
+  11 = Max depth exceeded (EXIT_DEPTH_EXCEEDED)
+  12 = Max siblings exceeded (EXIT_SIBLING_LIMIT)
+  13 = Invalid parent type (EXIT_INVALID_PARENT_TYPE)
 EOF
   exit 0
 }
@@ -98,13 +160,15 @@ log_error() {
 }
 
 log_warn() {
-  if [[ "$QUIET" != "true" ]]; then
+  # Suppress warning messages in quiet mode or JSON format
+  if [[ "$QUIET" != "true" ]] && [[ "${FORMAT:-text}" != "json" ]]; then
     echo -e "${YELLOW}[WARN]${NC} $1"
   fi
 }
 
 log_info() {
-  if [[ "$QUIET" != "true" ]]; then
+  # Suppress info messages in quiet mode or JSON format
+  if [[ "$QUIET" != "true" ]] && [[ "${FORMAT:-text}" != "json" ]]; then
     echo -e "${GREEN}[INFO]${NC} $1"
   fi
 }
@@ -114,7 +178,7 @@ check_deps() {
     log_error "jq is required but not installed"
     echo "Install: sudo apt-get install jq  # Debian/Ubuntu" >&2
     echo "         brew install jq          # macOS" >&2
-    exit 1
+    exit "${EXIT_DEPENDENCY_ERROR:-5}"
   fi
 }
 
@@ -423,8 +487,32 @@ while [[ $# -gt 0 ]]; do
       NOTES="$2"
       shift 2
       ;;
+    -t|--type)
+      TASK_TYPE="$2"
+      shift 2
+      ;;
+    --parent)
+      PARENT_ID="$2"
+      shift 2
+      ;;
+    --size)
+      SIZE="$2"
+      shift 2
+      ;;
     -q|--quiet)
       QUIET=true
+      shift
+      ;;
+    -f|--format)
+      FORMAT="$2"
+      shift 2
+      ;;
+    --human)
+      FORMAT="text"
+      shift
+      ;;
+    --json)
+      FORMAT="json"
       shift
       ;;
     -h|--help)
@@ -433,14 +521,14 @@ while [[ $# -gt 0 ]]; do
     -*)
       log_error "Unknown option: $1"
       echo "Use --help for usage information" >&2
-      exit 1
+      exit "${EXIT_INVALID_INPUT:-2}"
       ;;
     *)
       if [[ -z "$TITLE" ]]; then
         TITLE="$1"
       else
         log_error "Multiple titles provided. Quote the title if it contains spaces."
-        exit 1
+        exit "${EXIT_INVALID_INPUT:-2}"
       fi
       shift
       ;;
@@ -450,12 +538,26 @@ done
 # Main execution
 check_deps
 
+# Resolve output format (TTY-aware default)
+FORMAT=$(resolve_format "$FORMAT")
+COMMAND_NAME="add"
+
+# Get VERSION for JSON output
+CLAUDE_TODO_HOME="${CLAUDE_TODO_HOME:-$HOME/.claude-todo}"
+if [[ -f "$CLAUDE_TODO_HOME/VERSION" ]]; then
+  VERSION=$(cat "$CLAUDE_TODO_HOME/VERSION" | tr -d '[:space:]')
+elif [[ -f "$SCRIPT_DIR/../VERSION" ]]; then
+  VERSION=$(cat "$SCRIPT_DIR/../VERSION" | tr -d '[:space:]')
+else
+  VERSION="0.16.0"
+fi
+
 # Validate required arguments
 if [[ -z "$TITLE" ]]; then
   log_error "Task title is required"
   echo "Usage: claude-todo add \"Task Title\" [OPTIONS]" >&2
   echo "Use --help for more information" >&2
-  exit 1
+  exit "${EXIT_INVALID_INPUT:-2}"
 fi
 
 # Normalize labels to remove duplicates
@@ -487,12 +589,74 @@ if [[ -z "$PHASE" ]]; then
 fi
 
 # Validate inputs
-validate_title_local "$TITLE" || exit 1
-validate_status "$STATUS" || exit 1
-validate_priority "$PRIORITY" || exit 1
-validate_phase "$PHASE" || exit 1
-validate_labels "$LABELS" || exit 1
-validate_depends "$DEPENDS" || exit 1
+validate_title_local "$TITLE" || exit "${EXIT_VALIDATION_ERROR:-6}"
+validate_status "$STATUS" || exit "${EXIT_VALIDATION_ERROR:-6}"
+validate_priority "$PRIORITY" || exit "${EXIT_VALIDATION_ERROR:-6}"
+validate_phase "$PHASE" || exit "${EXIT_VALIDATION_ERROR:-6}"
+validate_labels "$LABELS" || exit "${EXIT_VALIDATION_ERROR:-6}"
+validate_depends "$DEPENDS" || exit "${EXIT_VALIDATION_ERROR:-6}"
+
+# Validate hierarchy fields (v0.17.0)
+if [[ -n "$TASK_TYPE" ]]; then
+  if ! validate_task_type "$TASK_TYPE" 2>/dev/null; then
+    log_error "Invalid task type: $TASK_TYPE (must be epic|task|subtask)"
+    exit "${EXIT_VALIDATION_ERROR:-6}"
+  fi
+fi
+
+if [[ -n "$SIZE" ]]; then
+  if ! validate_task_size "$SIZE" 2>/dev/null; then
+    log_error "Invalid size: $SIZE (must be small|medium|large)"
+    exit "${EXIT_VALIDATION_ERROR:-6}"
+  fi
+fi
+
+# Validate parent hierarchy constraints if parent specified
+if [[ -n "$PARENT_ID" ]]; then
+  # Validate parent ID format
+  if ! [[ "$PARENT_ID" =~ ^T[0-9]{3,}$ ]]; then
+    log_error "Invalid parent ID format: $PARENT_ID (must be T### format)"
+    exit "${EXIT_INVALID_INPUT:-2}"
+  fi
+
+  # Validate hierarchy constraints using lib/hierarchy.sh
+  if declare -f validate_hierarchy >/dev/null 2>&1; then
+    if ! validate_parent_exists "$PARENT_ID" "$TODO_FILE"; then
+      log_error "Parent task not found: $PARENT_ID"
+      exit "${EXIT_PARENT_NOT_FOUND:-10}"
+    fi
+
+    if ! validate_max_depth "$PARENT_ID" "$TODO_FILE"; then
+      log_error "Cannot add child to $PARENT_ID: max hierarchy depth (3) would be exceeded"
+      exit "${EXIT_DEPTH_EXCEEDED:-11}"
+    fi
+
+    if ! validate_max_siblings "$PARENT_ID" "$TODO_FILE"; then
+      log_error "Cannot add child to $PARENT_ID: max siblings (7) exceeded"
+      exit "${EXIT_SIBLING_LIMIT:-12}"
+    fi
+
+    if ! validate_parent_type "$PARENT_ID" "$TODO_FILE"; then
+      log_error "Cannot add child to $PARENT_ID: subtasks cannot have children"
+      exit "${EXIT_INVALID_PARENT_TYPE:-13}"
+    fi
+  fi
+
+  # Infer task type from parent if not explicitly set
+  if [[ -z "$TASK_TYPE" ]]; then
+    if declare -f infer_task_type >/dev/null 2>&1; then
+      TASK_TYPE=$(infer_task_type "$PARENT_ID" "$TODO_FILE")
+      log_info "Inferred task type: $TASK_TYPE (based on parent)"
+    else
+      TASK_TYPE="task"  # Fallback default
+    fi
+  fi
+else
+  # No parent - default to "task" type if not specified
+  if [[ -z "$TASK_TYPE" ]]; then
+    TASK_TYPE="task"
+  fi
+fi
 
 # Add new phase if --add-phase flag is set and phase doesn't exist
 if [[ "$ADD_PHASE" == "true" ]] && [[ -n "$PHASE" ]]; then
@@ -505,21 +669,21 @@ if [[ -n "$DEPENDS" ]]; then
   TEMP_TASK_ID=$(generate_task_id)
   if ! check_circular_dependencies "$TODO_FILE" "$TEMP_TASK_ID" "$DEPENDS"; then
     log_error "Cannot add task: would create circular dependency"
-    exit 1
+    exit "${EXIT_VALIDATION_ERROR:-6}"
   fi
 fi
 
 # Check if blocked status has blocker reason
 if [[ "$STATUS" == "blocked" ]] && [[ -z "$DESCRIPTION" ]]; then
   log_error "Blocked tasks require --description to specify blocker reason"
-  exit 1
+  exit "${EXIT_INVALID_INPUT:-2}"
 fi
 
 # Check if todo.json exists
 if [[ ! -f "$TODO_FILE" ]]; then
   log_error "Todo file not found: $TODO_FILE"
   echo "Run claude-todo init first to initialize the todo system" >&2
-  exit 1
+  exit "${EXIT_NOT_FOUND:-4}"
 fi
 
 # Check if active status and there's already an active task
@@ -528,7 +692,7 @@ if [[ "$STATUS" == "active" ]]; then
   if [[ "$active_count" -gt 0 ]]; then
     log_error "Cannot create active task: only ONE active task allowed"
     echo "Current active task: $(jq -r '[.tasks[] | select(.status == "active")][0].id' "$TODO_FILE")" >&2
-    exit 1
+    exit "${EXIT_VALIDATION_ERROR:-6}"
   fi
 fi
 
@@ -538,7 +702,7 @@ ADD_LOCK_FD=""
 if ! lock_file "$TODO_FILE" ADD_LOCK_FD 30; then
   log_error "Cannot acquire lock for task creation (another process may be adding a task)"
   echo "Try again in a moment or check for stuck processes" >&2
-  exit 2
+  exit "${EXIT_LOCK_TIMEOUT:-7}"
 fi
 
 # Set up trap to ensure lock is released on exit/error
@@ -552,20 +716,33 @@ log_info "Generated task ID: $TASK_ID"
 # Create timestamp
 CREATED_AT=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-# Build task object
+# Build task object with hierarchy fields (v0.17.0)
 TASK_JSON=$(jq -n \
   --arg id "$TASK_ID" \
   --arg title "$TITLE" \
   --arg status "$STATUS" \
   --arg priority "$PRIORITY" \
+  --arg taskType "$TASK_TYPE" \
   --arg created "$CREATED_AT" \
   '{
     id: $id,
     title: $title,
     status: $status,
     priority: $priority,
+    type: $taskType,
+    parentId: null,
     createdAt: $created
   }')
+
+# Add parentId if specified (hierarchy)
+if [[ -n "$PARENT_ID" ]]; then
+  TASK_JSON=$(echo "$TASK_JSON" | jq --arg pid "$PARENT_ID" '.parentId = $pid')
+fi
+
+# Add size if specified (scope-based, NOT time-based)
+if [[ -n "$SIZE" ]]; then
+  TASK_JSON=$(echo "$TASK_JSON" | jq --arg sz "$SIZE" '.size = $sz')
+fi
 
 # Add optional fields
 if [[ -n "$PHASE" ]]; then
@@ -632,7 +809,7 @@ TEMP_FILE="${TODO_FILE}${TEMP_SUFFIX}"
 if ! echo "$UPDATED_TODO" | jq empty 2>/dev/null; then
   log_error "Generated invalid JSON content"
   unlock_file "$ADD_LOCK_FD"
-  exit 2
+  exit "${EXIT_VALIDATION_ERROR:-6}"
 fi
 
 # Backup original file
@@ -642,7 +819,7 @@ if [[ -f "$TODO_FILE" ]]; then
   if [[ $? -ne 0 ]]; then
     log_error "Failed to backup original file"
     unlock_file "$ADD_LOCK_FD"
-    exit 2
+    exit "${EXIT_FILE_ERROR:-3}"
   fi
 fi
 
@@ -651,7 +828,7 @@ if ! echo "$UPDATED_TODO" | jq '.' > "$TEMP_FILE" 2>/dev/null; then
   log_error "Failed to write temp file"
   rm -f "$TEMP_FILE" 2>/dev/null || true
   unlock_file "$ADD_LOCK_FD"
-  exit 2
+  exit "${EXIT_FILE_ERROR:-3}"
 fi
 
 # Atomic rename
@@ -663,7 +840,7 @@ if ! mv "$TEMP_FILE" "$TODO_FILE" 2>/dev/null; then
   fi
   rm -f "$TEMP_FILE" 2>/dev/null || true
   unlock_file "$ADD_LOCK_FD"
-  exit 2
+  exit "${EXIT_FILE_ERROR:-3}"
 fi
 
 # Set proper permissions
@@ -684,7 +861,26 @@ task_details=$(jq -n \
 log_operation "task_created" "$TASK_ID" "$task_details"
 
 # Success output
-if [[ "$QUIET" == "true" ]]; then
+if [[ "$FORMAT" == "json" ]]; then
+  # Get the full created task as JSON
+  TASK_JSON_OUTPUT=$(jq --arg id "$TASK_ID" '.tasks[] | select(.id == $id)' "$TODO_FILE")
+
+  jq -n \
+    --arg version "$VERSION" \
+    --arg timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+    --argjson task "$TASK_JSON_OUTPUT" \
+    '{
+      "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+      "_meta": {
+        "format": "json",
+        "version": $version,
+        "command": "add",
+        "timestamp": $timestamp
+      },
+      "success": true,
+      "task": $task
+    }'
+elif [[ "$QUIET" == true ]]; then
   echo "$TASK_ID"
 else
   log_info "Task added successfully"
@@ -700,4 +896,4 @@ else
   echo "View with: jq '.tasks[] | select(.id == \"$TASK_ID\")' $TODO_FILE"
 fi
 
-exit 0
+exit $EXIT_SUCCESS

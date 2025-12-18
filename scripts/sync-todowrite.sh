@@ -68,8 +68,9 @@ INJECT OPTIONS
     --quiet, -q       Suppress info messages
 
 EXTRACT OPTIONS
-    --dry-run         Preview changes without applying
-    --quiet, -q       Suppress info messages
+    --default-phase SLUG  Override default phase for new tasks
+    --dry-run             Preview changes without applying
+    --quiet, -q           Suppress info messages
 
 WORKFLOW
     1. Session Start:  claude-todo sync --inject
@@ -128,11 +129,13 @@ handle_status() {
 
     local session_id=$(jq -r '.session_id // "unknown"' "$STATE_FILE")
     local injected_at=$(jq -r '.injected_at // "unknown"' "$STATE_FILE")
+    local injected_phase=$(jq -r '.injectedPhase // "none"' "$STATE_FILE")
     local task_count=$(jq '.injected_tasks | length' "$STATE_FILE")
     local task_ids=$(jq -r '.injected_tasks | join(", ")' "$STATE_FILE")
 
     echo "Session ID:    $session_id"
     echo "Injected at:   $injected_at"
+    echo "Injected phase: $injected_phase"
     echo "Task count:    $task_count"
     echo "Task IDs:      $task_ids"
 

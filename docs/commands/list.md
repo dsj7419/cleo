@@ -42,6 +42,15 @@ By default, completed tasks are hidden. Use `--status done` or `--all` to includ
 | `--quiet` | `-q` | Suppress informational messages | `false` |
 | `--help` | `-h` | Show help message | |
 
+### Hierarchy Filters (v0.17.0)
+
+| Option | Short | Description | Default |
+|--------|-------|-------------|---------|
+| `--type TYPE` | `-t` | Filter by type: `epic`, `task`, `subtask` | |
+| `--parent ID` | | Filter tasks with specified parent ID | |
+| `--children ID` | | Show direct children of task ID | |
+| `--tree` | | Display tasks in hierarchical tree view | `false` |
+
 ## Examples
 
 ### Basic Listing
@@ -99,6 +108,25 @@ claude-todo list --until 2025-12-31
 claude-todo list -s pending -p high --phase core
 ```
 
+### Hierarchy Filtering (v0.17.0)
+
+```bash
+# List only epics
+claude-todo list --type epic
+
+# List only subtasks
+claude-todo list --type subtask
+
+# List children of a specific task
+claude-todo list --children T001
+
+# Filter by parent
+claude-todo list --parent T001
+
+# Tree view (hierarchical display)
+claude-todo list --tree
+```
+
 ### Display Customization
 
 ```bash
@@ -145,7 +173,8 @@ claude-todo list --format table
 ```json
 {
   "_meta": {
-    "version": "0.12.0",
+    "format": "json",
+    "version": "0.17.0",
     "command": "list",
     "timestamp": "2025-12-13T10:00:00Z"
   },
@@ -161,6 +190,9 @@ claude-todo list --format table
       "title": "Implement authentication",
       "status": "active",
       "priority": "high",
+      "type": "task",
+      "parentId": "T001",
+      "size": "medium",
       "phase": "core",
       "labels": ["backend", "security"]
     }

@@ -23,6 +23,25 @@ fi
 LIB_DIR="${SCRIPT_DIR}/../lib"
 [[ ! -f "$CLAUDE_TODO_HOME/lib/file-ops.sh" && -f "$LIB_DIR/file-ops.sh" ]] && source "$LIB_DIR/file-ops.sh"
 
+# Source output-format library for format resolution
+if [[ -f "$CLAUDE_TODO_HOME/lib/output-format.sh" ]]; then
+  source "$CLAUDE_TODO_HOME/lib/output-format.sh"
+elif [[ -f "$LIB_DIR/output-format.sh" ]]; then
+  source "$LIB_DIR/output-format.sh"
+fi
+
+# Source exit codes and error-json libraries
+if [[ -f "$CLAUDE_TODO_HOME/lib/exit-codes.sh" ]]; then
+  source "$CLAUDE_TODO_HOME/lib/exit-codes.sh"
+elif [[ -f "$LIB_DIR/exit-codes.sh" ]]; then
+  source "$LIB_DIR/exit-codes.sh"
+fi
+if [[ -f "$CLAUDE_TODO_HOME/lib/error-json.sh" ]]; then
+  source "$CLAUDE_TODO_HOME/lib/error-json.sh"
+elif [[ -f "$LIB_DIR/error-json.sh" ]]; then
+  source "$LIB_DIR/error-json.sh"
+fi
+
 TODO_FILE="${TODO_FILE:-.claude/todo.json}"
 # Note: LOG_FILE is set by lib/logging.sh (readonly) - don't reassign here
 # If library wasn't sourced, set a fallback
@@ -60,8 +79,15 @@ Commands:
   next <text>     Set suggested next action
 
 Options:
-  --json          Output in JSON format
-  -h, --help      Show this help
+  -f, --format FMT  Output format: text|json (default: auto)
+  --human           Force text output (human-readable)
+  --json            Force JSON output (machine-readable)
+  -h, --help        Show this help
+
+Format Auto-Detection:
+  When no format is specified, output format is automatically detected:
+  - Interactive terminal (TTY): human-readable text format
+  - Pipe/redirect/agent context: machine-readable JSON format
 
 Examples:
   claude-todo focus set T001
@@ -69,6 +95,7 @@ Examples:
   claude-todo focus next "Write unit tests for auth module"
   claude-todo focus clear
   claude-todo focus show --json
+  claude-todo focus show --format json
 EOF
   exit 0
 }
@@ -267,19 +294,55 @@ cmd_clear() {
 
 # Show current focus
 cmd_show() {
-  local json_output=false
+  local format_arg=""
 
   while [[ $# -gt 0 ]]; do
     case $1 in
-      --json) json_output=true; shift ;;
+      -f|--format) format_arg="$2"; shift 2 ;;
+      --human) format_arg="text"; shift ;;
+      --json) format_arg="json"; shift ;;
       *) shift ;;
     esac
   done
 
+  # Resolve format with TTY-aware detection
+  local output_format
+  output_format=$(resolve_format "$format_arg")
+
   check_todo_exists
 
-  if [[ "$json_output" == "true" ]]; then
-    jq '.focus' "$TODO_FILE"
+  if [[ "$output_format" == "json" ]]; then
+    local current_timestamp
+    current_timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+    # Get focus object and wrap in envelope
+    local focus_obj
+    focus_obj=$(jq '.focus' "$TODO_FILE")
+
+    # Get task details if there's a focused task
+    local current_task
+    current_task=$(jq -r '.focus.currentTask // ""' "$TODO_FILE")
+    local task_details="null"
+
+    if [[ -n "$current_task" ]]; then
+      task_details=$(jq --arg id "$current_task" '.tasks[] | select(.id == $id) | {id: .id, title: .title, status: .status, priority: .priority, phase: .phase}' "$TODO_FILE")
+    fi
+
+    jq -n \
+      --arg timestamp "$current_timestamp" \
+      --arg version "$VERSION" \
+      --argjson focus "$focus_obj" \
+      --argjson task "$task_details" \
+      '{
+        "_meta": {
+          "command": "focus show",
+          "timestamp": $timestamp,
+          "version": $version
+        },
+        "success": true,
+        "focus": $focus,
+        "focusedTask": $task
+      }'
   else
     local current_task
     local session_note

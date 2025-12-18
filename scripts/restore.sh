@@ -18,6 +18,20 @@ if [[ -f "$LIB_DIR/logging.sh" ]]; then
   source "$LIB_DIR/logging.sh"
 fi
 
+# Source output formatting and error libraries
+if [[ -f "$LIB_DIR/output-format.sh" ]]; then
+  # shellcheck source=../lib/output-format.sh
+  source "$LIB_DIR/output-format.sh"
+fi
+if [[ -f "$LIB_DIR/exit-codes.sh" ]]; then
+  # shellcheck source=../lib/exit-codes.sh
+  source "$LIB_DIR/exit-codes.sh"
+fi
+if [[ -f "$LIB_DIR/error-json.sh" ]]; then
+  # shellcheck source=../lib/error-json.sh
+  source "$LIB_DIR/error-json.sh"
+fi
+
 # Colors (respects NO_COLOR and FORCE_COLOR environment variables per https://no-color.org)
 if declare -f should_use_color >/dev/null 2>&1 && should_use_color; then
   RED='\033[0;31m'
@@ -34,6 +48,10 @@ BACKUP_SOURCE=""
 TARGET_FILE=""
 FORCE=false
 VERBOSE=false
+FORMAT=""
+QUIET=false
+DRY_RUN=false
+COMMAND_NAME="restore"
 
 usage() {
   cat << EOF
@@ -47,7 +65,12 @@ Arguments:
 Options:
   --file FILE         Restore specific file only (todo.json, todo-archive.json, etc.)
   --force             Skip confirmation prompt
+  --dry-run           Preview what would be restored without making changes
   --verbose           Show detailed output
+  -f, --format FMT    Output format: text, json (default: auto-detect)
+  --human             Force human-readable text output
+  --json              Force JSON output
+  -q, --quiet         Suppress non-essential output
   -h, --help          Show this help
 
 Safety:
@@ -56,24 +79,37 @@ Safety:
   - Rolls back on validation failure
   - Atomic operations prevent data loss
 
+JSON Output:
+  {
+    "_meta": {"command": "restore", "timestamp": "..."},
+    "success": true,
+    "restored": {"from": "/path/to/backup", "files": [...], "tasksCount": 15}
+  }
+
 Examples:
   $(basename "$0") .claude/backups/snapshot/snapshot_20251205_120000
   $(basename "$0") /path/to/backup.tar.gz --force
   $(basename "$0") .claude/backups/safety/safety_20251205_120000_update_todo.json --file todo.json
+  $(basename "$0") backup_20251205 --dry-run    # Preview restore
+  $(basename "$0") backup_20251205 --json       # JSON output for scripting
 EOF
   exit 0
 }
 
-log_info()  { echo -e "${GREEN}[INFO]${NC} $1"; }
-log_warn()  { echo -e "${YELLOW}[WARN]${NC} $1"; }
-log_error() { echo -e "${RED}[ERROR]${NC} $1" >&2; }
-log_debug() { [[ "$VERBOSE" == true ]] && echo -e "${BLUE}[DEBUG]${NC} $1" || true; }
+log_info()  { [[ "$QUIET" != true && "$FORMAT" != "json" ]] && echo -e "${GREEN}[INFO]${NC} $1" || true; }
+log_warn()  { [[ "$FORMAT" != "json" ]] && echo -e "${YELLOW}[WARN]${NC} $1" || true; }
+log_error() { [[ "$FORMAT" != "json" ]] && echo -e "${RED}[ERROR]${NC} $1" >&2 || true; }
+log_debug() { [[ "$VERBOSE" == true && "$FORMAT" != "json" ]] && echo -e "${BLUE}[DEBUG]${NC} $1" || true; }
 
 # Check dependencies
 check_deps() {
   if ! command -v jq &> /dev/null; then
-    log_error "jq is required but not installed"
-    exit 1
+    if [[ "$FORMAT" == "json" ]] && declare -f output_error &>/dev/null; then
+      output_error "$E_DEPENDENCY_MISSING" "jq is required but not installed" "${EXIT_DEPENDENCY_ERROR:-5}" false "Install jq: apt install jq (Debian) or brew install jq (macOS)"
+    else
+      log_error "jq is required but not installed"
+    fi
+    exit "${EXIT_DEPENDENCY_ERROR:-1}"
   fi
 }
 
@@ -367,8 +403,28 @@ while [[ $# -gt 0 ]]; do
       FORCE=true
       shift
       ;;
+    --dry-run)
+      DRY_RUN=true
+      shift
+      ;;
     --verbose)
       VERBOSE=true
+      shift
+      ;;
+    -f|--format)
+      FORMAT="$2"
+      shift 2
+      ;;
+    --human)
+      FORMAT="text"
+      shift
+      ;;
+    --json)
+      FORMAT="json"
+      shift
+      ;;
+    -q|--quiet)
+      QUIET=true
       shift
       ;;
     -*)
@@ -380,6 +436,13 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+# Resolve output format (CLI > env > config > TTY-aware default)
+if declare -f resolve_format &>/dev/null; then
+  FORMAT=$(resolve_format "$FORMAT")
+else
+  FORMAT="${FORMAT:-text}"
+fi
 
 check_deps
 
@@ -400,7 +463,53 @@ if [[ -f "$BACKUP_SOURCE" ]] && [[ "$BACKUP_SOURCE" =~ \.tar\.gz$ ]]; then
 fi
 
 # Show backup information
-show_backup_info "$BACKUP_SOURCE"
+if [[ "$FORMAT" != "json" ]]; then
+  show_backup_info "$BACKUP_SOURCE"
+fi
+
+# Handle dry-run mode
+if [[ "$DRY_RUN" == true ]]; then
+  # Collect files that would be restored
+  WOULD_RESTORE_FILES=()
+  for file_name in todo.json todo-archive.json todo-config.json todo-log.json; do
+    if [[ -n "$TARGET_FILE" && "$TARGET_FILE" != "$file_name" ]]; then
+      continue
+    fi
+    if [[ -f "${BACKUP_SOURCE}/${file_name}" ]]; then
+      WOULD_RESTORE_FILES+=("$file_name")
+    fi
+  done
+
+  if [[ "$FORMAT" == "json" ]]; then
+    jq -n \
+      --arg timestamp "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
+      --arg from "$BACKUP_SOURCE" \
+      --argjson files "$(printf '%s\n' "${WOULD_RESTORE_FILES[@]}" | jq -R . | jq -s .)" \
+      '{
+        "_meta": {
+          "command": "restore",
+          "timestamp": $timestamp,
+          "format": "json"
+        },
+        "success": true,
+        "dryRun": true,
+        "wouldRestore": {
+          "from": $from,
+          "files": $files
+        }
+      }'
+  else
+    echo ""
+    echo -e "${YELLOW}DRY RUN - No changes will be made${NC}"
+    echo ""
+    echo -e "  ${BLUE}Would restore:${NC}"
+    for file in "${WOULD_RESTORE_FILES[@]}"; do
+      echo -e "    → $file"
+    done
+    echo ""
+  fi
+  exit 0
+fi
 
 # Confirm restore
 confirm_restore
@@ -546,23 +655,56 @@ if [[ $VALIDATION_ERRORS -gt 0 ]]; then
   exit 1
 fi
 
-# Success
-echo ""
-echo -e "${GREEN}╔══════════════════════════════════════════════════════════╗${NC}"
-echo -e "${GREEN}║              RESTORE COMPLETED SUCCESSFULLY              ║${NC}"
-echo -e "${GREEN}╚══════════════════════════════════════════════════════════╝${NC}"
-echo ""
-echo -e "  ${BLUE}Restored Files:${NC}"
-for file in "${RESTORED_FILES[@]}"; do
-  echo -e "    ✓ $file"
-done
-echo ""
+# Get tasks count from restored todo.json
+TASKS_COUNT=0
+if [[ -f "$TODO_FILE" ]]; then
+  TASKS_COUNT=$(jq '.tasks | length' "$TODO_FILE" 2>/dev/null || echo 0)
+fi
 
-if [[ -n "$SAFETY_BACKUP" ]]; then
-  echo -e "  ${BLUE}Safety Backup:${NC}"
-  echo -e "    $SAFETY_BACKUP"
-  echo -e "    ${YELLOW}(Can be removed if restore is satisfactory)${NC}"
+# Success output
+if [[ "$FORMAT" == "json" ]]; then
+  # JSON output
+  jq -n \
+    --arg timestamp "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
+    --arg from "$BACKUP_SOURCE" \
+    --arg safetyBackup "${SAFETY_BACKUP:-}" \
+    --argjson tasksCount "$TASKS_COUNT" \
+    --argjson dryRun "$DRY_RUN" \
+    --argjson files "$(printf '%s\n' "${RESTORED_FILES[@]}" | jq -R . | jq -s .)" \
+    '{
+      "_meta": {
+        "command": "restore",
+        "timestamp": $timestamp,
+        "format": "json"
+      },
+      "success": true,
+      "restored": {
+        "from": $from,
+        "files": $files,
+        "tasksCount": $tasksCount,
+        "dryRun": $dryRun,
+        "safetyBackup": (if $safetyBackup != "" then $safetyBackup else null end)
+      }
+    }'
+else
+  # Text output
   echo ""
+  echo -e "${GREEN}╔══════════════════════════════════════════════════════════╗${NC}"
+  echo -e "${GREEN}║              RESTORE COMPLETED SUCCESSFULLY              ║${NC}"
+  echo -e "${GREEN}╚══════════════════════════════════════════════════════════╝${NC}"
+  echo ""
+  echo -e "  ${BLUE}Restored Files:${NC}"
+  for file in "${RESTORED_FILES[@]}"; do
+    echo -e "    ✓ $file"
+  done
+  echo ""
+
+  if [[ -n "$SAFETY_BACKUP" ]]; then
+    echo -e "  ${BLUE}Safety Backup:${NC}"
+    echo -e "    $SAFETY_BACKUP"
+    echo -e "    ${YELLOW}(Can be removed if restore is satisfactory)${NC}"
+    echo ""
+  fi
 fi
 
 exit 0

@@ -23,6 +23,25 @@ fi
 LIB_DIR="${SCRIPT_DIR}/../lib"
 [[ ! -f "$CLAUDE_TODO_HOME/lib/file-ops.sh" && -f "$LIB_DIR/file-ops.sh" ]] && source "$LIB_DIR/file-ops.sh"
 
+# Source output-format library for format resolution
+if [[ -f "$CLAUDE_TODO_HOME/lib/output-format.sh" ]]; then
+  source "$CLAUDE_TODO_HOME/lib/output-format.sh"
+elif [[ -f "$LIB_DIR/output-format.sh" ]]; then
+  source "$LIB_DIR/output-format.sh"
+fi
+
+# Source exit codes and error-json libraries
+if [[ -f "$CLAUDE_TODO_HOME/lib/exit-codes.sh" ]]; then
+  source "$CLAUDE_TODO_HOME/lib/exit-codes.sh"
+elif [[ -f "$LIB_DIR/exit-codes.sh" ]]; then
+  source "$LIB_DIR/exit-codes.sh"
+fi
+if [[ -f "$CLAUDE_TODO_HOME/lib/error-json.sh" ]]; then
+  source "$CLAUDE_TODO_HOME/lib/error-json.sh"
+elif [[ -f "$LIB_DIR/error-json.sh" ]]; then
+  source "$LIB_DIR/error-json.sh"
+fi
+
 TODO_FILE="${TODO_FILE:-.claude/todo.json}"
 CONFIG_FILE="${CONFIG_FILE:-.claude/todo-config.json}"
 # Note: LOG_FILE is set by lib/logging.sh (readonly) - don't reassign here
@@ -60,15 +79,23 @@ Commands:
   info        Show detailed session information
 
 Options:
-  --note TEXT     Add a note when ending session
-  --json          Output in JSON format
-  -h, --help      Show this help
+  --note TEXT       Add a note when ending session
+  -f, --format FMT  Output format: text|json (default: auto)
+  --human           Force text output (human-readable)
+  --json            Force JSON output (machine-readable)
+  -h, --help        Show this help
+
+Format Auto-Detection:
+  When no format is specified, output format is automatically detected:
+  - Interactive terminal (TTY): human-readable text format
+  - Pipe/redirect/agent context: machine-readable JSON format
 
 Examples:
   claude-todo session start                    # Start new session
   claude-todo session end --note "Completed auth implementation"
   claude-todo session status                   # Check current session
   claude-todo session info --json              # Detailed info as JSON
+  claude-todo session status --format json     # Machine-readable status
 EOF
   exit 0
 }
@@ -284,14 +311,20 @@ cmd_end() {
 
 # Show session status
 cmd_status() {
-  local json_output=false
+  local format_arg=""
 
   while [[ $# -gt 0 ]]; do
     case $1 in
-      --json) json_output=true; shift ;;
+      -f|--format) format_arg="$2"; shift 2 ;;
+      --human) format_arg="text"; shift ;;
+      --json) format_arg="json"; shift ;;
       *) shift ;;
     esac
   done
+
+  # Resolve format with TTY-aware detection
+  local output_format
+  output_format=$(resolve_format "$format_arg")
 
   check_todo_exists
 
@@ -305,18 +338,31 @@ cmd_status() {
   session_note=$(jq -r '.focus.sessionNote // ""' "$TODO_FILE")
   next_action=$(jq -r '.focus.nextAction // ""' "$TODO_FILE")
 
-  if [[ "$json_output" == "true" ]]; then
+  if [[ "$output_format" == "json" ]]; then
+    local current_timestamp
+    current_timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
     jq -n \
+      --arg timestamp "$current_timestamp" \
+      --arg version "$VERSION" \
       --arg session "$session_id" \
       --arg focus "$focus_task" \
       --arg note "$session_note" \
       --arg next "$next_action" \
       '{
-        active: ($session != ""),
-        sessionId: (if $session == "" then null else $session end),
-        focusTask: (if $focus == "" then null else $focus end),
-        sessionNote: (if $note == "" then null else $note end),
-        nextAction: (if $next == "" then null else $next end)
+        "_meta": {
+          "command": "session status",
+          "timestamp": $timestamp,
+          "version": $version
+        },
+        "success": true,
+        "session": {
+          "active": ($session != ""),
+          "sessionId": (if $session == "" then null else $session end),
+          "focusTask": (if $focus == "" then null else $focus end),
+          "sessionNote": (if $note == "" then null else $note end),
+          "nextAction": (if $next == "" then null else $next end)
+        }
       }'
   else
     if [[ -n "$session_id" ]]; then
@@ -338,27 +384,44 @@ cmd_status() {
 
 # Show detailed session info
 cmd_info() {
-  local json_output=false
+  local format_arg=""
 
   while [[ $# -gt 0 ]]; do
     case $1 in
-      --json) json_output=true; shift ;;
+      -f|--format) format_arg="$2"; shift 2 ;;
+      --human) format_arg="text"; shift ;;
+      --json) format_arg="json"; shift ;;
       *) shift ;;
     esac
   done
 
+  # Resolve format with TTY-aware detection
+  local output_format
+  output_format=$(resolve_format "$format_arg")
+
   check_todo_exists
 
-  if [[ "$json_output" == "true" ]]; then
-    jq '{
-      meta: ._meta,
-      focus: .focus,
-      taskCounts: {
-        total: (.tasks | length),
-        pending: ([.tasks[] | select(.status == "pending")] | length),
-        active: ([.tasks[] | select(.status == "active")] | length),
-        blocked: ([.tasks[] | select(.status == "blocked")] | length),
-        done: ([.tasks[] | select(.status == "done")] | length)
+  if [[ "$output_format" == "json" ]]; then
+    local current_timestamp
+    current_timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+    jq --arg timestamp "$current_timestamp" --arg version "$VERSION" '{
+      "_meta": {
+        "command": "session info",
+        "timestamp": $timestamp,
+        "version": $version
+      },
+      "success": true,
+      "session": {
+        "meta": ._meta,
+        "focus": .focus,
+        "taskCounts": {
+          "total": (.tasks | length),
+          "pending": ([.tasks[] | select(.status == "pending")] | length),
+          "active": ([.tasks[] | select(.status == "active")] | length),
+          "blocked": ([.tasks[] | select(.status == "blocked")] | length),
+          "done": ([.tasks[] | select(.status == "done")] | length)
+        }
       }
     }' "$TODO_FILE"
   else

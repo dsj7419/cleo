@@ -42,7 +42,24 @@ This command includes:
 | `--depends IDS` | `-D` | Comma-separated task IDs (e.g., `T001,T002`) | |
 | `--notes NOTE` | | Initial timestamped note | |
 | `--quiet` | `-q` | Suppress messages, output only task ID | `false` |
+| `--format FORMAT` | `-f` | Output format: `text`, `json` | Auto-detect |
+| `--human` | | Force human-readable text output | |
+| `--json` | | Force JSON output (for LLM agents) | |
 | `--help` | `-h` | Show help message | |
+
+### Hierarchy Options (v0.17.0)
+
+| Option | Short | Description | Default |
+|--------|-------|-------------|---------|
+| `--type TYPE` | `-t` | Task type: `epic`, `task`, `subtask` | Inferred |
+| `--parent ID` | | Parent task ID for hierarchy (e.g., `T001`) | `null` |
+| `--size SIZE` | | Scope-based size: `small`, `medium`, `large` (NOT time) | `null` |
+
+**Hierarchy Constraints:**
+- Maximum depth: 3 levels (epic → task → subtask)
+- Maximum siblings: 7 children per parent
+- Subtasks cannot have children
+- Type is inferred if not specified (task under epic, subtask under task)
 
 ## Examples
 
@@ -98,6 +115,22 @@ claude-todo add "Implement search" \
 claude-todo add "Waiting for API spec" -s blocked -d "Blocked by external team"
 ```
 
+### Hierarchy (v0.17.0)
+
+```bash
+# Create an epic
+claude-todo add "User Authentication System" --type epic --size large
+
+# Create a task under the epic
+claude-todo add "Login endpoint" --parent T001 --size medium
+
+# Create a subtask under the task
+claude-todo add "Validate email format" --parent T002 --type subtask --size small
+
+# Type is inferred based on parent
+claude-todo add "Session management" --parent T001  # Inferred as task
+```
+
 ## Output
 
 ### Standard Output
@@ -139,8 +172,16 @@ T042
 | Code | Meaning |
 |------|---------|
 | `0` | Success |
-| `1` | Invalid arguments or validation failure |
-| `2` | File operation failure |
+| `2` | Invalid input or arguments |
+| `3` | File operation failure |
+| `4` | Resource not found |
+| `5` | Missing dependency (jq) |
+| `6` | Validation error |
+| `7` | Lock timeout |
+| `10` | Parent task not found |
+| `11` | Max depth exceeded |
+| `12` | Max siblings exceeded |
+| `13` | Invalid parent type (subtask cannot have children) |
 
 ## See Also
 

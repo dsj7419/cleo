@@ -76,6 +76,22 @@ claude-todo show <id> --include-archive    # Search archive if not found
 claude-todo show <id> --format json        # JSON output for scripting
 ```
 
+### Hierarchy (v0.17.0+)
+```bash
+# Create with hierarchy
+claude-todo add "Epic" --type epic --size large
+claude-todo add "Task" --parent T001 --size medium
+claude-todo add "Subtask" --parent T002 --type subtask --size small
+
+# List with hierarchy filters
+claude-todo list --type epic               # Filter by type (epic|task|subtask)
+claude-todo list --parent T001             # Tasks with specific parent
+claude-todo list --children T001           # Direct children of task
+claude-todo list --tree                    # Hierarchical tree view
+```
+
+**Constraints**: max depth 3 (epic→task→subtask), max 7 siblings per parent.
+
 ### Maintenance
 ```bash
 claude-todo validate                       # Check file integrity

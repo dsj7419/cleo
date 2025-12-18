@@ -47,8 +47,17 @@ source "${LIB_DIR}/output-format.sh"
 # shellcheck source=../lib/logging.sh
 source "${LIB_DIR}/logging.sh"
 
+# Source exit codes and error-json libraries if available
+if [[ -f "$LIB_DIR/exit-codes.sh" ]]; then
+  source "$LIB_DIR/exit-codes.sh"
+fi
+if [[ -f "$LIB_DIR/error-json.sh" ]]; then
+  source "$LIB_DIR/error-json.sh"
+fi
+
 # Default configuration
-OUTPUT_FORMAT="text"
+FORMAT=""
+OUTPUT_FORMAT=""
 TASK_ID=""
 SHOW_TREE=false
 
@@ -71,8 +80,15 @@ Arguments:
     tree                  Show full dependency tree visualization
 
 Options:
-    -f, --format FORMAT   Output format: text | json | markdown (default: text)
+    -f, --format FORMAT   Output format: text | json | markdown (default: auto)
+    --human               Force text output (human-readable)
+    --json                Force JSON output (machine-readable)
     -h, --help            Show this help message
+
+Format Auto-Detection:
+    When no format is specified, output format is automatically detected:
+    - Interactive terminal (TTY): human-readable text format
+    - Pipe/redirect/agent context: machine-readable JSON format
 
 Examples:
     claude-todo deps                  # Overview of all dependencies
@@ -647,11 +663,16 @@ parse_arguments() {
     while [[ $# -gt 0 ]]; do
         case $1 in
             -f|--format)
-                OUTPUT_FORMAT="$2"
-                if ! validate_format "$OUTPUT_FORMAT" "text,json,markdown"; then
-                    exit 1
-                fi
+                FORMAT="$2"
                 shift 2
+                ;;
+            --human)
+                FORMAT="text"
+                shift
+                ;;
+            --json)
+                FORMAT="json"
+                shift
                 ;;
             -h|--help)
                 usage
@@ -680,6 +701,9 @@ parse_arguments() {
 
 main() {
     parse_arguments "$@"
+
+    # Resolve format with TTY-aware detection
+    OUTPUT_FORMAT=$(resolve_format "$FORMAT" "true" "text,json,markdown")
 
     # Check if in a todo-enabled project
     if [[ ! -d "$CLAUDE_DIR" ]]; then

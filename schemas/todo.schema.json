@@ -1,8 +1,8 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "claude-todo-schema-v2.2",
+  "$id": "claude-todo-schema-v2.3",
   "title": "CLAUDE-TODO Task Schema",
-  "description": "LLM-optimized task tracking with integrity verification, session tracking, and anti-hallucination safeguards.",
+  "description": "LLM-optimized task tracking with hierarchy support (Epic/Task/Subtask), integrity verification, session tracking, and anti-hallucination safeguards.",
   "type": "object",
   "required": ["version", "project", "lastUpdated", "tasks", "_meta"],
   "additionalProperties": false,
@@ -37,6 +37,47 @@
             }
           },
           "additionalProperties": false
+        },
+        "phaseHistory": {
+          "type": "array",
+          "description": "Chronological phase transition log for audit trail and progress analysis.",
+          "items": {
+            "type": "object",
+            "required": ["phase", "transitionType", "timestamp", "taskCount"],
+            "additionalProperties": false,
+            "properties": {
+              "phase": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]*$",
+                "description": "Phase slug. Must match a key in project.phases."
+              },
+              "transitionType": {
+                "type": "string",
+                "enum": ["started", "completed", "rollback"],
+                "description": "started=phase became active, completed=phase finished, rollback=reverted to previous phase."
+              },
+              "timestamp": {
+                "type": "string",
+                "format": "date-time",
+                "description": "ISO 8601 timestamp when transition occurred."
+              },
+              "taskCount": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Number of tasks in this phase at transition time."
+              },
+              "fromPhase": {
+                "type": ["string", "null"],
+                "pattern": "^[a-z][a-z0-9-]*$",
+                "description": "Previous phase slug for rollback tracking. Null for initial phase start."
+              },
+              "reason": {
+                "type": "string",
+                "maxLength": 500,
+                "description": "Optional context for transition (user note, automation trigger)."
+              }
+            }
+          }
         }
       }
     },
@@ -193,6 +234,24 @@
           "type": "string",
           "enum": ["critical", "high", "medium", "low"],
           "description": "Task priority. critical > high > medium > low."
+        },
+        "type": {
+          "type": "string",
+          "enum": ["epic", "task", "subtask"],
+          "default": "task",
+          "description": "Task classification in hierarchy. epic: strategic initiative requiring decomposition. task: primary work unit. subtask: atomic operation. See HIERARCHY-ENHANCEMENT-SPEC.md."
+        },
+        "parentId": {
+          "type": ["string", "null"],
+          "pattern": "^T\\d{3,}$",
+          "default": null,
+          "description": "Parent task ID for hierarchy. Null for root-level tasks. Must reference existing task. Max depth 3 (epic→task→subtask). Max 7 siblings per parent."
+        },
+        "size": {
+          "type": ["string", "null"],
+          "enum": ["small", "medium", "large", null],
+          "default": null,
+          "description": "Scope-based size (NOT time). small: 1-2 files. medium: 3-7 files. large: 8+ files (should decompose). NO TIME ESTIMATES."
         },
         "phase": {
           "type": "string",

@@ -22,6 +22,19 @@ if [[ -f "$LIB_DIR/logging.sh" ]]; then
   source "$LIB_DIR/logging.sh"
 fi
 
+# Source output-format library for format resolution
+if [[ -f "$LIB_DIR/output-format.sh" ]]; then
+  source "$LIB_DIR/output-format.sh"
+fi
+
+# Source exit codes and error-json libraries
+if [[ -f "$LIB_DIR/exit-codes.sh" ]]; then
+  source "$LIB_DIR/exit-codes.sh"
+fi
+if [[ -f "$LIB_DIR/error-json.sh" ]]; then
+  source "$LIB_DIR/error-json.sh"
+fi
+
 # Set TODO_FILE after sourcing logging.sh (LOG_FILE is set by logging.sh)
 TODO_FILE="${TODO_FILE:-.claude/todo.json}"
 
@@ -86,7 +99,14 @@ List options:
   --task-id ID      Filter by task ID
   --actor ACTOR     Filter by actor (human|claude|system)
   --since DATE      Show entries since date (YYYY-MM-DD)
-  --format FORMAT   Output format: text|json (default: text)
+  -f, --format FMT  Output format: text|json (default: auto)
+  --human           Force text output (human-readable)
+  --json            Force JSON output (machine-readable)
+
+Format Auto-Detection:
+  When no format is specified, output format is automatically detected:
+  - Interactive terminal (TTY): human-readable text format
+  - Pipe/redirect/agent context: machine-readable JSON format
 
 Add entry options:
   --action ACTION   One of: $(get_valid_actions_string)
@@ -146,7 +166,7 @@ case "$SUBCOMMAND" in
     FILTER_TASK_ID=""
     FILTER_ACTOR=""
     FILTER_SINCE=""
-    OUTPUT_FORMAT="text"
+    FORMAT=""
 
     # Parse list options
     while [[ $# -gt 0 ]]; do
@@ -156,12 +176,17 @@ case "$SUBCOMMAND" in
         --task-id) FILTER_TASK_ID="$2"; shift 2 ;;
         --actor) FILTER_ACTOR="$2"; shift 2 ;;
         --since) FILTER_SINCE="$2"; shift 2 ;;
-        --format) OUTPUT_FORMAT="$2"; shift 2 ;;
+        -f|--format) FORMAT="$2"; shift 2 ;;
+        --human) FORMAT="text"; shift ;;
+        --json) FORMAT="json"; shift ;;
         -h|--help) usage ;;
         -*) log_error "Unknown option: $1"; exit 1 ;;
         *) shift ;;
       esac
     done
+
+    # Resolve format with TTY-aware detection
+    OUTPUT_FORMAT=$(resolve_format "$FORMAT")
 
     # Validate log file exists
     if [[ ! -f "$LOG_FILE" ]]; then
@@ -198,7 +223,30 @@ case "$SUBCOMMAND" in
 
     # Output format
     if [[ "$OUTPUT_FORMAT" == "json" ]]; then
-      jq "$JQ_FILTER" "$LOG_FILE"
+      # Wrap in standard envelope per LLM-Agent-First spec
+      current_timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+      entries=$(jq -c "$JQ_FILTER" "$LOG_FILE")
+      entry_count=$(echo "$entries" | jq 'length')
+
+      jq -n \
+        --arg timestamp "$current_timestamp" \
+        --arg version "$VERSION" \
+        --argjson entries "$entries" \
+        --argjson count "$entry_count" \
+        --argjson limit "$LIMIT" \
+        '{
+          "_meta": {
+            "command": "log list",
+            "timestamp": $timestamp,
+            "version": $version
+          },
+          "success": true,
+          "summary": {
+            "entryCount": $count,
+            "limit": (if $limit == 0 then null else $limit end)
+          },
+          "entries": $entries
+        }'
     else
       # Text format - output each entry line by line
       jq -r "$JQ_FILTER"' | .[] |

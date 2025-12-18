@@ -2,6 +2,29 @@
 
 CLAUDE-TODO uses a hierarchical configuration system allowing customization at multiple levels while maintaining sensible defaults.
 
+## Config Command (v0.18.0+)
+
+Use the `config` command to view and modify settings:
+
+```bash
+# View configuration
+claude-todo config show               # Show all config
+claude-todo config show output        # Show section
+claude-todo config get output.defaultFormat  # Get single value
+
+# Modify configuration
+claude-todo config set output.defaultFormat json  # Update project config
+claude-todo config set KEY VALUE --global        # Update global config
+
+# Other operations
+claude-todo config list               # List all keys/values
+claude-todo config edit               # Interactive menu editor
+claude-todo config validate           # Validate config against schema
+claude-todo config reset              # Reset to defaults
+```
+
+For full command documentation, see [commands/config.md](../commands/config.md).
+
 ## Configuration Files
 
 ### Default Configuration Template

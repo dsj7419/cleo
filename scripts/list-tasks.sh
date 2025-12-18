@@ -64,7 +64,7 @@ STATUS_FILTER=""
 PRIORITY_FILTER=""
 PHASE_FILTER=""
 LABEL_FILTER=""
-FORMAT="text"
+FORMAT=""  # Empty - will be resolved after argument parsing via TTY detection
 INCLUDE_ARCHIVE=false
 SHOW_ARCHIVED=false
 LIMIT=""
@@ -81,6 +81,11 @@ COMPACT=false
 QUIET=false
 GROUP_BY_PRIORITY=true
 DEFAULT_PAGE_SIZE=100
+# Hierarchy options (v0.17.0)
+TASK_TYPE_FILTER=""   # Filter by type: epic|task|subtask
+PARENT_FILTER=""      # Filter by parentId
+CHILDREN_OF=""        # Show children of specific task
+SHOW_TREE=false       # Display hierarchical tree view
 
 # Valid format values
 VALID_FORMATS="text json jsonl markdown table"
@@ -102,6 +107,12 @@ Filters:
       --archived            Show ONLY archived tasks
       --limit N             Show first N tasks only
       --offset N            Skip first N tasks (for pagination)
+
+Hierarchy Filters (v0.17.0):
+  -t, --type TYPE           Filter by type: epic|task|subtask
+      --parent ID           Filter by parent task ID
+      --children ID         Show direct children of task ID
+      --tree                Display tasks in hierarchical tree view
 
 Sorting:
   --sort FIELD              Sort by field: status|priority|createdAt|title (default: priority)
@@ -133,6 +144,13 @@ Examples:
   claude-todo list -v                       # Verbose mode with all details
   claude-todo list -s pending -p high -l backend  # Combined filters
   claude-todo list -q -f json               # Quiet mode with JSON output
+
+Hierarchy Examples (v0.17.0):
+  claude-todo list --type epic              # Show only epics
+  claude-todo list --type subtask           # Show only subtasks
+  claude-todo list --children T001          # Show children of T001
+  claude-todo list --parent T001            # Show tasks with parent T001
+  claude-todo list --tree                   # Display as hierarchy tree
 EOF
   exit 0
 }
@@ -154,6 +172,10 @@ while [[ $# -gt 0 ]]; do
     -p|--priority) PRIORITY_FILTER="$2"; shift 2 ;;
     --phase) PHASE_FILTER="$2"; shift 2 ;;
     -l|--label) LABEL_FILTER="$2"; shift 2 ;;
+    -t|--type) TASK_TYPE_FILTER="$2"; shift 2 ;;
+    --parent) PARENT_FILTER="$2"; shift 2 ;;
+    --children) CHILDREN_OF="$2"; shift 2 ;;
+    --tree) SHOW_TREE=true; shift ;;
     --since) SINCE_DATE="$2"; shift 2 ;;
     --until) UNTIL_DATE="$2"; shift 2 ;;
     --sort) SORT_FIELD="$2"; GROUP_BY_PRIORITY=false; shift 2 ;;
@@ -177,6 +199,23 @@ while [[ $# -gt 0 ]]; do
 done
 
 check_deps
+
+# Resolve format with TTY-aware auto-detection (LLM-Agent-First)
+# Priority: CLI arg > CLAUDE_TODO_FORMAT env > config > TTY auto-detect
+# When piped/redirected: defaults to json (agent-friendly)
+# When interactive TTY: defaults to text (human-friendly)
+if declare -f resolve_format >/dev/null 2>&1; then
+  FORMAT=$(resolve_format "$FORMAT")
+else
+  # Fallback if output-format.sh not loaded: basic TTY detection
+  if [[ -z "$FORMAT" ]]; then
+    if [[ -t 1 ]]; then
+      FORMAT="text"
+    else
+      FORMAT="json"
+    fi
+  fi
+fi
 
 # Validate format (Issue T142: reject invalid formats instead of silent fallback)
 if ! echo "$VALID_FORMATS" | grep -qw "$FORMAT"; then
@@ -215,6 +254,20 @@ if [[ -n "$LABEL_FILTER" ]]; then
   PRE_FILTER="$PRE_FILTER | select(.labels // [] | index(\"$LABEL_FILTER\"))"
 fi
 
+# Apply hierarchy filters (v0.17.0)
+if [[ -n "$TASK_TYPE_FILTER" ]]; then
+  PRE_FILTER="$PRE_FILTER | select(.type == \"$TASK_TYPE_FILTER\")"
+fi
+
+if [[ -n "$PARENT_FILTER" ]]; then
+  PRE_FILTER="$PRE_FILTER | select(.parentId == \"$PARENT_FILTER\")"
+fi
+
+if [[ -n "$CHILDREN_OF" ]]; then
+  # --children is same as --parent (filter by parent ID)
+  PRE_FILTER="$PRE_FILTER | select(.parentId == \"$CHILDREN_OF\")"
+fi
+
 # Apply date filters early
 if [[ -n "$SINCE_DATE" ]]; then
   PRE_FILTER="$PRE_FILTER | select(.createdAt >= \"$SINCE_DATE\")"
@@ -235,7 +288,7 @@ if [[ "$SHOW_ARCHIVED" == true ]]; then
         --arg version "$VERSION" \
         --arg timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
         '{
-          "$schema": "https://claude-todo.dev/schemas/output-v2.json",
+          "$schema": "https://claude-todo.dev/schemas/output.schema.json",
           "_meta": {
             "format": "json",
             "version": $version,
@@ -274,7 +327,7 @@ if [[ -z "$TASKS" ]]; then
       --arg version "$VERSION" \
       --arg timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
       '{
-        "$schema": "https://claude-todo.dev/schemas/output-v2.json",
+        "$schema": "https://claude-todo.dev/schemas/output.schema.json",
         "_meta": {
           "format": "json",
           "version": $version,
@@ -589,7 +642,7 @@ case "$FORMAT" in
       --argjson active "$ACTIVE_COUNT" \
       --argjson blocked "$BLOCKED_COUNT" \
       --argjson done "$DONE_COUNT" '{
-      "$schema": "https://claude-todo.dev/schemas/output-v2.json",
+      "$schema": "https://claude-todo.dev/schemas/output.schema.json",
       "_meta": {
         format: "json",
         version: $version,

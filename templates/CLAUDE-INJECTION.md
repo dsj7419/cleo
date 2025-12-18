@@ -1,4 +1,4 @@
-<!-- CLAUDE-TODO:START v0.16.0 -->
+<!-- CLAUDE-TODO:START v0.18.0 -->
 ## Task Management (claude-todo)
 
 Use `ct` (alias for `claude-todo`) for all task operations. Full docs: `~/.claude-todo/docs/TODO_Task_Management.md`
@@ -15,6 +15,8 @@ ct exists <id>             # Verify task exists
 ct dash                    # Project overview
 ct analyze                 # Task triage with leverage scoring
 ct analyze --auto-focus    # Auto-set focus to top task
+ct config show             # View configuration
+ct config set KEY VALUE    # Update settings
 ```
 
 ### Phase Tracking (v0.13.3+)

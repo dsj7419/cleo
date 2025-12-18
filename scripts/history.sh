@@ -565,11 +565,14 @@ output_json_format() {
     --argjson velocity "$velocity" \
     --arg version "$VERSION" \
     '{
+      "$schema": "https://claude-todo.dev/schemas/output.schema.json",
       "_meta": {
         "format": "json",
         "version": $version,
-        "command": "history"
+        "command": "history",
+        "timestamp": (now | strftime("%Y-%m-%dT%H:%M:%SZ"))
       },
+      "success": true,
       "period": {
         "start": $start,
         "end": $end,

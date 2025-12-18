@@ -33,6 +33,23 @@ if [[ -f "$LIB_DIR/backup.sh" ]]; then
   source "$LIB_DIR/backup.sh"
 fi
 
+# Source output formatting library
+if [[ -f "$LIB_DIR/output-format.sh" ]]; then
+  # shellcheck source=../lib/output-format.sh
+  source "$LIB_DIR/output-format.sh"
+fi
+
+# Source error JSON library (includes exit-codes.sh)
+# Note: error-json.sh sources exit-codes.sh, so we don't source it separately
+if [[ -f "$LIB_DIR/error-json.sh" ]]; then
+  # shellcheck source=../lib/error-json.sh
+  source "$LIB_DIR/error-json.sh"
+elif [[ -f "$LIB_DIR/exit-codes.sh" ]]; then
+  # Fallback: source exit codes directly if error-json.sh not available
+  # shellcheck source=../lib/exit-codes.sh
+  source "$LIB_DIR/exit-codes.sh"
+fi
+
 # Colors (respects NO_COLOR and FORCE_COLOR environment variables per https://no-color.org)
 if declare -f should_use_color >/dev/null 2>&1 && should_use_color; then
   RED='\033[0;31m'
@@ -48,6 +65,9 @@ DRY_RUN=false
 FORCE=false
 ARCHIVE_ALL=false
 MAX_OVERRIDE=""
+FORMAT=""
+QUIET=false
+COMMAND_NAME="archive"
 
 usage() {
   cat << EOF
@@ -56,13 +76,17 @@ Usage: claude-todo archive [OPTIONS]
 Archive completed tasks from todo.json to todo-archive.json.
 
 Options:
-  --dry-run       Preview without making changes
-  --force         Bypass age-based retention (archive immediately)
-                  Still respects preserveRecentCount setting
-  --all           Archive ALL completed tasks immediately
-                  Bypasses BOTH age retention AND preserveRecentCount
-  --count N       Override maxCompletedTasks setting
-  -h, --help      Show this help
+  --dry-run           Preview without making changes
+  --force             Bypass age-based retention (archive immediately)
+                      Still respects preserveRecentCount setting
+  --all               Archive ALL completed tasks immediately
+                      Bypasses BOTH age retention AND preserveRecentCount
+  --count N           Override maxCompletedTasks setting
+  -f, --format FMT    Output format: text, json (default: auto-detect)
+  --human             Force human-readable text output
+  --json              Force JSON output (shorthand for --format json)
+  -q, --quiet         Suppress non-essential output
+  -h, --help          Show this help
 
 Archive Behavior:
   Default:  Only archive tasks older than daysUntilArchive (default 7 days)
@@ -79,11 +103,16 @@ Config (from todo-config.json):
   - maxCompletedTasks: Threshold triggering archive prompt (default: 15)
   - preserveRecentCount: Recent completions to keep (default: 3)
 
+JSON Output (--format json):
+  Returns structured JSON with archived task IDs, counts, and remaining
+  task statistics. Useful for LLM agent automation workflows.
+
 Examples:
   claude-todo archive               # Archive based on config rules
   claude-todo archive --dry-run     # Preview what would be archived
   claude-todo archive --force       # Archive all, keep 3 most recent
   claude-todo archive --all         # Archive everything (nuclear option)
+  claude-todo archive --json        # JSON output for scripting
 EOF
   exit 0
 }
@@ -95,8 +124,12 @@ log_error() { echo -e "${RED}[ERROR]${NC} $1" >&2; }
 # Check dependencies
 check_deps() {
   if ! command -v jq &> /dev/null; then
-    log_error "jq is required but not installed"
-    exit 1
+    if [[ "$FORMAT" == "json" ]]; then
+      echo '{"success":false,"error":{"code":"E_DEPENDENCY_MISSING","message":"jq is required but not installed"}}'
+    else
+      log_error "jq is required but not installed"
+    fi
+    exit "${EXIT_DEPENDENCY_ERROR:-5}"
   fi
 }
 
@@ -107,19 +140,34 @@ while [[ $# -gt 0 ]]; do
     --force) FORCE=true; shift ;;
     --all) ARCHIVE_ALL=true; shift ;;
     --count) MAX_OVERRIDE="$2"; shift 2 ;;
+    -f|--format) FORMAT="$2"; shift 2 ;;
+    --human) FORMAT="text"; shift ;;
+    --json) FORMAT="json"; shift ;;
+    -q|--quiet) QUIET=true; shift ;;
     -h|--help) usage ;;
-    -*) log_error "Unknown option: $1"; exit 1 ;;
+    -*) log_error "Unknown option: $1"; exit "${EXIT_INVALID_INPUT:-1}" ;;
     *) shift ;;
   esac
 done
+
+# Resolve output format (CLI > env > config > TTY-aware default)
+if declare -f resolve_format >/dev/null 2>&1; then
+  FORMAT=$(resolve_format "$FORMAT")
+else
+  FORMAT="${FORMAT:-text}"
+fi
 
 check_deps
 
 # Check files exist
 for f in "$TODO_FILE" "$CONFIG_FILE"; do
   if [[ ! -f "$f" ]]; then
-    log_error "$f not found"
-    exit 1
+    if [[ "$FORMAT" == "json" ]] && declare -f output_error >/dev/null 2>&1; then
+      output_error "E_FILE_NOT_FOUND" "$f not found" "${EXIT_FILE_ERROR:-3}" true "Run 'claude-todo init' to initialize project"
+    else
+      log_error "$f not found"
+    fi
+    exit "${EXIT_FILE_ERROR:-3}"
   fi
 done
 
@@ -133,10 +181,11 @@ if [[ ! -f "$ARCHIVE_FILE" ]]; then
   "project": "$PROJECT_NAME",
   "_meta": { "totalArchived": 0, "lastArchived": null, "oldestTask": null, "newestTask": null },
   "archivedTasks": [],
+  "phaseSummary": {},
   "statistics": { "byPhase": {}, "byPriority": {"critical":0,"high":0,"medium":0,"low":0}, "byLabel": {}, "averageCycleTime": null }
 }
 EOF
-  log_info "Created $ARCHIVE_FILE"
+  [[ "$QUIET" != true && "$FORMAT" != "json" ]] && log_info "Created $ARCHIVE_FILE"
 fi
 
 # Read config
@@ -146,23 +195,49 @@ PRESERVE_COUNT=$(jq -r '.archive.preserveRecentCount // 3' "$CONFIG_FILE")
 
 [[ -n "$MAX_OVERRIDE" ]] && MAX_COMPLETED="$MAX_OVERRIDE"
 
-if [[ "$ARCHIVE_ALL" == true ]]; then
-  log_warn "Mode: --all (bypassing retention AND preserve count)"
-elif [[ "$FORCE" == true ]]; then
-  log_info "Mode: --force (bypassing retention, preserving $PRESERVE_COUNT recent)"
-else
-  log_info "Config: daysUntilArchive=$DAYS_UNTIL_ARCHIVE, maxCompleted=$MAX_COMPLETED, preserve=$PRESERVE_COUNT"
+if [[ "$QUIET" != true && "$FORMAT" != "json" ]]; then
+  if [[ "$ARCHIVE_ALL" == true ]]; then
+    log_warn "Mode: --all (bypassing retention AND preserve count)"
+  elif [[ "$FORCE" == true ]]; then
+    log_info "Mode: --force (bypassing retention, preserving $PRESERVE_COUNT recent)"
+  else
+    log_info "Config: daysUntilArchive=$DAYS_UNTIL_ARCHIVE, maxCompleted=$MAX_COMPLETED, preserve=$PRESERVE_COUNT"
+  fi
 fi
 
 # Get completed tasks
 COMPLETED_TASKS=$(jq '[.tasks[] | select(.status == "done")]' "$TODO_FILE")
 COMPLETED_COUNT=$(echo "$COMPLETED_TASKS" | jq 'length')
 
-log_info "Found $COMPLETED_COUNT completed tasks"
+[[ "$QUIET" != true && "$FORMAT" != "json" ]] && log_info "Found $COMPLETED_COUNT completed tasks"
 
 if [[ "$COMPLETED_COUNT" -eq 0 ]]; then
-  log_info "No completed tasks to archive"
-  exit 0
+  if [[ "$FORMAT" == "json" ]]; then
+    # Get remaining task counts for JSON output
+    REMAINING_TOTAL=$(jq '.tasks | length' "$TODO_FILE")
+    REMAINING_PENDING=$(jq '[.tasks[] | select(.status == "pending")] | length' "$TODO_FILE")
+    REMAINING_ACTIVE=$(jq '[.tasks[] | select(.status == "active")] | length' "$TODO_FILE")
+    REMAINING_BLOCKED=$(jq '[.tasks[] | select(.status == "blocked")] | length' "$TODO_FILE")
+    TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+    jq -n \
+      --arg ts "$TIMESTAMP" \
+      --arg ver "$VERSION" \
+      --argjson total "$REMAINING_TOTAL" \
+      --argjson pending "$REMAINING_PENDING" \
+      --argjson active "$REMAINING_ACTIVE" \
+      --argjson blocked "$REMAINING_BLOCKED" \
+      '{
+        "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+        "_meta": {"format": "json", "command": "archive", "timestamp": $ts, "version": $ver},
+        "success": true,
+        "archived": {"count": 0, "taskIds": []},
+        "remaining": {"total": $total, "pending": $pending, "active": $active, "blocked": $blocked}
+      }'
+  else
+    log_info "No completed tasks to archive"
+  fi
+  exit "${EXIT_SUCCESS:-0}"
 fi
 
 # Calculate which tasks to archive
@@ -189,19 +264,72 @@ TASKS_TO_ARCHIVE=$(echo "$COMPLETED_TASKS" | jq --argjson threshold "$ARCHIVE_TH
 ARCHIVE_COUNT=$(echo "$TASKS_TO_ARCHIVE" | jq 'length')
 
 if [[ "$ARCHIVE_COUNT" -eq 0 ]]; then
-  log_info "No tasks eligible for archiving (all within retention period or preserved)"
-  exit 0
+  if [[ "$FORMAT" == "json" ]]; then
+    # Get remaining task counts for JSON output
+    REMAINING_TOTAL=$(jq '.tasks | length' "$TODO_FILE")
+    REMAINING_PENDING=$(jq '[.tasks[] | select(.status == "pending")] | length' "$TODO_FILE")
+    REMAINING_ACTIVE=$(jq '[.tasks[] | select(.status == "active")] | length' "$TODO_FILE")
+    REMAINING_BLOCKED=$(jq '[.tasks[] | select(.status == "blocked")] | length' "$TODO_FILE")
+    TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+    jq -n \
+      --arg ts "$TIMESTAMP" \
+      --arg ver "$VERSION" \
+      --argjson total "$REMAINING_TOTAL" \
+      --argjson pending "$REMAINING_PENDING" \
+      --argjson active "$REMAINING_ACTIVE" \
+      --argjson blocked "$REMAINING_BLOCKED" \
+      '{
+        "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+        "_meta": {"format": "json", "command": "archive", "timestamp": $ts, "version": $ver},
+        "success": true,
+        "archived": {"count": 0, "taskIds": []},
+        "remaining": {"total": $total, "pending": $pending, "active": $active, "blocked": $blocked}
+      }'
+  elif [[ "$QUIET" != true ]]; then
+    log_info "No tasks eligible for archiving (all within retention period or preserved)"
+  fi
+  exit "${EXIT_SUCCESS:-0}"
 fi
 
-log_info "Tasks to archive: $ARCHIVE_COUNT"
+[[ "$QUIET" != true && "$FORMAT" != "json" ]] && log_info "Tasks to archive: $ARCHIVE_COUNT"
 
 if [[ "$DRY_RUN" == true ]]; then
-  echo ""
-  echo "DRY RUN - Would archive these tasks:"
-  echo "$TASKS_TO_ARCHIVE" | jq -r '.[] | "  - \(.id): \(.title)"'
-  echo ""
-  echo "No changes made."
-  exit 0
+  if [[ "$FORMAT" == "json" ]]; then
+    # Get remaining task counts for JSON output (would-be state after archive)
+    REMAINING_TOTAL=$(jq '.tasks | length' "$TODO_FILE")
+    REMAINING_AFTER=$((REMAINING_TOTAL - ARCHIVE_COUNT))
+    REMAINING_PENDING=$(jq '[.tasks[] | select(.status == "pending")] | length' "$TODO_FILE")
+    REMAINING_ACTIVE=$(jq '[.tasks[] | select(.status == "active")] | length' "$TODO_FILE")
+    REMAINING_BLOCKED=$(jq '[.tasks[] | select(.status == "blocked")] | length' "$TODO_FILE")
+    ARCHIVE_IDS_JSON=$(echo "$TASKS_TO_ARCHIVE" | jq '[.[].id]')
+    TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+    jq -n \
+      --arg ts "$TIMESTAMP" \
+      --arg ver "$VERSION" \
+      --argjson count "$ARCHIVE_COUNT" \
+      --argjson ids "$ARCHIVE_IDS_JSON" \
+      --argjson total "$REMAINING_AFTER" \
+      --argjson pending "$REMAINING_PENDING" \
+      --argjson active "$REMAINING_ACTIVE" \
+      --argjson blocked "$REMAINING_BLOCKED" \
+      '{
+        "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+        "_meta": {"format": "json", "command": "archive", "timestamp": $ts, "version": $ver},
+        "success": true,
+        "dryRun": true,
+        "archived": {"count": $count, "taskIds": $ids},
+        "remaining": {"total": $total, "pending": $pending, "active": $active, "blocked": $blocked}
+      }'
+  else
+    echo ""
+    echo "DRY RUN - Would archive these tasks:"
+    echo "$TASKS_TO_ARCHIVE" | jq -r '.[] | "  - \(.id): \(.title)"'
+    echo ""
+    echo "No changes made."
+  fi
+  exit "${EXIT_SUCCESS:-0}"
 fi
 
 # Get task IDs to archive
@@ -241,16 +369,59 @@ cleanup_temp_files() {
 # Trap to ensure cleanup on error
 trap cleanup_temp_files EXIT
 
-# Step 1: Generate archive file update
+# Step 1: Generate archive file update with full statistics
 if ! jq --argjson tasks "$TASKS_WITH_METADATA" --arg ts "$TIMESTAMP" '
+  # Add tasks to archive
   .archivedTasks += $tasks |
   ._meta.totalArchived += ($tasks | length) |
   ._meta.lastArchived = $ts |
   ._meta.newestTask = ($tasks | max_by(.completedAt) | .completedAt) |
-  ._meta.oldestTask = (if ._meta.oldestTask then ._meta.oldestTask else ($tasks | min_by(.completedAt) | .completedAt) end)
+  ._meta.oldestTask = (if ._meta.oldestTask then ._meta.oldestTask else ($tasks | min_by(.completedAt) | .completedAt) end) |
+
+  # Update statistics.byPhase with counts
+  .statistics.byPhase = (
+    [.archivedTasks[].phase // "no-phase"] | group_by(.) |
+    map({key: .[0], value: length}) | from_entries
+  ) |
+
+  # Update statistics.byPriority with counts
+  .statistics.byPriority = (
+    {critical: 0, high: 0, medium: 0, low: 0} +
+    ([.archivedTasks[].priority] | group_by(.) |
+     map({key: .[0], value: length}) | from_entries)
+  ) |
+
+  # Update statistics.byLabel with counts
+  .statistics.byLabel = (
+    [.archivedTasks[].labels // [] | .[]] | group_by(.) |
+    map({key: .[0], value: length}) | from_entries
+  ) |
+
+  # Calculate averageCycleTime from _archive.cycleTimeDays
+  .statistics.averageCycleTime = (
+    [.archivedTasks[] | ._archive.cycleTimeDays // empty] |
+    if length > 0 then (add / length | . * 100 | floor / 100) else null end
+  ) |
+
+  # Update phaseSummary with detailed phase statistics
+  .phaseSummary = (
+    .archivedTasks | group_by(.phase // "no-phase") |
+    map({
+      key: .[0].phase // "no-phase",
+      value: {
+        totalTasks: length,
+        firstCompleted: (map(.completedAt // empty) | sort | first // null),
+        lastCompleted: (map(.completedAt // empty) | sort | last // null)
+      }
+    }) | from_entries
+  )
 ' "$ARCHIVE_FILE" > "$ARCHIVE_TMP"; then
-  log_error "Failed to generate archive update"
-  exit 1
+  if [[ "$FORMAT" == "json" ]] && declare -f output_error >/dev/null 2>&1; then
+    output_error "E_FILE_WRITE_ERROR" "Failed to generate archive update" "${EXIT_FILE_ERROR:-3}" false
+  else
+    log_error "Failed to generate archive update"
+  fi
+  exit "${EXIT_FILE_ERROR:-3}"
 fi
 
 # Step 2: Remove archived tasks from todo.json and clean up orphaned dependencies
@@ -272,8 +443,12 @@ if ! jq --argjson tasks "$REMAINING_TASKS" --arg checksum "$NEW_CHECKSUM" --arg 
   ._meta.checksum = $checksum |
   .lastUpdated = $ts
 ' "$TODO_FILE" > "$TODO_TMP"; then
-  log_error "Failed to generate todo update"
-  exit 1
+  if [[ "$FORMAT" == "json" ]] && declare -f output_error >/dev/null 2>&1; then
+    output_error "E_FILE_WRITE_ERROR" "Failed to generate todo update" "${EXIT_FILE_ERROR:-3}" false
+  else
+    log_error "Failed to generate todo update"
+  fi
+  exit "${EXIT_FILE_ERROR:-3}"
 fi
 
 # Step 3: Generate log entry
@@ -294,8 +469,12 @@ if [[ -f "$LOG_FILE" ]]; then
     ._meta.totalEntries += 1 |
     ._meta.lastEntry = $ts
   ' "$LOG_FILE" > "$LOG_TMP"; then
-    log_error "Failed to generate log update"
-    exit 1
+    if [[ "$FORMAT" == "json" ]] && declare -f output_error >/dev/null 2>&1; then
+      output_error "E_FILE_WRITE_ERROR" "Failed to generate log update" "${EXIT_FILE_ERROR:-3}" false
+    else
+      log_error "Failed to generate log update"
+    fi
+    exit "${EXIT_FILE_ERROR:-3}"
   fi
 fi
 
@@ -306,23 +485,27 @@ for temp_file in "$ARCHIVE_TMP" "$TODO_TMP" ${LOG_TMP:+"$LOG_TMP"}; do
   fi
 
   if ! jq empty "$temp_file" 2>/dev/null; then
-    log_error "Generated invalid JSON: $temp_file"
-    cat "$temp_file" >&2
-    exit 1
+    if [[ "$FORMAT" == "json" ]] && declare -f output_error >/dev/null 2>&1; then
+      output_error "E_VALIDATION_SCHEMA" "Generated invalid JSON: $temp_file" "${EXIT_VALIDATION_ERROR:-6}" false
+    else
+      log_error "Generated invalid JSON: $temp_file"
+      cat "$temp_file" >&2
+    fi
+    exit "${EXIT_VALIDATION_ERROR:-6}"
   fi
 done
 
 # Step 5: Create archive backup before committing changes using unified backup library
 if declare -f create_archive_backup >/dev/null 2>&1; then
   BACKUP_PATH=$(create_archive_backup 2>&1) || {
-    log_warn "Backup library failed, using fallback backup method"
+    [[ "$QUIET" != true && "$FORMAT" != "json" ]] && log_warn "Backup library failed, using fallback backup method"
     # Fallback to inline backup if library fails
     BACKUP_SUFFIX=".backup.$(date +%s)"
     cp "$ARCHIVE_FILE" "${ARCHIVE_FILE}${BACKUP_SUFFIX}"
     cp "$TODO_FILE" "${TODO_FILE}${BACKUP_SUFFIX}"
     [[ -f "$LOG_FILE" ]] && cp "$LOG_FILE" "${LOG_FILE}${BACKUP_SUFFIX}"
   }
-  if [[ -n "$BACKUP_PATH" ]]; then
+  if [[ -n "$BACKUP_PATH" && "$QUIET" != true && "$FORMAT" != "json" ]]; then
     log_info "Archive backup created: $BACKUP_PATH"
   fi
 else
@@ -341,40 +524,76 @@ mv "$TODO_TMP" "$TODO_FILE"
 # Remove trap since we succeeded
 trap - EXIT
 
-log_info "Archived $ARCHIVE_COUNT tasks"
-echo ""
-echo "Archived tasks:"
-echo "$ARCHIVE_IDS" | while read -r id; do
-  echo "  - $id"
-done
+# Get remaining task counts for output
+REMAINING_TOTAL=$(jq '.tasks | length' "$TODO_FILE")
+REMAINING_PENDING=$(jq '[.tasks[] | select(.status == "pending")] | length' "$TODO_FILE")
+REMAINING_ACTIVE=$(jq '[.tasks[] | select(.status == "active")] | length' "$TODO_FILE")
+REMAINING_BLOCKED=$(jq '[.tasks[] | select(.status == "blocked")] | length' "$TODO_FILE")
 
-# Calculate and display archive statistics
-if [[ -n "$TASKS_TO_ARCHIVE" ]]; then
-  TOTAL_COUNT=$(echo "$TASKS_TO_ARCHIVE" | jq 'length')
-  CRITICAL_COUNT=$(echo "$TASKS_TO_ARCHIVE" | jq '[.[] | select(.priority == "critical")] | length')
-  HIGH_COUNT=$(echo "$TASKS_TO_ARCHIVE" | jq '[.[] | select(.priority == "high")] | length')
-  MEDIUM_COUNT=$(echo "$TASKS_TO_ARCHIVE" | jq '[.[] | select(.priority == "medium")] | length')
-  LOW_COUNT=$(echo "$TASKS_TO_ARCHIVE" | jq '[.[] | select(.priority == "low")] | length')
+# Generate archived task IDs as JSON array
+ARCHIVE_IDS_JSON=$(echo "$TASKS_TO_ARCHIVE" | jq '[.[].id]')
 
-  echo ""
-  echo "[ARCHIVE] Summary Statistics:"
-  echo "  Total archived: $TOTAL_COUNT"
-  echo "  By priority:"
-  [[ $CRITICAL_COUNT -gt 0 ]] && echo "    Critical: $CRITICAL_COUNT"
-  [[ $HIGH_COUNT -gt 0 ]] && echo "    High: $HIGH_COUNT"
-  [[ $MEDIUM_COUNT -gt 0 ]] && echo "    Medium: $MEDIUM_COUNT"
-  [[ $LOW_COUNT -gt 0 ]] && echo "    Low: $LOW_COUNT"
+if [[ "$FORMAT" == "json" ]]; then
+  # JSON output for LLM agents
+  OUTPUT_TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-  # Show labels breakdown if any tasks have labels
-  LABEL_STATS=$(echo "$TASKS_TO_ARCHIVE" | jq -r '[.[] | .labels // [] | .[]] | group_by(.) | map({label: .[0], count: length}) | sort_by(-.count) | .[:5] | .[] | "    \(.label): \(.count)"' 2>/dev/null)
-  if [[ -n "$LABEL_STATS" ]]; then
-    echo "  Top labels:"
-    echo "$LABEL_STATS"
-  fi
+  jq -n \
+    --arg ts "$OUTPUT_TIMESTAMP" \
+    --arg ver "$VERSION" \
+    --argjson count "$ARCHIVE_COUNT" \
+    --argjson ids "$ARCHIVE_IDS_JSON" \
+    --argjson total "$REMAINING_TOTAL" \
+    --argjson pending "$REMAINING_PENDING" \
+    --argjson active "$REMAINING_ACTIVE" \
+    --argjson blocked "$REMAINING_BLOCKED" \
+    '{
+      "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+      "_meta": {"format": "json", "command": "archive", "timestamp": $ts, "version": $ver},
+      "success": true,
+      "archived": {"count": $count, "taskIds": $ids},
+      "remaining": {"total": $total, "pending": $pending, "active": $active, "blocked": $blocked}
+    }'
+else
+  # Human-readable text output
+  if [[ "$QUIET" != true ]]; then
+    log_info "Archived $ARCHIVE_COUNT tasks"
+    echo ""
+    echo "Archived tasks:"
+    echo "$ARCHIVE_IDS" | while read -r id; do
+      echo "  - $id"
+    done
 
-  # Calculate average cycle time if available
-  AVG_CYCLE_TIME=$(echo "$TASKS_WITH_METADATA" | jq '[.[]._archive.cycleTimeDays | select(. != null)] | if length > 0 then (add / length | floor) else null end')
-  if [[ "$AVG_CYCLE_TIME" != "null" && -n "$AVG_CYCLE_TIME" ]]; then
-    echo "  Average cycle time: $AVG_CYCLE_TIME days"
+    # Calculate and display archive statistics
+    if [[ -n "$TASKS_TO_ARCHIVE" ]]; then
+      TOTAL_COUNT=$(echo "$TASKS_TO_ARCHIVE" | jq 'length')
+      CRITICAL_COUNT=$(echo "$TASKS_TO_ARCHIVE" | jq '[.[] | select(.priority == "critical")] | length')
+      HIGH_COUNT=$(echo "$TASKS_TO_ARCHIVE" | jq '[.[] | select(.priority == "high")] | length')
+      MEDIUM_COUNT=$(echo "$TASKS_TO_ARCHIVE" | jq '[.[] | select(.priority == "medium")] | length')
+      LOW_COUNT=$(echo "$TASKS_TO_ARCHIVE" | jq '[.[] | select(.priority == "low")] | length')
+
+      echo ""
+      echo "[ARCHIVE] Summary Statistics:"
+      echo "  Total archived: $TOTAL_COUNT"
+      echo "  By priority:"
+      [[ $CRITICAL_COUNT -gt 0 ]] && echo "    Critical: $CRITICAL_COUNT"
+      [[ $HIGH_COUNT -gt 0 ]] && echo "    High: $HIGH_COUNT"
+      [[ $MEDIUM_COUNT -gt 0 ]] && echo "    Medium: $MEDIUM_COUNT"
+      [[ $LOW_COUNT -gt 0 ]] && echo "    Low: $LOW_COUNT"
+
+      # Show labels breakdown if any tasks have labels
+      LABEL_STATS=$(echo "$TASKS_TO_ARCHIVE" | jq -r '[.[] | .labels // [] | .[]] | group_by(.) | map({label: .[0], count: length}) | sort_by(-.count) | .[:5] | .[] | "    \(.label): \(.count)"' 2>/dev/null)
+      if [[ -n "$LABEL_STATS" ]]; then
+        echo "  Top labels:"
+        echo "$LABEL_STATS"
+      fi
+
+      # Calculate average cycle time if available
+      AVG_CYCLE_TIME=$(echo "$TASKS_WITH_METADATA" | jq '[.[]._archive.cycleTimeDays | select(. != null)] | if length > 0 then (add / length | floor) else null end')
+      if [[ "$AVG_CYCLE_TIME" != "null" && -n "$AVG_CYCLE_TIME" ]]; then
+        echo "  Average cycle time: $AVG_CYCLE_TIME days"
+      fi
+    fi
   fi
 fi
+
+exit "${EXIT_SUCCESS:-0}"

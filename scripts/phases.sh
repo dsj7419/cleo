@@ -38,6 +38,15 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LIB_DIR="${SCRIPT_DIR}/../lib"
 CLAUDE_TODO_HOME="${CLAUDE_TODO_HOME:-$HOME/.claude-todo}"
 
+# Source version from central location
+if [[ -f "$CLAUDE_TODO_HOME/VERSION" ]]; then
+  VERSION="$(cat "$CLAUDE_TODO_HOME/VERSION" | tr -d '[:space:]')"
+elif [[ -f "$SCRIPT_DIR/../VERSION" ]]; then
+  VERSION="$(cat "$SCRIPT_DIR/../VERSION" | tr -d '[:space:]')"
+else
+  VERSION="unknown"
+fi
+
 # Source library functions
 if [[ -f "${LIB_DIR}/file-ops.sh" ]]; then
   source "${LIB_DIR}/file-ops.sh"
@@ -61,6 +70,7 @@ fi
 OUTPUT_FORMAT="text"
 SUBCOMMAND="list"
 PHASE_ARG=""
+QUIET_MODE=false
 
 # File paths
 CLAUDE_DIR=".claude"
@@ -83,6 +93,7 @@ Subcommands:
 
 Options:
     --format, -f FORMAT   Output format: text | json (default: text)
+    -q, --quiet           Suppress non-essential output (exit 0 if phases exist)
     -h, --help            Show this help message
 
 Examples:
@@ -263,14 +274,31 @@ list_phases() {
   local count
   count=$(echo "$phase_stats" | jq 'length')
 
+  # Handle quiet mode
+  if [[ "$QUIET_MODE" == "true" ]]; then
+    if [[ $count -gt 0 ]]; then
+      exit 0
+    else
+      exit 1
+    fi
+  fi
+
   if [[ "$OUTPUT_FORMAT" == "json" ]]; then
     # Get currentPhase from todo.json
     local current_phase
     current_phase=$(jq -r '.focus.currentPhase // .project.currentPhase // null' "$TODO_FILE")
 
-    echo "$phase_stats" | jq --arg cp "$current_phase" '{
-      currentPhase: $cp,
-      phases: [.[] | {
+    echo "$phase_stats" | jq --arg cp "$current_phase" --arg version "$VERSION" '{
+      "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+      "_meta": {
+        "format": "json",
+        "version": $version,
+        "command": "phases",
+        "timestamp": (now | strftime("%Y-%m-%dT%H:%M:%SZ"))
+      },
+      "success": true,
+      "currentPhase": $cp,
+      "phases": [.[] | {
         slug: .slug,
         name: .name,
         description: .description,
@@ -283,10 +311,10 @@ list_phases() {
         blocked: .blocked,
         percent: (if .total > 0 then ((.done * 100) / .total | floor) else 0 end)
       }],
-      summary: {
-        totalPhases: length,
-        totalTasks: (reduce .[] as $p (0; . + $p.total)),
-        completedTasks: (reduce .[] as $p (0; . + $p.done))
+      "summary": {
+        "totalPhases": length,
+        "totalTasks": (reduce .[] as $p (0; . + $p.total)),
+        "completedTasks": (reduce .[] as $p (0; . + $p.done))
       }
     }'
     return
@@ -389,7 +417,21 @@ show_phase() {
   ' "$TODO_FILE")
 
   if [[ "$OUTPUT_FORMAT" == "json" ]]; then
-    echo "$phase_info"
+    echo "$phase_info" | jq --arg version "$VERSION" '{
+      "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+      "_meta": {
+        "format": "json",
+        "version": $version,
+        "command": "phases show",
+        "timestamp": (now | strftime("%Y-%m-%dT%H:%M:%SZ"))
+      },
+      "success": true,
+      "slug": .slug,
+      "name": .name,
+      "description": .description,
+      "taskCount": (.tasks | length),
+      "tasks": .tasks
+    }'
     return
   fi
 
@@ -435,8 +477,16 @@ show_stats() {
   phase_stats=$(get_phase_stats)
 
   if [[ "$OUTPUT_FORMAT" == "json" ]]; then
-    echo "$phase_stats" | jq '{
-      phases: [.[] | {
+    echo "$phase_stats" | jq --arg version "$VERSION" '{
+      "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+      "_meta": {
+        "format": "json",
+        "version": $version,
+        "command": "phases stats",
+        "timestamp": (now | strftime("%Y-%m-%dT%H:%M:%SZ"))
+      },
+      "success": true,
+      "phases": [.[] | {
         slug: .slug,
         name: .name,
         total: .total,
@@ -452,12 +502,12 @@ show_stats() {
           low: ([.tasks[] | select(.priority == "low")] | length)
         }
       }],
-      summary: {
-        totalPhases: length,
-        totalTasks: (reduce .[] as $p (0; . + $p.total)),
-        completedTasks: (reduce .[] as $p (0; . + $p.done)),
-        activeTasks: (reduce .[] as $p (0; . + $p.active)),
-        blockedTasks: (reduce .[] as $p (0; . + $p.blocked))
+      "summary": {
+        "totalPhases": length,
+        "totalTasks": (reduce .[] as $p (0; . + $p.total)),
+        "completedTasks": (reduce .[] as $p (0; . + $p.done)),
+        "activeTasks": (reduce .[] as $p (0; . + $p.active)),
+        "blockedTasks": (reduce .[] as $p (0; . + $p.blocked))
       }
     }'
     return
@@ -538,6 +588,10 @@ while [[ $# -gt 0 ]]; do
     -f|--format)
       OUTPUT_FORMAT="$2"
       shift 2
+      ;;
+    -q|--quiet)
+      QUIET_MODE=true
+      shift
       ;;
     show)
       SUBCOMMAND="show"

@@ -55,7 +55,7 @@ bump-version.sh → VERSION file → lib/version.sh → All scripts
 
 ```bash
 # Current schema versions (single source of truth)
-SCHEMA_VERSION_TODO="2.2.0"
+SCHEMA_VERSION_TODO="2.3.0"
 SCHEMA_VERSION_CONFIG="2.1.0"
 SCHEMA_VERSION_ARCHIVE="2.1.0"
 SCHEMA_VERSION_LOG="2.1.0"
@@ -352,7 +352,7 @@ Follow [Semantic Versioning 2.0.0](https://semver.org/):
 
 | Schema | Bump When | Example |
 |--------|-----------|---------|
-| TODO | Add/remove/change task fields | Adding `project.phases` (2.1.0 → 2.2.0) |
+| TODO | Add/remove/change task fields | Adding hierarchy fields (2.2.0 → 2.3.0) |
 | CONFIG | Add/remove config options | Adding new validation rules |
 | ARCHIVE | Change archive format | Modifying archived task structure |
 | LOG | Change log entry format | Adding new event types |

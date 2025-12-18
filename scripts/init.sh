@@ -53,6 +53,21 @@ FORCE=false
 NO_CLAUDE_MD=false
 UPDATE_CLAUDE_MD=false
 PROJECT_NAME=""
+FORMAT=""
+QUIET=false
+COMMAND_NAME="init"
+
+# Source output formatting and error libraries
+LIB_DIR="$CLAUDE_TODO_HOME/lib"
+if [[ -f "$LIB_DIR/output-format.sh" ]]; then
+  source "$LIB_DIR/output-format.sh"
+fi
+if [[ -f "$LIB_DIR/exit-codes.sh" ]]; then
+  source "$LIB_DIR/exit-codes.sh"
+fi
+if [[ -f "$LIB_DIR/error-json.sh" ]]; then
+  source "$LIB_DIR/error-json.sh"
+fi
 
 usage() {
   cat << EOF
@@ -64,6 +79,10 @@ Options:
   --force             Overwrite existing files
   --no-claude-md      Skip CLAUDE.md integration
   --update-claude-md  Update existing CLAUDE.md injection (idempotent)
+  -f, --format FMT    Output format: text, json (default: auto-detect)
+  --human             Force human-readable text output
+  --json              Force JSON output
+  -q, --quiet         Suppress non-essential output
   -h, --help          Show this help
 
 Creates:
@@ -73,6 +92,19 @@ Creates:
   .claude/todo-log.json     Change history
   .claude/schemas/          JSON Schema files
   .claude/.backups/         Backup directory
+
+JSON Output:
+  {
+    "_meta": {"command": "init", "timestamp": "..."},
+    "success": true,
+    "initialized": {"directory": ".claude", "files": ["todo.json", ...]}
+  }
+
+Examples:
+  claude-todo init                    # Initialize in current directory
+  claude-todo init my-project         # Initialize with project name
+  claude-todo init --json             # JSON output for scripting
+  claude-todo init --update-claude-md # Update CLAUDE.md injection
 EOF
   exit 0
 }
@@ -93,25 +125,51 @@ while [[ $# -gt 0 ]]; do
     --force) FORCE=true; shift ;;
     --no-claude-md) NO_CLAUDE_MD=true; shift ;;
     --update-claude-md) UPDATE_CLAUDE_MD=true; shift ;;
+    -f|--format) FORMAT="$2"; shift 2 ;;
+    --human) FORMAT="text"; shift ;;
+    --json) FORMAT="json"; shift ;;
+    -q|--quiet) QUIET=true; shift ;;
     -h|--help) usage ;;
     -*) log_error "Unknown option: $1"; exit 1 ;;
     *) PROJECT_NAME="$1"; shift ;;
   esac
 done
 
+# Resolve output format (CLI > env > config > TTY-aware default)
+if declare -f resolve_format &>/dev/null; then
+  FORMAT=$(resolve_format "$FORMAT")
+else
+  FORMAT="${FORMAT:-text}"
+fi
+
+# Redefine log functions to respect FORMAT
+log_info()    { [[ "$QUIET" != true && "$FORMAT" != "json" ]] && echo "[INFO] $1" || true; }
+log_warn()    { [[ "$FORMAT" != "json" ]] && echo "[WARN] $1" >&2 || true; }
+log_success() { [[ "$FORMAT" != "json" ]] && echo "[SUCCESS] $1" || true; }
+log_error()   { [[ "$FORMAT" != "json" ]] && echo "[ERROR] $1" >&2 || true; }
+
 # Handle --update-claude-md as standalone operation
 if [[ "$UPDATE_CLAUDE_MD" == true ]]; then
   if [[ ! -f "CLAUDE.md" ]]; then
-    log_error "CLAUDE.md not found in current directory"
-    exit 1
+    if [[ "$FORMAT" == "json" ]] && declare -f output_error &>/dev/null; then
+      output_error "$E_FILE_NOT_FOUND" "CLAUDE.md not found in current directory" "${EXIT_NOT_FOUND:-4}" true "Create CLAUDE.md first or run from a directory with CLAUDE.md"
+    else
+      log_error "CLAUDE.md not found in current directory"
+    fi
+    exit "${EXIT_NOT_FOUND:-1}"
   fi
 
   injection_template="$CLAUDE_TODO_HOME/templates/CLAUDE-INJECTION.md"
   if [[ ! -f "$injection_template" ]]; then
-    log_error "Injection template not found: $injection_template"
-    exit 1
+    if [[ "$FORMAT" == "json" ]] && declare -f output_error &>/dev/null; then
+      output_error "$E_FILE_NOT_FOUND" "Injection template not found: $injection_template" "${EXIT_NOT_FOUND:-4}" false "Reinstall claude-todo to restore templates"
+    else
+      log_error "Injection template not found: $injection_template"
+    fi
+    exit "${EXIT_NOT_FOUND:-1}"
   fi
 
+  action_taken="updated"
   if grep -q "CLAUDE-TODO:START" CLAUDE.md 2>/dev/null; then
     # Replace existing block using sed
     # Create temp file with new content
@@ -128,12 +186,37 @@ if [[ "$UPDATE_CLAUDE_MD" == true ]]; then
 
     # Replace original file
     mv "$temp_file" CLAUDE.md
-    log_success "CLAUDE.md injection updated"
+    action_taken="updated"
   else
     # No existing block, append new one
     echo "" >> CLAUDE.md
     cat "$injection_template" >> CLAUDE.md
-    log_success "CLAUDE.md injection added"
+    action_taken="added"
+  fi
+
+  if [[ "$FORMAT" == "json" ]]; then
+    jq -n \
+      --arg timestamp "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
+      --arg action "$action_taken" \
+      '{
+        "_meta": {
+          "command": "init",
+          "subcommand": "update-claude-md",
+          "timestamp": $timestamp,
+          "format": "json"
+        },
+        "success": true,
+        "claudeMd": {
+          "action": $action,
+          "file": "CLAUDE.md"
+        }
+      }'
+  else
+    if [[ "$action_taken" == "updated" ]]; then
+      log_success "CLAUDE.md injection updated"
+    else
+      log_success "CLAUDE.md injection added"
+    fi
   fi
   exit 0
 fi
@@ -393,27 +476,62 @@ CLAUDE_EOF
   fi
 fi
 
-echo ""
-log_success "CLAUDE-TODO initialized successfully!"
-echo ""
-echo "Files created in .claude/:"
-echo "  - .claude/todo.json         (active tasks)"
-echo "  - .claude/todo-archive.json (completed tasks)"
-echo "  - .claude/todo-config.json  (settings)"
-echo "  - .claude/todo-log.json     (change history)"
-echo "  - .claude/schemas/          (JSON schemas for validation)"
-echo "  - .claude/backups/          (automatic backups)"
-echo "    ├── snapshot/             (point-in-time snapshots)"
-echo "    ├── safety/               (pre-operation backups)"
-echo "    ├── incremental/          (file version history)"
-echo "    ├── archive/              (long-term archives)"
-echo "    └── migration/            (schema migration backups)"
-echo ""
-echo "Add to .gitignore (recommended):"
-echo "  .claude/*.json"
-echo "  .claude/backups/"
-echo ""
-echo "Next steps:"
-echo "  1. claude-todo add \"Your first task\""
-echo "  2. claude-todo focus set <task-id>"
-echo "  3. claude-todo session start"
+# Build list of created files
+CREATED_FILES=(
+  "todo.json"
+  "todo-archive.json"
+  "todo-config.json"
+  "todo-log.json"
+)
+
+if [[ "$FORMAT" == "json" ]]; then
+  # JSON output
+  jq -n \
+    --arg timestamp "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
+    --arg projectName "$PROJECT_NAME" \
+    --arg directory "$TODO_DIR" \
+    --arg version "$VERSION" \
+    --argjson files "$(printf '%s\n' "${CREATED_FILES[@]}" | jq -R . | jq -s .)" \
+    '{
+      "_meta": {
+        "command": "init",
+        "timestamp": $timestamp,
+        "format": "json"
+      },
+      "success": true,
+      "initialized": {
+        "projectName": $projectName,
+        "directory": $directory,
+        "version": $version,
+        "files": $files,
+        "schemas": true,
+        "backups": true
+      }
+    }'
+else
+  # Text output
+  echo ""
+  log_success "CLAUDE-TODO initialized successfully!"
+  echo ""
+  echo "Files created in .claude/:"
+  echo "  - .claude/todo.json         (active tasks)"
+  echo "  - .claude/todo-archive.json (completed tasks)"
+  echo "  - .claude/todo-config.json  (settings)"
+  echo "  - .claude/todo-log.json     (change history)"
+  echo "  - .claude/schemas/          (JSON schemas for validation)"
+  echo "  - .claude/backups/          (automatic backups)"
+  echo "    ├── snapshot/             (point-in-time snapshots)"
+  echo "    ├── safety/               (pre-operation backups)"
+  echo "    ├── incremental/          (file version history)"
+  echo "    ├── archive/              (long-term archives)"
+  echo "    └── migration/            (schema migration backups)"
+  echo ""
+  echo "Add to .gitignore (recommended):"
+  echo "  .claude/*.json"
+  echo "  .claude/backups/"
+  echo ""
+  echo "Next steps:"
+  echo "  1. claude-todo add \"Your first task\""
+  echo "  2. claude-todo focus set <task-id>"
+  echo "  3. claude-todo session start"
+fi

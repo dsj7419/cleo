@@ -283,7 +283,7 @@ list_blocked_tasks() {
         --arg version "$VERSION" \
         --arg timestamp "$current_timestamp" \
         --argjson count "$count" '{
-        "$schema": "https://claude-todo.dev/schemas/output-v2.json",
+        "$schema": "https://claude-todo.dev/schemas/output.schema.json",
         "_meta": {
           format: "json",
           version: $version,
@@ -469,7 +469,7 @@ analyze_blocking_chains() {
         --argjson critical "$critical_path" \
         --argjson bottlenecks "$bottlenecks" \
         --argjson recs "$recommendations" '{
-        "$schema": "https://claude-todo.dev/schemas/output-v2.json",
+        "$schema": "https://claude-todo.dev/schemas/output.schema.json",
         "_meta": {
           format: "json",
           version: $version,

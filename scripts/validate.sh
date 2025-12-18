@@ -9,6 +9,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TODO_FILE="${TODO_FILE:-.claude/todo.json}"
 CONFIG_FILE="${CONFIG_FILE:-.claude/todo-config.json}"
 CLAUDE_TODO_HOME="${CLAUDE_TODO_HOME:-$HOME/.claude-todo}"
+LOG_FILE="${LOG_FILE:-.claude/todo-log.json}"
 
 # Source logging library for should_use_color function
 LIB_DIR="${SCRIPT_DIR}/../lib"
@@ -21,6 +22,12 @@ fi
 if [[ -f "$LIB_DIR/validation.sh" ]]; then
   # shellcheck source=../lib/validation.sh
   source "$LIB_DIR/validation.sh"
+fi
+
+# Source backup library for creating safety backups
+if [[ -f "$LIB_DIR/backup.sh" ]]; then
+  # shellcheck source=../lib/backup.sh
+  source "$LIB_DIR/backup.sh"
 fi
 
 # Colors (respects NO_COLOR and FORCE_COLOR environment variables per https://no-color.org)
@@ -39,6 +46,7 @@ FIX=false
 JSON_OUTPUT=false
 QUIET=false
 FORMAT="text"
+NON_INTERACTIVE=false
 
 ERRORS=0
 WARNINGS=0
@@ -50,17 +58,19 @@ Usage: claude-todo validate [OPTIONS]
 Validate todo.json against schema and business rules.
 
 Options:
-  --strict        Treat warnings as errors
-  --fix           Auto-fix simple issues
-  --json          Output as JSON (same as --format json)
-  --format, -f    Output format: text (default) or json
-  --quiet, -q     Suppress info messages (show only errors/warnings)
-  -h, --help      Show this help
+  --strict            Treat warnings as errors
+  --fix               Auto-fix simple issues (interactive for conflicts)
+  --non-interactive   Use auto-selection for conflict resolution (with --fix)
+  --json              Output as JSON (same as --format json)
+  --format, -f        Output format: text (default) or json
+  --quiet, -q         Suppress info messages (show only errors/warnings)
+  -h, --help          Show this help
 
 Validations:
   - JSON syntax
   - No duplicate task IDs (in todo.json, archive, and cross-file)
   - Only ONE active task
+  - Only ONE active phase
   - All depends[] references exist
   - No circular dependencies
   - blocked tasks have blockedBy
@@ -107,6 +117,7 @@ while [[ $# -gt 0 ]]; do
   case $1 in
     --strict) STRICT=true; shift ;;
     --fix) FIX=true; shift ;;
+    --non-interactive) NON_INTERACTIVE=true; shift ;;
     --json) JSON_OUTPUT=true; FORMAT="json"; shift ;;
     --format|-f)
       FORMAT="$2"
@@ -365,18 +376,107 @@ fi
 if jq -e '.project.phases' "$TODO_FILE" >/dev/null 2>&1; then
   ACTIVE_PHASE_COUNT=$(jq '[.project.phases | to_entries[] | select(.value.status == "active")] | length' "$TODO_FILE")
   if [[ "$ACTIVE_PHASE_COUNT" -gt 1 ]]; then
-    log_error "Multiple active phases found ($ACTIVE_PHASE_COUNT). Only ONE allowed."
     if [[ "$FIX" == true ]]; then
-      # Find the first active phase and make others pending
-      FIRST_ACTIVE_PHASE=$(jq -r '[.project.phases | to_entries[] | select(.value.status == "active")][0].key' "$TODO_FILE")
-      jq --arg keep "$FIRST_ACTIVE_PHASE" '
+      # Don't log error yet - try to fix first
+      # Get all active phases with metadata
+      ACTIVE_PHASES_JSON=$(jq -c '[.project.phases | to_entries[] | select(.value.status == "active") | {key: .key, order: .value.order, name: .value.name}] | sort_by(.order)' "$TODO_FILE")
+      ACTIVE_PHASES_COUNT=$(echo "$ACTIVE_PHASES_JSON" | jq 'length')
+
+      # Determine if we should be interactive
+      IS_INTERACTIVE=false
+      if [[ "$NON_INTERACTIVE" != true ]] && [[ -t 0 ]] && [[ -t 1 ]]; then
+        IS_INTERACTIVE=true
+      fi
+
+      SELECTED_PHASE=""
+
+      if [[ "$IS_INTERACTIVE" == true ]]; then
+        # Interactive mode - prompt user to select
+        echo ""
+        echo -e "${YELLOW}Multiple active phases detected ($ACTIVE_PHASE_COUNT). Select which to keep as current:${NC}"
+        echo ""
+
+        # Build array of phase choices
+        PHASE_CHOICES=()
+        INDEX=1
+        while IFS= read -r phase_entry; do
+          PHASE_KEY=$(echo "$phase_entry" | jq -r '.key')
+          PHASE_NAME=$(echo "$phase_entry" | jq -r '.name')
+          PHASE_ORDER=$(echo "$phase_entry" | jq -r '.order')
+
+          # Count tasks in this phase
+          TASK_COUNT=$(jq --arg slug "$PHASE_KEY" '[.tasks[] | select(.phase == $slug)] | length' "$TODO_FILE")
+
+          PHASE_CHOICES+=("$PHASE_KEY")
+          echo "  $INDEX) $PHASE_KEY - \"$PHASE_NAME\" (order: $PHASE_ORDER, $TASK_COUNT tasks)"
+          ((INDEX++))
+        done < <(echo "$ACTIVE_PHASES_JSON" | jq -c '.[]')
+
+        echo ""
+
+        # Prompt for selection
+        VALID_SELECTION=false
+        while [[ "$VALID_SELECTION" != true ]]; do
+          read -p "Select [1-$ACTIVE_PHASES_COUNT]: " CHOICE
+
+          if [[ "$CHOICE" =~ ^[0-9]+$ ]] && [[ "$CHOICE" -ge 1 ]] && [[ "$CHOICE" -le "$ACTIVE_PHASES_COUNT" ]]; then
+            SELECTED_PHASE="${PHASE_CHOICES[$((CHOICE-1))]}"
+            VALID_SELECTION=true
+          else
+            echo -e "${RED}Invalid selection. Please choose 1-$ACTIVE_PHASES_COUNT${NC}"
+          fi
+        done
+
+        echo ""
+      else
+        # Non-interactive mode - auto-select first by order
+        SELECTED_PHASE=$(echo "$ACTIVE_PHASES_JSON" | jq -r '.[0].key')
+
+        if [[ "$NON_INTERACTIVE" == true ]]; then
+          echo "  Auto-selecting (non-interactive mode): $SELECTED_PHASE"
+        else
+          echo "  Auto-selecting (non-terminal environment): $SELECTED_PHASE"
+        fi
+      fi
+
+      # Create backup before fixing
+      if declare -f create_safety_backup >/dev/null 2>&1; then
+        BACKUP_FILE=$(create_safety_backup "$TODO_FILE" "phase-conflict-fix" 2>/dev/null || echo "")
+        if [[ -n "$BACKUP_FILE" ]]; then
+          echo "  Backup created: $BACKUP_FILE"
+        fi
+      fi
+
+      # Apply the fix - set selected as active, others to completed
+      if jq --arg keep "$SELECTED_PHASE" '
         .project.phases |= with_entries(
           if .value.status == "active" and .key != $keep then
-            .value.status = "pending"
+            .value.status = "completed"
           else . end
         )
-      ' "$TODO_FILE" > "${TODO_FILE}.tmp" && mv "${TODO_FILE}.tmp" "$TODO_FILE"
-      echo "  Fixed: Kept $FIRST_ACTIVE_PHASE as active, others set to pending"
+      ' "$TODO_FILE" > "${TODO_FILE}.tmp" && mv "${TODO_FILE}.tmp" "$TODO_FILE"; then
+        # Log the recovery action
+        if declare -f log_operation >/dev/null 2>&1; then
+          RECOVERY_DETAILS=$(jq -n \
+            --arg selected "$SELECTED_PHASE" \
+            --argjson count "$ACTIVE_PHASE_COUNT" \
+            --argjson interactive "$IS_INTERACTIVE" \
+            '{
+              fixType: "phase_conflict_resolution",
+              selectedPhase: $selected,
+              totalActivePhases: $count,
+              resolutionMethod: (if $interactive then "user_selected" else "auto_selected" end)
+            }')
+          log_operation "validation_run" "system" "null" "null" "null" "$RECOVERY_DETAILS" "null" 2>/dev/null || true
+        fi
+
+        echo "  Fixed: Kept $SELECTED_PHASE as active, others set to completed"
+        log_info "Single active phase (after fix)"
+      else
+        log_error "Multiple active phases found ($ACTIVE_PHASE_COUNT). Only ONE allowed. (fix failed)"
+      fi
+    else
+      log_error "Multiple active phases found ($ACTIVE_PHASE_COUNT). Only ONE allowed."
     fi
   elif [[ "$ACTIVE_PHASE_COUNT" -eq 1 ]]; then
     log_info "Single active phase"
@@ -410,6 +510,53 @@ if jq -e '.project.phases' "$TODO_FILE" >/dev/null 2>&1; then
   ' "$TODO_FILE" 2>/dev/null || echo "")
   if [[ -n "$FUTURE_PHASES" ]]; then
     log_error "Future timestamps detected in phases: $FUTURE_PHASES"
+  fi
+
+  # Validate phaseHistory if present
+  PHASE_HISTORY_COUNT=$(jq '.project.phaseHistory // [] | length' "$TODO_FILE")
+  if [[ "$PHASE_HISTORY_COUNT" -gt 0 ]]; then
+    log_info "Phase history entries: $PHASE_HISTORY_COUNT"
+
+    # Check phaseHistory entries reference valid phases
+    INVALID_PHASE_REFS=$(jq -r '
+      .project.phases as $phases |
+      .project.phaseHistory // [] |
+      map(select(.phase as $p | $phases | has($p) | not)) |
+      .[].phase
+    ' "$TODO_FILE" 2>/dev/null || echo "")
+    if [[ -n "$INVALID_PHASE_REFS" ]]; then
+      log_error "phaseHistory references non-existent phases: $INVALID_PHASE_REFS"
+    fi
+
+    # Check phaseHistory entries have valid transition types
+    INVALID_TRANSITIONS=$(jq -r '
+      .project.phaseHistory // [] |
+      map(select(.transitionType != "started" and .transitionType != "completed" and .transitionType != "rollback")) |
+      .[].transitionType
+    ' "$TODO_FILE" 2>/dev/null || echo "")
+    if [[ -n "$INVALID_TRANSITIONS" ]]; then
+      log_error "phaseHistory has invalid transition types: $INVALID_TRANSITIONS"
+    fi
+
+    # Check phaseHistory timestamps are not in future
+    FUTURE_HISTORY=$(jq --argjson now "$CURRENT_TIMESTAMP" '
+      .project.phaseHistory // [] |
+      map(select(.timestamp != null and (.timestamp | fromdateiso8601) > $now)) |
+      .[].phase
+    ' "$TODO_FILE" 2>/dev/null || echo "")
+    if [[ -n "$FUTURE_HISTORY" && "$FUTURE_HISTORY" != "null" ]]; then
+      log_error "phaseHistory has future timestamps for phases: $FUTURE_HISTORY"
+    fi
+
+    # Check rollback entries have fromPhase
+    MISSING_FROM_PHASE=$(jq -r '
+      .project.phaseHistory // [] |
+      map(select(.transitionType == "rollback" and (.fromPhase == null or .fromPhase == ""))) |
+      .[].phase
+    ' "$TODO_FILE" 2>/dev/null || echo "")
+    if [[ -n "$MISSING_FROM_PHASE" ]]; then
+      log_error "phaseHistory rollback entries missing fromPhase: $MISSING_FROM_PHASE"
+    fi
   fi
 fi
 

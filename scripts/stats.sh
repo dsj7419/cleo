@@ -42,6 +42,7 @@ source "${LIB_DIR}/output-format.sh"
 # Default configuration
 PERIOD_DAYS=30
 OUTPUT_FORMAT="text"
+QUIET=false
 
 # File paths
 CLAUDE_DIR=".claude"
@@ -100,6 +101,7 @@ Options:
                           Named: today/t, week/w, month/m, quarter/q, year/y
                           Numeric: any positive integer (days)
     -f, --format FORMAT   Output format: text | json (default: text)
+    -q, --quiet           Suppress decorative output (headers, footers)
     -h, --help            Show this help message
 
 Examples:
@@ -331,14 +333,18 @@ output_text_format() {
         ICON_ALLTIME="[ALL-TIME]"
     fi
 
-    echo "================================================"
-    echo "$ICON_STATS CLAUDE TODO SYSTEM STATISTICS"
-    echo "================================================"
-    echo ""
+    if [[ "$QUIET" != true ]]; then
+        echo "================================================"
+        echo "$ICON_STATS CLAUDE TODO SYSTEM STATISTICS"
+        echo "================================================"
+        echo ""
+    fi
 
     # Current State
-    echo "$ICON_STATUS CURRENT STATE"
-    echo "----------------"
+    if [[ "$QUIET" != true ]]; then
+        echo "$ICON_STATUS CURRENT STATE"
+        echo "----------------"
+    fi
     local pending_count=$(echo "$stats_json" | jq -r '.data.current_state.pending')
     local in_progress_count=$(echo "$stats_json" | jq -r '.data.current_state.in_progress')
     local completed_count=$(echo "$stats_json" | jq -r '.data.current_state.completed')
@@ -351,8 +357,10 @@ output_text_format() {
 
     # Completion Metrics
     local period=$(echo "$stats_json" | jq -r '.data.completion_metrics.period_days')
-    echo "$ICON_METRICS COMPLETION METRICS (Last $(pluralize "$period" "Day"))"
-    echo "----------------"
+    if [[ "$QUIET" != true ]]; then
+        echo "$ICON_METRICS COMPLETION METRICS (Last $(pluralize "$period" "Day"))"
+        echo "----------------"
+    fi
     local completed_period=$(echo "$stats_json" | jq -r '.data.completion_metrics.completed_in_period')
     local created_period=$(echo "$stats_json" | jq -r '.data.completion_metrics.created_in_period')
     echo "Tasks Completed:     $(pluralize "$completed_period" "Task")"
@@ -362,8 +370,10 @@ output_text_format() {
     echo ""
 
     # Activity Metrics
-    echo "$ICON_ACTIVITY ACTIVITY METRICS (Last $(pluralize "$period" "Day"))"
-    echo "----------------"
+    if [[ "$QUIET" != true ]]; then
+        echo "$ICON_ACTIVITY ACTIVITY METRICS (Last $(pluralize "$period" "Day"))"
+        echo "----------------"
+    fi
     local activity_created=$(echo "$stats_json" | jq -r '.data.activity_metrics.created_in_period')
     local activity_completed=$(echo "$stats_json" | jq -r '.data.activity_metrics.completed_in_period')
     local activity_archived=$(echo "$stats_json" | jq -r '.data.activity_metrics.archived_in_period')
@@ -374,8 +384,10 @@ output_text_format() {
     echo ""
 
     # Archive Statistics
-    echo "$ICON_ARCHIVE ARCHIVE STATISTICS"
-    echo "----------------"
+    if [[ "$QUIET" != true ]]; then
+        echo "$ICON_ARCHIVE ARCHIVE STATISTICS"
+        echo "----------------"
+    fi
     local archive_total=$(echo "$stats_json" | jq -r '.data.archive_stats.total_archived')
     local archive_period=$(echo "$stats_json" | jq -r '.data.archive_stats.archived_in_period')
     echo "Total Archived:    $(pluralize "$archive_total" "Task")"
@@ -383,17 +395,21 @@ output_text_format() {
     echo ""
 
     # All-Time Statistics
-    echo "$ICON_ALLTIME ALL-TIME STATISTICS"
-    echo "----------------"
+    if [[ "$QUIET" != true ]]; then
+        echo "$ICON_ALLTIME ALL-TIME STATISTICS"
+        echo "----------------"
+    fi
     local alltime_created=$(echo "$stats_json" | jq -r '.data.all_time.total_tasks_created')
     local alltime_completed=$(echo "$stats_json" | jq -r '.data.all_time.total_tasks_completed')
     echo "Total Created: $(pluralize "$alltime_created" "Task")"
     echo "Total Completed: $(pluralize "$alltime_completed" "Task")"
     echo ""
 
-    echo "================================================"
-    echo "Generated: $(date -Iseconds)"
-    echo "================================================"
+    if [[ "$QUIET" != true ]]; then
+        echo "================================================"
+        echo "Generated: $(date -Iseconds)"
+        echo "================================================"
+    fi
 }
 
 output_json_format() {
@@ -454,7 +470,7 @@ generate_statistics() {
 
     cat <<EOF
 {
-  "\$schema": "https://claude-todo.dev/schemas/output-v2.json",
+  "\$schema": "https://claude-todo.dev/schemas/output.schema.json",
   "_meta": {
     "format": "json",
     "version": "$version",
@@ -512,6 +528,10 @@ parse_arguments() {
                     exit 1
                 fi
                 shift 2
+                ;;
+            -q|--quiet)
+                QUIET=true
+                shift
                 ;;
             -h|--help)
                 usage

@@ -459,3 +459,268 @@ EOF
     # May succeed or fail, but should not crash
     [[ "$status" -ne 127 ]]
 }
+
+# =============================================================================
+# Phase Conflict Recovery Tests
+# =============================================================================
+
+@test "validate detects multiple active phases" {
+    # Create todo with multiple active phases
+    cat > "$TODO_FILE" << 'EOF'
+{
+  "_meta": {"version": "2.2.0"},
+  "project": {
+    "phases": {
+      "setup": {
+        "name": "Setup",
+        "order": 1,
+        "status": "active",
+        "startedAt": "2025-12-01T10:00:00Z"
+      },
+      "core": {
+        "name": "Core Development",
+        "order": 2,
+        "status": "active",
+        "startedAt": "2025-12-02T10:00:00Z"
+      },
+      "polish": {
+        "name": "Polish",
+        "order": 3,
+        "status": "active",
+        "startedAt": "2025-12-03T10:00:00Z"
+      }
+    },
+    "currentPhase": "core"
+  },
+  "tasks": [],
+  "focus": {}
+}
+EOF
+
+    run bash "$VALIDATE_SCRIPT"
+    assert_failure
+    assert_output --partial "Multiple active phases found"
+}
+
+@test "validate --fix --non-interactive auto-selects first phase by order" {
+    # Create todo with multiple active phases
+    cat > "$TODO_FILE" << 'EOF'
+{
+  "_meta": {"version": "2.2.0"},
+  "project": {
+    "phases": {
+      "polish": {
+        "name": "Polish",
+        "order": 3,
+        "status": "active",
+        "startedAt": "2025-12-03T10:00:00Z"
+      },
+      "setup": {
+        "name": "Setup",
+        "order": 1,
+        "status": "active",
+        "startedAt": "2025-12-01T10:00:00Z"
+      },
+      "core": {
+        "name": "Core Development",
+        "order": 2,
+        "status": "active",
+        "startedAt": "2025-12-02T10:00:00Z"
+      }
+    },
+    "currentPhase": "core"
+  },
+  "tasks": [],
+  "focus": {}
+}
+EOF
+
+    run bash "$VALIDATE_SCRIPT" --fix --non-interactive
+    assert_success
+    assert_output --partial "Auto-selecting (non-interactive mode): setup"
+    assert_output --partial "Fixed: Kept setup as active"
+
+    # Verify only setup is active
+    local active_count
+    active_count=$(jq '[.project.phases | to_entries[] | select(.value.status == "active")] | length' "$TODO_FILE")
+    [[ "$active_count" -eq 1 ]]
+
+    local active_phase
+    active_phase=$(jq -r '.project.phases | to_entries[] | select(.value.status == "active") | .key' "$TODO_FILE")
+    [[ "$active_phase" == "setup" ]]
+
+    # Others should be completed
+    local core_status
+    core_status=$(jq -r '.project.phases.core.status' "$TODO_FILE")
+    [[ "$core_status" == "completed" ]]
+
+    local polish_status
+    polish_status=$(jq -r '.project.phases.polish.status' "$TODO_FILE")
+    [[ "$polish_status" == "completed" ]]
+}
+
+@test "validate --fix creates backup before phase conflict resolution" {
+    cat > "$TODO_FILE" << 'EOF'
+{
+  "_meta": {"version": "2.2.0"},
+  "project": {
+    "phases": {
+      "setup": {"name": "Setup", "order": 1, "status": "active"},
+      "core": {"name": "Core", "order": 2, "status": "active"}
+    },
+    "currentPhase": "core"
+  },
+  "tasks": [],
+  "focus": {}
+}
+EOF
+
+    # Clear backups in safety subdirectory
+    local safety_dir="${TEST_TEMP_DIR}/.claude/backups/safety"
+    rm -rf "$safety_dir"
+    mkdir -p "$safety_dir"
+
+    # Run fix
+    run bash "$VALIDATE_SCRIPT" --fix --non-interactive
+    assert_success
+
+    # Verify backup was created in safety directory
+    local backup_count
+    backup_count=$(find "$safety_dir" -name "*phase-conflict-fix*" 2>/dev/null | wc -l)
+    [[ "$backup_count" -ge 1 ]]
+}
+
+@test "validate --fix logs phase conflict resolution" {
+    cat > "$TODO_FILE" << 'EOF'
+{
+  "_meta": {"version": "2.2.0"},
+  "project": {
+    "phases": {
+      "setup": {"name": "Setup", "order": 1, "status": "active"},
+      "core": {"name": "Core", "order": 2, "status": "active"}
+    },
+    "currentPhase": "core"
+  },
+  "tasks": [],
+  "focus": {}
+}
+EOF
+
+    # Initialize log file if needed
+    if [[ ! -f "$LOG_FILE" ]]; then
+        echo '{"entries":[]}' > "$LOG_FILE"
+    fi
+
+    # Run fix
+    bash "$VALIDATE_SCRIPT" --fix --non-interactive
+
+    # Verify log file exists and is valid JSON
+    run jq empty "$LOG_FILE"
+    assert_success
+
+    # Verify log entry exists for validation_run with phase conflict fix
+    local fix_type
+    fix_type=$(jq -r '.entries[] | select(.action == "validation_run" and .details.fixType == "phase_conflict_resolution") | .details.fixType' "$LOG_FILE" 2>/dev/null || echo "")
+
+    # If not found, check the entire log for debugging
+    if [[ "$fix_type" != "phase_conflict_resolution" ]]; then
+        # Debugging: show recent log entries
+        echo "Recent log entries:"
+        jq -r '.entries[-3:] | .[]? | "\(.action): \(.details)"' "$LOG_FILE" 2>/dev/null || echo "No entries found"
+    fi
+
+    [[ "$fix_type" == "phase_conflict_resolution" ]]
+
+    # Verify resolution method logged
+    local resolution_method
+    resolution_method=$(jq -r '.entries[] | select(.action == "validation_run" and .details.fixType == "phase_conflict_resolution") | .details.resolutionMethod' "$LOG_FILE" 2>/dev/null || echo "")
+    [[ "$resolution_method" == "auto_selected" ]]
+}
+
+@test "validate --fix in pipe uses auto-selection" {
+    cat > "$TODO_FILE" << 'EOF'
+{
+  "_meta": {"version": "2.2.0"},
+  "project": {
+    "phases": {
+      "setup": {"name": "Setup", "order": 1, "status": "active"},
+      "core": {"name": "Core", "order": 2, "status": "active"}
+    },
+    "currentPhase": "core"
+  },
+  "tasks": [],
+  "focus": {}
+}
+EOF
+
+    # Run in pipe (non-terminal)
+    run bash -c "echo | bash '$VALIDATE_SCRIPT' --fix"
+    assert_success
+    assert_output --partial "Auto-selecting (non-terminal environment)"
+
+    # Verify fix applied
+    local active_count
+    active_count=$(jq '[.project.phases | to_entries[] | select(.value.status == "active")] | length' "$TODO_FILE")
+    [[ "$active_count" -eq 1 ]]
+}
+
+@test "validate --fix preserves task data during phase conflict resolution" {
+    cat > "$TODO_FILE" << 'EOF'
+{
+  "_meta": {"version": "2.2.0"},
+  "project": {
+    "phases": {
+      "setup": {"name": "Setup", "order": 1, "status": "active"},
+      "core": {"name": "Core", "order": 2, "status": "active"}
+    },
+    "currentPhase": "core"
+  },
+  "tasks": [
+    {"id": "T001", "title": "Task 1", "description": "D1", "status": "pending", "priority": "medium", "createdAt": "2025-12-01T10:00:00Z"}
+  ],
+  "focus": {}
+}
+EOF
+
+    # Capture task data
+    local original_tasks
+    original_tasks=$(jq '.tasks' "$TODO_FILE")
+
+    # Run fix
+    bash "$VALIDATE_SCRIPT" --fix --non-interactive
+
+    # Verify task data unchanged
+    local current_tasks
+    current_tasks=$(jq '.tasks' "$TODO_FILE")
+    [[ "$original_tasks" == "$current_tasks" ]]
+}
+
+@test "validate without --fix does not modify file on phase conflict" {
+    cat > "$TODO_FILE" << 'EOF'
+{
+  "_meta": {"version": "2.2.0"},
+  "project": {
+    "phases": {
+      "setup": {"name": "Setup", "order": 1, "status": "active"},
+      "core": {"name": "Core", "order": 2, "status": "active"}
+    },
+    "currentPhase": "core"
+  },
+  "tasks": [],
+  "focus": {}
+}
+EOF
+
+    # Capture original content
+    local original_content
+    original_content=$(cat "$TODO_FILE")
+
+    # Run without fix
+    run bash "$VALIDATE_SCRIPT"
+    assert_failure
+
+    # Verify file unchanged
+    local current_content
+    current_content=$(cat "$TODO_FILE")
+    [[ "$original_content" == "$current_content" ]]
+}

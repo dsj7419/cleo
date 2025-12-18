@@ -106,6 +106,16 @@ claude-todo restore <backup> --file todo.json  # Restore specific file
 claude-todo restore <backup> --force  # Skip confirmation prompt
 claude-todo stats                     # Show statistics
 claude-todo help                      # Show all commands
+
+# CONFIGURATION
+claude-todo config show               # Show all config
+claude-todo config show output        # Show section
+claude-todo config get output.defaultFormat  # Get single value
+claude-todo config set output.defaultFormat json  # Update value
+claude-todo config set KEY VALUE --global  # Update global config
+claude-todo config list               # List all keys/values
+claude-todo config edit               # Interactive editor
+claude-todo config validate           # Validate config
 ```
 
 ## Short Flags (v0.7.0+)

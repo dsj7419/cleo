@@ -24,6 +24,8 @@ readonly VALID_PHASE_STATUSES=("pending" "active" "completed")
 # Returns: phase slug or empty string if not set
 get_current_phase() {
     local todo_file="${1:-$TODO_FILE}"
+    # Guard against missing file - jq hangs on stdin if file doesn't exist
+    [[ -f "$todo_file" ]] || { echo ""; return 1; }
     jq -r '.project.currentPhase // empty' "$todo_file"
 }
 
@@ -32,6 +34,8 @@ get_current_phase() {
 # Returns: JSON object of phases
 get_all_phases() {
     local todo_file="${1:-$TODO_FILE}"
+    # Guard against missing file - jq hangs on stdin if file doesn't exist
+    [[ -f "$todo_file" ]] || { echo "{}"; return 1; }
     jq '.project.phases // {}' "$todo_file"
 }
 
@@ -41,6 +45,8 @@ get_all_phases() {
 get_phase() {
     local slug="$1"
     local todo_file="${2:-$TODO_FILE}"
+    # Guard against missing file - jq hangs on stdin if file doesn't exist
+    [[ -f "$todo_file" ]] || { echo "null"; return 1; }
     jq --arg slug "$slug" '.project.phases[$slug] // null' "$todo_file"
 }
 
@@ -50,6 +56,8 @@ get_phase() {
 get_phase_status() {
     local slug="$1"
     local todo_file="${2:-$TODO_FILE}"
+    # Guard against missing file - jq hangs on stdin if file doesn't exist
+    [[ -f "$todo_file" ]] || { echo "pending"; return 1; }
     jq -r --arg slug "$slug" '.project.phases[$slug].status // "pending"' "$todo_file"
 }
 
@@ -59,6 +67,8 @@ get_phase_status() {
 count_phases_by_status() {
     local status="$1"
     local todo_file="${2:-$TODO_FILE}"
+    # Guard against missing file - jq hangs on stdin if file doesn't exist
+    [[ -f "$todo_file" ]] || { echo "0"; return 1; }
     jq --arg status "$status" '[.project.phases | to_entries[] | select(.value.status == $status)] | length' "$todo_file"
 }
 
@@ -121,11 +131,12 @@ start_phase() {
 }
 
 # Complete a phase (transition from active to completed)
-# Args: $1 = phase slug, $2 = todo file path
+# Args: $1 = phase slug, $2 = todo file path, $3 = force (optional, "true" to skip validation)
 # Returns: 0 on success, 1 on error
 complete_phase() {
     local slug="$1"
     local todo_file="${2:-$TODO_FILE}"
+    local force="${3:-false}"
     local current_status
     local temp_file
 
@@ -136,15 +147,17 @@ complete_phase() {
         return 1
     fi
 
-    # Check for incomplete tasks in this phase
-    local incomplete_count
-    incomplete_count=$(jq --arg phase "$slug" '
-        [.tasks[] | select(.phase == $phase and .status != "done")] | length
-    ' "$todo_file")
+    # Check for incomplete tasks in this phase (unless forced)
+    if [[ "$force" != "true" ]]; then
+        local incomplete_count
+        incomplete_count=$(jq --arg phase "$slug" '
+            [.tasks[] | select(.phase == $phase and .status != "done")] | length
+        ' "$todo_file")
 
-    if [[ "$incomplete_count" -gt 0 ]]; then
-        echo "ERROR: Cannot complete phase '$slug' - $incomplete_count incomplete task(s) pending" >&2
-        return 1
+        if [[ "$incomplete_count" -gt 0 ]]; then
+            echo "ERROR: Cannot complete phase '$slug' - $incomplete_count incomplete task(s) pending" >&2
+            return 1
+        fi
     fi
 
     temp_file=$(mktemp)
@@ -159,10 +172,11 @@ complete_phase() {
 }
 
 # Advance to next phase (complete current if needed, start next)
-# Args: $1 = todo file path
+# Args: $1 = todo file path, $2 = force (optional, "true" to skip validation)
 # Returns: 0 on success, 1 if no next phase
 advance_phase() {
     local todo_file="${1:-$TODO_FILE}"
+    local force="${2:-false}"
     local current_phase
     local current_order
     local current_status
@@ -193,7 +207,7 @@ advance_phase() {
 
     # Complete current phase if still active (skip if already completed)
     if [[ "$current_status" == "active" ]]; then
-        complete_phase "$current_phase" "$todo_file" || return 1
+        complete_phase "$current_phase" "$todo_file" "$force" || return 1
     fi
 
     # Start next phase
@@ -270,6 +284,99 @@ check_phase_context() {
 }
 
 # ============================================================================
+# PHASE HISTORY FUNCTIONS
+# ============================================================================
+
+# Get phase history array from todo.json
+# Args: $1 = todo file path
+# Returns: JSON array of phase history entries
+get_phase_history() {
+    local todo_file="${1:-$TODO_FILE}"
+    [[ -f "$todo_file" ]] || { echo "[]"; return 1; }
+    jq '.project.phaseHistory // []' "$todo_file"
+}
+
+# Count tasks in a specific phase
+# Args: $1 = phase slug, $2 = todo file path
+# Returns: integer count
+count_tasks_in_phase() {
+    local phase_slug="$1"
+    local todo_file="${2:-$TODO_FILE}"
+    [[ -f "$todo_file" ]] || { echo "0"; return 1; }
+    jq --arg phase "$phase_slug" '[.tasks[] | select(.phase == $phase)] | length' "$todo_file"
+}
+
+# Add a phase history entry
+# Args: $1 = phase slug, $2 = transition type (started|completed|rollback),
+#       $3 = todo file path, $4 = from_phase (optional, for rollback), $5 = reason (optional)
+# Returns: 0 on success, 1 on failure
+add_phase_history_entry() {
+    local phase_slug="$1"
+    local transition_type="$2"
+    local todo_file="${3:-$TODO_FILE}"
+    local from_phase="${4:-null}"
+    local reason="${5:-}"
+
+    [[ -f "$todo_file" ]] || return 1
+
+    # Validate transition type
+    case "$transition_type" in
+        started|completed|rollback) ;;
+        *) echo "Invalid transition type: $transition_type" >&2; return 1 ;;
+    esac
+
+    # Count tasks in phase
+    local task_count
+    task_count=$(count_tasks_in_phase "$phase_slug" "$todo_file")
+
+    # Get current timestamp
+    local timestamp
+    timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+    # Create temp file for atomic update
+    local temp_file
+    temp_file=$(mktemp)
+
+    # Build the history entry and append to phaseHistory
+    if jq --arg phase "$phase_slug" \
+          --arg type "$transition_type" \
+          --arg ts "$timestamp" \
+          --argjson count "$task_count" \
+          --arg from "$from_phase" \
+          --arg reason "$reason" '
+        # Initialize phaseHistory if it does not exist
+        .project.phaseHistory //= [] |
+        # Build the entry
+        .project.phaseHistory += [{
+            phase: $phase,
+            transitionType: $type,
+            timestamp: $ts,
+            taskCount: $count,
+            fromPhase: (if $from == "null" or $from == "" then null else $from end),
+            reason: (if $reason == "" then null else $reason end)
+        } | with_entries(select(.value != null))]
+    ' "$todo_file" > "$temp_file"; then
+        mv "$temp_file" "$todo_file"
+        return 0
+    else
+        rm -f "$temp_file"
+        return 1
+    fi
+}
+
+# Get last phase history entry for a specific phase
+# Args: $1 = phase slug, $2 = todo file path
+# Returns: JSON object of last entry or null
+get_last_phase_history_entry() {
+    local phase_slug="$1"
+    local todo_file="${2:-$TODO_FILE}"
+    [[ -f "$todo_file" ]] || { echo "null"; return 1; }
+    jq --arg phase "$phase_slug" '
+        [.project.phaseHistory // [] | .[] | select(.phase == $phase)] | last // null
+    ' "$todo_file"
+}
+
+# ============================================================================
 # EXPORTS
 # ============================================================================
 
@@ -285,3 +392,7 @@ export -f advance_phase
 export -f validate_single_active_phase
 export -f validate_current_phase_consistency
 export -f check_phase_context
+export -f get_phase_history
+export -f count_tasks_in_phase
+export -f add_phase_history_entry
+export -f get_last_phase_history_entry

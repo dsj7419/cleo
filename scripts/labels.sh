@@ -72,6 +72,7 @@ fi
 OUTPUT_FORMAT="text"
 SUBCOMMAND="list"
 LABEL_ARG=""
+QUIET_MODE=false
 
 # File paths
 CLAUDE_DIR=".claude"
@@ -94,6 +95,7 @@ Subcommands:
 
 Options:
     --format, -f FORMAT   Output format: text | json (default: text)
+    -q, --quiet           Suppress non-essential output (exit 0 if labels exist)
     -h, --help            Show this help message
 
 Examples:
@@ -326,12 +328,14 @@ output_list_json() {
     --argjson labels "$label_data" \
     --arg version "$VERSION" \
     '{
+      "$schema": "https://claude-todo.dev/schemas/output.schema.json",
       "_meta": {
         "format": "json",
         "version": $version,
         "command": "labels",
         "timestamp": (now | strftime("%Y-%m-%dT%H:%M:%SZ"))
       },
+      "success": true,
       "totalLabels": ($labels | length),
       "labels": $labels
     }'
@@ -395,12 +399,14 @@ output_show_json() {
     --argjson tasks "$tasks" \
     --arg version "$VERSION" \
     '{
+      "$schema": "https://claude-todo.dev/schemas/output.schema.json",
       "_meta": {
         "format": "json",
         "version": $version,
         "command": "labels show",
         "timestamp": (now | strftime("%Y-%m-%dT%H:%M:%SZ"))
       },
+      "success": true,
       "label": $label,
       "taskCount": ($tasks | length),
       "tasks": $tasks
@@ -472,12 +478,14 @@ output_stats_json() {
     --argjson cooccurrence "$cooccurrence" \
     --arg version "$VERSION" \
     '{
+      "$schema": "https://claude-todo.dev/schemas/output.schema.json",
       "_meta": {
         "format": "json",
         "version": $version,
         "command": "labels stats",
         "timestamp": (now | strftime("%Y-%m-%dT%H:%M:%SZ"))
       },
+      "success": true,
       "summary": $stats,
       "labels": $labels,
       "cooccurrence": $cooccurrence
@@ -559,6 +567,10 @@ parse_arguments() {
       --help|-h)
         usage
         ;;
+      -q|--quiet)
+        QUIET_MODE=true
+        shift
+        ;;
       *)
         echo "[ERROR] Unknown option: $1" >&2
         echo "Run 'claude-todo labels --help' for usage"
@@ -593,6 +605,17 @@ main() {
       local label_data
       label_data=$(get_label_data)
 
+      # Quiet mode: just check if labels exist and exit
+      if [[ "$QUIET_MODE" == "true" ]]; then
+        local count
+        count=$(echo "$label_data" | jq -r 'length')
+        if [[ "$count" -gt 0 ]]; then
+          exit 0
+        else
+          exit 1
+        fi
+      fi
+
       case "$OUTPUT_FORMAT" in
         json) output_list_json "$label_data" ;;
         text) output_list_text "$label_data" ;;
@@ -602,6 +625,17 @@ main() {
     show)
       local tasks
       tasks=$(get_tasks_by_label "$LABEL_ARG")
+
+      # Quiet mode: just check if tasks exist with this label
+      if [[ "$QUIET_MODE" == "true" ]]; then
+        local count
+        count=$(echo "$tasks" | jq -r 'length')
+        if [[ "$count" -gt 0 ]]; then
+          exit 0
+        else
+          exit 1
+        fi
+      fi
 
       case "$OUTPUT_FORMAT" in
         json) output_show_json "$LABEL_ARG" "$tasks" ;;
@@ -614,6 +648,17 @@ main() {
       label_data=$(get_label_data)
       stats=$(get_label_stats)
       cooccurrence=$(get_label_cooccurrence)
+
+      # Quiet mode: just check if there are any labels
+      if [[ "$QUIET_MODE" == "true" ]]; then
+        local count
+        count=$(echo "$label_data" | jq -r 'length')
+        if [[ "$count" -gt 0 ]]; then
+          exit 0
+        else
+          exit 1
+        fi
+      fi
 
       case "$OUTPUT_FORMAT" in
         json) output_stats_json "$label_data" "$stats" "$cooccurrence" ;;

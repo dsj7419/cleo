@@ -36,6 +36,7 @@
 | **[integration/CLAUDE-CODE.md](integration/CLAUDE-CODE.md)** | Claude Code integration & session workflows | Understanding process flows |
 | **[migration-guide.md](reference/migration-guide.md)** | Migration and upgrade guide | Upgrading between versions |
 | **[migration/v2.2.0-migration-guide.md](migration/v2.2.0-migration-guide.md)** | v2.2.0 migration guide | Upgrading to project phases (v2.2.0) |
+| **[migration/v2.3.0-migration-guide.md](migration/v2.3.0-migration-guide.md)** | v2.3.0 migration guide | Upgrading to task hierarchy (v2.3.0) |
 
 ### 🎯 Command Reference
 
@@ -47,6 +48,7 @@
 | **[commands/backup.md](commands/backup.md)** | Backup command documentation | Creating and listing backups |
 | **[commands/blockers.md](commands/blockers.md)** | Blockers command documentation | Analyzing blocked tasks and chains |
 | **[commands/complete.md](commands/complete.md)** | Complete task command documentation | Marking tasks as done |
+| **[commands/config.md](commands/config.md)** | Configuration command documentation | Viewing and modifying settings (project and global) |
 | **[commands/dash.md](commands/dash.md)** | Dashboard command documentation | Using project overview features |
 | **[commands/deps.md](commands/deps.md)** | Dependency visualization documentation | Understanding task dependencies |
 | **[commands/exists.md](commands/exists.md)** | Task existence validation documentation | Validating task IDs in scripts and CI/CD pipelines |
@@ -69,6 +71,15 @@
 | **[commands/stats.md](commands/stats.md)** | Statistics command documentation | Generating project statistics |
 | **[commands/update.md](commands/update.md)** | Update task command documentation | Modifying existing tasks |
 | **[commands/validate.md](commands/validate.md)** | Validate command documentation | Checking project integrity |
+
+### 📐 Specifications (Immutable Design Documents)
+
+| Document | Purpose | When to Read |
+|----------|---------|--------------|
+| **[LLM-TASK-ID-SYSTEM-DESIGN-SPEC.md](specs/LLM-TASK-ID-SYSTEM-DESIGN-SPEC.md)** | **IMMUTABLE** Task ID system design bible | Before any ID-related changes; authoritative source |
+| **[PHASE-SYSTEM-SPEC.md](specs/PHASE-SYSTEM-SPEC.md)** | **AUTHORITATIVE** Phase lifecycle system specification | Phase commands, history, validation, integration |
+| **[HIERARCHY-ENHANCEMENT-SPEC.md](specs/HIERARCHY-ENHANCEMENT-SPEC.md)** | Hierarchy feature specification (v0.17.0+) | Implementing Epic/Task/Subtask hierarchy |
+| **[LLM-AGENT-FIRST-SPEC.md](specs/LLM-AGENT-FIRST-SPEC.md)** | LLM-first design principles | Understanding agent-optimized design decisions |
 
 ### 🔬 Technical Reference
 
@@ -423,6 +434,20 @@
 3. Review [ARCHITECTURE.md#executive-summary](architecture/ARCHITECTURE.md#executive-summary) extension summary
 4. Check [QUICK-REFERENCE.md](QUICK-REFERENCE.md) extension patterns
 
+#### ...understand ID system design
+1. Read [LLM-TASK-ID-SYSTEM-DESIGN-SPEC.md](specs/LLM-TASK-ID-SYSTEM-DESIGN-SPEC.md) - **THE AUTHORITATIVE SOURCE**
+2. Understand the flat ID + parentId design decision
+3. Review anti-hallucination mechanisms for IDs
+4. Check multi-agent coordination patterns
+
+#### ...implement hierarchy features (v0.17.0+)
+1. Read [HIERARCHY-ENHANCEMENT-SPEC.md](specs/HIERARCHY-ENHANCEMENT-SPEC.md) for full spec
+2. Reference [LLM-TASK-ID-SYSTEM-DESIGN-SPEC.md](specs/LLM-TASK-ID-SYSTEM-DESIGN-SPEC.md) for ID contract
+3. Follow Epic → Task → Subtask taxonomy (max depth: 3, max siblings: 7)
+4. Review [commands/add.md](commands/add.md) for `--type`, `--parent`, `--size` flags
+5. Review [commands/list.md](commands/list.md) for `--type`, `--parent`, `--children`, `--tree` filters
+6. Run `claude-todo migrate run` to upgrade to schema v2.3.0
+
 #### ...integrate with CI/CD
 1. Read [ci-cd-integration.md](ci-cd-integration.md) for complete integration guide
 2. Choose your platform examples (GitHub Actions, GitLab CI, Jenkins, Azure DevOps)
@@ -578,6 +603,9 @@ You understand the CLAUDE-TODO system when you can:
 - **Using**: [usage.md](usage.md) → Operation guide
 - **Understanding**: [ARCHITECTURE.md#executive-summary](architecture/ARCHITECTURE.md#executive-summary) → Overview
 - **Task Sizing**: [TASK-COMPLETION-PHILOSOPHY.md](TASK-COMPLETION-PHILOSOPHY.md) → Shipping velocity and completion philosophy
+- **ID System**: [LLM-TASK-ID-SYSTEM-DESIGN-SPEC.md](specs/LLM-TASK-ID-SYSTEM-DESIGN-SPEC.md) → **IMMUTABLE** ID design bible
+- **Phase System**: [PHASE-SYSTEM-SPEC.md](specs/PHASE-SYSTEM-SPEC.md) → **AUTHORITATIVE** phase lifecycle bible
+- **Hierarchy**: [HIERARCHY-ENHANCEMENT-SPEC.md](specs/HIERARCHY-ENHANCEMENT-SPEC.md) → Epic/Task/Subtask specification
 - **Debugging**: [troubleshooting.md](reference/troubleshooting.md) → Issue resolution
 - **Extending**: [ARCHITECTURE.md](architecture/ARCHITECTURE.md) → Extension points
 - **Reviewing**: [ARCHITECTURE.md](architecture/ARCHITECTURE.md) → Complete design

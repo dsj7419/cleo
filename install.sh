@@ -413,6 +413,7 @@ declare -A CMD_MAP=(
   [show]="show.sh"
   [sync]="sync-todowrite.sh"
   [analyze]="analyze.sh"
+  [config]="config.sh"
 )
 
 # Brief descriptions for main help
@@ -445,6 +446,7 @@ declare -A CMD_DESC=(
   [show]="Show detailed view of a single task"
   [sync]="Sync tasks with TodoWrite (inject/extract/status)"
   [analyze]="Task triage with leverage scoring and bottleneck detection"
+  [config]="View and modify configuration settings"
 )
 
 # ============================================
@@ -457,6 +459,7 @@ declare -A CMD_ALIASES=(
   [edit]="update"
   [rm]="archive"
   [check]="validate"
+  [cfg]="config"
   [overview]="dash"
   [tags]="labels"
 )
@@ -705,18 +708,57 @@ case "$CMD" in
     else
       echo "Unknown command: $CMD"
       echo ""
-      echo "Did you mean one of these?"
-      # Suggest similar commands
+
+      # Collect suggestions using multiple matching strategies
+      declare -a suggestions=()
+      cmd_lower="${CMD,,}"
+      first_char="${cmd_lower:0:1}"
+
+      # Strategy 1: Substring match (original)
       for cmd in "${!CMD_MAP[@]}" "${!CMD_ALIASES[@]}"; do
         if [[ "$cmd" == *"$CMD"* ]] || [[ "$CMD" == *"$cmd"* ]]; then
-          echo "  $cmd"
+          suggestions+=("$cmd")
         fi
       done
+
+      # Strategy 2: Common prefix match (e.g., "fo" matches "focus")
+      if [[ ${#suggestions[@]} -eq 0 ]]; then
+        for cmd in "${!CMD_MAP[@]}" "${!CMD_ALIASES[@]}"; do
+          if [[ "$cmd" == "$cmd_lower"* ]] || [[ "${cmd,,}" == "$cmd_lower"* ]]; then
+            suggestions+=("$cmd")
+          fi
+        done
+      fi
+
+      # Strategy 3: First letter match
+      if [[ ${#suggestions[@]} -eq 0 && -n "$first_char" ]]; then
+        for cmd in "${!CMD_MAP[@]}" "${!CMD_ALIASES[@]}"; do
+          if [[ "${cmd:0:1}" == "$first_char" ]]; then
+            suggestions+=("$cmd")
+          fi
+        done
+      fi
+
+      # Strategy 4: Show common commands if still no matches
+      if [[ ${#suggestions[@]} -eq 0 ]]; then
+        suggestions=("list" "add" "show" "update" "complete" "focus" "help")
+      fi
+
+      # Also check plugins
       [[ ${#PLUGIN_MAP[@]} -gt 0 ]] && for plugin in "${!PLUGIN_MAP[@]}"; do
-        if [[ "$plugin" == *"$CMD"* ]] || [[ "$CMD" == *"$plugin"* ]]; then
-          echo "  $plugin"
+        if [[ "$plugin" == *"$CMD"* ]] || [[ "$CMD" == *"$plugin"* ]] || [[ "${plugin:0:1}" == "$first_char" ]]; then
+          suggestions+=("$plugin")
         fi
       done
+
+      # Display suggestions (deduplicated)
+      if [[ ${#suggestions[@]} -gt 0 ]]; then
+        echo "Did you mean one of these?"
+        printf '%s\n' "${suggestions[@]}" | sort -u | while read -r s; do
+          echo "  $s"
+        done
+      fi
+
       echo ""
       echo "Run 'claude-todo help' for available commands."
       exit 1
@@ -1000,6 +1042,25 @@ else
     echo "alias ct-focus='claude-todo focus'" >> "$SHELL_CONFIG"
   fi
   log_info "Added aliases to $SHELL_CONFIG"
+fi
+
+# ============================================
+# GLOBAL CONFIG INITIALIZATION
+# ============================================
+log_step "Initializing global configuration..."
+
+GLOBAL_CONFIG_FILE="$INSTALL_DIR/config.json"
+GLOBAL_CONFIG_TEMPLATE="$INSTALL_DIR/templates/global-config.template.json"
+
+if [[ ! -f "$GLOBAL_CONFIG_FILE" ]]; then
+  if [[ -f "$GLOBAL_CONFIG_TEMPLATE" ]]; then
+    cp "$GLOBAL_CONFIG_TEMPLATE" "$GLOBAL_CONFIG_FILE"
+    log_info "Created global config: $GLOBAL_CONFIG_FILE"
+  else
+    log_warn "Global config template not found, skipping"
+  fi
+else
+  log_info "Global config already exists: $GLOBAL_CONFIG_FILE"
 fi
 
 # ============================================

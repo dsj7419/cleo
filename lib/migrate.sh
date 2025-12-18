@@ -20,7 +20,7 @@ source "$SCRIPT_DIR/logging.sh"
 # ============================================================================
 
 # Current schema versions (single source of truth)
-SCHEMA_VERSION_TODO="2.2.0"
+SCHEMA_VERSION_TODO="2.3.0"
 SCHEMA_VERSION_CONFIG="2.1.0"
 SCHEMA_VERSION_ARCHIVE="2.1.0"
 SCHEMA_VERSION_LOG="2.1.0"
@@ -511,6 +511,144 @@ migrate_todo_to_2_2_0() {
     # Log migration if log_migration is available
     if declare -f log_migration >/dev/null 2>&1; then
         log_migration "$file" "todo" "2.1.0" "2.2.0"
+    fi
+
+    return 0
+}
+
+# Migration from 2.2.0 to 2.3.0 for todo.json
+# Adds hierarchy fields: type, parentId, size
+# Migrates label conventions to structured fields
+migrate_todo_to_2_3_0() {
+    local file="$1"
+    local temp_file="${file}.tmp"
+
+    echo "  Adding hierarchy fields (type, parentId, size) to tasks..."
+
+    # Perform the migration with jq
+    # - Add type: "task" if missing
+    # - Add parentId: null if missing
+    # - Add size: null if missing (optional field)
+    # - Migrate label conventions:
+    #   - "type:epic" → type: "epic", remove label
+    #   - "type:task" → type: "task", remove label
+    #   - "type:subtask" → type: "subtask", remove label
+    #   - "parent:T001" → parentId: "T001", remove label
+    #   - "size:small" → size: "small", remove label
+    #   - "size:medium" → size: "medium", remove label
+    #   - "size:large" → size: "large", remove label
+    jq '
+        # Helper to extract type from labels
+        def extract_type_from_labels:
+            if . then
+                . as $labels |
+                if ($labels | any(startswith("type:"))) then
+                    ($labels | map(select(startswith("type:"))) | .[0] | split(":")[1] // "task")
+                else
+                    "task"
+                end
+            else
+                "task"
+            end;
+
+        # Helper to extract parent from labels
+        def extract_parent_from_labels:
+            if . then
+                . as $labels |
+                if ($labels | any(startswith("parent:"))) then
+                    ($labels | map(select(startswith("parent:"))) | .[0] | split(":")[1] // null)
+                else
+                    null
+                end
+            else
+                null
+            end;
+
+        # Helper to extract size from labels
+        def extract_size_from_labels:
+            if . then
+                . as $labels |
+                if ($labels | any(startswith("size:"))) then
+                    ($labels | map(select(startswith("size:"))) | .[0] | split(":")[1] // null)
+                else
+                    null
+                end
+            else
+                null
+            end;
+
+        # Helper to clean labels (remove migrated ones)
+        def clean_labels:
+            if . then
+                map(select(
+                    (startswith("type:") | not) and
+                    (startswith("parent:") | not) and
+                    (startswith("size:") | not)
+                ))
+            else
+                []
+            end;
+
+        # Migrate each task
+        .tasks = [.tasks[] |
+            # Extract values from labels if present
+            (.labels // []) as $labels |
+
+            # Set type: use existing, or extract from labels, or default to "task"
+            .type = (.type // ($labels | extract_type_from_labels)) |
+
+            # Set parentId: use existing, or extract from labels, or null
+            .parentId = (.parentId // ($labels | extract_parent_from_labels)) |
+
+            # Set size: use existing, or extract from labels, or null (optional)
+            (if .size == null then
+                .size = ($labels | extract_size_from_labels)
+            else
+                .
+            end) |
+
+            # Clean up migrated labels
+            .labels = ($labels | clean_labels)
+        ] |
+
+        # Update version
+        .version = "2.3.0"
+    ' "$file" > "$temp_file" || {
+        echo "ERROR: Failed to add hierarchy fields" >&2
+        rm -f "$temp_file"
+        return 1
+    }
+
+    # Validate the result
+    if ! jq empty "$temp_file" 2>/dev/null; then
+        echo "ERROR: Migration produced invalid JSON" >&2
+        rm -f "$temp_file"
+        return 1
+    fi
+
+    # Atomic replace
+    mv "$temp_file" "$file" || {
+        echo "ERROR: Failed to update file" >&2
+        return 1
+    }
+
+    # Count tasks with hierarchy fields
+    local task_count type_epic type_task type_subtask with_parent
+    task_count=$(jq '.tasks | length' "$file")
+    type_epic=$(jq '[.tasks[] | select(.type == "epic")] | length' "$file")
+    type_task=$(jq '[.tasks[] | select(.type == "task")] | length' "$file")
+    type_subtask=$(jq '[.tasks[] | select(.type == "subtask")] | length' "$file")
+    with_parent=$(jq '[.tasks[] | select(.parentId != null)] | length' "$file")
+
+    echo "  Migrated $task_count tasks:"
+    echo "    - Epic: $type_epic"
+    echo "    - Task: $type_task"
+    echo "    - Subtask: $type_subtask"
+    echo "    - With parent: $with_parent"
+
+    # Log migration if log_migration is available
+    if declare -f log_migration >/dev/null 2>&1; then
+        log_migration "$file" "todo" "2.2.0" "2.3.0"
     fi
 
     return 0

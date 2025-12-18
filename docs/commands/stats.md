@@ -97,7 +97,7 @@ claude-todo stats -f json
 
 ```json
 {
-  "$schema": "https://claude-todo.dev/schemas/output-v2.json",
+  "$schema": "https://claude-todo.dev/schemas/output.schema.json",
   "_meta": {
     "format": "json",
     "version": "0.12.0",

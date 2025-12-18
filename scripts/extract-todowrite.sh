@@ -57,6 +57,7 @@ LOG_FILE=".claude/todo-log.json"
 TODOWRITE_INPUT=""
 DRY_RUN=false
 QUIET=false
+DEFAULT_PHASE=""
 
 # =============================================================================
 # Help
@@ -86,9 +87,10 @@ CONFLICT RESOLUTION
     - Warn but don't fail on conflicts
 
 OPTIONS
-    --dry-run         Show changes without modifying files
-    --quiet, -q       Suppress info messages
-    --help, -h        Show this help
+    --default-phase SLUG  Override default phase for new tasks (without [T###] prefix)
+    --dry-run             Show changes without modifying files
+    --quiet, -q           Suppress info messages
+    --help, -h            Show this help
 
 INPUT FORMAT
     {
@@ -105,6 +107,9 @@ EXAMPLES
     # Dry run to preview changes
     claude-todo sync --extract --dry-run /tmp/todowrite-state.json
 
+    # Override default phase for new tasks
+    claude-todo sync --extract --default-phase polish /tmp/todowrite-state.json
+
 EOF
     exit 0
 }
@@ -115,6 +120,10 @@ EOF
 parse_args() {
     while [[ $# -gt 0 ]]; do
         case "$1" in
+            --default-phase)
+                DEFAULT_PHASE="$2"
+                shift 2
+                ;;
             --dry-run)
                 DRY_RUN=true
                 shift
@@ -247,12 +256,21 @@ apply_changes() {
     local changes_made=0
 
     # Phase inheritance for new tasks (T258)
-    # Strategy: focus task phase → most active phase → project.currentPhase (via add-task.sh)
+    # Priority order:
+    # 1. --default-phase flag (explicit override)
+    # 2. focus task phase from session metadata
+    # 3. most active phase (phase with most non-done tasks)
+    # 4. project.currentPhase (automatic via add-task.sh)
+    # 5. config.defaults.phase (automatic via add-task.sh)
     local inherit_phase=""
     local phase_source=""
 
-    # 1. Try focused task's phase from session metadata
-    if [[ -f "$STATE_FILE" ]]; then
+    # 1. Check for explicit --default-phase flag override
+    if [[ -n "$DEFAULT_PHASE" ]]; then
+        inherit_phase="$DEFAULT_PHASE"
+        phase_source="flag"
+    # 2. Try focused task's phase from session metadata
+    elif [[ -f "$STATE_FILE" ]]; then
         local focus_id
         focus_id=$(jq -r '.injected_tasks[0] // ""' "$STATE_FILE" 2>/dev/null || echo "")
 
@@ -264,7 +282,7 @@ apply_changes() {
         fi
     fi
 
-    # 2. Fallback to most active phase (phase with most non-done tasks)
+    # 3. Fallback to most active phase (phase with most non-done tasks)
     if [[ -z "$inherit_phase" || "$inherit_phase" == "null" ]]; then
         inherit_phase=$(jq -r '
             [.tasks[] | select(.status != "done") | .phase // empty] |
@@ -281,7 +299,7 @@ apply_changes() {
         fi
     fi
 
-    # 3. Final fallback to project.currentPhase handled by add-task.sh
+    # 4. Final fallback to project.currentPhase handled by add-task.sh
 
     # Process completed tasks
     while IFS= read -r task_id; do
@@ -422,6 +440,21 @@ main() {
     fi
 
     log_info "Analyzing TodoWrite state..."
+
+    # Check for phase changes during session
+    if [[ -f "$STATE_FILE" ]]; then
+        local injected_phase
+        injected_phase=$(jq -r '.injectedPhase // ""' "$STATE_FILE" 2>/dev/null || echo "")
+
+        local current_phase
+        current_phase=$(jq -r '.project.currentPhase // ""' "$TODO_FILE" 2>/dev/null || echo "")
+
+        # Warn if phase changed during session
+        if [[ -n "$injected_phase" && -n "$current_phase" && "$injected_phase" != "$current_phase" ]]; then
+            log_warn "Project phase changed during session: '$injected_phase' → '$current_phase'"
+            log_warn "New tasks will use current phase unless --default-phase is specified"
+        fi
+    fi
 
     # Analyze changes
     local changes_json

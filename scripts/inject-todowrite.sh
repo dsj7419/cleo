@@ -305,6 +305,10 @@ save_session_state() {
     local session_id
     session_id=$(jq -r '._meta.activeSession // "manual"' "$TODO_FILE" 2>/dev/null || echo "manual")
 
+    # Get current project phase
+    local current_phase
+    current_phase=$(jq -r '.project.currentPhase // ""' "$TODO_FILE" 2>/dev/null || echo "")
+
     # Build task metadata map (id -> {phase, priority, status})
     local task_metadata
     task_metadata=$(jq -c '[.tasks[] | {id, phase, priority, status}] | map({(.id): {phase, priority, status}}) | add' "$TODO_FILE")
@@ -312,18 +316,24 @@ save_session_state() {
     jq -n \
         --arg session_id "$session_id" \
         --arg injected_at "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
+        --arg injected_phase "$current_phase" \
         --argjson injected_ids "$injected_ids" \
         --argjson snapshot "$output_json" \
         --argjson task_metadata "$task_metadata" \
         '{
             session_id: $session_id,
             injected_at: $injected_at,
+            injectedPhase: $injected_phase,
             injected_tasks: $injected_ids,
             snapshot: $snapshot,
             task_metadata: $task_metadata
         }' > "$STATE_FILE"
 
-    log_info "Session state saved: $STATE_FILE"
+    if [[ -n "$current_phase" ]]; then
+        log_info "Session state saved: $STATE_FILE (phase: $current_phase)"
+    else
+        log_info "Session state saved: $STATE_FILE (no phase set)"
+    fi
 }
 
 # =============================================================================

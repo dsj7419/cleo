@@ -18,6 +18,20 @@ if [[ -f "$LIB_DIR/logging.sh" ]]; then
   source "$LIB_DIR/logging.sh"
 fi
 
+# Source output formatting and error libraries
+if [[ -f "$LIB_DIR/output-format.sh" ]]; then
+  # shellcheck source=../lib/output-format.sh
+  source "$LIB_DIR/output-format.sh"
+fi
+if [[ -f "$LIB_DIR/exit-codes.sh" ]]; then
+  # shellcheck source=../lib/exit-codes.sh
+  source "$LIB_DIR/exit-codes.sh"
+fi
+if [[ -f "$LIB_DIR/error-json.sh" ]]; then
+  # shellcheck source=../lib/error-json.sh
+  source "$LIB_DIR/error-json.sh"
+fi
+
 # Colors (respects NO_COLOR and FORCE_COLOR environment variables per https://no-color.org)
 if declare -f should_use_color >/dev/null 2>&1 && should_use_color; then
   RED='\033[0;31m'
@@ -35,6 +49,9 @@ COMPRESS=false
 VERBOSE=false
 CUSTOM_NAME=""
 LIST_MODE=false
+FORMAT=""
+QUIET=false
+COMMAND_NAME="backup"
 
 usage() {
   cat << EOF
@@ -48,6 +65,10 @@ Options:
   --name NAME         Custom backup name (appended to timestamp)
   --list              List available backups
   --verbose           Show detailed output
+  -f, --format FMT    Output format: text, json (default: auto-detect)
+  --human             Force human-readable text output
+  --json              Force JSON output
+  -q, --quiet         Suppress non-essential output
   -h, --help          Show this help
 
 Backs up:
@@ -62,30 +83,46 @@ Output:
   - Total size
   - Validation status
 
+JSON Output:
+  {
+    "_meta": {"command": "backup", "timestamp": "..."},
+    "success": true,
+    "backup": {"path": "/path/to/backup", "size": 1234, "tasksCount": 15, "files": [...]}
+  }
+
 Examples:
   $(basename "$0")                              # Default timestamped backup
   $(basename "$0") --name "before-refactor"     # Named backup
   $(basename "$0") --compress                   # Compressed backup
   $(basename "$0") --list                       # List all backups
+  $(basename "$0") --json                       # JSON output for scripting
 EOF
   exit 0
 }
 
-log_info()  { echo -e "${GREEN}[INFO]${NC} $1"; }
-log_warn()  { echo -e "${YELLOW}[WARN]${NC} $1"; }
-log_error() { echo -e "${RED}[ERROR]${NC} $1" >&2; }
-log_debug() { [[ "$VERBOSE" == true ]] && echo -e "${BLUE}[DEBUG]${NC} $1" || true; }
+log_info()  { [[ "$QUIET" != true && "$FORMAT" != "json" ]] && echo -e "${GREEN}[INFO]${NC} $1" || true; }
+log_warn()  { [[ "$FORMAT" != "json" ]] && echo -e "${YELLOW}[WARN]${NC} $1" || true; }
+log_error() { [[ "$FORMAT" != "json" ]] && echo -e "${RED}[ERROR]${NC} $1" >&2 || true; }
+log_debug() { [[ "$VERBOSE" == true && "$FORMAT" != "json" ]] && echo -e "${BLUE}[DEBUG]${NC} $1" || true; }
 
 # Check dependencies
 check_deps() {
   if ! command -v jq &> /dev/null; then
-    log_error "jq is required but not installed"
-    exit 1
+    if [[ "$FORMAT" == "json" ]] && declare -f output_error &>/dev/null; then
+      output_error "$E_DEPENDENCY_MISSING" "jq is required but not installed" "${EXIT_DEPENDENCY_ERROR:-5}" false "Install jq: apt install jq (Debian) or brew install jq (macOS)"
+    else
+      log_error "jq is required but not installed"
+    fi
+    exit "${EXIT_DEPENDENCY_ERROR:-1}"
   fi
 
   if [[ "$COMPRESS" == true ]] && ! command -v tar &> /dev/null; then
-    log_error "tar is required for compression but not installed"
-    exit 1
+    if [[ "$FORMAT" == "json" ]] && declare -f output_error &>/dev/null; then
+      output_error "$E_DEPENDENCY_MISSING" "tar is required for compression but not installed" "${EXIT_DEPENDENCY_ERROR:-5}" false "Install tar or use backup without --compress"
+    else
+      log_error "tar is required for compression but not installed"
+    fi
+    exit "${EXIT_DEPENDENCY_ERROR:-1}"
   fi
 }
 
@@ -125,17 +162,38 @@ get_size() {
 # List available backups
 list_backups() {
   local backup_dir="$1"
+  local json_backups="[]"  # For JSON output
 
   if [[ ! -d "$backup_dir" ]]; then
-    echo "No backups found"
+    if [[ "$FORMAT" == "json" ]]; then
+      jq -n \
+        --arg timestamp "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
+        --arg dir "$backup_dir" \
+        '{
+          "_meta": {
+            "command": "backup",
+            "subcommand": "list",
+            "timestamp": $timestamp,
+            "format": "json"
+          },
+          "success": true,
+          "backups": [],
+          "count": 0,
+          "directory": $dir
+        }'
+    else
+      echo "No backups found"
+    fi
     return 0
   fi
 
-  echo ""
-  echo -e "${BLUE}╔══════════════════════════════════════════════════════════════════════════════╗${NC}"
-  echo -e "${BLUE}║                           AVAILABLE BACKUPS                                  ║${NC}"
-  echo -e "${BLUE}╚══════════════════════════════════════════════════════════════════════════════╝${NC}"
-  echo ""
+  if [[ "$FORMAT" != "json" ]]; then
+    echo ""
+    echo -e "${BLUE}╔══════════════════════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BLUE}║                           AVAILABLE BACKUPS                                  ║${NC}"
+    echo -e "${BLUE}╚══════════════════════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+  fi
 
   # Find all backup directories and tarballs
   local found_backups=0
@@ -170,11 +228,33 @@ list_backups() {
               size_human="${total_size}B"
             fi
 
-            echo -e "  ${GREEN}▸${NC} ${BLUE}$backup_name${NC} [$backup_type_label]"
-            echo -e "    Timestamp: $timestamp"
-            echo -e "    Files: $file_count | Size: $size_human"
-            echo -e "    Path: $backup"
-            echo ""
+            if [[ "$FORMAT" == "json" ]]; then
+              json_backups=$(echo "$json_backups" | jq \
+                --arg name "$backup_name" \
+                --arg path "$backup" \
+                --arg type "$backup_type_label" \
+                --arg timestamp "$timestamp" \
+                --argjson fileCount "$file_count" \
+                --argjson size "$total_size" \
+                --arg sizeHuman "$size_human" \
+                --argjson compressed false \
+                '. + [{
+                  "name": $name,
+                  "path": $path,
+                  "type": $type,
+                  "timestamp": $timestamp,
+                  "fileCount": $fileCount,
+                  "size": $size,
+                  "sizeHuman": $sizeHuman,
+                  "compressed": $compressed
+                }]')
+            else
+              echo -e "  ${GREEN}▸${NC} ${BLUE}$backup_name${NC} [$backup_type_label]"
+              echo -e "    Timestamp: $timestamp"
+              echo -e "    Files: $file_count | Size: $size_human"
+              echo -e "    Path: $backup"
+              echo ""
+            fi
           fi
         fi
       done < <(find "$type_dir" -maxdepth 1 -mindepth 1 -type d -print0 2>/dev/null | sort -z)
@@ -206,11 +286,32 @@ list_backups() {
           size_human="${total_size}B"
         fi
 
-        echo -e "  ${GREEN}▸${NC} ${BLUE}$backup_name${NC}"
-        echo -e "    Timestamp: $timestamp"
-        echo -e "    Files: $file_count | Size: $size_human"
-        echo -e "    Path: $backup"
-        echo ""
+        if [[ "$FORMAT" == "json" ]]; then
+          json_backups=$(echo "$json_backups" | jq \
+            --arg name "$backup_name" \
+            --arg path "$backup" \
+            --arg timestamp "$timestamp" \
+            --argjson fileCount "$file_count" \
+            --argjson size "$total_size" \
+            --arg sizeHuman "$size_human" \
+            --argjson compressed false \
+            '. + [{
+              "name": $name,
+              "path": $path,
+              "type": "legacy",
+              "timestamp": $timestamp,
+              "fileCount": $fileCount,
+              "size": $size,
+              "sizeHuman": $sizeHuman,
+              "compressed": $compressed
+            }]')
+        else
+          echo -e "  ${GREEN}▸${NC} ${BLUE}$backup_name${NC}"
+          echo -e "    Timestamp: $timestamp"
+          echo -e "    Files: $file_count | Size: $size_human"
+          echo -e "    Path: $backup"
+          echo ""
+        fi
       else
         # No metadata, just show basic info
         local mtime
@@ -220,10 +321,25 @@ list_backups() {
           mtime=$(stat -c "%y" "$backup" 2>/dev/null | cut -d'.' -f1 || echo "unknown")
         fi
 
-        echo -e "  ${GREEN}▸${NC} ${BLUE}$backup_name${NC}"
-        echo -e "    Modified: $mtime"
-        echo -e "    Path: $backup"
-        echo ""
+        if [[ "$FORMAT" == "json" ]]; then
+          json_backups=$(echo "$json_backups" | jq \
+            --arg name "$backup_name" \
+            --arg path "$backup" \
+            --arg modified "$mtime" \
+            --argjson compressed false \
+            '. + [{
+              "name": $name,
+              "path": $path,
+              "type": "legacy",
+              "modified": $modified,
+              "compressed": $compressed
+            }]')
+        else
+          echo -e "  ${GREEN}▸${NC} ${BLUE}$backup_name${NC}"
+          echo -e "    Modified: $mtime"
+          echo -e "    Path: $backup"
+          echo ""
+        fi
       fi
     fi
   done < <(find "$backup_dir" -maxdepth 1 -type d -name "backup_*" -print0 2>/dev/null | sort -z)
@@ -236,6 +352,8 @@ list_backups() {
       tarball_name=$(basename "$tarball")
       local size
       size=$(get_size "$tarball")
+      local size_bytes
+      size_bytes=$(stat -c%s "$tarball" 2>/dev/null || stat -f%z "$tarball" 2>/dev/null || echo 0)
 
       local mtime
       if [[ "$(uname)" == "Darwin" ]]; then
@@ -244,17 +362,58 @@ list_backups() {
         mtime=$(stat -c "%y" "$tarball" 2>/dev/null | cut -d'.' -f1 || echo "unknown")
       fi
 
-      echo -e "  ${GREEN}▸${NC} ${BLUE}$tarball_name${NC} (compressed)"
-      echo -e "    Modified: $mtime"
-      echo -e "    Size: $size"
-      echo -e "    Path: $tarball"
-      echo ""
+      if [[ "$FORMAT" == "json" ]]; then
+        json_backups=$(echo "$json_backups" | jq \
+          --arg name "$tarball_name" \
+          --arg path "$tarball" \
+          --arg modified "$mtime" \
+          --argjson size "$size_bytes" \
+          --arg sizeHuman "$size" \
+          --argjson compressed true \
+          '. + [{
+            "name": $name,
+            "path": $path,
+            "type": "compressed",
+            "modified": $modified,
+            "size": $size,
+            "sizeHuman": $sizeHuman,
+            "compressed": $compressed
+          }]')
+      else
+        echo -e "  ${GREEN}▸${NC} ${BLUE}$tarball_name${NC} (compressed)"
+        echo -e "    Modified: $mtime"
+        echo -e "    Size: $size"
+        echo -e "    Path: $tarball"
+        echo ""
+      fi
     fi
   done < <(find "$backup_dir" -maxdepth 1 -type f -name "backup_*.tar.gz" -print0 2>/dev/null | sort -z)
 
-  if [[ $found_backups -eq 0 ]]; then
-    echo "  No backups found in: $backup_dir"
-    echo ""
+  if [[ "$FORMAT" == "json" ]]; then
+    local count
+    count=$(echo "$json_backups" | jq 'length')
+    jq -n \
+      --arg timestamp "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
+      --arg dir "$backup_dir" \
+      --argjson backups "$json_backups" \
+      --argjson count "$count" \
+      '{
+        "_meta": {
+          "command": "backup",
+          "subcommand": "list",
+          "timestamp": $timestamp,
+          "format": "json"
+        },
+        "success": true,
+        "backups": $backups,
+        "count": $count,
+        "directory": $dir
+      }'
+  else
+    if [[ $found_backups -eq 0 ]]; then
+      echo "  No backups found in: $backup_dir"
+      echo ""
+    fi
   fi
 
   return 0
@@ -283,6 +442,22 @@ while [[ $# -gt 0 ]]; do
       VERBOSE=true
       shift
       ;;
+    -f|--format)
+      FORMAT="$2"
+      shift 2
+      ;;
+    --human)
+      FORMAT="text"
+      shift
+      ;;
+    --json)
+      FORMAT="json"
+      shift
+      ;;
+    -q|--quiet)
+      QUIET=true
+      shift
+      ;;
     -h|--help)
       usage
       ;;
@@ -295,6 +470,13 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+# Resolve output format (CLI > env > config > TTY-aware default)
+if declare -f resolve_format &>/dev/null; then
+  FORMAT=$(resolve_format "$FORMAT")
+else
+  FORMAT="${FORMAT:-text}"
+fi
 
 check_deps
 
@@ -446,26 +628,65 @@ else
   TOTAL_SIZE_HUMAN="${TOTAL_SIZE}B"
 fi
 
-# Summary
-echo ""
-echo -e "${GREEN}╔══════════════════════════════════════════════════════════╗${NC}"
-echo -e "${GREEN}║              BACKUP COMPLETED SUCCESSFULLY               ║${NC}"
-echo -e "${GREEN}╚══════════════════════════════════════════════════════════╝${NC}"
-echo ""
-echo -e "  ${BLUE}Backup Location:${NC}"
-echo -e "    $BACKUP_PATH"
-echo ""
-echo -e "  ${BLUE}Files Included:${NC}"
-for file in "${BACKED_UP_FILES[@]}"; do
-  echo -e "    ✓ $file"
-done
-echo ""
-echo -e "  ${BLUE}Total Size:${NC} $TOTAL_SIZE_HUMAN"
-echo ""
+# Get tasks count from todo.json for JSON output
+TASKS_COUNT=0
+if [[ -f "$TODO_FILE" ]]; then
+  TASKS_COUNT=$(jq '.tasks | length' "$TODO_FILE" 2>/dev/null || echo 0)
+fi
 
-if [[ $VALIDATION_ERRORS -gt 0 ]]; then
-  echo -e "  ${YELLOW}⚠  Warning:${NC} $VALIDATION_ERRORS file(s) had issues during backup"
+# Summary
+if [[ "$FORMAT" == "json" ]]; then
+  # JSON output
+  jq -n \
+    --arg timestamp "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
+    --arg path "$BACKUP_PATH" \
+    --arg name "$BACKUP_NAME" \
+    --argjson size "$TOTAL_SIZE" \
+    --arg sizeHuman "$TOTAL_SIZE_HUMAN" \
+    --argjson tasksCount "$TASKS_COUNT" \
+    --argjson compressed "$COMPRESS" \
+    --argjson validationWarnings "$VALIDATION_ERRORS" \
+    --argjson files "$(printf '%s\n' "${BACKED_UP_FILES[@]}" | jq -R . | jq -s .)" \
+    '{
+      "_meta": {
+        "command": "backup",
+        "timestamp": $timestamp,
+        "format": "json"
+      },
+      "success": true,
+      "backup": {
+        "path": $path,
+        "name": $name,
+        "size": $size,
+        "sizeHuman": $sizeHuman,
+        "tasksCount": $tasksCount,
+        "files": $files,
+        "compressed": $compressed,
+        "validationWarnings": $validationWarnings
+      }
+    }'
+else
+  # Text output
   echo ""
+  echo -e "${GREEN}╔══════════════════════════════════════════════════════════╗${NC}"
+  echo -e "${GREEN}║              BACKUP COMPLETED SUCCESSFULLY               ║${NC}"
+  echo -e "${GREEN}╚══════════════════════════════════════════════════════════╝${NC}"
+  echo ""
+  echo -e "  ${BLUE}Backup Location:${NC}"
+  echo -e "    $BACKUP_PATH"
+  echo ""
+  echo -e "  ${BLUE}Files Included:${NC}"
+  for file in "${BACKED_UP_FILES[@]}"; do
+    echo -e "    ✓ $file"
+  done
+  echo ""
+  echo -e "  ${BLUE}Total Size:${NC} $TOTAL_SIZE_HUMAN"
+  echo ""
+
+  if [[ $VALIDATION_ERRORS -gt 0 ]]; then
+    echo -e "  ${YELLOW}⚠  Warning:${NC} $VALIDATION_ERRORS file(s) had issues during backup"
+    echo ""
+  fi
 fi
 
 # Clean old backups if configured

@@ -17,6 +17,9 @@ fi
 if [[ -f "$LIB_DIR/output-format.sh" ]]; then
   source "$LIB_DIR/output-format.sh"
 fi
+if [[ -f "$LIB_DIR/exit-codes.sh" ]]; then
+  source "$LIB_DIR/exit-codes.sh"
+fi
 
 # Colors (respects NO_COLOR and FORCE_COLOR environment variables)
 if declare -f should_use_color >/dev/null 2>&1 && should_use_color; then
@@ -32,17 +35,23 @@ else
   RED='' GREEN='' YELLOW='' BLUE='' CYAN='' BOLD='' DIM='' NC=''
 fi
 
-# Exit codes
-EXIT_SUCCESS=0
-EXIT_NOT_FOUND=1
-EXIT_INVALID_ID=2
-EXIT_FILE_ERROR=3
+# Exit codes (only set if exit-codes.sh was not loaded)
+if [[ -z "${_EXIT_CODES_SH_LOADED:-}" ]]; then
+  EXIT_SUCCESS=0
+  EXIT_NOT_FOUND=1
+  EXIT_INVALID_ID=2
+  EXIT_FILE_ERROR=3
+else
+  # Map to standard exit codes from exit-codes.sh
+  EXIT_INVALID_ID="${EXIT_INVALID_INPUT:-2}"
+fi
 
 # Options
 FORMAT="text"
 INCLUDE_ARCHIVE=false
 SHOW_HISTORY=false
 SHOW_RELATED=false
+QUIET=false
 
 usage() {
   cat << EOF
@@ -55,6 +64,7 @@ Arguments:
 
 Options:
   -f, --format FORMAT Output format: text (default) or json
+  -q, --quiet         Suppress decorative output (headers, borders)
   --include-archive   Search archive if not found in active tasks
   --history           Show task history from log
   --related           Show related tasks (same labels)
@@ -161,6 +171,62 @@ get_related_tasks() {
     select(any(.labels[]; . as $l | $labels | index($l))) |
     "\(.id): \(.title) [\(.status)]"
   ' "$file" 2>/dev/null | head -5
+}
+
+# Display task in quiet text format (no decorations)
+display_text_quiet() {
+  local task="$1"
+  local source="$2"
+
+  local id=$(echo "$task" | jq -r '.id')
+  local title=$(echo "$task" | jq -r '.title')
+  local status=$(echo "$task" | jq -r '.status')
+  local priority=$(echo "$task" | jq -r '.priority // "medium"')
+  local description=$(echo "$task" | jq -r '.description // ""')
+  local phase=$(echo "$task" | jq -r '.phase // ""')
+  local labels=$(echo "$task" | jq -r '.labels // [] | join(", ")')
+  local labels_json=$(echo "$task" | jq '.labels // []')
+  local depends=$(echo "$task" | jq -r '.depends // [] | join(", ")')
+  local created=$(echo "$task" | jq -r '.createdAt // "" | split("T")[0]')
+  local completed=$(echo "$task" | jq -r '.completedAt // "" | split("T")[0]')
+  local notes=$(echo "$task" | jq -r '.notes // []')
+  local blocked_by=$(echo "$task" | jq -r '.blockedBy // ""')
+
+  local symbol=$(status_symbol "$status")
+
+  # Core info - compact format
+  echo "$id $symbol $title [$priority]"
+  echo "Status: $status"
+  [[ -n "$phase" && "$phase" != "null" ]] && echo "Phase: $phase"
+  [[ -n "$labels" ]] && echo "Labels: $labels"
+  [[ -n "$depends" ]] && echo "Depends: $depends"
+  [[ -n "$blocked_by" && "$blocked_by" != "null" ]] && echo "Blocked by: $blocked_by"
+
+  if [[ -n "$description" && "$description" != "null" ]]; then
+    echo "Description: $description"
+  fi
+
+  [[ "$source" == "archive" ]] && echo "Source: archived"
+
+  # Notes count
+  local notes_count=$(echo "$notes" | jq 'length')
+  [[ "$notes_count" -gt 0 ]] && echo "Notes: $notes_count"
+
+  # Dependents
+  local dependents=$(get_dependents "$id" "$TODO_FILE")
+  [[ -n "$dependents" ]] && echo "Blocking: $(echo "$dependents" | wc -l | tr -d ' ') tasks"
+
+  # History (if requested)
+  if [[ "$SHOW_HISTORY" == true ]]; then
+    local history=$(get_task_history "$id")
+    [[ -n "$history" ]] && echo "History: $(echo "$history" | wc -l | tr -d ' ') entries"
+  fi
+
+  # Related (if requested)
+  if [[ "$SHOW_RELATED" == true ]]; then
+    local related=$(get_related_tasks "$labels_json" "$id" "$TODO_FILE")
+    [[ -n "$related" ]] && echo "Related: $(echo "$related" | wc -l | tr -d ' ') tasks"
+  fi
 }
 
 # Display task in text format
@@ -345,6 +411,10 @@ while [[ $# -gt 0 ]]; do
       SHOW_RELATED=true
       shift
       ;;
+    -q|--quiet)
+      QUIET=true
+      shift
+      ;;
     -*)
       echo "Unknown option: $1" >&2
       usage
@@ -416,7 +486,11 @@ case "$FORMAT" in
     display_json "$TASK" "$SOURCE"
     ;;
   text|*)
-    display_text "$TASK" "$SOURCE"
+    if [[ "$QUIET" == true ]]; then
+      display_text_quiet "$TASK" "$SOURCE"
+    else
+      display_text "$TASK" "$SOURCE"
+    fi
     ;;
 esac
 
