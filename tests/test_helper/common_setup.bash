@@ -81,6 +81,7 @@ _setup_scripts() {
     export BACKUP_SCRIPT="${SCRIPTS_DIR}/backup.sh"
     export RESTORE_SCRIPT="${SCRIPTS_DIR}/restore.sh"
     export PHASE_SCRIPT="${SCRIPTS_DIR}/phase.sh"
+    export FIND_SCRIPT="${SCRIPTS_DIR}/find.sh"
 }
 
 # Standard setup every test file uses

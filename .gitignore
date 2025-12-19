@@ -50,6 +50,9 @@ test-output/
 test-results/
 coverage/
 
+# Compliance checker cache
+dev/.compliance-cache/
+
 # Backup files created during testing
 *.backup
 *.bak
