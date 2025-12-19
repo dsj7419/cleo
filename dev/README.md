@@ -10,6 +10,21 @@ Scripts for project development and maintenance. **Not shipped to users.**
 | `validate-version.sh` | Verify version consistency |
 | `benchmark-performance.sh` | Performance testing |
 | `check-compliance.sh` | LLM-Agent-First compliance validation |
+| `test-rollback.sh` | Test phase rollback feature |
+
+## Shared Library (`lib/`)
+
+The `dev/lib/` directory contains shared utilities for all dev scripts:
+
+| Module | Purpose |
+|--------|---------|
+| `dev-colors.sh` | Color codes and Unicode symbols (NO_COLOR support) |
+| `dev-exit-codes.sh` | Standardized exit code constants |
+| `dev-output.sh` | Logging functions (log_info, log_error, etc.) |
+| `dev-common.sh` | Common utilities (file ops, patterns, timestamps) |
+| `dev-progress.sh` | Progress bars, spinners, and timing |
+
+See [`lib/README.md`](lib/README.md) for detailed documentation.
 
 ## Usage
 
@@ -112,7 +127,18 @@ The compliance rules are defined in `dev/compliance/schema.json`. To add new req
 
 ```
 dev/
-├── check-compliance.sh          # Main entry point
+├── bump-version.sh              # Version bump script
+├── validate-version.sh          # Version validation
+├── benchmark-performance.sh     # Performance testing
+├── check-compliance.sh          # Compliance validator (main entry)
+├── test-rollback.sh             # Rollback tests
+├── lib/                         # Shared dev library
+│   ├── dev-colors.sh            # Colors and symbols
+│   ├── dev-exit-codes.sh        # Exit code constants
+│   ├── dev-output.sh            # Logging functions
+│   ├── dev-common.sh            # Common utilities
+│   ├── dev-progress.sh          # Progress bars and timing
+│   └── README.md                # Library documentation
 ├── compliance/
 │   ├── schema.json              # Central validation rules
 │   ├── checks/
@@ -122,7 +148,7 @@ dev/
 │   │   ├── exit-codes.sh        # Exit code usage checks
 │   │   └── errors.sh            # Error handling checks
 │   └── lib/
-│       └── test-helpers.sh      # Common test utilities
+│       └── test-helpers.sh      # Compliance-specific utilities
 └── .compliance-cache/           # Incremental check cache (gitignored)
 ```
 

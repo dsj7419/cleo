@@ -1,0 +1,104 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Dev Scripts Compliance Schema",
+  "description": "Validation rules for claude-todo development scripts (dev/)",
+  "version": "1.0.0",
+  "specVersion": "1.0",
+
+  "requirements": {
+    "foundation": {
+      "libraries": {
+        "required": ["dev-common.sh"],
+        "optional": ["dev-colors.sh", "dev-exit-codes.sh", "dev-output.sh", "dev-progress.sh"],
+        "patterns": {
+          "dev_lib_source": "source.*dev-common\\.sh|source.*DEV_LIB_DIR"
+        }
+      },
+      "variables": {
+        "required": ["SCRIPT_DIR", "DEV_LIB_DIR"],
+        "optional": ["PROJECT_ROOT", "TOOL_VERSION"],
+        "patterns": {
+          "script_dir": "SCRIPT_DIR=",
+          "dev_lib_dir": "DEV_LIB_DIR="
+        }
+      }
+    },
+
+    "flags": {
+      "universal": {
+        "required": ["--help"],
+        "optional": ["--verbose", "--quiet", "--dry-run"],
+        "patterns": {
+          "help_flag": "-h[|]--help|--help[)]",
+          "verbose_flag": "-v[|]--verbose|--verbose[)]",
+          "quiet_flag": "-q[|]--quiet|--quiet[)]",
+          "dry_run_flag": "--dry-run[)]"
+        }
+      }
+    },
+
+    "exit_codes": {
+      "required_constants": true,
+      "pattern": "exit.*\\$DEV_EXIT_|DEV_EXIT_",
+      "forbidden": "exit [0-9](?!\\})"
+    },
+
+    "error_handling": {
+      "required_function": "log_error|dev_die",
+      "patterns": {
+        "log_error": "log_error",
+        "dev_die": "dev_die"
+      }
+    },
+
+    "output": {
+      "patterns": {
+        "log_info": "log_info",
+        "log_step": "log_step"
+      }
+    }
+  },
+
+  "commands": {
+    "core": ["bump-version", "validate-version", "check-compliance"],
+    "testing": ["benchmark-performance", "test-rollback"],
+    "utilities": []
+  },
+
+  "commandScripts": {
+    "bump-version": "bump-version.sh",
+    "validate-version": "validate-version.sh",
+    "check-compliance": "check-compliance.sh",
+    "benchmark-performance": "benchmark-performance.sh",
+    "test-rollback": "test-rollback.sh"
+  },
+
+  "scoring": {
+    "dev_lib_source": 20,
+    "script_dir": 10,
+    "dev_lib_dir": 10,
+    "help_flag": 15,
+    "verbose_flag": 5,
+    "dry_run_flag": 5,
+    "exit_constants": 15,
+    "log_error": 10,
+    "log_info": 10
+  },
+
+  "thresholds": {
+    "pass": 80,
+    "warn": 60,
+    "fail": 0
+  },
+
+  "notes": {
+    "description": "Dev scripts have relaxed requirements compared to main scripts",
+    "differences": [
+      "Use dev/lib/ instead of lib/",
+      "Use DEV_EXIT_* instead of EXIT_*",
+      "Use log_error/log_info instead of output_error",
+      "JSON output optional (not required)",
+      "Lower compliance threshold (80% vs 95%)"
+    ]
+  }
+}

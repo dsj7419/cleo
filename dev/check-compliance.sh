@@ -40,9 +40,13 @@ SPECIFIC_COMMAND=""
 SPECIFIC_CHECK=""
 DISCOVER_MODE=false
 SUGGEST_FIXES=false
+DEV_SCRIPTS_MODE=false
+
+# Paths for dev scripts mode
+DEV_SCRIPTS_SCHEMA="$COMPLIANCE_DIR/dev-schema.json"
 
 # Version
-TOOL_VERSION="1.1.0"
+TOOL_VERSION="1.2.0"
 
 # Print usage
 usage() {
@@ -63,6 +67,7 @@ Options:
       --static-only         Skip runtime JSON tests
       --discover            Find scripts not in schema (untracked)
       --suggest             Add LLM-actionable fix suggestions to output
+      --dev-scripts         Check dev/ scripts instead of main scripts/
   -v, --verbose             Show detailed check output
   -q, --quiet               Only show failures and summary
   -h, --help                Show this help message
@@ -127,6 +132,10 @@ parse_args() {
                 ;;
             --suggest)
                 SUGGEST_FIXES=true
+                shift
+                ;;
+            --dev-scripts)
+                DEV_SCRIPTS_MODE=true
                 shift
                 ;;
             -v|--verbose)
@@ -196,6 +205,9 @@ discover_untracked_scripts() {
     local all_scripts
     all_scripts=$(ls "$SCRIPTS_DIR"/*.sh 2>/dev/null | xargs -n1 basename | grep -v '\.backup$' | sort)
 
+    local dir_name
+    dir_name=$(basename "$SCRIPTS_DIR")
+
     local untracked=()
     for script in $all_scripts; do
         if ! echo "$tracked_scripts" | grep -qx "$script"; then
@@ -204,11 +216,11 @@ discover_untracked_scripts() {
     done
 
     if [[ ${#untracked[@]} -eq 0 ]]; then
-        echo -e "${GREEN}✓${NC} All scripts in scripts/ are tracked in schema"
+        echo -e "${GREEN}✓${NC} All scripts in ${dir_name}/ are tracked in schema"
         return 0
     fi
 
-    echo -e "${YELLOW}⚠${NC} Found ${#untracked[@]} untracked script(s):"
+    echo -e "${YELLOW}⚠${NC} Found ${#untracked[@]} untracked script(s) in ${dir_name}/:"
     for script in "${untracked[@]}"; do
         local cmd_name="${script%.sh}"
         cmd_name="${cmd_name%-task}"
@@ -765,13 +777,28 @@ EOF
 main() {
     parse_args "$@"
 
+    # Dev scripts mode - use different schema and paths
+    if [[ "$DEV_SCRIPTS_MODE" == "true" ]]; then
+        SCHEMA_PATH="$DEV_SCRIPTS_SCHEMA"
+        SCRIPTS_DIR="$PROJECT_ROOT/dev"
+        CACHE_FILE="$CACHE_DIR/dev-cache.json"
+
+        if [[ ! -f "$SCHEMA_PATH" ]]; then
+            echo -e "${RED}✗${NC} Dev scripts schema not found: $SCHEMA_PATH" >&2
+            echo -e "${DIM}Create it with: ./dev/check-compliance.sh --init-dev-schema${NC}" >&2
+            exit 1
+        fi
+    fi
+
     # Load schema
     local schema
     schema=$(load_schema_file)
 
     # Discovery mode - find untracked scripts and exit
     if [[ "$DISCOVER_MODE" == "true" ]]; then
-        echo -e "\n${BOLD}Script Discovery${NC}"
+        local target_name="Script"
+        [[ "$DEV_SCRIPTS_MODE" == "true" ]] && target_name="Dev Script"
+        echo -e "\n${BOLD}${target_name} Discovery${NC}"
         echo "================"
         discover_untracked_scripts "$schema"
         exit $?

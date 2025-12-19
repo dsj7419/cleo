@@ -1,30 +1,57 @@
 #!/usr/bin/env bash
 # test-helpers.sh - Common utilities for compliance checking
 # Part of LLM-Agent-First Compliance Validator
+#
+# This library provides both general utilities (via dev/lib/) and
+# compliance-specific functions for the check modules.
 
 set -euo pipefail
 
-# Colors for output (respects NO_COLOR)
-if [[ -z "${NO_COLOR:-}" ]] && [[ -t 1 ]]; then
-    RED='\033[0;31m'
-    GREEN='\033[0;32m'
-    YELLOW='\033[0;33m'
-    BLUE='\033[0;34m'
-    CYAN='\033[0;36m'
-    BOLD='\033[1m'
-    DIM='\033[2m'
-    NC='\033[0m'
+# ============================================================================
+# LIBRARY SOURCING
+# ============================================================================
+# Source shared dev library for common utilities (colors, output, patterns)
+_TEST_HELPERS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+_DEV_LIB_DIR="$(cd "$_TEST_HELPERS_DIR/../../lib" 2>/dev/null && pwd)" || _DEV_LIB_DIR=""
+
+if [[ -n "$_DEV_LIB_DIR" ]] && [[ -f "$_DEV_LIB_DIR/dev-common.sh" ]]; then
+    source "$_DEV_LIB_DIR/dev-common.sh"
 else
-    RED='' GREEN='' YELLOW='' BLUE='' CYAN='' BOLD='' DIM='' NC=''
+    # Fallback: define colors and symbols inline if dev/lib not available
+    if [[ -z "${NO_COLOR:-}" ]] && [[ -t 1 ]]; then
+        RED='\033[0;31m'
+        GREEN='\033[0;32m'
+        YELLOW='\033[0;33m'
+        BLUE='\033[0;34m'
+        CYAN='\033[0;36m'
+        BOLD='\033[1m'
+        DIM='\033[2m'
+        NC='\033[0m'
+    else
+        RED='' GREEN='' YELLOW='' BLUE='' CYAN='' BOLD='' DIM='' NC=''
+    fi
+
+    # Symbols (fallback)
+    PASS_SYM="✓"
+    FAIL_SYM="✗"
+    WARN_SYM="⚠"
+    SKIP_SYM="○"
+    INFO_SYM="ℹ"
+
+    # Pattern utilities (fallback if dev-common.sh not sourced)
+    pattern_exists() { grep -qE -- "$2" "$1" 2>/dev/null; }
+    pattern_count() { local c; c=$(grep -cE -- "$2" "$1" 2>/dev/null) || c=0; echo "$c" | tr -d '[:space:]'; }
+    pattern_matches() { grep -nE -- "$2" "$1" 2>/dev/null || true; }
+    calc_score() { local p="$1" t="$2"; [[ "$t" -eq 0 ]] && echo "0" && return; command -v bc &>/dev/null && echo "scale=1; $p * 100 / $t" | bc || awk "BEGIN {printf \"%.1f\", $p * 100 / $t}"; }
+    format_timestamp() { date -u +"%Y-%m-%dT%H:%M:%SZ"; }
+    get_file_hash() { command -v sha256sum &>/dev/null && sha256sum "$1" 2>/dev/null | cut -d' ' -f1 || command -v shasum &>/dev/null && shasum -a 256 "$1" 2>/dev/null | cut -d' ' -f1 || md5sum "$1" 2>/dev/null | cut -d' ' -f1 || echo "no-hash"; }
+    load_cache() { [[ -f "$1" ]] && cat "$1" || echo "{}"; }
+    file_changed() { local h; h=$(get_file_hash "$1"); local ch; ch=$(echo "$2" | jq -r ".files[\"$1\"].hash // empty" 2>/dev/null); [[ "$h" != "$ch" ]]; }
 fi
 
-# Symbols
-PASS_SYM="✓"
-FAIL_SYM="✗"
-WARN_SYM="⚠"
-SKIP_SYM="○"
-INFO_SYM="ℹ"
-
+# ============================================================================
+# COMPLIANCE-SPECIFIC STATE
+# ============================================================================
 # Global counters
 declare -g TOTAL_CHECKS=0
 declare -g PASSED_CHECKS=0
@@ -50,32 +77,8 @@ schema_get() {
     echo "$json" | jq -r "$path"
 }
 
-# Check if pattern exists in file
-# Usage: pattern_exists <file> <pattern>
-# Returns: 0 if found, 1 if not
-pattern_exists() {
-    local file="$1"
-    local pattern="$2"
-    grep -qE -- "$pattern" "$file" 2>/dev/null
-}
-
-# Count pattern matches in file
-# Usage: pattern_count <file> <pattern>
-pattern_count() {
-    local file="$1"
-    local pattern="$2"
-    local count
-    count=$(grep -cE -- "$pattern" "$file" 2>/dev/null) || count=0
-    echo "$count" | tr -d '[:space:]'
-}
-
-# Get all matching lines for pattern
-# Usage: pattern_matches <file> <pattern>
-pattern_matches() {
-    local file="$1"
-    local pattern="$2"
-    grep -nE "$pattern" "$file" 2>/dev/null || true
-}
+# NOTE: pattern_exists, pattern_count, pattern_matches are provided by dev/lib/dev-common.sh
+# (with fallback definitions above if dev-common.sh is not available)
 
 # Record a check result
 # Usage: record_check <pass|fail|skip> <check_name> [details]
@@ -127,24 +130,8 @@ print_check() {
     esac
 }
 
-# Calculate compliance score
-# Usage: calc_score <passed> <total>
-calc_score() {
-    local passed="$1"
-    local total="$2"
-
-    if [[ "$total" -eq 0 ]]; then
-        echo "0"
-        return
-    fi
-
-    # Use bc for floating point, or awk as fallback
-    if command -v bc &>/dev/null; then
-        echo "scale=1; $passed * 100 / $total" | bc
-    else
-        awk "BEGIN {printf \"%.1f\", $passed * 100 / $total}"
-    fi
-}
+# NOTE: calc_score is provided by dev/lib/dev-common.sh (as dev_calc_score with legacy alias)
+# (with fallback definition above if dev-common.sh is not available)
 
 # Check if command is a write command
 # Usage: is_write_command <command_name> <schema_json>
@@ -187,51 +174,8 @@ list_all_commands() {
     '
 }
 
-# Create cache key from file
-# Usage: get_file_hash <file_path>
-get_file_hash() {
-    local file="$1"
-    if command -v sha256sum &>/dev/null; then
-        sha256sum "$file" 2>/dev/null | cut -d' ' -f1
-    elif command -v shasum &>/dev/null; then
-        shasum -a 256 "$file" 2>/dev/null | cut -d' ' -f1
-    else
-        # Fallback to md5
-        md5sum "$file" 2>/dev/null | cut -d' ' -f1
-    fi
-}
-
-# Load cache file
-# Usage: load_cache <cache_path>
-load_cache() {
-    local cache_path="$1"
-    if [[ -f "$cache_path" ]]; then
-        cat "$cache_path"
-    else
-        echo "{}"
-    fi
-}
-
-# Check if file has changed since last check
-# Usage: file_changed <file_path> <cache_json>
-file_changed() {
-    local file="$1"
-    local cache="$2"
-
-    local current_hash
-    current_hash=$(get_file_hash "$file")
-
-    local cached_hash
-    cached_hash=$(echo "$cache" | jq -r ".files[\"$file\"].hash // empty")
-
-    [[ "$current_hash" != "$cached_hash" ]]
-}
-
-# Format timestamp for output
-# Usage: format_timestamp
-format_timestamp() {
-    date -u +"%Y-%m-%dT%H:%M:%SZ"
-}
+# NOTE: get_file_hash, load_cache, file_changed, format_timestamp are provided by
+# dev/lib/dev-common.sh (with fallback definitions above if dev-common.sh is not available)
 
 # Execute command and capture JSON output
 # Usage: run_command_json <command> [args...]
