@@ -38,6 +38,16 @@ else
     exit 1
 fi
 
+# Source validation library for path sanitization (security)
+# Only source if not already loaded (validation.sh has its own guard)
+if [[ -f "$_LIB_DIR/validation.sh" ]]; then
+    # shellcheck source=lib/validation.sh
+    source "$_LIB_DIR/validation.sh"
+else
+    echo "ERROR: Cannot find validation.sh in $_LIB_DIR" >&2
+    exit 1
+fi
+
 # Configuration
 BACKUP_DIR=".backups"
 MAX_BACKUPS=10
@@ -95,6 +105,8 @@ ensure_directory() {
 #   Lock file created at {file}.lock
 #   Caller must close the FD to release the lock
 #   FD number is stored in the variable named by $2
+# Security:
+#   File paths are sanitized before use in eval to prevent command injection
 #######################################
 lock_file() {
     local file="$1"
@@ -106,19 +118,39 @@ lock_file() {
         return $FO_INVALID_ARGS
     fi
 
+    # SECURITY: Sanitize file path before use in eval statements
+    # Prevents command injection via malicious file names with shell metacharacters
+    local safe_file
+    if ! safe_file=$(sanitize_file_path "$file"); then
+        echo "Error: Invalid file path for locking (security check failed)" >&2
+        return $FO_INVALID_ARGS
+    fi
+
+    # SECURITY: Validate fd_var contains only valid variable name characters
+    # Prevents injection via the variable name parameter
+    if [[ ! "$fd_var" =~ ^[a-zA-Z_][a-zA-Z0-9_]*$ ]]; then
+        echo "Error: Invalid file descriptor variable name" >&2
+        return $FO_INVALID_ARGS
+    fi
+
     # Ensure parent directory exists
     local file_dir
-    file_dir="$(dirname "$file")"
+    file_dir="$(dirname "$safe_file")"
     if ! ensure_directory "$file_dir"; then
         return $FO_LOCK_FAILED
     fi
 
-    # Create lock file path
-    local lock_file="${file}${LOCK_SUFFIX}"
+    # Create lock file path and sanitize it
+    local lock_file="${safe_file}${LOCK_SUFFIX}"
+    local safe_lock_file
+    if ! safe_lock_file=$(sanitize_file_path "$lock_file"); then
+        echo "Error: Invalid lock file path (security check failed)" >&2
+        return $FO_INVALID_ARGS
+    fi
 
     # Touch lock file to ensure it exists
-    touch "$lock_file" 2>/dev/null || {
-        echo "Error: Failed to create lock file: $lock_file" >&2
+    touch "$safe_lock_file" 2>/dev/null || {
+        echo "Error: Failed to create lock file: $safe_lock_file" >&2
         return $FO_LOCK_FAILED
     }
 
@@ -127,7 +159,8 @@ lock_file() {
     for fd in {200..210}; do
         if ! { true >&"$fd"; } 2>/dev/null; then
             # FD is available, use it
-            if ! eval "exec $fd>'$lock_file'" 2>/dev/null; then
+            # SECURITY: safe_lock_file has been sanitized above
+            if ! eval "exec $fd>'$safe_lock_file'" 2>/dev/null; then
                 # Failed to open FD, try next
                 continue
             fi
@@ -135,13 +168,14 @@ lock_file() {
             # Try to acquire lock with timeout
             if flock -w "$timeout" "$fd" 2>/dev/null; then
                 # Success - store FD in caller's variable
+                # SECURITY: fd_var validated above to contain only valid variable chars
                 eval "$fd_var=$fd"
                 return $FO_SUCCESS
             else
                 # Failed to acquire lock (timeout or error)
                 # Close FD and exit immediately - don't try other FDs
                 eval "exec $fd>&-" 2>/dev/null || true
-                echo "Error: Failed to acquire lock on $file (timeout after ${timeout}s)" >&2
+                echo "Error: Failed to acquire lock on $safe_file (timeout after ${timeout}s)" >&2
                 echo "Another process may be accessing this file." >&2
                 return $FO_LOCK_FAILED
             fi
@@ -162,6 +196,8 @@ lock_file() {
 # Notes:
 #   Safe to call even if no lock is held
 #   Closes the file descriptor
+# Security:
+#   File descriptor is validated to be numeric before use in eval
 #######################################
 unlock_file() {
     local fd="${1:-${LOCK_FD:-}}"
@@ -170,7 +206,15 @@ unlock_file() {
         return $FO_SUCCESS
     fi
 
+    # SECURITY: Validate fd is a valid file descriptor number (integer)
+    # Prevents command injection via malicious fd values
+    if [[ ! "$fd" =~ ^[0-9]+$ ]]; then
+        echo "Error: Invalid file descriptor (must be numeric): $fd" >&2
+        return $FO_INVALID_ARGS
+    fi
+
     # Release lock and close file descriptor
+    # SECURITY: fd validated above to be numeric only
     flock -u "$fd" 2>/dev/null || true
     eval "exec $fd>&-" 2>/dev/null || true
 

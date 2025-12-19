@@ -86,7 +86,7 @@ output_error() {
             --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
             --arg ver "$TOOL_VERSION" \
             '{
-                "$schema": "https://claude-todo.dev/schemas/error.schema.json",
+                "$schema": "https://claude-todo.dev/schemas/v1/error.schema.json",
                 "_meta": {
                     "format": "json",
                     "command": $cmd,
@@ -385,7 +385,7 @@ output_results() {
             --argjson failed "$FAILED_TESTS" \
             --argjson success "$success" \
             '{
-                "$schema": "https://claude-todo.dev/schemas/test-results.schema.json",
+                "$schema": "https://claude-todo.dev/schemas/v1/test-results.schema.json",
                 "_meta": {
                     "format": "json",
                     "command": $cmd,

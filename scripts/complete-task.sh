@@ -287,7 +287,7 @@ if [[ "$CURRENT_STATUS" == "done" ]]; then
       --arg completedAt "$COMPLETED_AT" \
       --argjson task "$TASK" \
       '{
-        "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+        "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
         "_meta": {
           "format": "json",
           "command": "complete",
@@ -348,7 +348,7 @@ if [[ "$DRY_RUN" == true ]]; then
       --arg currentStatus "$CURRENT_STATUS" \
       --argjson task "$TASK" \
       '{
-        "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+        "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
         "_meta": {
           "format": "json",
           "command": "complete",
@@ -576,7 +576,7 @@ if [[ "$FORMAT" == "json" ]]; then
     --argjson focusCleared "$FOCUS_CLEARED" \
     --argjson task "$COMPLETED_TASK" \
     '{
-      "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+      "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
       "_meta": {
         "format": "json",
         "command": "complete",

@@ -316,7 +316,7 @@ if [[ "$SHOW_ARCHIVED" == true ]]; then
         --arg version "$VERSION" \
         --arg timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
         '{
-          "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+          "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
           "_meta": {
             "format": "json",
             "version": $version,
@@ -355,7 +355,7 @@ if [[ -z "$TASKS" ]]; then
       --arg version "$VERSION" \
       --arg timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
       '{
-        "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+        "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
         "_meta": {
           "format": "json",
           "version": $version,
@@ -670,7 +670,7 @@ case "$FORMAT" in
       --argjson active "$ACTIVE_COUNT" \
       --argjson blocked "$BLOCKED_COUNT" \
       --argjson done "$DONE_COUNT" '{
-      "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+      "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
       "_meta": {
         format: "json",
         version: $version,

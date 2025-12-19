@@ -252,7 +252,7 @@ cmd_status() {
             --arg projectDir "$project_dir" \
             --argjson files "$files_json" \
             '{
-                "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+                "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
                 "_meta": {
                     "command": "migrate",
                     "subcommand": "status",
@@ -316,7 +316,7 @@ cmd_check() {
                     --arg timestamp "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
                     --arg file "$file" \
                     '{
-                        "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+                        "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
                         "_meta": {"command": "migrate", "subcommand": "check", "timestamp": $timestamp, "format": "json"},
                         "success": false,
                         "error": {
@@ -337,7 +337,7 @@ cmd_check() {
             --arg timestamp "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
             --argjson needed "$needs_migration" \
             '{
-                "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+                "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
                 "_meta": {"command": "migrate", "subcommand": "check", "timestamp": $timestamp, "format": "json"},
                 "success": true,
                 "migrationNeeded": $needed

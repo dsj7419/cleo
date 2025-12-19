@@ -516,7 +516,7 @@ output_json_format() {
     --argjson requestedCount "$SUGGESTION_COUNT" \
     --arg version "$VERSION" \
     '{
-      "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+      "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
       "_meta": {
         "format": "json",
         "version": $version,

@@ -174,7 +174,7 @@ list_backups() {
         --arg timestamp "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
         --arg dir "$backup_dir" \
         '{
-          "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+          "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
           "_meta": {
             "command": "backup",
             "subcommand": "list",
@@ -403,7 +403,7 @@ list_backups() {
       --argjson backups "$json_backups" \
       --argjson count "$count" \
       '{
-        "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+        "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
         "_meta": {
           "command": "backup",
           "subcommand": "list",
@@ -674,7 +674,7 @@ if [[ "$FORMAT" == "json" ]]; then
     --argjson validationWarnings "$VALIDATION_ERRORS" \
     --argjson files "$(printf '%s\n' "${BACKED_UP_FILES[@]}" | jq -R . | jq -s .)" \
     '{
-      "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+      "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
       "_meta": {
         "command": "backup",
         "timestamp": $timestamp,

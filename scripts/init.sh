@@ -207,7 +207,7 @@ if [[ "$UPDATE_CLAUDE_MD" == true ]]; then
       --arg action "$action_taken" \
       --arg version "$VERSION" \
       '{
-        "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+        "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
         "_meta": {
           "command": "init",
           "subcommand": "update-claude-md",
@@ -507,7 +507,7 @@ if [[ "$FORMAT" == "json" ]]; then
     --arg version "$VERSION" \
     --argjson files "$(printf '%s\n' "${CREATED_FILES[@]}" | jq -R . | jq -s .)" \
     '{
-      "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+      "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
       "_meta": {
         "command": "init",
         "timestamp": $timestamp,

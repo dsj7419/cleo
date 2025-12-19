@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # CLAUDE-TODO Add Task Script
 # Add new task to todo.json with validation and logging
-set -uo pipefail
+set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -605,6 +605,14 @@ validate_phase "$PHASE" || exit "${EXIT_VALIDATION_ERROR:-6}"
 validate_labels "$LABELS" || exit "${EXIT_VALIDATION_ERROR:-6}"
 validate_depends "$DEPENDS" || exit "${EXIT_VALIDATION_ERROR:-6}"
 
+# Validate field lengths (v0.20.0+)
+if [[ -n "$DESCRIPTION" ]]; then
+  validate_description "$DESCRIPTION" || exit "${EXIT_VALIDATION_ERROR:-6}"
+fi
+if [[ -n "$NOTES" ]]; then
+  validate_note "$NOTES" || exit "${EXIT_VALIDATION_ERROR:-6}"
+fi
+
 # Validate hierarchy fields (v0.17.0)
 if [[ -n "$TASK_TYPE" ]]; then
   if ! validate_task_type "$TASK_TYPE" 2>/dev/null; then
@@ -811,7 +819,7 @@ if [[ "$DRY_RUN" == true ]]; then
       --arg timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
       --argjson task "$TASK_JSON" \
       '{
-        "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+        "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
         "_meta": {
           "format": "json",
           "version": $version,
@@ -924,7 +932,7 @@ if [[ "$FORMAT" == "json" ]]; then
     --arg timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
     --argjson task "$TASK_JSON_OUTPUT" \
     '{
-      "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+      "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
       "_meta": {
         "format": "json",
         "version": $version,

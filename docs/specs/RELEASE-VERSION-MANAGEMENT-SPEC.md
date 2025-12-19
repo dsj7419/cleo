@@ -601,7 +601,7 @@ ct list --shipped-release 0.19.0
 
 ```json
 {
-  "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+  "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
   "_meta": {
     "command": "release list",
     "timestamp": "2025-12-18T10:00:00Z",
@@ -644,7 +644,7 @@ ct list --shipped-release 0.19.0
 
 ```json
 {
-  "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+  "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
   "_meta": {
     "command": "release suggest",
     "timestamp": "2025-12-18T10:00:00Z",

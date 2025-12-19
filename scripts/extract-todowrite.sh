@@ -60,8 +60,8 @@ else
 fi
 
 log_error() { echo -e "${RED}[ERROR]${NC} $1" >&2; }
-log_warn() { [[ "${QUIET:-false}" != "true" ]] && echo -e "${YELLOW}[WARN]${NC} $1" || true; }
-log_info() { [[ "${QUIET:-false}" != "true" ]] && echo -e "${GREEN}[INFO]${NC} $1" || true; }
+log_warn() { [[ "${QUIET:-false}" != "true" ]] && echo -e "${YELLOW}[WARN]${NC} $1" >&2 || true; }
+log_info() { [[ "${QUIET:-false}" != "true" ]] && echo -e "${GREEN}[INFO]${NC} $1" >&2 || true; }
 
 # =============================================================================
 # Configuration
@@ -537,7 +537,7 @@ main() {
                 --arg version "$version" \
                 --arg timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
                 '{
-                    "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+                    "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
                     "_meta": {
                         "format": "json",
                         "version": $version,
@@ -582,7 +582,7 @@ main() {
                 --argjson removed "$removed_count" \
                 --argjson applied "$changes_made" \
                 '{
-                    "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+                    "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
                     "_meta": {
                         "format": "json",
                         "version": $version,
@@ -615,7 +615,7 @@ main() {
                 --argjson removed "$removed_count" \
                 --argjson applied "$changes_made" \
                 '{
-                    "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+                    "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
                     "_meta": {
                         "format": "json",
                         "version": $version,

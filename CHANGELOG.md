@@ -5,6 +5,36 @@ All notable changes to the claude-todo system will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.19.3] - 2025-12-19
+
+### Added
+- **TODOWRITE-SYNC-SPEC.md** - Formal specification for TodoWrite bidirectional sync
+  - RFC 2119 compliant requirements document
+  - 8 parts covering schema mapping, session workflow, injection, extraction
+  - Follows SPEC-BIBLE-GUIDELINES.md standards
+- **TODOWRITE-SYNC-IMPLEMENTATION-REPORT.md** - Tracks implementation progress
+  - v1 core features: 85% complete
+  - v2 enhancements documented for future work
+- **docs/INDEX.md** - Added TodoWrite sync spec to Specifications section
+
+### Fixed
+- **TodoWrite sync logging** - Fixed log_info/log_warn to output to stderr instead of stdout
+  - Prevents log messages from mixing with function return values
+  - Fixes jq parse errors in extract-todowrite.sh
+  - Applied to inject-todowrite.sh, extract-todowrite.sh, sync-todowrite.sh
+- **activeForm prefix patterns** - Fixed verb conjugation for prefix patterns
+  - Titles starting with `BUG:`, `FEAT:`, `T123:`, `OPTIONAL:` now use "Working on:" fallback
+  - Prevents incorrect output like "Bug:ing" or "T328.10:ing"
+  - Added non-verb detection for common task title nouns
+- **todowrite-sync.bats tests** - Updated tests for new JSON envelope format
+  - Changed `.todos[]` to `.injected.todos[]` for inject output parsing
+  - All 23 TodoWrite sync tests now passing
+
+### Changed
+- **T239 Epic closed** - TodoWrite Bidirectional Sync Integration complete (v1)
+- **T291 closed** - phase-sync.bats fixtures verified (3-phase structure kept for test simplicity)
+- **T315 closed** - activeForm verb conjugation bug fixed
+
 ## [0.19.2] - 2025-12-18
 
 ### Added

@@ -13,7 +13,7 @@
 # See: docs/specs/FIND-COMMAND-SPEC.md
 #
 # Version: 0.19.0
-set -uo pipefail
+set -euo pipefail
 
 # ============================================================================
 # INITIALIZATION
@@ -661,7 +661,7 @@ case "$FORMAT" in
             --argjson truncated "$TRUNCATED" \
             --argjson matches "$MATCHES" \
             '{
-                "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+                "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
                 "_meta": {
                     "format": "json",
                     "version": $version,

@@ -22,8 +22,9 @@ check_exit_codes() {
     local warnings=0
 
     # Check 1: Uses EXIT_* constants
+    # Use pre-extracted pattern from check-compliance.sh if available, fallback to jq
     local exit_pattern
-    exit_pattern=$(echo "$schema" | jq -r '.requirements.exit_codes.pattern')
+    exit_pattern="${PATTERN_EXIT_CONSTANTS:-$(echo "$schema" | jq -r '.requirements.exit_codes.pattern')}"
 
     local exit_constant_count
     exit_constant_count=$(pattern_count "$script" "$exit_pattern")
@@ -53,8 +54,9 @@ check_exit_codes() {
     local forbidden_pattern='exit [0-9]+[^}]|exit [0-9]+$'
 
     # Get exit constant pattern from schema to exclude valid constant usage
+    # Use pre-extracted pattern from check-compliance.sh if available, fallback to jq
     local const_pattern
-    const_pattern=$(echo "$schema" | jq -r '.requirements.exit_codes.pattern // "exit \\$EXIT_|exit \\$\\{EXIT_"')
+    const_pattern="${PATTERN_EXIT_CONSTANTS:-$(echo "$schema" | jq -r '.requirements.exit_codes.pattern // "exit \\$EXIT_|exit \\$\\{EXIT_"')}"
     # Convert pattern for grep (remove backslash escaping for jq)
     local grep_exclude_pattern
     grep_exclude_pattern=$(echo "$const_pattern" | sed 's/\\\\\\$/\\$/g' | sed 's/|/\\|/g')
@@ -96,8 +98,9 @@ check_exit_codes() {
     fi
 
     # Check 3: Exit code library sourced (uses schema pattern if available)
+    # Use pre-extracted pattern from check-compliance.sh if available, fallback to jq
     local exit_lib_pattern
-    exit_lib_pattern=$(echo "$schema" | jq -r '.requirements.exit_codes.exit_lib_pattern // "exit-codes\\.sh"')
+    exit_lib_pattern="${PATTERN_EXIT_LIB:-$(echo "$schema" | jq -r '.requirements.exit_codes.exit_lib_pattern // "exit-codes\\.sh"')}"
     local exit_lib_name
     exit_lib_name=$(echo "$schema" | jq -r '.requirements.exit_codes.exit_lib_name // "exit-codes.sh"')
 
@@ -117,8 +120,10 @@ check_exit_codes() {
 
     if [[ "$total_exits" -gt 0 ]]; then
         # Use schema pattern for counting constant exits
+        # Use pre-extracted pattern from check-compliance.sh if available, fallback to jq
         local const_pattern_grep
-        const_pattern_grep=$(echo "$schema" | jq -r '.requirements.exit_codes.pattern // "exit \\$EXIT_|\\$\\{EXIT_"' | sed 's/\\\\\\$/\\$/g')
+        const_pattern_grep="${PATTERN_EXIT_CONSTANTS:-$(echo "$schema" | jq -r '.requirements.exit_codes.pattern // "exit \\$EXIT_|\\$\\{EXIT_"')}"
+        const_pattern_grep=$(echo "$const_pattern_grep" | sed 's/\\\\\\$/\\$/g')
         local const_exits
         const_exits=$(pattern_count "$script" "$const_pattern_grep" || echo "0")
 

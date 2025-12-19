@@ -321,7 +321,7 @@ Performance testing for claude-todo commands with varying dataset sizes.
 **JSON Output Structure:**
 ```json
 {
-  "$schema": "https://claude-todo.dev/schemas/benchmark-report.schema.json",
+  "$schema": "https://claude-todo.dev/schemas/v1/benchmark-report.schema.json",
   "_meta": {
     "format": "json",
     "command": "benchmark-performance",
@@ -403,7 +403,7 @@ Manual test script for the phase rollback feature.
 **JSON Output Structure:**
 ```json
 {
-  "$schema": "https://claude-todo.dev/schemas/test-results.schema.json",
+  "$schema": "https://claude-todo.dev/schemas/v1/test-results.schema.json",
   "_meta": {
     "format": "json",
     "command": "test-rollback",

@@ -111,7 +111,7 @@ output_benchmark_error() {
             --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
             --arg ver "$TOOL_VERSION" \
             '{
-                "$schema": "https://claude-todo.dev/schemas/error.schema.json",
+                "$schema": "https://claude-todo.dev/schemas/v1/error.schema.json",
                 "_meta": {
                     "format": "json",
                     "command": $cmd,
@@ -469,7 +469,7 @@ format_json_output() {
     failed_tests=$((total_tests - passed_tests))
 
     jq -n \
-        --arg schema "https://claude-todo.dev/schemas/benchmark-report.schema.json" \
+        --arg schema "https://claude-todo.dev/schemas/v1/benchmark-report.schema.json" \
         --arg cmd "$COMMAND_NAME" \
         --arg ver "$TOOL_VERSION" \
         --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \

@@ -218,7 +218,7 @@ EOF
 
     # Blocked task should be pending with prefix
     local blocked_item
-    blocked_item=$(echo "$output" | jq '.todos[] | select(.content | contains("T002"))')
+    blocked_item=$(echo "$output" | jq '.injected.todos[] | select(.content | contains("T002"))')
 
     echo "$blocked_item" | jq -e '.status == "pending"'
     assert_success
@@ -234,7 +234,7 @@ EOF
     assert_success
 
     # Should have activeForm field
-    echo "$output" | jq -e '.todos[0].activeForm != null'
+    echo "$output" | jq -e '.injected.todos[0].activeForm != null'
     assert_success
 }
 
@@ -246,7 +246,7 @@ EOF
     assert_success
 
     local count
-    count=$(echo "$output" | jq '.todos | length')
+    count=$(echo "$output" | jq '.injected.todos | length')
     [[ "$count" -le 8 ]]
 }
 
@@ -472,8 +472,9 @@ EOF
     assert_file_exists "$SYNC_STATE_FILE"
 
     # 3. Simulate session work (complete T001, add new task)
+    # Extract the todos from the injected output and create TodoWrite format
     echo "$injected" | jq '
-      .todos[0].status = "completed" |
+      {todos: [.injected.todos[0] | .status = "completed"]} |
       .todos += [{"content": "Session task", "status": "pending", "activeForm": "Working"}]
     ' > "${TEST_TEMP_DIR}/todowrite-state.json"
 
@@ -520,7 +521,7 @@ EOF
     assert_success
 
     local pending_item
-    pending_item=$(echo "$output" | jq '.todos[] | select(.content | contains("T003"))')
+    pending_item=$(echo "$output" | jq '.injected.todos[] | select(.content | contains("T003"))')
     echo "$pending_item" | jq -e '.status == "pending"'
     assert_success
 }
@@ -533,7 +534,7 @@ EOF
     assert_success
 
     local active_item
-    active_item=$(echo "$output" | jq '.todos[] | select(.content | contains("T001"))')
+    active_item=$(echo "$output" | jq '.injected.todos[] | select(.content | contains("T001"))')
     echo "$active_item" | jq -e '.status == "in_progress"'
     assert_success
 }
@@ -546,7 +547,7 @@ EOF
     assert_success
 
     local blocked_item
-    blocked_item=$(echo "$output" | jq '.todos[] | select(.content | contains("T002"))')
+    blocked_item=$(echo "$output" | jq '.injected.todos[] | select(.content | contains("T002"))')
     echo "$blocked_item" | jq -e '.status == "pending"'
     assert_success
     echo "$blocked_item" | jq -e '.content | contains("[BLOCKED]")'

@@ -3,9 +3,9 @@
   "version": "2.1.0",
   "project": "claude-todo",
   "_meta": {
-    "totalEntries": 954,
+    "totalEntries": 981,
     "firstEntry": "2025-12-13T07:14:38Z",
-    "lastEntry": "2025-12-19T06:50:36Z",
+    "lastEntry": "2025-12-19T08:03:38Z",
     "entriesPruned": 0
   },
   "entries": [
@@ -24425,6 +24425,1101 @@
         "title": "Update Implementation Report after spec finalization",
         "status": "pending",
         "priority": "medium"
+      }
+    },
+    {
+      "id": "log_59373a523e5b",
+      "timestamp": "2025-12-19T07:25:33Z",
+      "sessionId": null,
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T291",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-19T07:25:32Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_9dba67bbf373",
+      "timestamp": "2025-12-19T07:28:39Z",
+      "sessionId": null,
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T315",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-19T07:28:39Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_b9648c822e5c",
+      "timestamp": "2025-12-19T07:29:59Z",
+      "sessionId": null,
+      "action": "task_updated",
+      "actor": "system",
+      "taskId": "T239",
+      "before": {
+        "title": "EPIC: TodoWrite Bidirectional Sync Integration",
+        "status": "pending",
+        "priority": "high",
+        "description": "## EPIC: TodoWrite ↔ claude-todo Bidirectional Sync Integration\n\nMaster tracking task for all TodoWrite sync integration work.\n\n### Purpose\nSeamless integration between durable claude-todo persistence and ephemeral TodoWrite session tracking with automatic injection at session start and extraction at session end.\n\n### Completed Work\n\n#### Research Phase (T227)\n- T227: Research epic ✅\n- T228: Analyze TodoWrite schema ✅\n- T229: Design injection mechanism ✅\n- T230: Design extraction strategy ✅\n- T231: Metadata mapping analysis ✅\n- T232: Conflict resolution protocol ✅\n- T233: Hook integration architecture ✅\n\n#### Implementation Phase\n- T234: inject-todowrite.sh ✅\n- T235: extract-todowrite.sh ✅\n- T236: sync-todowrite.sh orchestrator ✅\n- T237: Fix extraction tests ✅\n\n#### Phase Enhancement\n- T257: Inject with phase filtering ✅\n- T258: Extract with phase inheritance ✅\n- T259: Sync state format for phases ✅\n- T265: phase-sync.bats tests ✅\n- T272: sync.md documentation ✅\n- T278: CLAUDE.md injection template ✅\n\n### Remaining Work\n- T291: Update phase-sync.bats fixtures to 5-phase structure\n- T315: BUG: activeForm verb conjugation broken\n- T321: Document sync --clear, --phase, --no-save-state options\n\n### Commands Delivered\n```bash\nclaude-todo sync --inject           # Prepare tasks for TodoWrite\nclaude-todo sync --inject --focused-only\nclaude-todo sync --extract <file>   # Merge TodoWrite state back\nclaude-todo sync --extract --dry-run\nclaude-todo sync --status           # Show sync session state\n```\n\n### Success Criteria\n- [ ] All pending subtasks complete\n- [ ] All tests passing with 5-phase fixtures\n- [ ] Documentation complete for all sync options\n- [ ] activeForm generation produces correct grammar",
+        "phase": null,
+        "labels": [
+          "epic",
+          "integration",
+          "session-created",
+          "sync",
+          "todowrite",
+          "v0.14.0"
+        ],
+        "files": null,
+        "acceptance": null,
+        "depends": null,
+        "blockedBy": null
+      },
+      "after": {
+        "title": "EPIC: TodoWrite Bidirectional Sync Integration",
+        "status": "pending",
+        "priority": "high",
+        "description": "## EPIC: TodoWrite ↔ claude-todo Bidirectional Sync Integration\n\nMaster tracking task for all TodoWrite sync integration work.\n\n### Purpose\nSeamless integration between durable claude-todo persistence and ephemeral TodoWrite session tracking with automatic injection at session start and extraction at session end.\n\n### Completed Work\n\n#### Research Phase (T227)\n- T227: Research epic ✅\n- T228: Analyze TodoWrite schema ✅\n- T229: Design injection mechanism ✅\n- T230: Design extraction strategy ✅\n- T231: Metadata mapping analysis ✅\n- T232: Conflict resolution protocol ✅\n- T233: Hook integration architecture ✅\n\n#### Implementation Phase\n- T234: inject-todowrite.sh ✅\n- T235: extract-todowrite.sh ✅\n- T236: sync-todowrite.sh orchestrator ✅\n- T237: Fix extraction tests ✅\n\n#### Phase Enhancement\n- T257: Inject with phase filtering ✅\n- T258: Extract with phase inheritance ✅\n- T259: Sync state format for phases ✅\n- T265: phase-sync.bats tests ✅\n- T272: sync.md documentation ✅\n- T278: CLAUDE.md injection template ✅\n\n### Remaining Work\n- T291: Update phase-sync.bats fixtures to 5-phase structure\n- T315: BUG: activeForm verb conjugation broken\n- T321: Document sync --clear, --phase, --no-save-state options\n\n### Commands Delivered\n```bash\nclaude-todo sync --inject           # Prepare tasks for TodoWrite\nclaude-todo sync --inject --focused-only\nclaude-todo sync --extract <file>   # Merge TodoWrite state back\nclaude-todo sync --extract --dry-run\nclaude-todo sync --status           # Show sync session state\n```\n\n### Success Criteria\n- [ ] All pending subtasks complete\n- [ ] All tests passing with 5-phase fixtures\n- [ ] Documentation complete for all sync options\n- [ ] activeForm generation produces correct grammar",
+        "phase": null,
+        "labels": [
+          "epic",
+          "integration",
+          "session-created",
+          "sync",
+          "todowrite",
+          "v0.14.0"
+        ],
+        "files": null,
+        "acceptance": null,
+        "depends": null,
+        "blockedBy": null
+      },
+      "details": {
+        "operation": "update"
+      }
+    },
+    {
+      "id": "log_b7ed270469fb",
+      "timestamp": "2025-12-19T07:45:33Z",
+      "sessionId": null,
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T239",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-19T07:45:33Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_c1667b18c0ed",
+      "timestamp": "2025-12-19T07:45:51Z",
+      "sessionId": null,
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T466",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-19T07:45:51Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_4b2e26015d68",
+      "timestamp": "2025-12-19T07:46:00Z",
+      "sessionId": null,
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T471",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-19T07:45:59Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_fb427c1673df",
+      "timestamp": "2025-12-19T07:46:05Z",
+      "sessionId": null,
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T476",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-19T07:46:05Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_96ac3a019d6b",
+      "timestamp": "2025-12-19T07:46:17Z",
+      "sessionId": null,
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T467",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-19T07:46:16Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_5ccf84161a8c",
+      "timestamp": "2025-12-19T07:46:17Z",
+      "sessionId": null,
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T468",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-19T07:46:17Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_9029be6a757d",
+      "timestamp": "2025-12-19T07:46:17Z",
+      "sessionId": null,
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T469",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-19T07:46:17Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_30d4d5d4b334",
+      "timestamp": "2025-12-19T07:46:17Z",
+      "sessionId": null,
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T470",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-19T07:46:17Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_4b23811eb5ab",
+      "timestamp": "2025-12-19T07:46:18Z",
+      "sessionId": null,
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T472",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-19T07:46:18Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_4ffe658c0313",
+      "timestamp": "2025-12-19T07:46:18Z",
+      "sessionId": null,
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T473",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-19T07:46:18Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_f9bda7cb4243",
+      "timestamp": "2025-12-19T07:46:18Z",
+      "sessionId": null,
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T474",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-19T07:46:18Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_6ede15edeb8b",
+      "timestamp": "2025-12-19T07:46:19Z",
+      "sessionId": null,
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T475",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-19T07:46:19Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_d67d9d69c02b",
+      "timestamp": "2025-12-19T07:46:19Z",
+      "sessionId": null,
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T477",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-19T07:46:19Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_6c50d5583c1c",
+      "timestamp": "2025-12-19T07:46:19Z",
+      "sessionId": null,
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T478",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-19T07:46:19Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_73fed2091d3d",
+      "timestamp": "2025-12-19T07:46:52Z",
+      "sessionId": null,
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T480",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-19T07:46:52Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_63747d2dd4d1",
+      "timestamp": "2025-12-19T07:46:54Z",
+      "sessionId": null,
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T465",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-19T07:46:53Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_f71153cb3aca",
+      "timestamp": "2025-12-19T07:49:09Z",
+      "sessionId": null,
+      "action": "focus_changed",
+      "actor": "claude",
+      "taskId": null,
+      "before": null,
+      "after": {
+        "currentTask": "T045"
+      },
+      "details": null
+    },
+    {
+      "id": "log-1766130786-332550",
+      "timestamp": "2025-12-19T07:53:06Z",
+      "action": "task_created",
+      "taskId": "T481",
+      "actor": "system",
+      "details": {
+        "title": "EPIC: LLM-Agent-First Spec v3.0 Compliance Checker Implementation",
+        "status": "pending",
+        "priority": "critical"
+      },
+      "before": null,
+      "after": {
+        "title": "EPIC: LLM-Agent-First Spec v3.0 Compliance Checker Implementation",
+        "status": "pending",
+        "priority": "critical"
+      }
+    },
+    {
+      "id": "log-1766130812-64d003",
+      "timestamp": "2025-12-19T07:53:32Z",
+      "action": "task_created",
+      "taskId": "T482",
+      "actor": "system",
+      "details": {
+        "title": "T481.1: Update schema.json to specVersion 3.0",
+        "status": "pending",
+        "priority": "critical"
+      },
+      "before": null,
+      "after": {
+        "title": "T481.1: Update schema.json to specVersion 3.0",
+        "status": "pending",
+        "priority": "critical"
+      }
+    },
+    {
+      "id": "log-1766130814-2104aa",
+      "timestamp": "2025-12-19T07:53:34Z",
+      "action": "task_created",
+      "taskId": "T483",
+      "actor": "system",
+      "details": {
+        "title": "T481.3: Create input-validation.sh check module (Part 5.3)",
+        "status": "pending",
+        "priority": "high"
+      },
+      "before": null,
+      "after": {
+        "title": "T481.3: Create input-validation.sh check module (Part 5.3)",
+        "status": "pending",
+        "priority": "high"
+      }
+    },
+    {
+      "id": "log-1766130814-78639a",
+      "timestamp": "2025-12-19T07:53:34Z",
+      "action": "task_created",
+      "taskId": "T484",
+      "actor": "system",
+      "details": {
+        "title": "T481.4: Create idempotency.sh check module (Part 5.6)",
+        "status": "pending",
+        "priority": "high"
+      },
+      "before": null,
+      "after": {
+        "title": "T481.4: Create idempotency.sh check module (Part 5.6)",
+        "status": "pending",
+        "priority": "high"
+      }
+    },
+    {
+      "id": "log-1766130817-bc2d2b",
+      "timestamp": "2025-12-19T07:53:37Z",
+      "action": "task_created",
+      "taskId": "T485",
+      "actor": "system",
+      "details": {
+        "title": "T481.6: Update exit-codes.sh check for EXIT_NO_CHANGE (102)",
+        "status": "pending",
+        "priority": "high"
+      },
+      "before": null,
+      "after": {
+        "title": "T481.6: Update exit-codes.sh check for EXIT_NO_CHANGE (102)",
+        "status": "pending",
+        "priority": "high"
+      }
+    },
+    {
+      "id": "log-1766130817-3df96e",
+      "timestamp": "2025-12-19T07:53:37Z",
+      "action": "task_created",
+      "taskId": "T486",
+      "actor": "system",
+      "details": {
+        "title": "T481.7: Update errors.sh check for E_INPUT_* validation codes",
+        "status": "pending",
+        "priority": "high"
+      },
+      "before": null,
+      "after": {
+        "title": "T481.7: Update errors.sh check for E_INPUT_* validation codes",
+        "status": "pending",
+        "priority": "high"
+      }
+    },
+    {
+      "id": "log-1766130844-37414b",
+      "timestamp": "2025-12-19T07:54:04Z",
+      "action": "task_created",
+      "taskId": "T487",
+      "actor": "system",
+      "details": {
+        "title": "T481.2: Update dev-schema.json to specVersion 3.0",
+        "status": "pending",
+        "priority": "critical"
+      },
+      "before": null,
+      "after": {
+        "title": "T481.2: Update dev-schema.json to specVersion 3.0",
+        "status": "pending",
+        "priority": "critical"
+      }
+    },
+    {
+      "id": "log-1766130844-5ad7bd",
+      "timestamp": "2025-12-19T07:54:04Z",
+      "action": "task_created",
+      "taskId": "T488",
+      "actor": "system",
+      "details": {
+        "title": "T481.5: Create dry-run-semantics.sh check module (Part 5.4)",
+        "status": "pending",
+        "priority": "high"
+      },
+      "before": null,
+      "after": {
+        "title": "T481.5: Create dry-run-semantics.sh check module (Part 5.4)",
+        "status": "pending",
+        "priority": "high"
+      }
+    },
+    {
+      "id": "log_d9bfab738fea",
+      "timestamp": "2025-12-19T07:54:08Z",
+      "sessionId": null,
+      "action": "focus_changed",
+      "actor": "claude",
+      "taskId": null,
+      "before": {
+        "currentTask": "T045"
+      },
+      "after": null,
+      "details": null
+    },
+    {
+      "id": "log-1766130990-d35c7b",
+      "timestamp": "2025-12-19T07:56:30Z",
+      "action": "task_created",
+      "taskId": "T489",
+      "actor": "system",
+      "details": {
+        "title": "T481.A: Command Implementation for v3.0 Spec",
+        "status": "pending",
+        "priority": "high"
+      },
+      "before": null,
+      "after": {
+        "title": "T481.A: Command Implementation for v3.0 Spec",
+        "status": "pending",
+        "priority": "high"
+      }
+    },
+    {
+      "id": "log-1766131009-2a4816",
+      "timestamp": "2025-12-19T07:56:49Z",
+      "action": "task_created",
+      "taskId": "T490",
+      "actor": "system",
+      "details": {
+        "title": "T481.A.1: Implement idempotency in update command",
+        "status": "pending",
+        "priority": "high"
+      },
+      "before": null,
+      "after": {
+        "title": "T481.A.1: Implement idempotency in update command",
+        "status": "pending",
+        "priority": "high"
+      }
+    },
+    {
+      "id": "log-1766131010-4b3f6a",
+      "timestamp": "2025-12-19T07:56:50Z",
+      "action": "task_created",
+      "taskId": "T491",
+      "actor": "system",
+      "details": {
+        "title": "T481.A.2: Implement idempotency in complete command",
+        "status": "pending",
+        "priority": "high"
+      },
+      "before": null,
+      "after": {
+        "title": "T481.A.2: Implement idempotency in complete command",
+        "status": "pending",
+        "priority": "high"
+      }
+    },
+    {
+      "id": "log-1766131010-f99e2f",
+      "timestamp": "2025-12-19T07:56:50Z",
+      "action": "task_created",
+      "taskId": "T492",
+      "actor": "system",
+      "details": {
+        "title": "T481.A.3: Implement idempotency in archive and restore",
+        "status": "pending",
+        "priority": "high"
+      },
+      "before": null,
+      "after": {
+        "title": "T481.A.3: Implement idempotency in archive and restore",
+        "status": "pending",
+        "priority": "high"
+      }
+    },
+    {
+      "id": "log-1766131010-1739d3",
+      "timestamp": "2025-12-19T07:56:50Z",
+      "action": "task_created",
+      "taskId": "T493",
+      "actor": "system",
+      "details": {
+        "title": "T481.A.4: Implement duplicate detection in add command",
+        "status": "pending",
+        "priority": "medium"
+      },
+      "before": null,
+      "after": {
+        "title": "T481.A.4: Implement duplicate detection in add command",
+        "status": "pending",
+        "priority": "medium"
+      }
+    },
+    {
+      "id": "log-1766131013-d895e6",
+      "timestamp": "2025-12-19T07:56:53Z",
+      "action": "task_created",
+      "taskId": "T494",
+      "actor": "system",
+      "details": {
+        "title": "T481.A.5: Implement proper dry-run output format",
+        "status": "pending",
+        "priority": "high"
+      },
+      "before": null,
+      "after": {
+        "title": "T481.A.5: Implement proper dry-run output format",
+        "status": "pending",
+        "priority": "high"
+      }
+    },
+    {
+      "id": "log-1766131013-5cb2cb",
+      "timestamp": "2025-12-19T07:56:53Z",
+      "action": "task_created",
+      "taskId": "T495",
+      "actor": "system",
+      "details": {
+        "title": "T481.A.6: Add --dry-run flag to add-task.sh",
+        "status": "pending",
+        "priority": "high"
+      },
+      "before": null,
+      "after": {
+        "title": "T481.A.6: Add --dry-run flag to add-task.sh",
+        "status": "pending",
+        "priority": "high"
+      }
+    },
+    {
+      "id": "log-1766131013-9c1044",
+      "timestamp": "2025-12-19T07:56:53Z",
+      "action": "task_created",
+      "taskId": "T496",
+      "actor": "system",
+      "details": {
+        "title": "T481.A.7: Verify input validation in write commands",
+        "status": "pending",
+        "priority": "high"
+      },
+      "before": null,
+      "after": {
+        "title": "T481.A.7: Verify input validation in write commands",
+        "status": "pending",
+        "priority": "high"
+      }
+    },
+    {
+      "id": "log-1766131015-6dde9e",
+      "timestamp": "2025-12-19T07:56:55Z",
+      "action": "task_created",
+      "taskId": "T497",
+      "actor": "system",
+      "details": {
+        "title": "T481.B: Documentation and Testing for v3.0 Spec",
+        "status": "pending",
+        "priority": "medium"
+      },
+      "before": null,
+      "after": {
+        "title": "T481.B: Documentation and Testing for v3.0 Spec",
+        "status": "pending",
+        "priority": "medium"
+      }
+    },
+    {
+      "id": "log-1766131033-8f7627",
+      "timestamp": "2025-12-19T07:57:13Z",
+      "action": "task_created",
+      "taskId": "T498",
+      "actor": "system",
+      "details": {
+        "title": "T481.B.1: Update Implementation Report for v3.0 tracking",
+        "status": "pending",
+        "priority": "medium"
+      },
+      "before": null,
+      "after": {
+        "title": "T481.B.1: Update Implementation Report for v3.0 tracking",
+        "status": "pending",
+        "priority": "medium"
+      }
+    },
+    {
+      "id": "log-1766131034-26034d",
+      "timestamp": "2025-12-19T07:57:14Z",
+      "action": "task_created",
+      "taskId": "T499",
+      "actor": "system",
+      "details": {
+        "title": "T481.B.2: Add retry protocol documentation to help text",
+        "status": "pending",
+        "priority": "medium"
+      },
+      "before": null,
+      "after": {
+        "title": "T481.B.2: Add retry protocol documentation to help text",
+        "status": "pending",
+        "priority": "medium"
+      }
+    },
+    {
+      "id": "log-1766131034-28c94b",
+      "timestamp": "2025-12-19T07:57:14Z",
+      "action": "task_created",
+      "taskId": "T500",
+      "actor": "system",
+      "details": {
+        "title": "T481.B.3: Create tests for new compliance check modules",
+        "status": "pending",
+        "priority": "medium"
+      },
+      "before": null,
+      "after": {
+        "title": "T481.B.3: Create tests for new compliance check modules",
+        "status": "pending",
+        "priority": "medium"
+      }
+    },
+    {
+      "id": "log-1766131034-d169a3",
+      "timestamp": "2025-12-19T07:57:14Z",
+      "action": "task_created",
+      "taskId": "T501",
+      "actor": "system",
+      "details": {
+        "title": "T481.B.4: Create tests for command idempotency behavior",
+        "status": "pending",
+        "priority": "medium"
+      },
+      "before": null,
+      "after": {
+        "title": "T481.B.4: Create tests for command idempotency behavior",
+        "status": "pending",
+        "priority": "medium"
+      }
+    },
+    {
+      "id": "log-1766131036-7ae52a",
+      "timestamp": "2025-12-19T07:57:16Z",
+      "action": "task_created",
+      "taskId": "T502",
+      "actor": "system",
+      "details": {
+        "title": "T481.C: Update flags.sh for dry-run output validation",
+        "status": "pending",
+        "priority": "high"
+      },
+      "before": null,
+      "after": {
+        "title": "T481.C: Update flags.sh for dry-run output validation",
+        "status": "pending",
+        "priority": "high"
+      }
+    },
+    {
+      "id": "log-1766131036-e3c94d",
+      "timestamp": "2025-12-19T07:57:16Z",
+      "action": "task_created",
+      "taskId": "T503",
+      "actor": "system",
+      "details": {
+        "title": "T481.D: Add lib/exit-codes.sh EXIT_NO_CHANGE documentation",
+        "status": "pending",
+        "priority": "medium"
+      },
+      "before": null,
+      "after": {
+        "title": "T481.D: Add lib/exit-codes.sh EXIT_NO_CHANGE documentation",
+        "status": "pending",
+        "priority": "medium"
+      }
+    },
+    {
+      "id": "log-1766131275-448201",
+      "timestamp": "2025-12-19T08:01:15Z",
+      "action": "task_created",
+      "taskId": "T504",
+      "actor": "system",
+      "details": {
+        "title": "Test task for exit code verification",
+        "status": "pending",
+        "priority": "low"
+      },
+      "before": null,
+      "after": {
+        "title": "Test task for exit code verification",
+        "status": "pending",
+        "priority": "low"
+      }
+    },
+    {
+      "id": "log-1766131286-eda480",
+      "timestamp": "2025-12-19T08:01:26Z",
+      "action": "task_created",
+      "taskId": "T505",
+      "actor": "system",
+      "details": {
+        "title": "Test task 2",
+        "status": "pending",
+        "priority": "low"
+      },
+      "before": null,
+      "after": {
+        "title": "Test task 2",
+        "status": "pending",
+        "priority": "low"
+      }
+    },
+    {
+      "id": "log-1766131295-812a71",
+      "timestamp": "2025-12-19T08:01:35Z",
+      "action": "task_created",
+      "taskId": "T506",
+      "actor": "system",
+      "details": {
+        "title": "Test A",
+        "status": "pending",
+        "priority": "low"
+      },
+      "before": null,
+      "after": {
+        "title": "Test A",
+        "status": "pending",
+        "priority": "low"
+      }
+    },
+    {
+      "id": "log-1766131296-3dab3a",
+      "timestamp": "2025-12-19T08:01:36Z",
+      "action": "task_created",
+      "taskId": "T507",
+      "actor": "system",
+      "details": {
+        "title": "Test B",
+        "status": "pending",
+        "priority": "low"
+      },
+      "before": null,
+      "after": {
+        "title": "Test B",
+        "status": "pending",
+        "priority": "low"
+      }
+    },
+    {
+      "id": "log-1766131311-916838",
+      "timestamp": "2025-12-19T08:01:51Z",
+      "action": "task_created",
+      "taskId": "T508",
+      "actor": "system",
+      "details": {
+        "title": "Multi A",
+        "status": "pending",
+        "priority": "low"
+      },
+      "before": null,
+      "after": {
+        "title": "Multi A",
+        "status": "pending",
+        "priority": "low"
+      }
+    },
+    {
+      "id": "log-1766131311-b0e969",
+      "timestamp": "2025-12-19T08:01:51Z",
+      "action": "task_created",
+      "taskId": "T509",
+      "actor": "system",
+      "details": {
+        "title": "Multi B",
+        "status": "pending",
+        "priority": "low"
+      },
+      "before": null,
+      "after": {
+        "title": "Multi B",
+        "status": "pending",
+        "priority": "low"
+      }
+    },
+    {
+      "id": "log-1766131400-e25682",
+      "timestamp": "2025-12-19T08:03:20Z",
+      "action": "task_created",
+      "taskId": "T510",
+      "actor": "system",
+      "details": {
+        "title": "BUG: Hierarchy errors use log_error instead of output_error",
+        "status": "pending",
+        "priority": "high"
+      },
+      "before": null,
+      "after": {
+        "title": "BUG: Hierarchy errors use log_error instead of output_error",
+        "status": "pending",
+        "priority": "high"
+      }
+    },
+    {
+      "id": "log_dbba49aa201a",
+      "timestamp": "2025-12-19T08:03:36Z",
+      "sessionId": null,
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T504",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-19T08:03:36Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_b5e3c8fa1cc5",
+      "timestamp": "2025-12-19T08:03:37Z",
+      "sessionId": null,
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T505",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-19T08:03:36Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_ba50ef46fe69",
+      "timestamp": "2025-12-19T08:03:37Z",
+      "sessionId": null,
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T506",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-19T08:03:37Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_faeae1cf67b9",
+      "timestamp": "2025-12-19T08:03:37Z",
+      "sessionId": null,
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T507",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-19T08:03:37Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_6b7fd5d6e410",
+      "timestamp": "2025-12-19T08:03:38Z",
+      "sessionId": null,
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T508",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-19T08:03:37Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_6e39e921e048",
+      "timestamp": "2025-12-19T08:03:38Z",
+      "sessionId": null,
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T509",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-19T08:03:38Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
       }
     }
   ]

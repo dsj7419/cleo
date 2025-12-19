@@ -23,6 +23,13 @@ fi
 LIB_DIR="${SCRIPT_DIR}/../lib"
 [[ ! -f "$CLAUDE_TODO_HOME/lib/file-ops.sh" && -f "$LIB_DIR/file-ops.sh" ]] && source "$LIB_DIR/file-ops.sh"
 
+# Source validation library for session note validation (v0.20.0+)
+if [[ -f "$CLAUDE_TODO_HOME/lib/validation.sh" ]]; then
+  source "$CLAUDE_TODO_HOME/lib/validation.sh"
+elif [[ -f "$LIB_DIR/validation.sh" ]]; then
+  source "$LIB_DIR/validation.sh"
+fi
+
 # Source output-format library for format resolution
 if [[ -f "$CLAUDE_TODO_HOME/lib/output-format.sh" ]]; then
   source "$CLAUDE_TODO_HOME/lib/output-format.sh"
@@ -289,7 +296,7 @@ cmd_set() {
       --arg old_focus "${old_focus:-null}" \
       --argjson task "$task_details" \
       '{
-        "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+        "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
         "_meta": {
           "command": "focus set",
           "timestamp": $timestamp,
@@ -323,7 +330,7 @@ cmd_clear() {
         --arg timestamp "$current_timestamp" \
         --arg version "$VERSION" \
         '{
-          "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+          "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
           "_meta": {
             "command": "focus clear",
             "timestamp": $timestamp,
@@ -376,7 +383,7 @@ cmd_clear() {
       --arg version "$VERSION" \
       --arg old_focus "$old_focus" \
       '{
-        "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+        "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
         "_meta": {
           "command": "focus clear",
           "timestamp": $timestamp,
@@ -422,7 +429,7 @@ cmd_show() {
       --argjson focus "$focus_obj" \
       --argjson task "$task_details" \
       '{
-        "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+        "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
         "_meta": {
           "command": "focus show",
           "timestamp": $timestamp,
@@ -493,6 +500,16 @@ cmd_note() {
     exit "${EXIT_USAGE_ERROR:-64}"
   fi
 
+  # Validate session note length (v0.20.0+)
+  if declare -f validate_session_note &>/dev/null; then
+    if ! validate_session_note "$note"; then
+      if [[ "$FORMAT" == "json" ]] && declare -f output_error &>/dev/null; then
+        output_error "$E_VALIDATION_SCHEMA" "Session note too long (max 1000 characters)" "${EXIT_VALIDATION_ERROR:-6}" false "Shorten the note or split into multiple updates"
+      fi
+      exit "${EXIT_VALIDATION_ERROR:-6}"
+    fi
+  fi
+
   check_todo_exists
 
   local timestamp
@@ -520,7 +537,7 @@ cmd_note() {
       --arg version "$VERSION" \
       --arg note "$note" \
       '{
-        "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+        "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
         "_meta": {
           "command": "focus note",
           "timestamp": $timestamp,
@@ -578,7 +595,7 @@ cmd_next() {
       --arg version "$VERSION" \
       --arg action "$action" \
       '{
-        "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+        "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
         "_meta": {
           "command": "focus next",
           "timestamp": $timestamp,

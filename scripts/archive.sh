@@ -228,7 +228,7 @@ if [[ "$COMPLETED_COUNT" -eq 0 ]]; then
       --argjson active "$REMAINING_ACTIVE" \
       --argjson blocked "$REMAINING_BLOCKED" \
       '{
-        "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+        "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
         "_meta": {"format": "json", "command": "archive", "timestamp": $ts, "version": $ver},
         "success": true,
         "archived": {"count": 0, "taskIds": []},
@@ -280,7 +280,7 @@ if [[ "$ARCHIVE_COUNT" -eq 0 ]]; then
       --argjson active "$REMAINING_ACTIVE" \
       --argjson blocked "$REMAINING_BLOCKED" \
       '{
-        "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+        "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
         "_meta": {"format": "json", "command": "archive", "timestamp": $ts, "version": $ver},
         "success": true,
         "archived": {"count": 0, "taskIds": []},
@@ -315,7 +315,7 @@ if [[ "$DRY_RUN" == true ]]; then
       --argjson active "$REMAINING_ACTIVE" \
       --argjson blocked "$REMAINING_BLOCKED" \
       '{
-        "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+        "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
         "_meta": {"format": "json", "command": "archive", "timestamp": $ts, "version": $ver},
         "success": true,
         "dryRun": true,
@@ -547,7 +547,7 @@ if [[ "$FORMAT" == "json" ]]; then
     --argjson active "$REMAINING_ACTIVE" \
     --argjson blocked "$REMAINING_BLOCKED" \
     '{
-      "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+      "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
       "_meta": {"format": "json", "command": "archive", "timestamp": $ts, "version": $ver},
       "success": true,
       "archived": {"count": $count, "taskIds": $ids},

@@ -200,9 +200,10 @@ declare -A STATUS_FROM_TODOWRITE=(
 #   Present continuous form (e.g., "Implementing authentication")
 #
 # Algorithm:
-#   1. Check lookup table for first word
-#   2. Apply grammar rules if not found
-#   3. Fallback to "Working on: <title>" if uncertain
+#   1. Check if first word already ends in "-ing" (already active form)
+#   2. Check lookup table for first word
+#   3. Apply grammar rules if looks like a verb
+#   4. Fallback to "Working on: <title>" for non-verbs
 # -----------------------------------------------------------------------------
 convert_to_active_form() {
     local title="$1"
@@ -223,10 +224,34 @@ convert_to_active_form() {
         rest="${title#* }"
     fi
 
+    # -1. Handle prefix patterns like "BUG:", "FEAT:", "T123:", "OPTIONAL:" etc.
+    # These should use the fallback since they're labels, not verbs
+    if [[ "$first_word" =~ ^[A-Z0-9._-]+:$ ]] || [[ "$first_word" =~ ^T[0-9]+(\.[0-9]+)?:$ ]]; then
+        echo "Working on: ${title}"
+        return 0
+    fi
+
+    # Strip trailing colon/punctuation for lookup (but preserve original for non-verb fallback)
+    local first_word_clean="${first_word_lower%:}"
+    first_word_clean="${first_word_clean%.}"
+
+    # 0. Check if first word already ends in "-ing" (already in active form)
+    # This prevents "Testing" → "Testinging", "Debugging" → "Debugginging", etc.
+    if [[ "${first_word_clean}" =~ ing$ ]] && [[ ${#first_word_clean} -gt 4 ]]; then
+        # Already in active form - capitalize and use as-is
+        local capitalized="${first_word^}"
+        if [[ -n "$rest" ]]; then
+            echo "${capitalized} ${rest}"
+        else
+            echo "${capitalized}"
+        fi
+        return 0
+    fi
+
     # 1. Check lookup table first (most reliable)
     # Use ${array[$key]+_} pattern to safely check if key exists (avoids unbound variable with set -u)
-    if [[ -v "VERB_TO_ACTIVE[$first_word_lower]" ]]; then
-        local active_verb="${VERB_TO_ACTIVE[$first_word_lower]}"
+    if [[ -v "VERB_TO_ACTIVE[$first_word_clean]" ]]; then
+        local active_verb="${VERB_TO_ACTIVE[$first_word_clean]}"
         if [[ -n "$rest" ]]; then
             echo "${active_verb} ${rest}"
         else
@@ -235,22 +260,50 @@ convert_to_active_form() {
         return 0
     fi
 
-    # 2. Apply grammar transformation rules
-    local transformed=""
-    transformed=$(apply_grammar_rules "$first_word_lower")
+    # 2. Check if first word looks like a verb (heuristics)
+    # Non-verbs typically: start with uppercase (proper noun), are common nouns, etc.
+    # Skip grammar rules for words that are likely NOT verbs
+    local is_likely_verb=true
 
-    if [[ -n "$transformed" ]]; then
-        # Capitalize first letter
-        transformed="${transformed^}"
-        if [[ -n "$rest" ]]; then
-            echo "${transformed} ${rest}"
-        else
-            echo "${transformed}"
+    # Common non-verb first words in task titles (nouns, adjectives, etc.)
+    case "$first_word_clean" in
+        # Common nouns/adjectives that start task titles
+        core|api|ui|ux|db|database|frontend|backend|server|client|user|admin|auth|config|configuration)
+            is_likely_verb=false ;;
+        data|file|files|module|component|class|function|method|service|controller|model|view)
+            is_likely_verb=false ;;
+        unit|integration|e2e|performance|security|load|stress|smoke|regression)
+            is_likely_verb=false ;;
+        bug|feature|issue|task|story|epic|ticket|pr|review|release|version|v1|v2|patch)
+            is_likely_verb=false ;;
+        new|old|main|primary|secondary|final|initial|temp|temporary|quick|fast|slow)
+            is_likely_verb=false ;;
+        # If word is very short and not in lookup, probably not a verb
+        *)
+            if [[ ${#first_word_clean} -le 2 ]]; then
+                is_likely_verb=false
+            fi
+            ;;
+    esac
+
+    # 3. Apply grammar transformation rules only if likely a verb
+    if [[ "$is_likely_verb" == "true" ]]; then
+        local transformed=""
+        transformed=$(apply_grammar_rules "$first_word_clean")
+
+        if [[ -n "$transformed" ]]; then
+            # Capitalize first letter
+            transformed="${transformed^}"
+            if [[ -n "$rest" ]]; then
+                echo "${transformed} ${rest}"
+            else
+                echo "${transformed}"
+            fi
+            return 0
         fi
-        return 0
     fi
 
-    # 3. Fallback: Use title as-is with prefix
+    # 4. Fallback: Use title as-is with prefix
     echo "Working on: ${title}"
     return 0
 }
@@ -469,6 +522,24 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     echo "  'Configure system' -> $(convert_to_active_form 'Configure system')"
     echo "  'Tie components' -> $(convert_to_active_form 'Tie components')"
     echo "  'Stop service' -> $(convert_to_active_form 'Stop service')"
+    echo ""
+
+    echo "Testing bug fixes (T315):"
+    echo "  'Core feature A' -> $(convert_to_active_form 'Core feature A')"
+    echo "  'Testing task' -> $(convert_to_active_form 'Testing task')"
+    echo "  'Debugging session' -> $(convert_to_active_form 'Debugging session')"
+    echo "  'API integration' -> $(convert_to_active_form 'API integration')"
+    echo "  'UI component' -> $(convert_to_active_form 'UI component')"
+    echo "  'Bug fix for login' -> $(convert_to_active_form 'Bug fix for login')"
+    echo "  'Running tests' -> $(convert_to_active_form 'Running tests')"
+    echo ""
+
+    echo "Testing prefix patterns (colon handling):"
+    echo "  'BUG: validation.sh issue' -> $(convert_to_active_form 'BUG: validation.sh issue')"
+    echo "  'T328.10: Create docs' -> $(convert_to_active_form 'T328.10: Create docs')"
+    echo "  'OPTIONAL: Add feature' -> $(convert_to_active_form 'OPTIONAL: Add feature')"
+    echo "  'FEAT: New login page' -> $(convert_to_active_form 'FEAT: New login page')"
+    echo "  'Fix: broken tests' -> $(convert_to_active_form 'Fix: broken tests')"
     echo ""
 
     echo "Testing status mapping:"

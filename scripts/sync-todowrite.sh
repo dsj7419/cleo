@@ -49,8 +49,8 @@ else
 fi
 
 log_error() { echo -e "${RED}[ERROR]${NC} $1" >&2; }
-log_warn() { [[ "${QUIET:-false}" != "true" ]] && echo -e "${YELLOW}[WARN]${NC} $1" || true; }
-log_info() { [[ "${QUIET:-false}" != "true" ]] && echo -e "${GREEN}[INFO]${NC} $1" || true; }
+log_warn() { [[ "${QUIET:-false}" != "true" ]] && echo -e "${YELLOW}[WARN]${NC} $1" >&2 || true; }
+log_info() { [[ "${QUIET:-false}" != "true" ]] && echo -e "${GREEN}[INFO]${NC} $1" >&2 || true; }
 
 # =============================================================================
 # Configuration
@@ -154,7 +154,7 @@ handle_status() {
                 --arg timestamp "$timestamp" \
                 --arg state_file "$STATE_FILE" \
                 '{
-                    "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+                    "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
                     "_meta": {
                         "format": "json",
                         "version": $version,
@@ -203,7 +203,7 @@ handle_status() {
             --argjson task_ids "$task_ids_json" \
             --argjson phases "$phases_json" \
             '{
-                "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+                "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
                 "_meta": {
                     "format": "json",
                     "version": $version,

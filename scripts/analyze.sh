@@ -386,7 +386,7 @@ run_complete_analysis() {
     # ================================================================
 
     {
-      "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+      "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
       "_meta": {
         "format": "json",
         "version": $version,
@@ -446,7 +446,7 @@ output_json() {
 
   if [[ "$pending_count" -eq 0 ]]; then
     jq -n --arg version "$VERSION" '{
-      "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+      "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
       "_meta": {"format": "json", "command": "analyze", "version": $version, "timestamp": (now | strftime("%Y-%m-%dT%H:%M:%SZ"))},
       "success": true,
       "summary": {"total_pending": 0, "actionable": 0, "blocked": 0},
@@ -770,7 +770,7 @@ main() {
       if [[ "$OUTPUT_MODE" == "json" ]]; then
         echo ""
         jq -n --arg task "$rec_task" '{
-          "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+          "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
           "auto_focus": {"set": $task, "status": "success"}
         }'
       fi

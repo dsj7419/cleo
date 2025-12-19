@@ -53,8 +53,9 @@ check_foundation() {
     fi
 
     # Check 2: Dual-path fallback support
+    # Use pre-extracted pattern from check-compliance.sh if available, fallback to jq
     local dual_path_pattern
-    dual_path_pattern=$(echo "$schema" | jq -r '.requirements.foundation.libraries.patterns.dual_path')
+    dual_path_pattern="${PATTERN_DUAL_PATH:-$(echo "$schema" | jq -r '.requirements.foundation.libraries.patterns.dual_path')}"
 
     if pattern_exists "$script" "$dual_path_pattern"; then
         results+=('{"check": "dual_path", "passed": true, "details": "Dual-path library loading supported"}')
@@ -67,8 +68,9 @@ check_foundation() {
     fi
 
     # Check 3: COMMAND_NAME variable set
+    # Use pre-extracted pattern from check-compliance.sh if available, fallback to jq
     local cmd_name_pattern
-    cmd_name_pattern=$(echo "$schema" | jq -r '.requirements.foundation.variables.patterns.command_name')
+    cmd_name_pattern="${PATTERN_COMMAND_NAME:-$(echo "$schema" | jq -r '.requirements.foundation.variables.patterns.command_name')}"
 
     if pattern_exists "$script" "$cmd_name_pattern"; then
         # Extract the command name value (escape quotes for JSON)
@@ -85,8 +87,9 @@ check_foundation() {
     fi
 
     # Check 4: VERSION from central location
+    # Use pre-extracted pattern from check-compliance.sh if available, fallback to jq
     local version_pattern
-    version_pattern=$(echo "$schema" | jq -r '.requirements.foundation.variables.patterns.version_central')
+    version_pattern="${PATTERN_VERSION_CENTRAL:-$(echo "$schema" | jq -r '.requirements.foundation.variables.patterns.version_central')}"
 
     if pattern_exists "$script" "$version_pattern"; then
         results+=('{"check": "version_central", "passed": true, "details": "VERSION loaded from central file"}')
@@ -103,6 +106,20 @@ check_foundation() {
             ((failed++)) || true
             [[ "$verbose" == "true" ]] && print_check fail "VERSION" "Variable not found"
         fi
+    fi
+
+    # Check 5: Bash strict mode (set -euo pipefail)
+    local strict_mode_pattern
+    strict_mode_pattern=$(echo "$schema" | jq -r '.requirements.foundation.bash_strict_mode.pattern')
+
+    if pattern_exists "$script" "$strict_mode_pattern"; then
+        results+=('{"check": "bash_strict_mode", "passed": true, "details": "set -euo pipefail present"}')
+        ((passed++)) || true
+        [[ "$verbose" == "true" ]] && print_check pass "Bash strict mode (set -euo pipefail)"
+    else
+        results+=('{"check": "bash_strict_mode", "passed": false, "details": "Missing set -euo pipefail"}')
+        ((failed++)) || true
+        [[ "$verbose" == "true" ]] && print_check fail "Bash strict mode" "Missing set -euo pipefail"
     fi
 
     # Build JSON result

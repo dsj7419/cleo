@@ -118,7 +118,7 @@ Examples:
 
 JSON Output Format:
   {
-    "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+    "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
     "_meta": {"command": "config", "timestamp": "..."},
     "success": true,
     "scope": "project",
@@ -142,7 +142,7 @@ output_json() {
         --arg ts "$timestamp" \
         --argjson data "$data" \
         '{
-            "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+            "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
             "_meta": {
                 "format": "json",
                 "version": $version,
@@ -170,7 +170,7 @@ output_change_json() {
         --arg old "$old_value" \
         --arg new "$new_value" \
         '{
-            "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+            "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
             "_meta": {
                 "format": "json",
                 "version": $version,
@@ -261,7 +261,7 @@ cmd_get() {
             --arg timestamp "$timestamp" \
             --arg version "$VERSION" \
             '{
-                "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+                "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
                 "_meta": {
                     "format": "json",
                     "version": $version,

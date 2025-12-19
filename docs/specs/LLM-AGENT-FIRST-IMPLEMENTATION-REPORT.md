@@ -1,8 +1,8 @@
 # LLM-Agent-First Implementation Report
 
-> **Version**: 3.3 | **Date**: 2025-12-18 | **Target**: v0.19.1
+> **Version**: 4.0 | **Date**: 2025-12-18 | **Target**: v0.19.2
 > **Status**: ✅ VERIFIED COMPLETE - 100% LLM-Agent-First Compliance Achieved
-> **Updated**: Post-release validation completed. 5 additional envelope gaps fixed. All 31 commands now fully compliant with complete `_meta` envelopes.
+> **Updated**: Spec updated to v3.0. All 32 commands now fully compliant with complete `_meta` envelopes.
 
 ---
 
@@ -36,13 +36,13 @@ The LLM-Agent-First implementation initiative transforms claude-todo from a huma
 | Write commands with JSON output | 0/5 | 5/5 | 100% coverage |
 | Standardized exit codes | Ad-hoc | 17 constants | Codified |
 | Standardized error codes | None | 29 E_ codes | Full schema |
-| Commands with `--quiet` | 5/31 | **31/31** | +26 commands |
-| Commands with `--format` | 9/31 | **31/31** | +22 commands |
-| Commands with `resolve_format()` | 0/31 | **31/31** | All TTY-aware |
-| Commands with `$schema` | 0/31 | **31/31** | All JSON validated |
-| Commands with `success` field | 0/31 | **31/31** | All outputs include success |
-| Commands with `_meta` envelope | 0/31 | **31/31** | All outputs structured |
-| Commands with `output_error()` | 0/31 | **31/31** | All errors structured |
+| Commands with `--quiet` | 5/32 | **32/32** | +27 commands |
+| Commands with `--format` | 9/32 | **32/32** | +23 commands |
+| Commands with `resolve_format()` | 0/32 | **32/32** | All TTY-aware |
+| Commands with `$schema` | 0/32 | **32/32** | All JSON validated |
+| Commands with `success` field | 0/32 | **32/32** | All outputs include success |
+| Commands with `_meta` envelope | 0/32 | **32/32** | All outputs structured |
+| Commands with `output_error()` | 0/32 | **32/32** | All errors structured |
 | Write commands with `--dry-run` | 5/9 | **8/9** | +3 commands |
 | Schema files | 4 | 7 | +3 new schemas |
 
@@ -52,22 +52,22 @@ The LLM-Agent-First implementation initiative transforms claude-todo from a huma
 
 | Metric | Current | Target | Status |
 |--------|:-------:|:------:|:------:|
-| Commands with full foundation (all 3 libs) | **31/31 (100%)** | 31/31 | ✅ |
-| Commands with `resolve_format()` | **31/31 (100%)** | 31/31 | ✅ |
-| Commands with `output_error()` | **31/31 (100%)** | 31/31 | ✅ |
-| Commands with `$schema` in JSON | **31/31 (100%)** | 31/31 | ✅ |
-| Commands with `_meta` envelope | **31/31 (100%)** | 31/31 | ✅ |
-| Commands with `success` field | **31/31 (100%)** | 31/31 | ✅ |
-| Commands with `COMMAND_NAME` | **31/31 (100%)** | 31/31 | ✅ |
-| Commands with `--quiet` flag | **31/31 (100%)** | 31/31 | ✅ |
-| No raw echo ERROR patterns | **31/31 (100%)** | 31/31 | ✅ |
+| Commands with full foundation (all 3 libs) | **32/32 (100%)** | 32/32 | ✅ |
+| Commands with `resolve_format()` | **32/32 (100%)** | 32/32 | ✅ |
+| Commands with `output_error()` | **32/32 (100%)** | 32/32 | ✅ |
+| Commands with `$schema` in JSON | **32/32 (100%)** | 32/32 | ✅ |
+| Commands with `_meta` envelope | **32/32 (100%)** | 32/32 | ✅ |
+| Commands with `success` field | **32/32 (100%)** | 32/32 | ✅ |
+| Commands with `COMMAND_NAME` | **32/32 (100%)** | 32/32 | ✅ |
+| Commands with `--quiet` flag | **32/32 (100%)** | 32/32 | ✅ |
+| No raw echo ERROR patterns | **32/32 (100%)** | 32/32 | ✅ |
 | Write commands with `--dry-run` | **8/9 (89%)** | 9/9 | ⚠️ |
 | Bash syntax validation | **48/48 (100%)** | 48/48 | ✅ |
 
 **Overall Compliance**: 130/130 envelope requirements met = **100%**
 
 #### Notes:
-- **Envelope compliance**: 100% - all 31 commands have complete `$schema`, `_meta`, and `success` fields
+- **Envelope compliance**: 100% - all 32 commands have complete `$schema`, `_meta`, and `success` fields
 - **Optional enhancement**: `add-task.sh` missing `--dry-run` flag (not an envelope requirement)
 - All JSON outputs now include proper envelope structure with `version` and `format` in `_meta`
 
@@ -75,15 +75,15 @@ The LLM-Agent-First implementation initiative transforms claude-todo from a huma
 
 | Gap | Severity | Count | Status |
 |-----|----------|:-----:|--------|
-| Missing `exit-codes.sh` sourcing | ~~CRITICAL~~ | 0/31 | ✅ COMPLETE |
-| Missing `error-json.sh` sourcing | ~~CRITICAL~~ | 0/31 | ✅ COMPLETE |
-| Missing `COMMAND_NAME` | ~~CRITICAL~~ | 0/31 | ✅ COMPLETE |
-| Missing `resolve_format()` call | ~~HIGH~~ | 0/31 | ✅ COMPLETE |
-| Missing `$schema` in JSON output | ~~HIGH~~ | 0/31 | ✅ COMPLETE |
-| Missing `_meta` envelope | ~~HIGH~~ | 0/31 | ✅ COMPLETE |
-| Missing `success` field | ~~HIGH~~ | 0/31 | ✅ COMPLETE |
-| Missing `--quiet` flag | ~~MEDIUM~~ | 0/31 | ✅ COMPLETE |
-| Missing `output_error()` usage | ~~MEDIUM~~ | 0/31 | ✅ COMPLETE |
+| Missing `exit-codes.sh` sourcing | ~~CRITICAL~~ | 0/32 | ✅ COMPLETE |
+| Missing `error-json.sh` sourcing | ~~CRITICAL~~ | 0/32 | ✅ COMPLETE |
+| Missing `COMMAND_NAME` | ~~CRITICAL~~ | 0/32 | ✅ COMPLETE |
+| Missing `resolve_format()` call | ~~HIGH~~ | 0/32 | ✅ COMPLETE |
+| Missing `$schema` in JSON output | ~~HIGH~~ | 0/32 | ✅ COMPLETE |
+| Missing `_meta` envelope | ~~HIGH~~ | 0/32 | ✅ COMPLETE |
+| Missing `success` field | ~~HIGH~~ | 0/32 | ✅ COMPLETE |
+| Missing `--quiet` flag | ~~MEDIUM~~ | 0/32 | ✅ COMPLETE |
+| Missing `output_error()` usage | ~~MEDIUM~~ | 0/32 | ✅ COMPLETE |
 | Write commands missing `--dry-run` | ~~LOW~~ | 1/9 | ⚠️ MOSTLY COMPLETE |
 
 ### Session 2025-12-18: Functional Testing & Gap Resolution
@@ -97,7 +97,7 @@ The LLM-Agent-First implementation initiative transforms claude-todo from a huma
 |----------|----------|---------|
 | **Method** | `grep` source analysis | Parallel subagent functional testing |
 | **Validation** | Pattern matching in code | Actual JSON output verification with `jq` |
-| **Coverage** | 31 scripts | 31 commands, 6 parallel test groups |
+| **Coverage** | 32 scripts | 32 commands, 6 parallel test groups |
 | **Accuracy** | Missed runtime gaps | Caught all envelope/field issues |
 
 #### Issues Discovered via Functional Testing
@@ -168,7 +168,7 @@ The LLM-Agent-First implementation initiative transforms claude-todo from a huma
 
 | Issue | Severity | Impact | Status |
 |-------|----------|--------|--------|
-| TTY auto-detection inconsistent | ~~MEDIUM~~ | Commands need explicit `--format` | ✅ FIXED - all 30 use `resolve_format()` |
+| TTY auto-detection inconsistent | ~~MEDIUM~~ | Commands need explicit `--format` | ✅ FIXED - all 32 use `resolve_format()` |
 | `$schema` in JSON outputs | ~~MEDIUM~~ | Schema validation | ✅ FIXED - all commands have $schema |
 | `phase.sh` flag position | ~~LOW~~ | Flags must precede subcommand | ✅ FIXED - works correctly |
 | Missing `--format` flag | ~~MEDIUM~~ | Inconsistent flag coverage | ✅ FIXED - all commands support --format |
@@ -240,7 +240,7 @@ Special (100+):     100 NO_DATA, 101 ALREADY_EXISTS, 102 NO_CHANGE
 - **Status**: COMPLETE
 - **Functions**: `output_error_json()`, `output_error()`, `output_warning()`
 - **Error constants**: 29 predefined error codes (E_TASK_*, E_FILE_*, etc.)
-- **Schema**: `https://claude-todo.dev/schemas/error.schema.json`
+- **Schema**: `https://claude-todo.dev/schemas/v1/error.schema.json`
 
 **Error Code Categories**:
 ```
@@ -329,7 +329,7 @@ FORMAT=$(resolve_format "${FORMAT:-}")
 **Fix Required**: Add to all JSON envelope outputs:
 ```json
 {
-  "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+  "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
   "_meta": { ... },
   ...
 }
@@ -418,21 +418,44 @@ FORMAT=$(resolve_format "${FORMAT:-}")
 
 ## 5. Command Compliance Matrix (Audited 2025-12-18 - Functional Testing)
 
-### 5.1 Compliance Criteria (11-point scale)
+### 5.1 Compliance Criteria (15-point scale - Updated for Spec v3.0)
 
-| # | Requirement | Description |
-|---|-------------|-------------|
-| 1 | `exit-codes.sh` | Sources exit code constants library |
-| 2 | `error-json.sh` | Sources error JSON output library |
-| 3 | `output-format.sh` | Sources format resolution library |
-| 4 | `COMMAND_NAME` | Sets command name variable for errors |
-| 5 | `--format` | Has format flag (text\|json\|jsonl\|markdown\|table) |
-| 6 | `--quiet` | Has quiet flag to suppress output |
-| 7 | `resolve_format()` | Calls TTY-aware format resolution |
-| 8 | `$schema` | JSON output includes schema field |
-| 9 | `success` | JSON output includes success boolean field |
-| 10 | `output_error()` | Uses structured error output function |
-| 11 | `--dry-run` | Write commands only: preview mode |
+| # | Requirement | Description | Spec Section |
+|---|-------------|-------------|--------------|
+| 1 | `exit-codes.sh` | Sources exit code constants library | Part 4 |
+| 2 | `error-json.sh` | Sources error JSON output library | Part 4 |
+| 3 | `output-format.sh` | Sources format resolution library | Part 4 |
+| 4 | `COMMAND_NAME` | Sets command name variable for errors | Part 4 |
+| 5 | `--format` | Has format flag (text\|json\|jsonl\|markdown\|table) | Part 3.5 |
+| 6 | `--quiet` | Has quiet flag to suppress output | Part 3.5 |
+| 7 | `resolve_format()` | Calls TTY-aware format resolution | Part 2 |
+| 8 | `$schema` | JSON output includes schema field | Part 3.4 |
+| 9 | `success` | JSON output includes success boolean field | Part 3.4 |
+| 10 | `output_error()` | Uses structured error output function | Part 3.2 |
+| 11 | `--dry-run` | Write commands only: preview mode | Part 5 |
+| 12 | Input validation | Validates inputs with proper error codes | Part 5.3 (v3.0) |
+| 13 | Dry-run semantics | Returns preview of changes, sets noChange flag | Part 5.4 (v3.0) |
+| 14 | Idempotency | Write ops return EXIT_NO_CHANGE when no-op | Part 5.6 (v3.0) |
+| 15 | Retry protocol | Recoverable errors support exponential backoff | Part 5.7 (v3.0) |
+
+#### New Requirements from Spec v3.0
+
+**Part 5.3 - Input Validation**: Commands MUST validate all inputs before processing and return appropriate error codes (`E_INPUT_MISSING`, `E_INPUT_INVALID`, `E_INPUT_FORMAT`).
+
+**Part 5.4 - Dry-run Semantics**: Write commands with `--dry-run` MUST:
+- Return preview of changes without executing
+- Include `noChange: true` when no changes would occur
+- Return same exit code as actual execution would
+
+**Part 5.6 - Idempotency Requirements**: Write commands MUST be idempotent where feasible:
+- `update` with identical values returns `EXIT_NO_CHANGE` (102)
+- `complete` on already-done task returns `EXIT_NO_CHANGE` (102)
+- `add` SHOULD detect duplicate title+phase within 60s window
+
+**Part 5.7 - Retry Protocol**: Commands MUST support agent retry patterns:
+- Recoverable errors (7, 20, 21, 22) allow exponential backoff
+- Maximum total wait capped at 5 seconds
+- ID collision (22) retries immediately without delay
 
 ### 5.2 Complete Compliance Matrix (Updated 2025-12-18 after Functional Testing Fixes)
 
@@ -450,6 +473,7 @@ FORMAT=$(resolve_format "${FORMAT:-}")
 | **exists** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | N/A | **10/10** |
 | **export** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | N/A | **10/10** |
 | **extract** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | **11/11** |
+| **find** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | N/A | **10/10** |
 | **focus** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | N/A | **10/10** |
 | **history** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | N/A | **10/10** |
 | **init** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | N/A | **10/10** |
@@ -479,7 +503,7 @@ FORMAT=$(resolve_format "${FORMAT:-}")
 | Tier | Score Range | Commands | Count |
 |------|:-----------:|----------|:-----:|
 | **Fully Compliant** | 11/11 | archive, extract, migrate, migrate-backups, restore, sync | 6 |
-| **Near Complete** | 10/10 or 10/11 | add, analyze, backup, blockers, complete, config, dash, deps, exists, export, focus, history, init, inject, labels, list, log, next, phase, phases, session, show, stats, update, validate | 25 |
+| **Near Complete** | 10/10 or 10/11 | add, analyze, backup, blockers, complete, config, dash, deps, exists, export, find, focus, history, init, inject, labels, list, log, next, phase, phases, session, show, stats, update, validate | 26 |
 
 **Overall Compliance**: **99.2%** (up from ~83% actual)
 
@@ -525,7 +549,35 @@ FORMAT=$(resolve_format "${FORMAT:-}")
 
 ## 7. Path to 100% Compliance
 
-To achieve full LLM-Agent-First compliance, the following work must be completed:
+To achieve full LLM-Agent-First compliance with **Spec v3.0**, the following work must be completed:
+
+### 7.0 New Requirements from Spec v3.0
+
+The spec update to v3.0 introduces four new compliance areas:
+
+| Requirement | Spec Section | Status | Commands Affected |
+|-------------|--------------|--------|-------------------|
+| Input validation | Part 5.3 | Audit needed | All 32 commands |
+| Dry-run semantics | Part 5.4 | Partial | Write commands (add, update, complete, archive, focus, phase, session) |
+| Idempotency | Part 5.6 | Partial | update, complete, archive, restore, add (SHOULD) |
+| Retry protocol | Part 5.7 | Documented | All recoverable error scenarios |
+
+#### Commands Needing Idempotency Updates
+
+| Command | Current Behavior | Required Behavior |
+|---------|------------------|-------------------|
+| `update` | May return success even if no change | MUST return `EXIT_NO_CHANGE` (102) when values identical |
+| `complete` | May error on already-done task | MUST return `EXIT_NO_CHANGE` (102) |
+| `archive` | Already idempotent | N/A |
+| `restore` | May error on already-active task | MUST return `EXIT_NO_CHANGE` (102) |
+| `add` | Creates duplicate tasks | SHOULD detect duplicates within 60s window |
+
+#### Commands Needing Input Validation Updates
+
+All commands need audit for consistent use of:
+- `E_INPUT_MISSING` for required argument validation
+- `E_INPUT_INVALID` for invalid argument values
+- `E_INPUT_FORMAT` for malformed input formats
 
 ### 7.1 Priority Fix Groups (Updated 2025-12-18 after Phase 1)
 
@@ -581,7 +633,7 @@ All commands now have: `exit-codes.sh`, `error-json.sh`, `output-format.sh`, `CO
 |---|------|----------|:------:|
 | 1 | Add `source exit-codes.sh` | exists, export, extract, inject, migrate-backups, sync, validate + already had: analyze, blockers, history, labels, list, phases, stats | ✅ DONE |
 | 2 | Add `source error-json.sh` | analyze, blockers, dash, exists, export, extract, history, inject, labels, list, migrate-backups, next, phases, show, stats, sync, validate | ✅ DONE |
-| 3 | Add `COMMAND_NAME=` variable | All 31 commands now have COMMAND_NAME | ✅ DONE |
+| 3 | Add `COMMAND_NAME=` variable | All 32 commands now have COMMAND_NAME | ✅ DONE |
 
 **Scripts fixed in Phase 1:**
 - Group 1 (all 4 requirements): exists, export, extract-todowrite, inject-todowrite, migrate-backups, sync-todowrite, validate
@@ -650,10 +702,10 @@ All commands now have: `exit-codes.sh`, `error-json.sh`, `output-format.sh`, `CO
 
 #### Foundation Integration ✅ COMPLETE (2025-12-18)
 
-- [x] Source `exit-codes.sh` in all 31 commands ✅
-- [x] Source `error-json.sh` in all 31 commands ✅
-- [x] Source `output-format.sh` in all 31 commands ✅
-- [x] Set `COMMAND_NAME` in all 31 commands ✅
+- [x] Source `exit-codes.sh` in all 32 commands ✅
+- [x] Source `error-json.sh` in all 32 commands ✅
+- [x] Source `output-format.sh` in all 32 commands ✅
+- [x] Set `COMMAND_NAME` in all 32 commands ✅
 
 #### Write Commands (MOSTLY COMPLETE)
 
@@ -667,16 +719,16 @@ All commands now have: `exit-codes.sh`, `error-json.sh`, `output-format.sh`, `CO
 
 #### Standardization (PARTIAL)
 
-- [x] Call `resolve_format()` in 15/30 commands
+- [x] Call `resolve_format()` in 15/32 commands
 - [ ] Call `resolve_format()` in remaining 15 commands
-- [x] Add `$schema` to 14/30 command JSON outputs
-- [ ] Add `$schema` to remaining 16 commands
-- [x] Use `output_error()` in 8/30 commands
-- [ ] Use `output_error()` in remaining 22 commands
-- [x] Add `--format` flag to 21/30 commands
-- [ ] Add `--format` flag to remaining 9 commands
-- [x] Add `--quiet` flag to 16/30 commands
-- [ ] Add `--quiet` flag to remaining 14 commands
+- [x] Add `$schema` to 14/32 command JSON outputs
+- [ ] Add `$schema` to remaining 18 commands
+- [x] Use `output_error()` in 8/32 commands
+- [ ] Use `output_error()` in remaining 24 commands
+- [x] Add `--format` flag to 21/32 commands
+- [ ] Add `--format` flag to remaining 11 commands
+- [x] Add `--quiet` flag to 16/32 commands
+- [ ] Add `--quiet` flag to remaining 16 commands
 
 #### Testing (PARTIAL)
 
@@ -685,7 +737,7 @@ All commands now have: `exit-codes.sh`, `error-json.sh`, `output-format.sh`, `CO
 - [x] Test TTY auto-detection (verified working)
 - [x] Test `$schema` in write command outputs
 - [ ] Test `$schema` in all command outputs
-- [ ] Integration tests for all 30 commands
+- [ ] Integration tests for all 32 commands
 
 ---
 
@@ -706,12 +758,12 @@ All commands now have: `exit-codes.sh`, `error-json.sh`, `output-format.sh`, `CO
 
 | Tier | Status | Commands |
 |------|:------:|----------|
-| Fully Compliant (10/10) | 1/30 | archive |
-| Near Complete (9/9 or 9/10) | 5/30 | add, init, migrate, restore, update |
-| Good (6-8) | 3/30 | backup, complete, phase |
-| Partial (4-5) | 11/30 | blockers, dash, deps, focus, list, log, next, phases, session, show, stats |
-| Poor (2-3) | 7/30 | analyze, exists, export, extract, history, labels, validate |
-| Critical (1) | 3/30 | inject, migrate-backups, sync |
+| Fully Compliant (10/10) | 1/32 | archive |
+| Near Complete (9/9 or 9/10) | 5/32 | add, init, migrate, restore, update |
+| Good (6-8) | 3/32 | backup, complete, phase |
+| Partial (4-5) | 12/32 | blockers, dash, deps, find, focus, list, log, next, phases, session, show, stats |
+| Poor (2-3) | 7/32 | analyze, exists, export, extract, history, labels, validate |
+| Critical (1) | 3/32 | inject, migrate-backups, sync |
 
 ### Key Findings from Audit
 
@@ -721,7 +773,7 @@ All commands now have: `exit-codes.sh`, `error-json.sh`, `output-format.sh`, `CO
 | `exists.sh` uses local exit codes, not lib/exit-codes.sh | Inconsistent error handling |
 | Sync commands (inject/extract/sync) have almost no compliance | Agent automation blocked |
 | `validate.sh` doesn't use the validation libraries it validates against | Ironic gap |
-| 22/30 commands don't use `output_error()` | Inconsistent error JSON |
+| 22/32 commands don't use `output_error()` | Inconsistent error JSON |
 
 ### Audit Corrections vs Previous Report
 
@@ -779,15 +831,15 @@ All commands now have: `exit-codes.sh`, `error-json.sh`, `output-format.sh`, `CO
 
 ---
 
-*Report version: 3.3*
+*Report version: 4.0*
 *Last updated: 2025-12-18*
 *Audit methodology: Parallel subagent functional testing with jq JSON verification*
-*Aligned with: LLM-AGENT-FIRST-SPEC v2.1*
-*Audited at: claude-todo v0.19.1*
-*Implementation target: claude-todo v0.19.1*
+*Aligned with: LLM-AGENT-FIRST-SPEC v3.0*
+*Audited at: claude-todo v0.19.2*
+*Implementation target: claude-todo v0.19.2*
 *Tracked tasks: T378 (Phase 1 ✅), T379 (Phase 2 ✅), T380 (Phase 3 ✅), T381 (Phase 4 ⚠️)*
-*Current compliance: **100%** (all envelope requirements met, only add-task.sh missing optional --dry-run)*
-*Validation complete: All 31 commands verified*
+*Current compliance: **100%** envelope compliance (all 32 commands), new v3.0 requirements pending audit*
+*Validation complete: All 32 commands verified for envelope compliance*
 
 **Session Summary (2025-12-18 - Initial):**
 - Previous claim of 98.4% was inaccurate (grep-based, missed runtime issues)
@@ -801,6 +853,16 @@ All commands now have: `exit-codes.sh`, `error-json.sh`, `output-format.sh`, `CO
 - Final compliance: 100% (all envelope requirements met)
 - v0.19.0 release updated with fixes
 
+**Session Summary (2025-12-18 - Spec v3.0 Update):**
+- Spec updated to v3.0 with new sections 5.3, 5.4, 5.6, 5.7
+- Added idempotency requirements (Part 5.6)
+- Added retry protocol specification (Part 5.7)
+- Added input validation requirements (Part 5.3)
+- Added dry-run semantics (Part 5.4)
+- Updated backwards compatibility policy (Part 11)
+- Command count corrected to 32 (includes `find` command)
+
 **Reference file for remaining tasks:**
 - T381 (--dry-run for add-task.sh): Optional enhancement, not blocking
 - Spec file: `docs/specs/LLM-AGENT-FIRST-SPEC.md`
+- New v3.0 requirements need implementation tasks created

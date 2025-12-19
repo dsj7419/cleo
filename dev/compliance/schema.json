@@ -19,6 +19,11 @@
           "command_name": "^COMMAND_NAME=",
           "version_central": "VERSION=.*CLAUDE_TODO_HOME/VERSION|VERSION=.*SCRIPT_DIR.*VERSION"
         }
+      },
+      "bash_strict_mode": {
+        "required": true,
+        "pattern": "^set -euo pipefail",
+        "description": "Bash strict mode for error detection and safety"
       }
     },
 
@@ -47,7 +52,7 @@
       "required_fields": ["$schema", "_meta", "success"],
       "meta_fields": ["format", "version", "command", "timestamp"],
       "patterns": {
-        "schema_field": "\\\"\\$schema\\\".*output\\.schema\\.json",
+        "schema_field": "\\\"\\$schema\\\".*v1/output\\.schema\\.json",
         "meta_block": "\\\"_meta\\\"",
         "success_field": "\\\"success\\\".*true|\\\"success\\\".*false"
       }
@@ -120,6 +125,7 @@
     "foundation_libs": 15,
     "command_name": 5,
     "version_central": 5,
+    "bash_strict_mode": 10,
     "format_flag": 10,
     "quiet_flag": 5,
     "json_shortcut": 5,

@@ -22,8 +22,9 @@ check_errors() {
     local warnings=0
 
     # Check 1: Uses output_error() function
+    # Use pre-extracted pattern from check-compliance.sh if available, fallback to jq
     local output_error_pattern
-    output_error_pattern=$(echo "$schema" | jq -r '.requirements.error_handling.required_function')
+    output_error_pattern="${PATTERN_ERROR_FUNCTION:-$(echo "$schema" | jq -r '.requirements.error_handling.required_function')}"
 
     local error_func_count
     error_func_count=$(pattern_count "$script" "$output_error_pattern")
@@ -52,8 +53,9 @@ check_errors() {
     # Defensive patterns include:
     # - declare -f function_name >/dev/null
     # - Fallback function definition in else block (function_name() { ... })
+    # Use pre-extracted pattern from check-compliance.sh if available, fallback to jq
     local defensive_pattern
-    defensive_pattern=$(echo "$schema" | jq -r '.requirements.error_handling.defensive_check')
+    defensive_pattern="${PATTERN_DEFENSIVE_CHECK:-$(echo "$schema" | jq -r '.requirements.error_handling.defensive_check')}"
 
     # Also check for fallback patterns where function is defined in else block
     local fallback_pattern="log_error\\(\\)|output_error\\(\\)|dev_die\\(\\)"
@@ -111,8 +113,9 @@ check_errors() {
     fi
 
     # Check 4: Error library sourced (uses schema pattern if available)
+    # Use pre-extracted pattern from check-compliance.sh if available, fallback to jq
     local error_lib_pattern
-    error_lib_pattern=$(echo "$schema" | jq -r '.requirements.error_handling.error_lib_pattern // "error-json\\.sh"')
+    error_lib_pattern="${PATTERN_ERROR_LIB:-$(echo "$schema" | jq -r '.requirements.error_handling.error_lib_pattern // "error-json\\.sh"')}"
     local error_lib_name
     error_lib_name=$(echo "$schema" | jq -r '.requirements.error_handling.error_lib_name // "error-json.sh"')
 

@@ -365,7 +365,7 @@ claude-todo sync --clear               # Clear state without merge
 
 ```json
 {
-  "$schema": "https://claude-todo.dev/schemas/sync-extract-output.json",
+  "$schema": "https://claude-todo.dev/schemas/v1/sync-extract-output.json",
   "_meta": {
     "command": "sync --extract",
     "version": "0.19.2",
@@ -393,7 +393,7 @@ claude-todo sync --clear               # Clear state without merge
 
 ```json
 {
-  "$schema": "https://claude-todo.dev/schemas/sync-status-output.json",
+  "$schema": "https://claude-todo.dev/schemas/v1/sync-status-output.json",
   "_meta": { ... },
   "session": {
     "active": true,

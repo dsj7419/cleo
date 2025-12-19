@@ -313,7 +313,7 @@ list_phases() {
     current_phase=$(jq -r '.focus.currentPhase // .project.currentPhase // null' "$TODO_FILE")
 
     echo "$phase_stats" | jq --arg cp "$current_phase" --arg version "$VERSION" '{
-      "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+      "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
       "_meta": {
         "format": "json",
         "version": $version,
@@ -442,7 +442,7 @@ show_phase() {
 
   if [[ "$OUTPUT_FORMAT" == "json" ]]; then
     echo "$phase_info" | jq --arg version "$VERSION" '{
-      "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+      "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
       "_meta": {
         "format": "json",
         "version": $version,
@@ -502,7 +502,7 @@ show_stats() {
 
   if [[ "$OUTPUT_FORMAT" == "json" ]]; then
     echo "$phase_stats" | jq --arg version "$VERSION" '{
-      "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+      "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
       "_meta": {
         "format": "json",
         "version": $version,

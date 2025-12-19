@@ -1037,7 +1037,7 @@ output_json_format() {
     --arg session "$session_id" \
     --arg version "$VERSION" \
     '{
-      "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+      "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
       "_meta": {
         "format": "json",
         "version": $version,

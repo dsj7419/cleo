@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # CLAUDE-TODO Validate Script
 # Validate todo.json against schema and business rules
-set -uo pipefail
+set -euo pipefail
 # Note: Not using -e because we track errors manually
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -28,6 +28,12 @@ fi
 if [[ -f "$LIB_DIR/backup.sh" ]]; then
   # shellcheck source=../lib/backup.sh
   source "$LIB_DIR/backup.sh"
+fi
+
+# Source file-ops library for atomic writes with locking
+if [[ -f "$LIB_DIR/file-ops.sh" ]]; then
+  # shellcheck source=../lib/file-ops.sh
+  source "$LIB_DIR/file-ops.sh"
 fi
 
 # Source output formatting library
@@ -131,6 +137,66 @@ log_info() {
   fi
 }
 
+#######################################
+# Perform atomic JSON write with file locking
+# Uses save_json from file-ops.sh if available, falls back to basic atomic write
+# Arguments:
+#   $1 - File path
+#   $2 - jq filter to apply
+# Returns:
+#   0 on success, non-zero on error
+#######################################
+safe_json_write() {
+  local file="$1"
+  local jq_filter="$2"
+  local jq_args=("${@:3}")
+  local new_content
+
+  # Generate new content
+  if ! new_content=$(jq "${jq_args[@]}" "$jq_filter" "$file" 2>/dev/null); then
+    return 1
+  fi
+
+  # Use save_json if available (includes locking via atomic_write)
+  if declare -f save_json >/dev/null 2>&1; then
+    if ! echo "$new_content" | save_json "$file"; then
+      return 1
+    fi
+  else
+    # Fallback: basic atomic write with manual locking
+    local lock_fd
+    if declare -f lock_file >/dev/null 2>&1; then
+      if ! lock_file "$file" lock_fd 5; then
+        echo "Error: Could not acquire lock on $file" >&2
+        return 1
+      fi
+    fi
+
+    # Write to temp file and rename atomically
+    if ! echo "$new_content" > "${file}.tmp"; then
+      if declare -f unlock_file >/dev/null 2>&1; then
+        unlock_file "$lock_fd"
+      fi
+      rm -f "${file}.tmp" 2>/dev/null || true
+      return 1
+    fi
+
+    if ! mv "${file}.tmp" "$file"; then
+      if declare -f unlock_file >/dev/null 2>&1; then
+        unlock_file "$lock_fd"
+      fi
+      rm -f "${file}.tmp" 2>/dev/null || true
+      return 1
+    fi
+
+    if declare -f unlock_file >/dev/null 2>&1; then
+      unlock_file "$lock_fd"
+    fi
+  fi
+
+  return 0
+}
+
 # Check dependencies
 check_deps() {
   if ! command -v jq &> /dev/null; then
@@ -187,15 +253,18 @@ DUPLICATE_IDS=$(echo "$TASK_IDS" | sort | uniq -d)
 if [[ -n "$DUPLICATE_IDS" ]]; then
   log_error "Duplicate task IDs found in todo.json: $(echo "$DUPLICATE_IDS" | tr '\n' ', ' | sed 's/,$//')"
   if [[ "$FIX" == true ]]; then
-    # Keep only first occurrence of each ID
-    jq '
+    # Keep only first occurrence of each ID (atomic write with locking)
+    if safe_json_write "$TODO_FILE" '
       .tasks |= (
         reduce .[] as $task ([];
           if (map(.id) | index($task.id) | not) then . + [$task] else . end
         )
       )
-    ' "$TODO_FILE" > "${TODO_FILE}.tmp" && mv "${TODO_FILE}.tmp" "$TODO_FILE"
-    echo "  Fixed: Removed duplicate tasks (kept first occurrence)"
+    '; then
+      echo "  Fixed: Removed duplicate tasks (kept first occurrence)"
+    else
+      log_error "Failed to fix duplicate tasks (could not acquire lock or write failed)"
+    fi
   fi
 else
   log_info "No duplicate task IDs in todo.json"
@@ -209,15 +278,18 @@ if [[ -f "$ARCHIVE_FILE" ]]; then
   if [[ -n "$ARCHIVE_DUPLICATES" ]]; then
     log_error "Duplicate IDs in archive: $(echo "$ARCHIVE_DUPLICATES" | tr '\n' ', ' | sed 's/,$//')"
     if [[ "$FIX" == true ]]; then
-      # Keep only first occurrence in archive
-      jq '
+      # Keep only first occurrence in archive (atomic write with locking)
+      if safe_json_write "$ARCHIVE_FILE" '
         .archivedTasks |= (
           reduce .[] as $task ([];
             if (map(.id) | index($task.id) | not) then . + [$task] else . end
           )
         )
-      ' "$ARCHIVE_FILE" > "${ARCHIVE_FILE}.tmp" && mv "${ARCHIVE_FILE}.tmp" "$ARCHIVE_FILE"
-      echo "  Fixed: Removed duplicate tasks from archive (kept first occurrence)"
+      '; then
+        echo "  Fixed: Removed duplicate tasks from archive (kept first occurrence)"
+      else
+        log_error "Failed to fix archive duplicates (could not acquire lock or write failed)"
+      fi
     fi
   else
     log_info "No duplicate IDs in archive"
@@ -229,13 +301,19 @@ if [[ -f "$ARCHIVE_FILE" ]]; then
     if [[ -n "$CROSS_DUPLICATES" ]]; then
       log_error "IDs exist in both todo.json and archive: $(echo "$CROSS_DUPLICATES" | tr '\n' ', ' | sed 's/,$//')"
       if [[ "$FIX" == true ]]; then
-        # Remove from archive (keep in active todo.json)
+        # Remove from archive (keep in active todo.json) - atomic write with locking
+        local cross_fix_failed=false
         for cross_id in $CROSS_DUPLICATES; do
-          jq --arg id "$cross_id" '
-            .archivedTasks |= map(select(.id != $id))
-          ' "$ARCHIVE_FILE" > "${ARCHIVE_FILE}.tmp" && mv "${ARCHIVE_FILE}.tmp" "$ARCHIVE_FILE"
+          if ! safe_json_write "$ARCHIVE_FILE" '.archivedTasks |= map(select(.id != $id))' --arg id "$cross_id"; then
+            cross_fix_failed=true
+            break
+          fi
         done
-        echo "  Fixed: Removed cross-duplicates from archive (kept in todo.json)"
+        if [[ "$cross_fix_failed" == true ]]; then
+          log_error "Failed to fix cross-duplicates (could not acquire lock or write failed)"
+        else
+          echo "  Fixed: Removed cross-duplicates from archive (kept in todo.json)"
+        fi
       fi
     else
       log_info "No cross-file duplicate IDs"
@@ -248,12 +326,15 @@ ACTIVE_COUNT=$(jq '[.tasks[] | select(.status == "active")] | length' "$TODO_FIL
 if [[ "$ACTIVE_COUNT" -gt 1 ]]; then
   log_error "Multiple active tasks found ($ACTIVE_COUNT). Only ONE allowed."
   if [[ "$FIX" == true ]]; then
-    # Keep only the first active task
+    # Keep only the first active task (atomic write with locking)
     FIRST_ACTIVE=$(jq -r '[.tasks[] | select(.status == "active")][0].id' "$TODO_FILE")
-    jq --arg keep "$FIRST_ACTIVE" '
-      .tasks |= map(if .status == "active" and .id != $keep then .status = "pending" else . end)
-    ' "$TODO_FILE" > "${TODO_FILE}.tmp" && mv "${TODO_FILE}.tmp" "$TODO_FILE"
-    echo "  Fixed: Set all but $FIRST_ACTIVE to pending"
+    if safe_json_write "$TODO_FILE" \
+      '.tasks |= map(if .status == "active" and .id != $keep then .status = "pending" else . end)' \
+      --arg keep "$FIRST_ACTIVE"; then
+      echo "  Fixed: Set all but $FIRST_ACTIVE to pending"
+    else
+      log_error "Failed to fix multiple active tasks (could not acquire lock or write failed)"
+    fi
   fi
 elif [[ "$ACTIVE_COUNT" -eq 1 ]]; then
   log_info "Single active task"
@@ -310,11 +391,15 @@ DONE_NO_DATE=$(jq '[.tasks[] | select(.status == "done" and (.completedAt == nul
 if [[ "$DONE_NO_DATE" -gt 0 ]]; then
   log_error "$DONE_NO_DATE done task(s) missing completedAt"
   if [[ "$FIX" == true ]]; then
+    # Atomic write with locking
     NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-    jq --arg now "$NOW" '
-      .tasks |= map(if .status == "done" and (.completedAt == null or .completedAt == "") then .completedAt = $now else . end)
-    ' "$TODO_FILE" > "${TODO_FILE}.tmp" && mv "${TODO_FILE}.tmp" "$TODO_FILE"
-    echo "  Fixed: Set completedAt to now"
+    if safe_json_write "$TODO_FILE" \
+      '.tasks |= map(if .status == "done" and (.completedAt == null or .completedAt == "") then .completedAt = $now else . end)' \
+      --arg now "$NOW"; then
+      echo "  Fixed: Set completedAt to now"
+    else
+      log_error "Failed to fix completedAt (could not acquire lock or write failed)"
+    fi
   fi
 else
   log_info "All done tasks have completedAt"
@@ -337,9 +422,13 @@ if [[ -n "$SCHEMA_VERSION" ]]; then
   fi
 else
   if [[ "$FIX" == true ]]; then
-    jq --arg ver "$DEFAULT_VERSION" '._meta.version = $ver' "$TODO_FILE" > "${TODO_FILE}.tmp" && mv "${TODO_FILE}.tmp" "$TODO_FILE"
-    echo "  Fixed: Added _meta.version = $DEFAULT_VERSION"
-    log_info "Schema version compatible ($DEFAULT_VERSION) (after fix)"
+    # Atomic write with locking
+    if safe_json_write "$TODO_FILE" '._meta.version = $ver' --arg ver "$DEFAULT_VERSION"; then
+      echo "  Fixed: Added _meta.version = $DEFAULT_VERSION"
+      log_info "Schema version compatible ($DEFAULT_VERSION) (after fix)"
+    else
+      log_error "Failed to add schema version (could not acquire lock or write failed)"
+    fi
   else
     log_warn "No schema version found. Run with --fix to add _meta.version"
   fi
@@ -385,19 +474,30 @@ ACTIVE_TASK=$(jq -r '[.tasks[] | select(.status == "active")][0].id // ""' "$TOD
 if [[ -n "$FOCUS_TASK" ]] && [[ "$FOCUS_TASK" != "$ACTIVE_TASK" ]]; then
   log_error "focus.currentTask ($FOCUS_TASK) doesn't match active task ($ACTIVE_TASK)"
   if [[ "$FIX" == true ]]; then
+    # Atomic write with locking
     if [[ -n "$ACTIVE_TASK" ]]; then
-      jq --arg task "$ACTIVE_TASK" '.focus.currentTask = $task' "$TODO_FILE" > "${TODO_FILE}.tmp" && mv "${TODO_FILE}.tmp" "$TODO_FILE"
-      echo "  Fixed: Set focus.currentTask to $ACTIVE_TASK"
+      if safe_json_write "$TODO_FILE" '.focus.currentTask = $task' --arg task "$ACTIVE_TASK"; then
+        echo "  Fixed: Set focus.currentTask to $ACTIVE_TASK"
+      else
+        log_error "Failed to set focus.currentTask (could not acquire lock or write failed)"
+      fi
     else
-      jq '.focus.currentTask = null' "$TODO_FILE" > "${TODO_FILE}.tmp" && mv "${TODO_FILE}.tmp" "$TODO_FILE"
-      echo "  Fixed: Cleared focus.currentTask"
+      if safe_json_write "$TODO_FILE" '.focus.currentTask = null'; then
+        echo "  Fixed: Cleared focus.currentTask"
+      else
+        log_error "Failed to clear focus.currentTask (could not acquire lock or write failed)"
+      fi
     fi
   fi
 elif [[ -z "$FOCUS_TASK" ]] && [[ -n "$ACTIVE_TASK" ]]; then
   log_warn "Active task ($ACTIVE_TASK) but focus.currentTask is null"
   if [[ "$FIX" == true ]]; then
-    jq --arg task "$ACTIVE_TASK" '.focus.currentTask = $task' "$TODO_FILE" > "${TODO_FILE}.tmp" && mv "${TODO_FILE}.tmp" "$TODO_FILE"
-    echo "  Fixed: Set focus.currentTask to $ACTIVE_TASK"
+    # Atomic write with locking
+    if safe_json_write "$TODO_FILE" '.focus.currentTask = $task' --arg task "$ACTIVE_TASK"; then
+      echo "  Fixed: Set focus.currentTask to $ACTIVE_TASK"
+    else
+      log_error "Failed to set focus.currentTask (could not acquire lock or write failed)"
+    fi
   fi
 else
   log_info "Focus matches active task"
@@ -478,14 +578,14 @@ if jq -e '.project.phases' "$TODO_FILE" >/dev/null 2>&1; then
         fi
       fi
 
-      # Apply the fix - set selected as active, others to completed
-      if jq --arg keep "$SELECTED_PHASE" '
+      # Apply the fix - set selected as active, others to completed (atomic write with locking)
+      if safe_json_write "$TODO_FILE" '
         .project.phases |= with_entries(
           if .value.status == "active" and .key != $keep then
             .value.status = "completed"
           else . end
         )
-      ' "$TODO_FILE" > "${TODO_FILE}.tmp" && mv "${TODO_FILE}.tmp" "$TODO_FILE"; then
+      ' --arg keep "$SELECTED_PHASE"; then
         # Log the recovery action
         if declare -f log_operation >/dev/null 2>&1; then
           RECOVERY_DETAILS=$(jq -n \
@@ -597,8 +697,8 @@ if [[ -n "$STORED_CHECKSUM" ]]; then
   COMPUTED_CHECKSUM=$(jq -c '.tasks' "$TODO_FILE" | sha256sum | cut -c1-16)
   if [[ "$STORED_CHECKSUM" != "$COMPUTED_CHECKSUM" ]]; then
     if [[ "$FIX" == true ]]; then
-      # Don't log error yet - try to fix first
-      if jq --arg cs "$COMPUTED_CHECKSUM" '._meta.checksum = $cs' "$TODO_FILE" > "${TODO_FILE}.tmp" && mv "${TODO_FILE}.tmp" "$TODO_FILE"; then
+      # Don't log error yet - try to fix first (atomic write with locking)
+      if safe_json_write "$TODO_FILE" '._meta.checksum = $cs' --arg cs "$COMPUTED_CHECKSUM"; then
         echo "  Fixed: Updated checksum (was: $STORED_CHECKSUM, now: $COMPUTED_CHECKSUM)"
         log_info "Checksum valid (after fix)"
       else
@@ -704,7 +804,7 @@ if [[ "$FORMAT" == "json" ]]; then
     --arg version "$VERSION" \
     --arg timestamp "$TIMESTAMP" \
     '{
-      "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+      "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
       "_meta": {
         "format": "json",
         "version": $version,

@@ -2,7 +2,7 @@
 # CLAUDE-TODO Exists Command
 # Check if a task ID exists without listing all tasks
 # Provides clean exit codes for scripting and CI/CD integration
-set -uo pipefail
+set -euo pipefail
 
 TODO_FILE="${TODO_FILE:-.claude/todo.json}"
 ARCHIVE_FILE="${ARCHIVE_FILE:-.claude/todo-archive.json}"
@@ -248,7 +248,7 @@ main() {
       if [[ "$FORMAT" == "json" ]]; then
         jq -n --arg id "$task_id" --arg loc "$location" --arg ver "$version" --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
           '{
-            "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+            "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
             "_meta": {
               "format": "json",
               "version": $ver,
@@ -272,7 +272,7 @@ main() {
       if [[ "$FORMAT" == "json" ]]; then
         jq -n --arg id "$task_id" --argjson archive "$INCLUDE_ARCHIVE" --arg ver "$version" --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
           '{
-            "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+            "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
             "_meta": {
               "format": "json",
               "version": $ver,

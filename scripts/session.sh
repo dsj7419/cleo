@@ -373,7 +373,7 @@ cmd_status() {
       --arg note "$session_note" \
       --arg next "$next_action" \
       '{
-        "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+        "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
         "_meta": {
           "format": "json",
           "command": "session status",
@@ -432,7 +432,7 @@ cmd_info() {
     current_timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
     jq --arg timestamp "$current_timestamp" --arg version "$VERSION" '{
-      "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+      "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
       "_meta": {
         "format": "json",
         "command": "session info",

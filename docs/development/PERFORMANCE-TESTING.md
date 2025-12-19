@@ -103,7 +103,7 @@ Summary for 1000 tasks:
 
 ```json
 {
-  "$schema": "https://claude-todo.dev/schemas/benchmark-report.schema.json",
+  "$schema": "https://claude-todo.dev/schemas/v1/benchmark-report.schema.json",
   "_meta": {
     "format": "json",
     "command": "benchmark-performance",

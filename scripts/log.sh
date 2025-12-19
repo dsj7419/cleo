@@ -254,7 +254,7 @@ case "$SUBCOMMAND" in
         --argjson count "$entry_count" \
         --argjson limit "$LIMIT" \
         '{
-          "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+          "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
           "_meta": {
             "format": "json",
             "command": "log list",

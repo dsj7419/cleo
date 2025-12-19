@@ -2,8 +2,8 @@
 
 > **Authoritative standard for LLM-agent-first CLI design**
 >
-> **Version**: 2.1 | **Updated**: 2025-12-17
-> **Scope**: 30 commands, universal standards for agent automation
+> **Version**: 3.0 | **Updated**: 2025-12-18
+> **Scope**: 32 commands, universal standards for agent automation
 
 ---
 
@@ -62,7 +62,7 @@ Design CLI tools with **LLM-agent-first** principles: JSON output by default for
 
 ## Part 1: Command Inventory
 
-### All Commands (31 total)
+### All Commands (32 total)
 
 | # | Command | Script | Category | Requirements |
 |---|---------|--------|----------|--------------|
@@ -72,40 +72,41 @@ Design CLI tools with **LLM-agent-first** principles: JSON output by default for
 | 4 | `backup` | `backup.sh` | Maintenance | JSON output, `--format`, `--quiet` |
 | 5 | `blockers` | `blockers-command.sh` | Read | JSON output, `--format`, `--quiet` |
 | 6 | `complete` | `complete-task.sh` | Write | JSON output, `--format`, `--quiet`, `--dry-run` |
-| 7 | `dash` | `dash.sh` | Read | JSON output, `--format`, `--quiet` |
-| 8 | `deps` | `deps-command.sh` | Read | JSON output, `--format`, `--quiet` |
-| 9 | `exists` | `exists.sh` | Read | JSON output, `--format`, `--quiet` |
-| 10 | `export` | `export.sh` | Read | Multi-format, `--quiet` |
-| 11 | `extract` | `extract-todowrite.sh` | Sync | JSON output, `--format`, `--quiet`, `--dry-run` |
-| **12** | **`find`** | **`find.sh`** | **Read** | **JSON output, `--format`, `--quiet`, fuzzy search** |
-| 13 | `focus` | `focus.sh` | Write | JSON output, `--format`, `--quiet` |
-| 14 | `history` | `history.sh` | Read | JSON output, `--format`, `--quiet` |
-| 15 | `init` | `init.sh` | Setup | JSON output, `--format`, `--quiet` |
-| 16 | `inject` | `inject-todowrite.sh` | Sync | JSON output, `--format`, `--quiet`, `--dry-run` |
-| 17 | `labels` | `labels.sh` | Read | JSON output, `--format`, `--quiet` |
-| 18 | `list` | `list-tasks.sh` | Read | JSON output, `--format`, `--quiet` |
-| 19 | `log` | `log.sh` | Read | JSON output, `--format`, `--quiet` |
-| 20 | `migrate` | `migrate.sh` | Maintenance | JSON output, `--format`, `--quiet`, `--dry-run` |
-| 21 | `migrate-backups` | `migrate-backups.sh` | Maintenance | JSON output, `--format`, `--quiet`, `--dry-run` |
-| 22 | `next` | `next.sh` | Read | JSON output, `--format`, `--quiet` |
-| 23 | `phase` | `phase.sh` | Write | JSON output, `--format`, `--quiet` |
-| 24 | `phases` | `phases.sh` | Read | JSON output, `--format`, `--quiet` |
-| 25 | `restore` | `restore.sh` | Maintenance | JSON output, `--format`, `--quiet`, `--dry-run` |
-| 26 | `session` | `session.sh` | Write | JSON output, `--format`, `--quiet` |
-| 27 | `show` | `show.sh` | Read | JSON output, `--format`, `--quiet` |
-| 28 | `stats` | `stats.sh` | Read | JSON output, `--format`, `--quiet` |
-| 29 | `sync` | `sync-todowrite.sh` | Sync | JSON output, `--format`, `--quiet`, `--dry-run` |
-| 30 | `update` | `update-task.sh` | Write | JSON output, `--format`, `--quiet`, `--dry-run` |
-| 31 | `validate` | `validate.sh` | Maintenance | JSON output, `--format`, `--quiet` |
+| 7 | `config` | `config.sh` | Maintenance | JSON output, `--format`, `--quiet` |
+| 8 | `dash` | `dash.sh` | Read | JSON output, `--format`, `--quiet` |
+| 9 | `deps` | `deps-command.sh` | Read | JSON output, `--format`, `--quiet` |
+| 10 | `exists` | `exists.sh` | Read | JSON output, `--format`, `--quiet` |
+| 11 | `export` | `export.sh` | Read | Multi-format, `--quiet` |
+| 12 | `extract` | `extract-todowrite.sh` | Sync | JSON output, `--format`, `--quiet`, `--dry-run` |
+| 13 | `find` | `find.sh` | Read | JSON output, `--format`, `--quiet`, fuzzy search |
+| 14 | `focus` | `focus.sh` | Write | JSON output, `--format`, `--quiet` |
+| 15 | `history` | `history.sh` | Read | JSON output, `--format`, `--quiet` |
+| 16 | `init` | `init.sh` | Setup | JSON output, `--format`, `--quiet` |
+| 17 | `inject` | `inject-todowrite.sh` | Sync | JSON output, `--format`, `--quiet`, `--dry-run` |
+| 18 | `labels` | `labels.sh` | Read | JSON output, `--format`, `--quiet` |
+| 19 | `list` | `list-tasks.sh` | Read | JSON output, `--format`, `--quiet` |
+| 20 | `log` | `log.sh` | Read | JSON output, `--format`, `--quiet` |
+| 21 | `migrate` | `migrate.sh` | Maintenance | JSON output, `--format`, `--quiet`, `--dry-run` |
+| 22 | `migrate-backups` | `migrate-backups.sh` | Maintenance | JSON output, `--format`, `--quiet`, `--dry-run` |
+| 23 | `next` | `next.sh` | Read | JSON output, `--format`, `--quiet` |
+| 24 | `phase` | `phase.sh` | Write | JSON output, `--format`, `--quiet` |
+| 25 | `phases` | `phases.sh` | Read | JSON output, `--format`, `--quiet` |
+| 26 | `restore` | `restore.sh` | Maintenance | JSON output, `--format`, `--quiet`, `--dry-run` |
+| 27 | `session` | `session.sh` | Write | JSON output, `--format`, `--quiet` |
+| 28 | `show` | `show.sh` | Read | JSON output, `--format`, `--quiet` |
+| 29 | `stats` | `stats.sh` | Read | JSON output, `--format`, `--quiet` |
+| 30 | `sync` | `sync-todowrite.sh` | Sync | JSON output, `--format`, `--quiet`, `--dry-run` |
+| 31 | `update` | `update-task.sh` | Write | JSON output, `--format`, `--quiet`, `--dry-run` |
+| 32 | `validate` | `validate.sh` | Maintenance | JSON output, `--format`, `--quiet` |
 
 ### Command Categories
 
 | Category | Commands | Special Requirements |
 |----------|----------|---------------------|
 | **Write** | add, archive, complete, focus, phase, session, update | MUST return created/updated object, MUST support `--dry-run` |
-| **Read** | analyze, blockers, dash, deps, exists, export, **find**, history, labels, list, log, next, phases, show, stats | MUST support filtering, MUST return structured data |
+| **Read** | analyze, blockers, dash, deps, exists, export, find, history, labels, list, log, next, phases, show, stats | MUST support filtering, MUST return structured data |
 | **Sync** | extract, inject, sync | MUST support `--dry-run`, MUST report conflicts |
-| **Maintenance** | backup, init, migrate, migrate-backups, restore, validate | MUST report status, SHOULD support `--dry-run` |
+| **Maintenance** | backup, config, init, migrate, migrate-backups, restore, validate | MUST report status, SHOULD support `--dry-run` |
 | **Setup** | init | MUST be idempotent |
 
 ---
@@ -129,7 +130,7 @@ Design CLI tools with **LLM-agent-first** principles: JSON output by default for
 ```json
 // ct add "Task" --parent T001 --format json
 {
-  "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+  "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
   "_meta": {"command": "add", "timestamp": "...", "version": "..."},
   "success": true,
   "task": {
@@ -145,7 +146,7 @@ Design CLI tools with **LLM-agent-first** principles: JSON output by default for
 
 // ct update T042 --priority high --format json
 {
-  "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+  "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
   "_meta": {"command": "update", "timestamp": "..."},
   "success": true,
   "taskId": "T042",
@@ -161,7 +162,7 @@ Design CLI tools with **LLM-agent-first** principles: JSON output by default for
 
 // ct complete T042 --format json
 {
-  "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+  "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
   "_meta": {"command": "complete", "timestamp": "..."},
   "success": true,
   "taskId": "T042",
@@ -199,7 +200,7 @@ fi
 ```json
 // Task not found
 {
-  "$schema": "https://claude-todo.dev/schemas/error.schema.json",
+  "$schema": "https://claude-todo.dev/schemas/v1/error.schema.json",
   "_meta": {"command": "show", "timestamp": "...", "version": "..."},
   "success": false,
   "error": {
@@ -213,7 +214,7 @@ fi
 
 // Hierarchy error
 {
-  "$schema": "https://claude-todo.dev/schemas/error.schema.json",
+  "$schema": "https://claude-todo.dev/schemas/v1/error.schema.json",
   "_meta": {"command": "add", "timestamp": "...", "version": "..."},
   "success": false,
   "error": {
@@ -235,7 +236,7 @@ fi
 ```json
 // phase show --format json
 {
-  "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+  "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
   "_meta": {"command": "phase show", "timestamp": "..."},
   "success": true,
   "currentPhase": {
@@ -261,10 +262,10 @@ fi
 
 | Flag | Current Coverage | Target |
 |------|-----------------|--------|
-| `--format` | 17/30 (57%) | 100% |
-| `--quiet` | 21/30 (70%) | 100% |
-| `--verbose` | 2/30 (7%) | All display commands |
-| `--dry-run` | 3/30 (10%) | All write operations |
+| `--format` | 17/32 (53%) | 100% |
+| `--quiet` | 21/32 (66%) | 100% |
+| `--verbose` | 2/32 (6%) | All display commands |
+| `--dry-run` | 3/32 (9%) | All write operations |
 
 ---
 
@@ -398,7 +399,7 @@ Commands **MUST** use the following exit codes:
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://claude-todo.dev/schemas/output.schema.json",
+  "$id": "https://claude-todo.dev/schemas/v1/output.schema.json",
   "title": "Claude-TODO Response Envelope",
   "type": "object",
   "required": ["_meta", "success"],
@@ -431,7 +432,7 @@ Commands **MUST** use the following exit codes:
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://claude-todo.dev/schemas/error.schema.json",
+  "$id": "https://claude-todo.dev/schemas/v1/error.schema.json",
   "title": "Claude-TODO Error Envelope",
   "type": "object",
   "required": ["_meta", "success", "error"],
@@ -470,7 +471,7 @@ All JSON outputs **MUST** follow this envelope:
 
 ```json
 {
-  "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+  "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
   "_meta": {
     "format": "json",
     "version": "<version>",
@@ -567,7 +568,7 @@ COMMAND_NAME="<command>"
 #### `add` Command Output
 ```json
 {
-  "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+  "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
   "_meta": {"format": "json", "version": "0.17.0", "command": "add", "timestamp": "..."},
   "success": true,
   "task": {"id": "T042", "type": "task", "parentId": null, "title": "...", "status": "pending"}
@@ -577,7 +578,7 @@ COMMAND_NAME="<command>"
 #### `update` Command Output
 ```json
 {
-  "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+  "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
   "_meta": {"format": "json", "version": "0.17.0", "command": "update", "timestamp": "..."},
   "success": true,
   "taskId": "T042",
@@ -589,7 +590,7 @@ COMMAND_NAME="<command>"
 #### `complete` Command Output
 ```json
 {
-  "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+  "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
   "_meta": {"format": "json", "version": "0.17.0", "command": "complete", "timestamp": "..."},
   "success": true,
   "taskId": "T042",
@@ -604,6 +605,159 @@ Commands with subcommands **MUST**:
 - Accept `--format` flag **before** the subcommand
 - Each subcommand **MUST** respect the FORMAT variable
 - Each subcommand **MUST** output proper JSON envelope
+
+### Part 5.3: Input Validation Requirements
+
+Write commands **MUST** validate all inputs before modifying state:
+
+#### Field Length Limits
+
+| Field | Max Length | Error Code |
+|-------|------------|------------|
+| title | 120 chars | `E_INPUT_INVALID` |
+| description | 2000 chars | `E_INPUT_INVALID` |
+| notes (each) | 500 chars | `E_INPUT_INVALID` |
+| blockedBy reason | 300 chars | `E_INPUT_INVALID` |
+| sessionNote | 1000 chars | `E_INPUT_INVALID` |
+| label name | 50 chars | `E_INPUT_INVALID` |
+| phase slug | 30 chars | `E_INPUT_INVALID` |
+
+#### Validation Order
+
+Commands **MUST** validate in this order:
+1. Required arguments present (`E_INPUT_MISSING`)
+2. Format/type validation (`E_INPUT_FORMAT`)
+3. Length validation (`E_INPUT_INVALID`)
+4. Semantic validation (`E_VALIDATION_*`)
+
+#### Validation Response
+
+Failed validation **MUST** return immediately (fail-fast) with:
+- Specific error code
+- Field name in error message
+- Actual vs. allowed value info
+
+### Part 5.4: Dry-Run Semantics
+
+Commands with `--dry-run` **MUST** follow these semantics:
+
+| Behavior | With --dry-run | Without --dry-run |
+|----------|----------------|-------------------|
+| Validation | Full | Full |
+| File locking | None | Full |
+| State modification | None | Full |
+| JSON output | Full (with `dryRun: true`) | Full |
+| Exit code | Same as real | Same |
+
+#### Dry-Run Output
+
+```json
+{
+  "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
+  "_meta": {"format": "json", "version": "0.17.0", "command": "add"},
+  "success": true,
+  "dryRun": true,
+  "wouldCreate": {
+    "id": "T999",
+    "title": "Example task"
+  }
+}
+```
+
+Dry-run mode allows agents to validate inputs without side effects.
+
+### Part 5.6: Idempotency Requirements
+
+Write commands **MUST** be idempotent where feasible to support agent retries without side effects:
+
+| Command | Idempotency | Mechanism |
+|---------|-------------|-----------|
+| `add` | SHOULD | Detect duplicate title+phase within 60s window, return existing task |
+| `update` | MUST | Updating with identical values returns `EXIT_NO_CHANGE` (102) |
+| `complete` | MUST | Completing already-done task returns `EXIT_NO_CHANGE` (102) |
+| `archive` | MUST | Re-archiving already-archived tasks is a no-op |
+| `restore` | MUST | Restoring already-active task returns `EXIT_NO_CHANGE` (102) |
+
+#### Duplicate Detection for `add`
+
+When creating a new task, the CLI **SHOULD** check if an identical task (same title, same phase) was created within the last 60 seconds. If found:
+
+1. Return the existing task with `success: true`
+2. Include `"duplicate": true` in response
+3. Use exit code 0 (success, not error)
+
+This prevents agents from creating duplicates during retry loops.
+
+#### EXIT_NO_CHANGE Semantics
+
+Exit code 102 (`EXIT_NO_CHANGE`) indicates:
+
+- The command was valid
+- No changes were made (state unchanged)
+- Agents **SHOULD** treat this as success and not retry
+
+Example response:
+
+```json
+{
+  "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
+  "_meta": {"format": "json", "version": "0.17.0", "command": "complete"},
+  "success": true,
+  "noChange": true,
+  "message": "Task T042 is already complete"
+}
+```
+
+#### Non-Idempotent Operations
+
+The following operations are inherently non-idempotent and **MUST** be documented in help text:
+
+- `backup create` - Creates new backup each time
+- `session start` - Only valid if no session active
+- `log` entries - Each invocation appends
+
+### Part 5.7: Retry Protocol for Recoverable Errors
+
+Agents **SHOULD** implement retry logic for recoverable errors with exponential backoff:
+
+| Exit Code | Name | Max Retries | Initial Delay | Backoff Factor |
+|:---------:|------|:-----------:|:-------------:|:--------------:|
+| 7 | `EXIT_LOCK_TIMEOUT` | 3 | 100ms | 2x |
+| 20 | `EXIT_CHECKSUM_MISMATCH` | 5 | 50ms | 1.5x |
+| 21 | `EXIT_CONCURRENT_MODIFICATION` | 5 | 100ms | 2x |
+| 22 | `EXIT_ID_COLLISION` | 3 | 0ms | immediate regenerate |
+
+#### Retry Algorithm
+
+```python
+def execute_with_retry(command, max_retries, initial_delay_ms, backoff_factor):
+    delay = initial_delay_ms
+    for attempt in range(max_retries + 1):
+        exit_code, output = execute(command)
+
+        if exit_code == 0 or not is_recoverable(exit_code):
+            return exit_code, output
+
+        if attempt < max_retries:
+            sleep(delay / 1000)  # Convert to seconds
+            delay *= backoff_factor
+
+    return exit_code, output  # Final failure
+
+def is_recoverable(code):
+    return code in [7, 20, 21, 22]
+```
+
+#### ID Collision Handling (Exit Code 22)
+
+For `EXIT_ID_COLLISION`, agents **SHOULD**:
+1. Extract the colliding ID from error JSON
+2. Regenerate a new ID (or let CLI auto-generate)
+3. Retry immediately without delay
+
+#### Maximum Total Wait
+
+Agents **SHOULD** cap total retry wait time at 5 seconds to avoid blocking workflows.
 
 ---
 
@@ -729,7 +883,7 @@ ct complete T001 | jq '.cycleTimeDays'
 | Metric | Required Value |
 |--------|----------------|
 | Agent workflow steps per mutation | 1x (command returns result) |
-| Commands requiring explicit `--format json` | 0/30 (auto-detect via TTY) |
+| Commands requiring explicit `--format json` | 0/32 (auto-detect via TTY) |
 | Error handling method | JSON with `E_` error codes |
 | Write confirmation in response | YES (full object returned) |
 | Exit code coverage | 100% (all codes are constants) |
@@ -763,11 +917,13 @@ All commands **MUST** meet these requirements:
 | backup | ✅ | ✅ | ✅ | N/A | ✅ | ✅ | ✅ |
 | blockers | ✅ | ✅ | ✅ | N/A | ✅ | ✅ | ✅ |
 | complete | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| config | ✅ | ✅ | ✅ | N/A | ✅ | ✅ | ✅ |
 | dash | ✅ | ✅ | ✅ | N/A | ✅ | ✅ | ✅ |
 | deps | ✅ | ✅ | ✅ | N/A | ✅ | ✅ | ✅ |
 | exists | ✅ | ✅ | ✅ | N/A | ✅ | ✅ | ✅ |
 | export | ✅ | ✅ | ✅ | N/A | ✅ | ✅ | ✅ |
 | extract | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| find | ✅ | ✅ | ✅ | N/A | ✅ | ✅ | ✅ |
 | focus | ✅ | ✅ | ✅ | N/A | ✅ | ✅ | ✅ |
 | history | ✅ | ✅ | ✅ | N/A | ✅ | ✅ | ✅ |
 | init | ✅ | ✅ | ✅ | N/A | ✅ | ✅ | ✅ |
@@ -790,7 +946,7 @@ All commands **MUST** meet these requirements:
 
 **Legend**: ✅ = REQUIRED | N/A = Not Applicable for this command type
 
-**All 30 commands MUST achieve 100% compliance with applicable requirements.**
+**All 32 commands MUST achieve 100% compliance with applicable requirements.**
 
 ---
 
@@ -867,6 +1023,15 @@ source "${LIB_DIR}/exit-codes.sh"
 source "${LIB_DIR}/error-json.sh"
 source "${LIB_DIR}/output-format.sh"
 
+# Load VERSION from central location
+if [[ -n "${CLAUDE_TODO_HOME:-}" ]] && [[ -f "$CLAUDE_TODO_HOME/VERSION" ]]; then
+    VERSION=$(cat "$CLAUDE_TODO_HOME/VERSION" | tr -d '[:space:]')
+elif [[ -f "${SCRIPT_DIR}/../VERSION" ]]; then
+    VERSION=$(cat "${SCRIPT_DIR}/../VERSION" | tr -d '[:space:]')
+else
+    VERSION="0.0.0"
+fi
+
 # Command identification (for error reporting)
 COMMAND_NAME="<command>"
 
@@ -878,6 +1043,26 @@ FORMAT=""        # Resolved after parsing
 QUIET=false
 VERBOSE=false
 DRY_RUN=false
+
+# ============================================================================
+# HELP
+# ============================================================================
+
+# Show help message
+show_help() {
+    cat << 'EOF'
+Usage: <command>.sh [OPTIONS] [ARGS]
+
+Options:
+  -f, --format FORMAT   Output format (text|json|jsonl|markdown|table)
+  --json                Shortcut for --format json
+  --human               Shortcut for --format text
+  -q, --quiet           Suppress non-essential output
+  -v, --verbose         Enable verbose output
+  --dry-run             Preview changes without applying
+  -h, --help            Show this help message
+EOF
+}
 
 # ============================================================================
 # ARGUMENT PARSING
@@ -914,7 +1099,7 @@ main() {
       --arg cmd "$COMMAND_NAME" \
       --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
       '{
-        "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+        "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
         "_meta": {
           "format": "json",
           "version": $version,
@@ -945,22 +1130,33 @@ main "$@"
 
 ## Part 11: Backward Compatibility Policy
 
+### Breaking Change Policy
+
+| Change Type | Policy | Deprecation Period |
+|-------------|--------|-------------------|
+| Exit code value changes | MUST NOT change within major version | 2 major versions |
+| Error code string changes | MUST NOT change within major version | 2 major versions |
+| JSON field removal | MUST NOT remove within major version | 2 major versions |
+| Flag removal | MUST NOT remove within major version | 1 major version |
+| JSON field rename | Add new, deprecate old | 2 major versions |
+| Default behavior change | Document clearly, consider `--legacy` flag | 1 major version |
+
 ### Deprecation Process
 
-1. **Announcement**: Document deprecation in release notes
-2. **Warning Period**: Output deprecation warning for 2 minor versions
-3. **Removal**: Remove in next major version
+1. **Announce**: Mark deprecated in next minor release
+2. **Warn**: Emit deprecation warning to stderr (unless `--quiet`)
+3. **Document**: Add to `CHANGELOG.md` deprecation section
+4. **Sunset**: Remove after deprecation period
 
-### Breaking Change Categories
+### Deprecation Registry
 
-| Category | Policy |
-|----------|--------|
-| Exit code value changes | **NEVER** change without major version |
-| Error code string changes | **NEVER** change (add new, deprecate old) |
-| JSON field removal | 2-version warning, then remove |
-| JSON field rename | Add new, deprecate old, remove after 2 versions |
-| Flag removal | 2-version warning, then remove |
-| Default behavior change | Document clearly, consider `--legacy` flag |
+Maintain a deprecation registry in `docs/DEPRECATIONS.md` tracking:
+- Deprecated item (exit code, error code, flag, field)
+- Version deprecated
+- Replacement (if any)
+- Sunset version
+
+This ensures API stability for LLM agents while allowing long-term evolution.
 
 ### JSON Stability Guarantees
 
@@ -971,8 +1167,8 @@ main "$@"
 | `_meta.command` | Stable |
 | `_meta.timestamp` | Stable |
 | `success` | Stable |
-| `error.code` | Stable (never change values) |
-| `error.exitCode` | Stable (never change values) |
+| `error.code` | Stable within major version |
+| `error.exitCode` | Stable within major version |
 | Command-specific fields | See individual command docs |
 
 ---
@@ -1133,7 +1329,7 @@ General:    E_UNKNOWN, E_NOT_INITIALIZED, E_DEPENDENCY_MISSING, E_DEPENDENCY_VER
 
 ```json
 {
-  "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+  "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
   "_meta": {"format": "json", "version": "0.17.0", "command": "add", "timestamp": "2025-12-17T12:00:00Z"},
   "success": true,
   "task": {"id": "T001", "type": "task", "parentId": null, "size": null, ...}
@@ -1142,6 +1338,6 @@ General:    E_UNKNOWN, E_NOT_INITIALIZED, E_DEPENDENCY_MISSING, E_DEPENDENCY_VER
 
 ---
 
-*Specification v2.1 - Authoritative Standard for LLM-Agent-First CLI Design*
+*Specification v3.0 - Authoritative Standard for LLM-Agent-First CLI Design*
 *Applicable to: claude-todo and any LLM-agent-first CLI project*
-*Last updated: 2025-12-17*
+*Last updated: 2025-12-18*

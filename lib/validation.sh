@@ -53,6 +53,80 @@ readonly VAL_SEMANTIC_ERROR=2
 readonly VAL_BOTH_ERRORS=3
 
 # ============================================================================
+# PATH SECURITY FUNCTIONS
+# ============================================================================
+
+# Sanitize file path for safe shell usage
+# Validates path does not contain shell metacharacters that could enable injection
+# Arguments:
+#   $1 - Path to sanitize
+# Outputs:
+#   Sanitized path to stdout if valid
+# Returns:
+#   0 if path is safe, 1 if path contains dangerous characters
+# Security:
+#   Prevents command injection via malicious file names with shell metacharacters
+#   Used before any eval statements that include file paths
+sanitize_file_path() {
+    local path="$1"
+
+    # Check for empty path
+    if [[ -z "$path" ]]; then
+        echo "ERROR: Empty path provided" >&2
+        return 1
+    fi
+
+    # Note: Null byte check removed - bash cannot store null bytes in variables.
+    # If a path contains null bytes, bash will truncate it before reaching here.
+    # The metacharacter check below handles all relevant security concerns.
+
+    # Check for shell metacharacters that could enable command injection
+    # These characters have special meaning in shell contexts:
+    #   $ - variable expansion / command substitution
+    #   ` - command substitution (backticks)
+    #   ; - command separator
+    #   | - pipe
+    #   & - background / AND operator
+    #   < > - redirection
+    #   ' " - quoting (can break out of quotes)
+    #   ( ) - subshell / grouping
+    #   { } - brace expansion / command grouping
+    #   [ ] - glob patterns / test brackets
+    #   ! - history expansion / negation
+    #   \ - escape character (at end of path)
+    #   newline/carriage return - command separator
+    # ERE character class - chars are mostly literal inside []
+    # Use glob matching for special chars that are hard to represent in ERE
+    if [[ "$path" == *'$'* ]] || [[ "$path" == *'`'* ]] || [[ "$path" == *';'* ]] || \
+       [[ "$path" == *'|'* ]] || [[ "$path" == *'&'* ]] || [[ "$path" == *'<'* ]] || \
+       [[ "$path" == *'>'* ]] || [[ "$path" == *"'"* ]] || [[ "$path" == *'"'* ]] || \
+       [[ "$path" == *'('* ]] || [[ "$path" == *')'* ]] || [[ "$path" == *'{'* ]] || \
+       [[ "$path" == *'}'* ]] || [[ "$path" == *'['* ]] || [[ "$path" == *']'* ]] || \
+       [[ "$path" == *'!'* ]]; then
+        echo "ERROR: Path contains shell metacharacters - potential injection attempt: $path" >&2
+        return 1
+    fi
+
+    # Check for backslash at end of path (could escape following character)
+    if [[ "$path" == *'\' ]]; then
+        echo "ERROR: Path ends with backslash - potential injection attempt" >&2
+        return 1
+    fi
+
+    # Check for newlines and carriage returns (command separators)
+    if [[ "$path" == *$'\n'* ]] || [[ "$path" == *$'\r'* ]]; then
+        echo "ERROR: Path contains newline/carriage return - potential injection attempt" >&2
+        return 1
+    fi
+
+    # Path is safe - output it
+    printf '%s' "$path"
+    return 0
+}
+
+export -f sanitize_file_path
+
+# ============================================================================
 # UTILITY FUNCTIONS
 # ============================================================================
 
@@ -392,6 +466,100 @@ validate_title() {
 }
 
 export -f validate_title
+
+# ============================================================================
+# FIELD LENGTH VALIDATION
+# ============================================================================
+
+# Field length limits (defined as constants for consistency)
+readonly MAX_DESCRIPTION_LENGTH=2000
+readonly MAX_NOTE_LENGTH=500
+readonly MAX_BLOCKED_BY_LENGTH=300
+readonly MAX_SESSION_NOTE_LENGTH=1000
+
+# Validate description length (max 2000 chars)
+# Args: $1 = description string
+# Returns: 0 if valid, 1 if too long
+validate_description() {
+    local desc="$1"
+
+    # Empty description is valid (optional field)
+    if [[ -z "$desc" ]]; then
+        return 0
+    fi
+
+    if [[ ${#desc} -gt $MAX_DESCRIPTION_LENGTH ]]; then
+        echo "[ERROR] Description exceeds $MAX_DESCRIPTION_LENGTH characters (${#desc} provided)" >&2
+        return 1
+    fi
+    return 0
+}
+
+export -f validate_description
+
+# Validate note length (max 500 chars per note entry)
+# Args: $1 = note string
+# Returns: 0 if valid, 1 if too long
+validate_note() {
+    local note="$1"
+
+    # Empty note is valid (nothing to validate)
+    if [[ -z "$note" ]]; then
+        return 0
+    fi
+
+    if [[ ${#note} -gt $MAX_NOTE_LENGTH ]]; then
+        echo "[ERROR] Note exceeds $MAX_NOTE_LENGTH characters (${#note} provided)" >&2
+        return 1
+    fi
+    return 0
+}
+
+export -f validate_note
+
+# Validate blockedBy reason length (max 300 chars)
+# Args: $1 = blocked reason string
+# Returns: 0 if valid, 1 if too long
+validate_blocked_by() {
+    local blocked="$1"
+
+    # Empty is valid (optional field)
+    if [[ -z "$blocked" ]]; then
+        return 0
+    fi
+
+    if [[ ${#blocked} -gt $MAX_BLOCKED_BY_LENGTH ]]; then
+        echo "[ERROR] Blocked-by reason exceeds $MAX_BLOCKED_BY_LENGTH characters (${#blocked} provided)" >&2
+        return 1
+    fi
+    return 0
+}
+
+export -f validate_blocked_by
+
+# Validate session note length (max 1000 chars)
+# Args: $1 = session note string
+# Returns: 0 if valid, 1 if too long
+validate_session_note() {
+    local note="$1"
+
+    # Empty is valid (optional field)
+    if [[ -z "$note" ]]; then
+        return 0
+    fi
+
+    if [[ ${#note} -gt $MAX_SESSION_NOTE_LENGTH ]]; then
+        echo "[ERROR] Session note exceeds $MAX_SESSION_NOTE_LENGTH characters (${#note} provided)" >&2
+        return 1
+    fi
+    return 0
+}
+
+export -f validate_session_note
+
+# ============================================================================
+# TASK OBJECT VALIDATION
+# ============================================================================
 
 # Validate a single task object
 # Args: $1 = file path, $2 = task index

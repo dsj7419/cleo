@@ -159,7 +159,7 @@ ct find "auth" --format json
 Output:
 ```json
 {
-  "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+  "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
   "_meta": {
     "format": "json",
     "version": "0.19.0",
@@ -361,7 +361,7 @@ ct find
 Output:
 ```json
 {
-  "$schema": "https://claude-todo.dev/schemas/error.schema.json",
+  "$schema": "https://claude-todo.dev/schemas/v1/error.schema.json",
   "_meta": {"command": "find", "timestamp": "...", "version": "..."},
   "success": false,
   "error": {
@@ -384,7 +384,7 @@ ct find "zzzznonexistent"
 Output:
 ```json
 {
-  "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+  "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
   "_meta": {"command": "find", "timestamp": "...", "version": "..."},
   "success": true,
   "query": {"text": "zzzznonexistent", "mode": "fuzzy"},

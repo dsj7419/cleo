@@ -31,7 +31,7 @@ setup_fixture() {
     # Create minimal todo.json
     cat > "$FIXTURE_DIR/.claude/todo.json" << 'EOF'
 {
-  "$schema": "https://claude-todo.dev/schemas/todo.schema.json",
+  "$schema": "https://claude-todo.dev/schemas/v1/todo.schema.json",
   "_meta": {
     "version": "2.2.0",
     "created": "2025-12-18T00:00:00Z",
@@ -60,7 +60,7 @@ EOF
     # Create minimal todo-log.json
     cat > "$FIXTURE_DIR/.claude/todo-log.json" << 'EOF'
 {
-  "$schema": "https://claude-todo.dev/schemas/todo-log.schema.json",
+  "$schema": "https://claude-todo.dev/schemas/v1/todo-log.schema.json",
   "_meta": {
     "version": "2.2.0",
     "created": "2025-12-18T00:00:00Z"
@@ -72,7 +72,7 @@ EOF
     # Create minimal config.json
     cat > "$FIXTURE_DIR/.claude/config.json" << 'EOF'
 {
-  "$schema": "https://claude-todo.dev/schemas/config.schema.json",
+  "$schema": "https://claude-todo.dev/schemas/v1/config.schema.json",
   "_meta": {
     "version": "1.0.0",
     "created": "2025-12-18T00:00:00Z"

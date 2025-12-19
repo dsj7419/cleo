@@ -153,7 +153,7 @@ lock_file=$(sanitize_file_path "$file.lock") || return $FO_INVALID_ARG
 
 **Current**:
 ```json
-"$schema": "https://claude-todo.dev/schemas/output.schema.json"
+"$schema": "https://claude-todo.dev/schemas/v1/output.schema.json"
 ```
 
 **Target**:

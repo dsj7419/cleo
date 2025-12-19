@@ -1,0 +1,5 @@
+Context Recovery Prompts
+
+you are out of context, make sure you update what you have done in claude-todo in the respective tasks, find all of the existing tasks you are working on, update them with detailed context and descriptions and associated documentation, if completed or pending validation. we will continue work in a new session so you can't lose context, you will then end this session with short summary for next session
+
+we have multiple tasks and phases logged in our claude-todo tasks. I need you to engage organize and carry out all this work in groups of multiple subagents in parallel series, DO NOT start an agent that is dependent on a previous one until the agent is complete and ready to handoff. you will engage agents to Implement > Validate code changes > Test code > cycle back until all code is passing. run these agents in groups of 5 with the implementation agents handing off to 2 validation agents then handing off to 2 testing agents then repeat cycle back to implementation agent until fully passing for all task changes and phases

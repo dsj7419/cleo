@@ -183,7 +183,7 @@ JSON output MUST follow the standard envelope format:
 
 ```json
 {
-  "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+  "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
   "_meta": {
     "command": "config",
     "subcommand": "set",

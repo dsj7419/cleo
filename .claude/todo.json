@@ -113,13 +113,13 @@
       }
     ]
   },
-  "lastUpdated": "2025-12-19T07:19:33Z",
+  "lastUpdated": "2025-12-19T08:03:38Z",
   "_meta": {
-    "checksum": "ee8dc190655a7a4b",
+    "checksum": "3401521dfcda6059",
     "configVersion": "2.1.0",
     "lastSessionId": null,
     "activeSession": null,
-    "lastModified": "2025-12-19T06:41:18Z",
+    "lastModified": "2025-12-19T07:54:08Z",
     "version": "2.2.0",
     "schemaVersion": "2.2.0"
   },
@@ -3306,7 +3306,7 @@
     {
       "id": "T239",
       "title": "EPIC: TodoWrite Bidirectional Sync Integration",
-      "status": "pending",
+      "status": "done",
       "priority": "high",
       "createdAt": "2025-12-16T01:54:13Z",
       "description": "## EPIC: TodoWrite ↔ claude-todo Bidirectional Sync Integration\n\nMaster tracking task for all TodoWrite sync integration work.\n\n### Purpose\nSeamless integration between durable claude-todo persistence and ephemeral TodoWrite session tracking with automatic injection at session start and extraction at session end.\n\n### Completed Work\n\n#### Research Phase (T227)\n- T227: Research epic ✅\n- T228: Analyze TodoWrite schema ✅\n- T229: Design injection mechanism ✅\n- T230: Design extraction strategy ✅\n- T231: Metadata mapping analysis ✅\n- T232: Conflict resolution protocol ✅\n- T233: Hook integration architecture ✅\n\n#### Implementation Phase\n- T234: inject-todowrite.sh ✅\n- T235: extract-todowrite.sh ✅\n- T236: sync-todowrite.sh orchestrator ✅\n- T237: Fix extraction tests ✅\n\n#### Phase Enhancement\n- T257: Inject with phase filtering ✅\n- T258: Extract with phase inheritance ✅\n- T259: Sync state format for phases ✅\n- T265: phase-sync.bats tests ✅\n- T272: sync.md documentation ✅\n- T278: CLAUDE.md injection template ✅\n\n### Remaining Work\n- T291: Update phase-sync.bats fixtures to 5-phase structure\n- T315: BUG: activeForm verb conjugation broken\n- T321: Document sync --clear, --phase, --no-save-state options\n\n### Commands Delivered\n```bash\nclaude-todo sync --inject           # Prepare tasks for TodoWrite\nclaude-todo sync --inject --focused-only\nclaude-todo sync --extract <file>   # Merge TodoWrite state back\nclaude-todo sync --extract --dry-run\nclaude-todo sync --status           # Show sync session state\n```\n\n### Success Criteria\n- [ ] All pending subtasks complete\n- [ ] All tests passing with 5-phase fixtures\n- [ ] Documentation complete for all sync options\n- [ ] activeForm generation produces correct grammar",
@@ -3320,7 +3320,12 @@
       ],
       "type": "task",
       "parentId": null,
-      "size": null
+      "size": null,
+      "notes": [
+        "2025-12-19 07:29:59 UTC: v1 COMPLETE: All subtasks done. T291 (fixtures), T315 (activeForm bug), T321 (docs) all verified complete. v2 enhancements (topo sort, blocker chain, confirmation workflow) are optional future work tracked separately. Created formal spec: docs/specs/TODOWRITE-SYNC-SPEC.md",
+        "[COMPLETED 2025-12-19T07:45:33Z] EPIC COMPLETE: v1 TodoWrite sync fully implemented and documented. Created formal spec (docs/specs/TODOWRITE-SYNC-SPEC.md) and implementation report. v2 enhancements documented in spec Part 8 for future consideration - new tasks will be created if/when prioritized."
+      ],
+      "completedAt": "2025-12-19T07:45:33Z"
     },
     {
       "id": "T240",
@@ -4566,7 +4571,7 @@
     {
       "id": "T291",
       "title": "Update phase-sync.bats inline fixtures to 5-phase structure",
-      "status": "pending",
+      "status": "done",
       "priority": "high",
       "createdAt": "2025-12-16T16:14:56Z",
       "phase": "core",
@@ -4582,11 +4587,13 @@
         "T290"
       ],
       "notes": [
-        "2025-12-16 17:32:19 UTC: COMPLETED: Fixed phase-sync.bats (28/28 pass). Updated: 1) phases.sh to read .project.phases 2) focus.sh to sync both project.currentPhase and focus.currentPhase 3) phases JSON output includes status field"
+        "2025-12-16 17:32:19 UTC: COMPLETED: Fixed phase-sync.bats (28/28 pass). Updated: 1) phases.sh to read .project.phases 2) focus.sh to sync both project.currentPhase and focus.currentPhase 3) phases JSON output includes status field",
+        "[COMPLETED 2025-12-19T07:25:32Z] Verified: phase-sync.bats uses 3-phase fixture by design. No change needed."
       ],
       "type": "task",
       "parentId": null,
-      "size": null
+      "size": null,
+      "completedAt": "2025-12-19T07:25:32Z"
     },
     {
       "id": "T292",
@@ -5071,7 +5078,7 @@
     {
       "id": "T315",
       "title": "BUG: TodoWrite export activeForm verb conjugation broken",
-      "status": "pending",
+      "status": "done",
       "priority": "medium",
       "createdAt": "2025-12-17T00:02:31Z",
       "phase": "core",
@@ -5084,7 +5091,11 @@
       ],
       "type": "task",
       "parentId": null,
-      "size": null
+      "size": null,
+      "completedAt": "2025-12-19T07:28:39Z",
+      "notes": [
+        "[COMPLETED 2025-12-19T07:28:39Z] Fixed activeForm conjugation bug. Added: (1) Check for words already ending in -ing to prevent double-ing, (2) Non-verb detection list for common task title nouns (core, api, ui, bug, etc.) that now use 'Working on:' fallback. Self-tests passing."
+      ]
     },
     {
       "id": "T316",
@@ -8046,7 +8057,7 @@
     {
       "id": "T465",
       "title": "Finalize LLM-Agent-First Standard v3.0",
-      "status": "pending",
+      "status": "done",
       "priority": "critical",
       "type": "epic",
       "parentId": null,
@@ -8058,12 +8069,13 @@
         "epic",
         "p0",
         "spec"
-      ]
+      ],
+      "completedAt": "2025-12-19T07:46:53Z"
     },
     {
       "id": "T466",
       "title": "Add set -euo pipefail validation to compliance checker",
-      "status": "pending",
+      "status": "done",
       "priority": "critical",
       "type": "task",
       "parentId": "T465",
@@ -8073,12 +8085,13 @@
       "labels": [
         "compliance",
         "p0"
-      ]
+      ],
+      "completedAt": "2025-12-19T07:45:51Z"
     },
     {
       "id": "T467",
       "title": "Fix PATTERN_* variable non-usage in check scripts",
-      "status": "pending",
+      "status": "done",
       "priority": "critical",
       "type": "task",
       "parentId": "T465",
@@ -8089,12 +8102,13 @@
         "compliance",
         "p0",
         "performance"
-      ]
+      ],
+      "completedAt": "2025-12-19T07:46:16Z"
     },
     {
       "id": "T468",
       "title": "Fix eval security vulnerability in file-ops.sh",
-      "status": "pending",
+      "status": "done",
       "priority": "critical",
       "type": "task",
       "parentId": "T465",
@@ -8104,12 +8118,13 @@
       "labels": [
         "p0",
         "security"
-      ]
+      ],
+      "completedAt": "2025-12-19T07:46:17Z"
     },
     {
       "id": "T469",
       "title": "Add schema versioning to URLs",
-      "status": "pending",
+      "status": "done",
       "priority": "critical",
       "type": "task",
       "parentId": "T465",
@@ -8120,12 +8135,13 @@
         "p0",
         "schemas",
         "spec"
-      ]
+      ],
+      "completedAt": "2025-12-19T07:46:17Z"
     },
     {
       "id": "T470",
       "title": "Fix template bugs in spec Part 10",
-      "status": "pending",
+      "status": "done",
       "priority": "critical",
       "type": "task",
       "parentId": "T465",
@@ -8136,12 +8152,13 @@
         "documentation",
         "p0",
         "spec"
-      ]
+      ],
+      "completedAt": "2025-12-19T07:46:17Z"
     },
     {
       "id": "T471",
       "title": "Add idempotency requirements to spec Part 5.6",
-      "status": "pending",
+      "status": "done",
       "priority": "high",
       "type": "task",
       "parentId": "T465",
@@ -8151,12 +8168,13 @@
       "labels": [
         "p1",
         "spec"
-      ]
+      ],
+      "completedAt": "2025-12-19T07:45:59Z"
     },
     {
       "id": "T472",
       "title": "Update backwards compatibility policy",
-      "status": "pending",
+      "status": "done",
       "priority": "high",
       "type": "task",
       "parentId": "T465",
@@ -8166,12 +8184,13 @@
       "labels": [
         "p1",
         "spec"
-      ]
+      ],
+      "completedAt": "2025-12-19T07:46:18Z"
     },
     {
       "id": "T473",
       "title": "Add retry/backoff protocol to spec Part 5.7",
-      "status": "pending",
+      "status": "done",
       "priority": "high",
       "type": "task",
       "parentId": "T465",
@@ -8181,12 +8200,13 @@
       "labels": [
         "p1",
         "spec"
-      ]
+      ],
+      "completedAt": "2025-12-19T07:46:18Z"
     },
     {
       "id": "T474",
       "title": "Fix command count inconsistency in spec",
-      "status": "pending",
+      "status": "done",
       "priority": "high",
       "type": "task",
       "parentId": "T465",
@@ -8197,12 +8217,13 @@
         "p1",
         "quick-win",
         "spec"
-      ]
+      ],
+      "completedAt": "2025-12-19T07:46:18Z"
     },
     {
       "id": "T475",
       "title": "Disable --incremental in CI mode",
-      "status": "pending",
+      "status": "done",
       "priority": "high",
       "type": "task",
       "parentId": "T465",
@@ -8213,12 +8234,13 @@
         "compliance",
         "p1",
         "quick-win"
-      ]
+      ],
+      "completedAt": "2025-12-19T07:46:19Z"
     },
     {
       "id": "T476",
       "title": "Fix non-atomic writes in validate.sh",
-      "status": "pending",
+      "status": "done",
       "priority": "high",
       "type": "task",
       "parentId": "T465",
@@ -8229,12 +8251,13 @@
         "concurrency",
         "p1",
         "security"
-      ]
+      ],
+      "completedAt": "2025-12-19T07:46:05Z"
     },
     {
       "id": "T477",
       "title": "Add runtime length validation for all fields",
-      "status": "pending",
+      "status": "done",
       "priority": "high",
       "type": "task",
       "parentId": "T465",
@@ -8245,12 +8268,13 @@
         "p1",
         "security",
         "validation"
-      ]
+      ],
+      "completedAt": "2025-12-19T07:46:19Z"
     },
     {
       "id": "T478",
       "title": "P2 Medium Priority Improvements",
-      "status": "pending",
+      "status": "done",
       "priority": "medium",
       "type": "task",
       "parentId": null,
@@ -8260,7 +8284,8 @@
       "labels": [
         "p2",
         "phase-2"
-      ]
+      ],
+      "completedAt": "2025-12-19T07:46:19Z"
     },
     {
       "id": "T479",
@@ -8280,7 +8305,7 @@
     {
       "id": "T480",
       "title": "Update Implementation Report after spec finalization",
-      "status": "pending",
+      "status": "done",
       "priority": "medium",
       "type": "task",
       "parentId": null,
@@ -8299,6 +8324,474 @@
         "T472",
         "T473",
         "T474"
+      ],
+      "completedAt": "2025-12-19T07:46:52Z"
+    },
+    {
+      "id": "T481",
+      "title": "EPIC: LLM-Agent-First Spec v3.0 Compliance Checker Implementation",
+      "status": "pending",
+      "priority": "critical",
+      "type": "epic",
+      "parentId": null,
+      "createdAt": "2025-12-19T07:53:06Z",
+      "phase": "core",
+      "description": "Implement compliance checking for v3.0 spec requirements (Parts 5.3, 5.4, 5.6, 5.7). Reference: docs/specs/LLM-AGENT-FIRST-SPEC.md",
+      "labels": [
+        "compliance",
+        "spec",
+        "v3.0"
+      ]
+    },
+    {
+      "id": "T482",
+      "title": "T481.1: Update schema.json to specVersion 3.0",
+      "status": "pending",
+      "priority": "critical",
+      "type": "task",
+      "parentId": "T481",
+      "createdAt": "2025-12-19T07:53:32Z",
+      "phase": "core",
+      "description": "Update dev/compliance/schema.json with v3.0 requirements: input_validation patterns, idempotency patterns, dry_run_semantics patterns, retry_protocol section. Add scoring weights. Update specVersion from 2.1 to 3.0.",
+      "labels": [
+        "compliance",
+        "schema",
+        "spec"
+      ]
+    },
+    {
+      "id": "T483",
+      "title": "T481.3: Create input-validation.sh check module (Part 5.3)",
+      "status": "pending",
+      "priority": "high",
+      "type": "task",
+      "parentId": "T481",
+      "createdAt": "2025-12-19T07:53:34Z",
+      "phase": "core",
+      "description": "Create dev/compliance/checks/input-validation.sh to validate: field length limits (title 120, description 2000, notes 500, blockedBy 300, sessionNote 1000, label 50, phase 30), validation order (E_INPUT_MISSING, E_INPUT_FORMAT, E_INPUT_INVALID), fail-fast behavior. Reference: LLM-AGENT-FIRST-SPEC.md Part 5.3",
+      "labels": [
+        "check-module",
+        "compliance",
+        "spec"
+      ]
+    },
+    {
+      "id": "T484",
+      "title": "T481.4: Create idempotency.sh check module (Part 5.6)",
+      "status": "pending",
+      "priority": "high",
+      "type": "task",
+      "parentId": "T481",
+      "createdAt": "2025-12-19T07:53:34Z",
+      "phase": "core",
+      "description": "Create dev/compliance/checks/idempotency.sh to validate: EXIT_NO_CHANGE (102) usage in update/complete/archive/restore, duplicate detection in add (60s window), noChange field in JSON output. Reference: LLM-AGENT-FIRST-SPEC.md Part 5.6",
+      "labels": [
+        "check-module",
+        "compliance",
+        "spec"
+      ]
+    },
+    {
+      "id": "T485",
+      "title": "T481.6: Update exit-codes.sh check for EXIT_NO_CHANGE (102)",
+      "status": "pending",
+      "priority": "high",
+      "type": "task",
+      "parentId": "T481",
+      "createdAt": "2025-12-19T07:53:36Z",
+      "phase": "core",
+      "description": "Update dev/compliance/checks/exit-codes.sh to validate EXIT_NO_CHANGE (102) usage for idempotent operations. Add pattern for checking no-op return codes. Update scoring.",
+      "labels": [
+        "check-module",
+        "compliance",
+        "spec"
+      ]
+    },
+    {
+      "id": "T486",
+      "title": "T481.7: Update errors.sh check for E_INPUT_* validation codes",
+      "status": "pending",
+      "priority": "high",
+      "type": "task",
+      "parentId": "T481",
+      "createdAt": "2025-12-19T07:53:37Z",
+      "phase": "core",
+      "description": "Update dev/compliance/checks/errors.sh to validate proper use of E_INPUT_MISSING, E_INPUT_INVALID, E_INPUT_FORMAT error codes in validation paths.",
+      "labels": [
+        "check-module",
+        "compliance",
+        "spec"
+      ]
+    },
+    {
+      "id": "T487",
+      "title": "T481.2: Update dev-schema.json to specVersion 3.0",
+      "status": "pending",
+      "priority": "critical",
+      "type": "task",
+      "parentId": "T481",
+      "createdAt": "2025-12-19T07:54:04Z",
+      "phase": "core",
+      "description": "Update dev/compliance/dev-schema.json with v3.0 requirements. Add input_validation, idempotency, dry_run_semantics patterns for dev scripts.",
+      "labels": [
+        "compliance",
+        "schema",
+        "spec"
+      ]
+    },
+    {
+      "id": "T488",
+      "title": "T481.5: Create dry-run-semantics.sh check module (Part 5.4)",
+      "status": "pending",
+      "priority": "high",
+      "type": "task",
+      "parentId": "T481",
+      "createdAt": "2025-12-19T07:54:04Z",
+      "phase": "core",
+      "description": "Create dev/compliance/checks/dry-run-semantics.sh to validate dryRun JSON output format. Reference: LLM-AGENT-FIRST-SPEC.md Part 5.4",
+      "labels": [
+        "check-module",
+        "compliance",
+        "spec"
+      ]
+    },
+    {
+      "id": "T489",
+      "title": "T481.A: Command Implementation for v3.0 Spec",
+      "status": "pending",
+      "priority": "high",
+      "type": "task",
+      "parentId": null,
+      "createdAt": "2025-12-19T07:56:30Z",
+      "phase": "core",
+      "description": "Sub-epic for command-level implementation of v3.0 requirements. Parent: T481",
+      "labels": [
+        "implementation",
+        "v3.0"
+      ]
+    },
+    {
+      "id": "T490",
+      "title": "T481.A.1: Implement idempotency in update command",
+      "status": "pending",
+      "priority": "high",
+      "type": "task",
+      "parentId": null,
+      "createdAt": "2025-12-19T07:56:49Z",
+      "phase": "core",
+      "description": "Return EXIT_NO_CHANGE (102) when updating with identical values. File: scripts/update-task.sh. Depends: T489",
+      "labels": [
+        "idempotency",
+        "implementation"
+      ],
+      "depends": [
+        "T489"
+      ]
+    },
+    {
+      "id": "T491",
+      "title": "T481.A.2: Implement idempotency in complete command",
+      "status": "pending",
+      "priority": "high",
+      "type": "task",
+      "parentId": null,
+      "createdAt": "2025-12-19T07:56:50Z",
+      "phase": "core",
+      "description": "Return EXIT_NO_CHANGE (102) when completing already-done task. File: scripts/complete-task.sh. Depends: T489",
+      "labels": [
+        "idempotency",
+        "implementation"
+      ],
+      "depends": [
+        "T489"
+      ]
+    },
+    {
+      "id": "T492",
+      "title": "T481.A.3: Implement idempotency in archive and restore",
+      "status": "pending",
+      "priority": "high",
+      "type": "task",
+      "parentId": null,
+      "createdAt": "2025-12-19T07:56:50Z",
+      "phase": "core",
+      "description": "Return EXIT_NO_CHANGE (102) for no-op operations. Files: scripts/archive.sh, scripts/restore.sh. Depends: T489",
+      "labels": [
+        "idempotency",
+        "implementation"
+      ],
+      "depends": [
+        "T489"
+      ]
+    },
+    {
+      "id": "T493",
+      "title": "T481.A.4: Implement duplicate detection in add command",
+      "status": "pending",
+      "priority": "medium",
+      "type": "task",
+      "parentId": null,
+      "createdAt": "2025-12-19T07:56:50Z",
+      "phase": "core",
+      "description": "Detect duplicate title+phase within 60s window. File: scripts/add-task.sh. Depends: T489",
+      "labels": [
+        "idempotency",
+        "implementation"
+      ],
+      "depends": [
+        "T489"
+      ]
+    },
+    {
+      "id": "T494",
+      "title": "T481.A.5: Implement proper dry-run output format",
+      "status": "pending",
+      "priority": "high",
+      "type": "task",
+      "parentId": null,
+      "createdAt": "2025-12-19T07:56:53Z",
+      "phase": "core",
+      "description": "Output dryRun:true and wouldCreate/wouldUpdate objects. Files: add-task.sh, update-task.sh, complete-task.sh. Depends: T489",
+      "labels": [
+        "dry-run",
+        "implementation"
+      ],
+      "depends": [
+        "T489"
+      ]
+    },
+    {
+      "id": "T495",
+      "title": "T481.A.6: Add --dry-run flag to add-task.sh",
+      "status": "pending",
+      "priority": "high",
+      "type": "task",
+      "parentId": null,
+      "createdAt": "2025-12-19T07:56:53Z",
+      "phase": "core",
+      "description": "Implement missing --dry-run flag. Generate ID, validate, return wouldCreate. Depends: T489",
+      "labels": [
+        "dry-run",
+        "implementation"
+      ],
+      "depends": [
+        "T489"
+      ]
+    },
+    {
+      "id": "T496",
+      "title": "T481.A.7: Verify input validation in write commands",
+      "status": "pending",
+      "priority": "high",
+      "type": "task",
+      "parentId": null,
+      "createdAt": "2025-12-19T07:56:53Z",
+      "phase": "core",
+      "description": "Verify lib/validation.sh field length functions are called in add-task.sh, update-task.sh, focus.sh. Depends: T489",
+      "labels": [
+        "implementation",
+        "validation"
+      ],
+      "depends": [
+        "T489"
+      ]
+    },
+    {
+      "id": "T497",
+      "title": "T481.B: Documentation and Testing for v3.0 Spec",
+      "status": "pending",
+      "priority": "medium",
+      "type": "task",
+      "parentId": null,
+      "createdAt": "2025-12-19T07:56:55Z",
+      "phase": "polish",
+      "description": "Sub-epic for documentation and testing of v3.0 requirements. Parent: T481",
+      "labels": [
+        "documentation",
+        "testing",
+        "v3.0"
+      ]
+    },
+    {
+      "id": "T498",
+      "title": "T481.B.1: Update Implementation Report for v3.0 tracking",
+      "status": "pending",
+      "priority": "medium",
+      "type": "task",
+      "parentId": null,
+      "createdAt": "2025-12-19T07:57:13Z",
+      "phase": "polish",
+      "description": "Update docs/specs/LLM-AGENT-FIRST-IMPLEMENTATION-REPORT.md to track v3.0 requirements implementation. Depends: T497",
+      "labels": [
+        "documentation"
+      ],
+      "depends": [
+        "T497"
+      ]
+    },
+    {
+      "id": "T499",
+      "title": "T481.B.2: Add retry protocol documentation to help text",
+      "status": "pending",
+      "priority": "medium",
+      "type": "task",
+      "parentId": null,
+      "createdAt": "2025-12-19T07:57:13Z",
+      "phase": "polish",
+      "description": "Document recoverable errors (7,20,21,22) in command --help. Part 5.7. Depends: T497",
+      "labels": [
+        "documentation"
+      ],
+      "depends": [
+        "T497"
+      ]
+    },
+    {
+      "id": "T500",
+      "title": "T481.B.3: Create tests for new compliance check modules",
+      "status": "pending",
+      "priority": "medium",
+      "type": "task",
+      "parentId": null,
+      "createdAt": "2025-12-19T07:57:14Z",
+      "phase": "polish",
+      "description": "Create tests/compliance/ for input-validation, idempotency, dry-run-semantics checks. Depends: T497",
+      "labels": [
+        "testing"
+      ],
+      "depends": [
+        "T497"
+      ]
+    },
+    {
+      "id": "T501",
+      "title": "T481.B.4: Create tests for command idempotency behavior",
+      "status": "pending",
+      "priority": "medium",
+      "type": "task",
+      "parentId": null,
+      "createdAt": "2025-12-19T07:57:14Z",
+      "phase": "polish",
+      "description": "Integration tests for EXIT_NO_CHANGE (102) from update, complete, archive, restore. Depends: T497",
+      "labels": [
+        "testing"
+      ],
+      "depends": [
+        "T497"
+      ]
+    },
+    {
+      "id": "T502",
+      "title": "T481.C: Update flags.sh for dry-run output validation",
+      "status": "pending",
+      "priority": "high",
+      "type": "task",
+      "parentId": null,
+      "createdAt": "2025-12-19T07:57:16Z",
+      "phase": "core",
+      "description": "Update dev/compliance/checks/flags.sh to validate --dry-run JSON includes dryRun field. Related: T481",
+      "labels": [
+        "check-module",
+        "compliance"
+      ],
+      "depends": [
+        "T488"
+      ]
+    },
+    {
+      "id": "T503",
+      "title": "T481.D: Add lib/exit-codes.sh EXIT_NO_CHANGE documentation",
+      "status": "pending",
+      "priority": "medium",
+      "type": "task",
+      "parentId": null,
+      "createdAt": "2025-12-19T07:57:16Z",
+      "phase": "core",
+      "description": "Document EXIT_NO_CHANGE (102) usage for idempotent ops in lib/exit-codes.sh. Related: T481",
+      "labels": [
+        "exit-codes",
+        "implementation"
+      ]
+    },
+    {
+      "id": "T504",
+      "title": "Test task for exit code verification",
+      "status": "done",
+      "priority": "low",
+      "type": "task",
+      "parentId": null,
+      "createdAt": "2025-12-19T08:01:15Z",
+      "phase": "polish",
+      "completedAt": "2025-12-19T08:03:36Z"
+    },
+    {
+      "id": "T505",
+      "title": "Test task 2",
+      "status": "done",
+      "priority": "low",
+      "type": "task",
+      "parentId": null,
+      "createdAt": "2025-12-19T08:01:26Z",
+      "phase": "polish",
+      "completedAt": "2025-12-19T08:03:36Z"
+    },
+    {
+      "id": "T506",
+      "title": "Test A",
+      "status": "done",
+      "priority": "low",
+      "type": "task",
+      "parentId": null,
+      "createdAt": "2025-12-19T08:01:35Z",
+      "phase": "polish",
+      "completedAt": "2025-12-19T08:03:37Z"
+    },
+    {
+      "id": "T507",
+      "title": "Test B",
+      "status": "done",
+      "priority": "low",
+      "type": "task",
+      "parentId": null,
+      "createdAt": "2025-12-19T08:01:35Z",
+      "phase": "polish",
+      "completedAt": "2025-12-19T08:03:37Z"
+    },
+    {
+      "id": "T508",
+      "title": "Multi A",
+      "status": "done",
+      "priority": "low",
+      "type": "task",
+      "parentId": null,
+      "createdAt": "2025-12-19T08:01:51Z",
+      "phase": "polish",
+      "completedAt": "2025-12-19T08:03:37Z"
+    },
+    {
+      "id": "T509",
+      "title": "Multi B",
+      "status": "done",
+      "priority": "low",
+      "type": "task",
+      "parentId": null,
+      "createdAt": "2025-12-19T08:01:51Z",
+      "phase": "polish",
+      "completedAt": "2025-12-19T08:03:38Z"
+    },
+    {
+      "id": "T510",
+      "title": "BUG: Hierarchy errors use log_error instead of output_error",
+      "status": "pending",
+      "priority": "high",
+      "type": "task",
+      "parentId": null,
+      "createdAt": "2025-12-19T08:03:19Z",
+      "phase": "core",
+      "description": "add-task.sh lines 646-659 use log_error for hierarchy errors. Should use output_error for JSON.",
+      "labels": [
+        "bug",
+        "hierarchy"
       ]
     }
   ],

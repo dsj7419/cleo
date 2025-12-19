@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # CLAUDE-TODO Update Task Script
 # Update existing task fields with validation and logging
-set -uo pipefail
+set -euo pipefail
 
 TODO_FILE="${TODO_FILE:-.claude/todo.json}"
 CONFIG_FILE="${CONFIG_FILE:-.claude/todo-config.json}"
@@ -593,6 +593,11 @@ fi
 [[ -n "$DEPENDS_TO_ADD" ]] && { validate_depends "$DEPENDS_TO_ADD" || exit 1; }
 [[ -n "$DEPENDS_TO_SET" ]] && { validate_depends "$DEPENDS_TO_SET" || exit 1; }
 
+# Validate field lengths (v0.20.0+)
+[[ -n "$NEW_DESCRIPTION" ]] && { validate_description "$NEW_DESCRIPTION" || exit 1; }
+[[ -n "$NOTE_TO_ADD" ]] && { validate_note "$NOTE_TO_ADD" || exit 1; }
+[[ -n "$NEW_BLOCKED_BY" ]] && { validate_blocked_by "$NEW_BLOCKED_BY" || exit 1; }
+
 # Add new phase if --add-phase flag is set and phase doesn't exist
 if [[ "$ADD_PHASE" == "true" ]] && [[ -n "$NEW_PHASE" ]]; then
   add_new_phase "$NEW_PHASE"
@@ -854,7 +859,7 @@ if [[ "$DRY_RUN" == true ]]; then
       --argjson changes "$CHANGES_JSON" \
       --argjson task "$UPDATED_TASK" \
       '{
-        "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+        "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
         "_meta": {
           "format": "json",
           "command": $command,
@@ -944,7 +949,7 @@ if [[ "$FORMAT" == "json" ]]; then
     --argjson changes "$CHANGES_JSON" \
     --argjson task "$FINAL_TASK" \
     '{
-      "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+      "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
       "_meta": {
         "format": "json",
         "command": $command,

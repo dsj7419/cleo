@@ -134,7 +134,7 @@ Recommendations:
 ### JSON Output Example
 ```json
 {
-  "$schema": "https://claude-todo.dev/schemas/critical-path.schema.json",
+  "$schema": "https://claude-todo.dev/schemas/v1/critical-path.schema.json",
   "_meta": {
     "format": "json",
     "version": "0.16.0",

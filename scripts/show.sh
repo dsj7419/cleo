@@ -2,7 +2,7 @@
 # CLAUDE-TODO Show Command
 # Display detailed view of a single task with all fields
 # Includes dependencies, notes, and related information
-set -uo pipefail
+set -euo pipefail
 
 TODO_FILE="${TODO_FILE:-.claude/todo.json}"
 ARCHIVE_FILE="${ARCHIVE_FILE:-.claude/todo-archive.json}"
@@ -411,7 +411,7 @@ display_json() {
     --arg timestamp "$timestamp" \
     --argjson task "$task_data" \
     '{
-      "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+      "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
       "_meta": {
         "format": "json",
         "command": "show",

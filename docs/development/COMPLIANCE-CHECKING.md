@@ -191,7 +191,7 @@ Validates actual JSON output structure. These are runtime checks that execute th
 
 ```json
 {
-  "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+  "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
   "_meta": {
     "format": "json",
     "version": "0.19.1",

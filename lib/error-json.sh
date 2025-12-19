@@ -96,7 +96,7 @@ fi
 #
 # Output format:
 #   {
-#     "$schema": "https://claude-todo.dev/schemas/error.schema.json",
+#     "$schema": "https://claude-todo.dev/schemas/v1/error.schema.json",
 #     "_meta": {
 #       "format": "json",
 #       "version": "<version>",
@@ -152,7 +152,7 @@ output_error_json() {
         --argjson rec "$recoverable_bool" \
         --arg sug "$suggestion" \
         '{
-            "$schema": "https://claude-todo.dev/schemas/error.schema.json",
+            "$schema": "https://claude-todo.dev/schemas/v1/error.schema.json",
             "_meta": {
                 "format": "json",
                 "version": $version,

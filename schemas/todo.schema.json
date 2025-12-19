@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "claude-todo-schema-v2.3",
+  "$id": "https://claude-todo.dev/schemas/v1/todo.schema.json",
   "title": "CLAUDE-TODO Task Schema",
   "description": "LLM-optimized task tracking with hierarchy support (Epic/Task/Subtask), integrity verification, session tracking, and anti-hallucination safeguards.",
   "type": "object",

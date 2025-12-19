@@ -97,7 +97,7 @@ output_compliance_error() {
             --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
             --arg ver "$TOOL_VERSION" \
             '{
-                "$schema": "https://claude-todo.dev/schemas/error.schema.json",
+                "$schema": "https://claude-todo.dev/schemas/v1/error.schema.json",
                 "_meta": {
                     "format": "json",
                     "command": $cmd,
@@ -566,7 +566,7 @@ EOF
             cat << EOF
 Ensure JSON output includes full envelope structure:
   {
-    "\$schema": "https://claude-todo.dev/schemas/output.schema.json",
+    "\$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
     "_meta": {
       "command": "\$COMMAND_NAME",
       "timestamp": \$(date +%s),
@@ -908,7 +908,7 @@ format_json_output() {
         --argjson ciMode "$CI_MODE" \
         --argjson suggestFixes "$SUGGEST_FIXES" \
         '{
-            "$schema": "https://claude-todo.dev/schemas/compliance-report.schema.json",
+            "$schema": "https://claude-todo.dev/schemas/v1/compliance-report.schema.json",
             "_meta": {
                 "format": "json",
                 "command": "check-compliance",
@@ -1041,6 +1041,14 @@ format_table_output() {
 # Main execution
 main() {
     parse_args "$@"
+
+    # CI mode forces full check - incremental is non-deterministic in CI
+    if [[ "$CI_MODE" == "true" ]] && [[ "$INCREMENTAL" == "true" ]]; then
+        if [[ "$QUIET" != "true" ]]; then
+            echo -e "${YELLOW}⚠${NC} CI mode forces full check, ignoring --incremental" >&2
+        fi
+        INCREMENTAL=false
+    fi
 
     # Resolve format (TTY-aware for LLM-Agent-First)
     OUTPUT_FORMAT=$(dev_resolve_format "$OUTPUT_FORMAT")

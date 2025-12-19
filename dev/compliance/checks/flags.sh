@@ -31,8 +31,9 @@ check_flags() {
     local skipped=0
 
     # Check 1: --format flag
+    # Use pre-extracted pattern from check-compliance.sh if available, fallback to jq
     local format_pattern
-    format_pattern=$(echo "$schema" | jq -r '.requirements.flags.universal.patterns.format_flag')
+    format_pattern="${PATTERN_FORMAT_FLAG:-$(echo "$schema" | jq -r '.requirements.flags.universal.patterns.format_flag')}"
 
     if pattern_exists "$script" "$format_pattern"; then
         results+=('{"check": "format_flag", "passed": true, "details": "--format flag supported"}')
@@ -45,8 +46,9 @@ check_flags() {
     fi
 
     # Check 2: --quiet flag
+    # Use pre-extracted pattern from check-compliance.sh if available, fallback to jq
     local quiet_pattern
-    quiet_pattern=$(echo "$schema" | jq -r '.requirements.flags.universal.patterns.quiet_flag')
+    quiet_pattern="${PATTERN_QUIET_FLAG:-$(echo "$schema" | jq -r '.requirements.flags.universal.patterns.quiet_flag')}"
 
     if pattern_exists "$script" "$quiet_pattern"; then
         results+=('{"check": "quiet_flag", "passed": true, "details": "--quiet flag supported"}')
@@ -59,8 +61,9 @@ check_flags() {
     fi
 
     # Check 3: --json shortcut
+    # Use pre-extracted pattern from check-compliance.sh if available, fallback to jq
     local json_pattern
-    json_pattern=$(echo "$schema" | jq -r '.requirements.flags.universal.patterns.json_shortcut')
+    json_pattern="${PATTERN_JSON_SHORTCUT:-$(echo "$schema" | jq -r '.requirements.flags.universal.patterns.json_shortcut')}"
 
     if pattern_exists "$script" "$json_pattern"; then
         results+=('{"check": "json_shortcut", "passed": true, "details": "--json shortcut supported"}')
@@ -73,8 +76,9 @@ check_flags() {
     fi
 
     # Check 4: --human shortcut
+    # Use pre-extracted pattern from check-compliance.sh if available, fallback to jq
     local human_pattern
-    human_pattern=$(echo "$schema" | jq -r '.requirements.flags.universal.patterns.human_shortcut')
+    human_pattern="${PATTERN_HUMAN_SHORTCUT:-$(echo "$schema" | jq -r '.requirements.flags.universal.patterns.human_shortcut')}"
 
     if pattern_exists "$script" "$human_pattern"; then
         results+=('{"check": "human_shortcut", "passed": true, "details": "--human shortcut supported"}')
@@ -87,8 +91,9 @@ check_flags() {
     fi
 
     # Check 5: resolve_format() called
+    # Use pre-extracted pattern from check-compliance.sh if available, fallback to jq
     local resolve_pattern
-    resolve_pattern=$(echo "$schema" | jq -r '.requirements.flags.format_resolution.pattern')
+    resolve_pattern="${PATTERN_RESOLVE_FORMAT:-$(echo "$schema" | jq -r '.requirements.flags.format_resolution.pattern')}"
 
     if pattern_exists "$script" "$resolve_pattern"; then
         results+=('{"check": "resolve_format", "passed": true, "details": "resolve_format() called for TTY-aware resolution"}')

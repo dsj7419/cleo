@@ -149,7 +149,7 @@ When using `--format json`, output follows the standard envelope:
 
 ```json
 {
-  "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+  "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
   "_meta": {
     "format": "json",
     "version": "0.17.0",
@@ -171,7 +171,7 @@ For `set` operations:
 
 ```json
 {
-  "$schema": "https://claude-todo.dev/schemas/output.schema.json",
+  "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
   "_meta": {
     "format": "json",
     "version": "0.17.0",
