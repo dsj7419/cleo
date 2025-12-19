@@ -213,7 +213,8 @@ backup_file() {
     local file="$1"
     if [[ -f "$file" ]] && [[ "$DRY_RUN" == false ]]; then
         cp "$file" "$file.bak"
-        [[ "$VERBOSE" == true ]] && [[ "$QUIET" != true ]] && log_info "Backed up: $file"
+        # Note: || true prevents set -e exit when VERBOSE=false (short-circuit returns 1)
+        [[ "$VERBOSE" == true ]] && [[ "$QUIET" != true ]] && log_info "Backed up: $file" || true
     fi
 }
 
