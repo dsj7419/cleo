@@ -10,27 +10,32 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 VERSION_FILE="$PROJECT_ROOT/VERSION"
+DEV_LIB_DIR="$SCRIPT_DIR/lib"
 
-# Colors
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[0;33m'
-BLUE='\033[0;34m'
-NC='\033[0m'
-
-log_info() { echo -e "${GREEN}✓${NC} $1"; }
-log_warn() { echo -e "${YELLOW}⚠${NC} $1"; }
-log_error() { echo -e "${RED}✗${NC} $1" >&2; }
-log_check() { echo -e "${BLUE}→${NC} $1"; }
-
-# Platform-safe sed in-place
-sed_inplace() {
-    if [[ "$OSTYPE" == "darwin"* ]]; then
-        sed -i '' "$@"
-    else
-        sed -i "$@"
-    fi
-}
+# ============================================================================
+# LIBRARY SOURCING
+# ============================================================================
+# Source shared dev library (provides colors, logging, utilities)
+if [[ -d "$DEV_LIB_DIR" ]] && [[ -f "$DEV_LIB_DIR/dev-common.sh" ]]; then
+    source "$DEV_LIB_DIR/dev-common.sh"
+    # Use library's sed_inplace function (dev_sed_inplace)
+    sed_inplace() { dev_sed_inplace "$@"; }
+else
+    # Fallback for backward compatibility
+    RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[0;33m'; BLUE='\033[0;34m'; NC='\033[0m'
+    log_info() { echo -e "${GREEN}✓${NC} $1"; }
+    log_warn() { echo -e "${YELLOW}⚠${NC} $1"; }
+    log_error() { echo -e "${RED}✗${NC} $1" >&2; }
+    log_check() { echo -e "${BLUE}→${NC} $1"; }
+    # Platform-safe sed in-place (fallback)
+    sed_inplace() {
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            sed -i '' "$@"
+        else
+            sed -i "$@"
+        fi
+    }
+fi
 
 FIX_MODE=false
 EXIT_CODE=0

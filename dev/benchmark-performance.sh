@@ -25,6 +25,15 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CLAUDE_TODO_HOME="${CLAUDE_TODO_HOME:-$HOME/.claude-todo}"
+DEV_LIB_DIR="$SCRIPT_DIR/lib"
+
+# ============================================================================
+# LIBRARY SOURCING
+# ============================================================================
+# Source shared dev library for output, progress, and utilities
+if [[ -d "$DEV_LIB_DIR" ]] && [[ -f "$DEV_LIB_DIR/dev-progress.sh" ]]; then
+    source "$DEV_LIB_DIR/dev-progress.sh"
+fi
 
 # Defaults
 DATASET_SIZES="100 500 1000 2000"

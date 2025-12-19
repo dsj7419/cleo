@@ -96,15 +96,20 @@ check_errors() {
         fi
     fi
 
-    # Check 4: error-json.sh library sourced
-    if pattern_exists "$script" "source.*error-json\\.sh"; then
-        results+=('{"check": "error_lib_sourced", "passed": true, "details": "error-json.sh library sourced"}')
+    # Check 4: Error library sourced (uses schema pattern if available)
+    local error_lib_pattern
+    error_lib_pattern=$(echo "$schema" | jq -r '.requirements.error_handling.error_lib_pattern // "error-json\\.sh"')
+    local error_lib_name
+    error_lib_name=$(echo "$schema" | jq -r '.requirements.error_handling.error_lib_name // "error-json.sh"')
+
+    if pattern_exists "$script" "source.*$error_lib_pattern"; then
+        results+=('{"check": "error_lib_sourced", "passed": true, "details": "'"$error_lib_name"' library sourced"}')
         ((passed++)) || true
-        [[ "$verbose" == "true" ]] && print_check pass "error-json.sh sourced"
+        [[ "$verbose" == "true" ]] && print_check pass "$error_lib_name sourced"
     else
-        results+=('{"check": "error_lib_sourced", "passed": false, "details": "error-json.sh library not sourced"}')
+        results+=('{"check": "error_lib_sourced", "passed": false, "details": "'"$error_lib_name"' library not sourced"}')
         ((failed++)) || true
-        [[ "$verbose" == "true" ]] && print_check fail "error-json.sh" "Library not sourced"
+        [[ "$verbose" == "true" ]] && print_check fail "$error_lib_name" "Library not sourced"
     fi
 
     # Check 5: Proper error JSON structure (if using jq for errors)

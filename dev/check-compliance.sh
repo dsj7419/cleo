@@ -484,6 +484,12 @@ run_runtime_check() {
         return
     fi
 
+    # Dev scripts don't have JSON output requirements - skip runtime check
+    if [[ "$DEV_SCRIPTS_MODE" == "true" ]]; then
+        echo '{"skipped": true, "reason": "dev-scripts mode (no JSON output requirement)"}'
+        return
+    fi
+
     if [[ -n "$SPECIFIC_CHECK" ]] && [[ "$SPECIFIC_CHECK" != "json-envelope" ]]; then
         echo '{"skipped": true, "reason": "check filter"}'
         return

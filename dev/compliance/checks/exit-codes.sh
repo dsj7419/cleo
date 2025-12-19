@@ -52,8 +52,15 @@ check_exit_codes() {
     # Pattern: exit followed by a digit, but not inside ${...}
     local forbidden_pattern='exit [0-9]+[^}]|exit [0-9]+$'
 
+    # Get exit constant pattern from schema to exclude valid constant usage
+    local const_pattern
+    const_pattern=$(echo "$schema" | jq -r '.requirements.exit_codes.pattern // "exit \\$EXIT_|exit \\$\\{EXIT_"')
+    # Convert pattern for grep (remove backslash escaping for jq)
+    local grep_exclude_pattern
+    grep_exclude_pattern=$(echo "$const_pattern" | sed 's/\\\\\\$/\\$/g' | sed 's/|/\\|/g')
+
     local magic_exits
-    magic_exits=$(grep -nE 'exit [0-9]' "$script" 2>/dev/null | grep -vE 'exit \$EXIT_|exit \$\{EXIT_|#.*exit [0-9]' || true)
+    magic_exits=$(grep -nE 'exit [0-9]' "$script" 2>/dev/null | grep -vE "$grep_exclude_pattern|#.*exit [0-9]" || true)
 
     if [[ -z "$magic_exits" ]]; then
         results+=('{"check": "no_magic_numbers", "passed": true, "details": "No magic exit numbers found"}')
@@ -81,15 +88,20 @@ check_exit_codes() {
         fi
     fi
 
-    # Check 3: Exit code library sourced
-    if pattern_exists "$script" "source.*exit-codes\\.sh"; then
-        results+=('{"check": "exit_lib_sourced", "passed": true, "details": "exit-codes.sh library sourced"}')
+    # Check 3: Exit code library sourced (uses schema pattern if available)
+    local exit_lib_pattern
+    exit_lib_pattern=$(echo "$schema" | jq -r '.requirements.exit_codes.exit_lib_pattern // "exit-codes\\.sh"')
+    local exit_lib_name
+    exit_lib_name=$(echo "$schema" | jq -r '.requirements.exit_codes.exit_lib_name // "exit-codes.sh"')
+
+    if pattern_exists "$script" "source.*$exit_lib_pattern"; then
+        results+=('{"check": "exit_lib_sourced", "passed": true, "details": "'"$exit_lib_name"' library sourced"}')
         ((passed++)) || true
-        [[ "$verbose" == "true" ]] && print_check pass "exit-codes.sh sourced"
+        [[ "$verbose" == "true" ]] && print_check pass "$exit_lib_name sourced"
     else
-        results+=('{"check": "exit_lib_sourced", "passed": false, "details": "exit-codes.sh library not sourced"}')
+        results+=('{"check": "exit_lib_sourced", "passed": false, "details": "'"$exit_lib_name"' library not sourced"}')
         ((failed++)) || true
-        [[ "$verbose" == "true" ]] && print_check fail "exit-codes.sh" "Library not sourced"
+        [[ "$verbose" == "true" ]] && print_check fail "$exit_lib_name" "Library not sourced"
     fi
 
     # Check 4: Consistent exit code usage (all exits use constants or none do)
@@ -97,8 +109,11 @@ check_exit_codes() {
     total_exits=$(pattern_count "$script" "exit " || echo "0")
 
     if [[ "$total_exits" -gt 0 ]]; then
+        # Use schema pattern for counting constant exits
+        local const_pattern_grep
+        const_pattern_grep=$(echo "$schema" | jq -r '.requirements.exit_codes.pattern // "exit \\$EXIT_|\\$\\{EXIT_"' | sed 's/\\\\\\$/\\$/g')
         local const_exits
-        const_exits=$(pattern_count "$script" 'exit \$EXIT_|\$\{EXIT_' || echo "0")
+        const_exits=$(pattern_count "$script" "$const_pattern_grep" || echo "0")
 
         local ratio
         if [[ "$total_exits" -gt 0 ]]; then

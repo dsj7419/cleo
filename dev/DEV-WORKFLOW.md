@@ -98,11 +98,13 @@ Check dev scripts against dev standards:
 ./dev/check-compliance.sh --dev-scripts --suggest
 ```
 
-## Dev Script Standards
+## Dev Script Standards (LLM-Agent-First)
+
+Dev scripts follow the same LLM-Agent-First principles as main scripts for consistency and agent automation support.
 
 ### Required Patterns
 
-Every dev script should:
+Every dev script MUST:
 
 1. **Source dev-common.sh**
    ```bash
@@ -111,30 +113,59 @@ Every dev script should:
    source "$DEV_LIB_DIR/dev-common.sh"
    ```
 
-2. **Support --help flag**
+2. **Set COMMAND_NAME**
    ```bash
-   -h|--help)
-       usage
-       exit 0
-       ;;
+   COMMAND_NAME="bump-version"
    ```
 
-3. **Use DEV_EXIT_* constants**
+3. **Support format flags (--format, --json, --human, --quiet)**
+   ```bash
+   -f|--format) FORMAT="$2"; shift 2 ;;
+   --json)      FORMAT="json"; shift ;;
+   --human)     FORMAT="text"; shift ;;
+   -q|--quiet)  QUIET=true; shift ;;
+   -h|--help)   usage; exit 0 ;;
+   ```
+
+4. **Call dev_resolve_format() for TTY-aware output**
+   ```bash
+   # After arg parsing
+   FORMAT=$(dev_resolve_format "$FORMAT")
+   ```
+
+5. **Use DEV_EXIT_* constants (no magic numbers)**
    ```bash
    exit $DEV_EXIT_SUCCESS
    exit $DEV_EXIT_INVALID_INPUT
+   exit $DEV_EXIT_GENERAL_ERROR
    ```
 
-4. **Use log_* functions**
+6. **Use log_* functions for output**
    ```bash
    log_info "Success message"
    log_error "Error message"
    log_step "Action message"
    ```
 
+7. **Output JSON for non-TTY (agent automation)**
+   ```bash
+   if [[ "$FORMAT" == "json" ]]; then
+       jq -n \
+           --arg cmd "$COMMAND_NAME" \
+           --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+           '{
+               "_meta": {"command": $cmd, "timestamp": $ts},
+               "success": true,
+               "data": {}
+           }'
+   else
+       [[ "$QUIET" != true ]] && log_info "Operation completed"
+   fi
+   ```
+
 ### Recommended Patterns
 
-1. **Support --verbose and --quiet**
+1. **Support --verbose for detailed output**
 2. **Support --dry-run for destructive operations**
 3. **Use dev_die for fatal errors**
 4. **Use dev_require_command for dependencies**
@@ -175,9 +206,10 @@ Edit `dev/compliance/dev-schema.json`:
 
 Before committing dev tooling changes:
 
-- [ ] Run `./dev/check-compliance.sh --dev-scripts` (should pass 80%+)
+- [ ] Run `./dev/check-compliance.sh --dev-scripts` (should pass 95%+)
 - [ ] Run `./dev/check-compliance.sh` (ensure main scripts still pass)
 - [ ] Test affected scripts manually
+- [ ] Verify JSON output works (`./dev/<script>.sh --format json | jq .`)
 - [ ] Update dev/README.md if adding new scripts
 - [ ] Update this file if changing workflow
 
@@ -189,19 +221,22 @@ dev-compliance:
   runs-on: ubuntu-latest
   steps:
     - uses: actions/checkout@v4
-    - name: Check dev scripts compliance
-      run: ./dev/check-compliance.sh --dev-scripts --ci --threshold 80
+    - name: Check dev scripts compliance (LLM-Agent-First)
+      run: ./dev/check-compliance.sh --dev-scripts --ci --threshold 95
 ```
 
 ## Adding New Dev Scripts
 
 1. Create script in `dev/` directory
 2. Source `dev-common.sh` at the top
-3. Implement --help flag
-4. Use DEV_EXIT_* constants
-5. Add to `dev/compliance/dev-schema.json`
-6. Update `dev/README.md`
-7. Run compliance check: `./dev/check-compliance.sh --dev-scripts --discover`
+3. Set `COMMAND_NAME` variable
+4. Implement format flags (`--format`, `--json`, `--human`, `--quiet`, `--help`)
+5. Call `dev_resolve_format()` after arg parsing
+6. Use `DEV_EXIT_*` constants (no magic exit numbers)
+7. Output JSON envelope for non-TTY (`_meta`, `success`, data)
+8. Add to `dev/compliance/dev-schema.json`
+9. Update `dev/README.md`
+10. Run compliance check: `./dev/check-compliance.sh --dev-scripts --discover`
 
 ## Relationship to Main Application
 
@@ -209,11 +244,12 @@ dev-compliance:
 |--------|-------------------|--------------|
 | Shipped | Yes | No |
 | Versioning | Semver | None |
-| Compliance | 95%+ required | 80%+ target |
+| Compliance | 95%+ required | 95%+ required (LLM-Agent-First) |
 | Library | `lib/` | `dev/lib/` |
 | Exit codes | `EXIT_*` | `DEV_EXIT_*` |
-| Output | `output_error()` | `log_error()` |
-| JSON output | Required | Optional |
+| Output | `output_error()` | `log_error()` / `dev_die()` |
+| JSON output | Required (non-TTY) | Required (non-TTY) |
+| Format resolution | `resolve_format()` | `dev_resolve_format()` |
 
 ## Troubleshooting
 

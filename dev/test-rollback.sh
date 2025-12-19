@@ -7,6 +7,15 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 PHASE_SCRIPT="$PROJECT_ROOT/scripts/phase.sh"
+DEV_LIB_DIR="$SCRIPT_DIR/lib"
+
+# ============================================================================
+# LIBRARY SOURCING
+# ============================================================================
+# Source shared dev library for colors and output
+if [[ -d "$DEV_LIB_DIR" ]] && [[ -f "$DEV_LIB_DIR/dev-output.sh" ]]; then
+    source "$DEV_LIB_DIR/dev-output.sh"
+fi
 
 echo "===== Phase Rollback Detection Tests ====="
 echo

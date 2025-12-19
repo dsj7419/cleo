@@ -38,10 +38,14 @@ check_foundation() {
     local total_libs
     total_libs=$(echo "$required_libs" | wc -w | tr -d ' ')
 
+    # Build lib list string for display
+    local libs_list
+    libs_list=$(echo "$required_libs" | tr '\n' ',' | sed 's/,$//')
+
     if [[ "$libs_found" -eq "$total_libs" ]]; then
         results+=('{"check": "foundation_libs", "passed": true, "details": "All '"$total_libs"' required libraries sourced"}')
         ((passed++)) || true
-        [[ "$verbose" == "true" ]] && print_check pass "Foundation libs (exit-codes, error-json, output-format)"
+        [[ "$verbose" == "true" ]] && print_check pass "Foundation libs ($libs_list)"
     else
         results+=('{"check": "foundation_libs", "passed": false, "details": "Missing: '"${libs_missing[*]}"'"}')
         ((failed++)) || true

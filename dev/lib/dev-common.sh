@@ -453,3 +453,34 @@ export -f calc_score  # Legacy
 # Platform detection
 export -f dev_is_macos
 export -f dev_is_linux
+
+# ============================================================================
+# FORMAT RESOLUTION (LLM-Agent-First)
+# ============================================================================
+
+# TTY-aware format resolution for LLM-Agent-First design
+# Args: $1 = format from command line (may be empty)
+# Returns: resolved format (json for non-TTY, text for TTY)
+dev_resolve_format() {
+    local requested_format="${1:-}"
+
+    # If format explicitly requested, use it
+    if [[ -n "$requested_format" ]]; then
+        echo "$requested_format"
+        return 0
+    fi
+
+    # Auto-detect based on TTY
+    if [[ -t 1 ]]; then
+        echo "text"  # Interactive terminal
+    else
+        echo "json"  # Pipe/redirect/agent context
+    fi
+}
+
+# Legacy alias
+resolve_format() { dev_resolve_format "$@"; }
+
+# Export format functions
+export -f dev_resolve_format
+export -f resolve_format
