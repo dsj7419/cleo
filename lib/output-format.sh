@@ -217,13 +217,13 @@ validate_format() {
 
 # resolve_format - Determine output format with priority hierarchy
 #
-# Priority order (CLI > env > config > TTY-aware default):
+# Priority order (CLI > env > config > JSON default):
 # 1. CLI argument (highest priority)
 # 2. CLAUDE_TODO_FORMAT environment variable
 # 3. config.output.defaultFormat from todo-config.json
-# 4. TTY-aware default (LLM-Agent-First):
-#    - Interactive terminal (stdout is TTY) → "text" (human-readable)
-#    - Pipe/redirect/agent context → "json" (machine-readable)
+# 4. JSON default (LLM-Agent-First):
+#    - JSON is always the default output format
+#    - Use --human flag for human-readable text output
 #
 # Args:
 #   $1 - CLI format argument (optional)
@@ -249,17 +249,12 @@ resolve_format() {
     resolved_format=$(jq -r '.output.defaultFormat // empty' .claude/todo-config.json 2>/dev/null)
   fi
 
-  # Default fallback: TTY-aware auto-detection (LLM-Agent-First)
-  # When no explicit format is specified:
-  # - Interactive terminal (TTY) → human-readable text format
-  # - Pipe/redirect/agent context → machine-readable JSON format
-  # This enables seamless agent integration without explicit --format json
+  # Default fallback: JSON (LLM-Agent-First)
+  # Per LLM-Agent-First philosophy, agents are the primary consumer.
+  # JSON output by default enables seamless agent integration.
+  # Developers use --human when they need human-readable text output.
   if [[ -z "$resolved_format" ]]; then
-    if [[ -t 1 ]]; then
-      resolved_format="text"  # Interactive terminal → human-readable
-    else
-      resolved_format="json"  # Pipe/redirect/agent context → machine-readable
-    fi
+    resolved_format="json"
   fi
 
   # Validate if requested

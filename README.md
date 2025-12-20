@@ -11,6 +11,32 @@
 
 ---
 
+## Table of Contents
+
+- [One Developer. One Agent. One Source of Truth.](#one-developer-one-agent-one-source-of-truth)
+- [Why This Exists](#why-this-exists)
+- [Core Principles](#core-principles)
+- [Quick Start](#quick-start)
+- [Command Reference](#command-reference)
+- [Task Hierarchy](#task-hierarchy-v0170)
+- [Session Protocol](#session-protocol)
+- [Output Formats & Exit Codes](#output-formats--exit-codes)
+- [Validation & Integrity](#validation--integrity)
+- [Phase Tracking](#phase-tracking)
+- [Configuration](#configuration)
+- [Project Structure](#project-structure)
+- [For Claude Code Users](#for-claude-code-users)
+- [Extensibility](#extensibility)
+- [Troubleshooting](#troubleshooting)
+- [Performance](#performance)
+- [Documentation](#documentation)
+- [The Philosophy](#the-philosophy)
+- [Contributing](#contributing)
+- [Star History](#star-history)
+- [License](#license)
+
+---
+
 ## One Developer. One Agent. One Source of Truth.
 
 Claude-TODO is the **contract between you and your AI coding agent**. It's not just a task tracker—it's a structured protocol designed for the unique challenges of AI-assisted development:
@@ -46,11 +72,12 @@ Traditional task management assumes human users. But when your primary "user" is
 Every command follows a consistent pattern:
 
 ```bash
-# Piped/scripted → JSON automatically (agent-friendly)
-claude-todo list | jq '.tasks[0].id'
+# JSON by default (agent-first)
+claude-todo list                              # Returns JSON
+claude-todo list | jq '.tasks[0].id'          # Parse with jq
 
-# Terminal → human-readable (developer-friendly)
-claude-todo list --human
+# Human-readable when you need it (developer-friendly)
+claude-todo list --human                      # Formatted text output
 
 # Exit codes for programmatic branching (17 documented codes)
 claude-todo exists T042 --quiet && echo "Found"
@@ -157,12 +184,12 @@ ct find "auth" # Fast fuzzy search (99% less tokens than list)
 
 ## Command Reference
 
-### 33 Commands Across 4 Categories
+### 34 Commands Across 4 Categories
 
 | Category | Commands | Purpose |
 |----------|----------|---------|
 | **Write (7)** | `add`, `update`, `complete`, `focus`, `session`, `phase`, `archive` | Modify task state |
-| **Read (16)** | `list`, `show`, `find`, `analyze`, `next`, `dash`, `deps`, `blockers`, `phases`, `labels`, `stats`, `log`, `commands`, `exists`, `export`, `history` | Query and analyze |
+| **Read (17)** | `list`, `show`, `find`, `analyze`, `next`, `dash`, `deps`, `blockers`, `phases`, `labels`, `stats`, `log`, `commands`, `exists`, `export`, `history`, `research` | Query and analyze |
 | **Sync (3)** | `sync`, `inject`, `extract` | TodoWrite integration |
 | **Maintenance (7)** | `init`, `validate`, `backup`, `restore`, `migrate`, `migrate-backups`, `config` | System administration |
 
@@ -171,6 +198,8 @@ ct find "auth" # Fast fuzzy search (99% less tokens than list)
 ```bash
 # Task lifecycle
 claude-todo add "Implement authentication" --priority high
+claude-todo list                     # View all tasks (JSON default)
+claude-todo list --status pending    # Filter by status
 claude-todo update T001 --labels "backend,security"
 claude-todo complete T001
 claude-todo archive
@@ -183,7 +212,7 @@ claude-todo session end
 
 # Analysis & planning
 claude-todo dash                     # Project overview
-claude-todo analyze                  # Task triage with leverage scoring (JSON default)
+claude-todo analyze                  # Task triage with leverage scoring
 claude-todo analyze --auto-focus     # Auto-set focus to highest leverage task
 claude-todo next --explain           # What should I work on?
 claude-todo blockers analyze         # Critical path analysis
@@ -218,18 +247,61 @@ claude-todo commands add                 # Details for specific command
 
 ### Agent-Friendly Output
 
-```bash
-# JSON auto-detection based on TTY
-claude-todo list                    # TTY → human text
-claude-todo list | jq '.'           # Pipe → auto-JSON (no flag needed!)
-claude-todo analyze                 # JSON by default (use --human for text)
+**LLM-Agent-First**: JSON is the default output format for all commands. Use `--human` for human-readable text.
 
-# JSON envelope structure
+```bash
+# Default behavior (JSON everywhere)
+claude-todo list                    # JSON output (LLM-Agent-First default)
+claude-todo analyze                 # JSON output
+claude-todo show T001               # JSON output
+
+# Human-readable when you need it
+claude-todo list --human            # Human-readable text
+claude-todo dash --human            # Formatted dashboard
+
+# Pipe to jq for parsing
+claude-todo list | jq '.tasks[0].id'
+```
+
+#### JSON Envelope Structure
+
+All commands return a consistent envelope with `$schema`, `_meta`, and `success` fields:
+
+```json
 {
   "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
-  "_meta": {"command": "list", "version": "0.23.0", "timestamp": "..."},
+  "_meta": {
+    "format": "json",
+    "command": "list",
+    "version": "0.23.0",
+    "timestamp": "2025-12-19T10:30:45Z"
+  },
   "success": true,
   "tasks": [...]
+}
+```
+
+#### Error Response Structure
+
+Errors return structured JSON with error codes, exit codes, and recovery suggestions:
+
+```json
+{
+  "$schema": "https://claude-todo.dev/schemas/v1/error.schema.json",
+  "_meta": {
+    "format": "json",
+    "command": "show",
+    "version": "0.23.0",
+    "timestamp": "2025-12-19T10:30:45Z"
+  },
+  "success": false,
+  "error": {
+    "code": "E_TASK_NOT_FOUND",
+    "message": "Task T999 does not exist",
+    "exitCode": 4,
+    "recoverable": false,
+    "suggestion": "Use 'ct exists T999 --quiet' to verify task ID"
+  }
 }
 ```
 
@@ -317,12 +389,21 @@ claude-todo session end
 
 ## Output Formats & Exit Codes
 
-### TTY Auto-Detection
+### LLM-Agent-First Output
 
-| Context | Default Format | Override |
-|---------|----------------|----------|
-| Interactive terminal | Human text | `--json`, `--format json` |
-| Pipe/redirect/agent | JSON | `--human`, `--format text` |
+All commands output **JSON by default**. This is the core LLM-Agent-First principle—agents are the primary consumer.
+
+| Output Mode | How to Get It | Use Case |
+|-------------|---------------|----------|
+| **JSON** (default) | No flags needed | Agent automation, scripting, parsing |
+| **Human-readable** | `--human` or `--format text` | Developer inspection, debugging |
+
+```bash
+# JSON is always the default
+claude-todo list                    # JSON
+claude-todo list --human            # Human-readable text
+claude-todo list --format text      # Same as --human
+```
 
 ### Exit Codes
 
@@ -629,6 +710,12 @@ Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md).
 # Validate installation
 claude-todo --validate
 ```
+
+---
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=kryptobaseddev/claude-todo&type=Date)](https://star-history.com/#kryptobaseddev/claude-todo&Date)
 
 ---
 

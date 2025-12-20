@@ -18,6 +18,7 @@
 |----------|---------|--------------|
 | **[Design Philosophy](guides/design-philosophy.md)** | The contract between developer and agent | Understanding flat IDs, JSON output, exit codes |
 | **[Filtering Guide](guides/filtering-guide.md)** | Task filtering and queries | Advanced task filtering |
+| **[Archive Guide](guides/archive-guide.md)** | Task lifecycle and retention | Archive strategies, retrieval, configuration |
 
 ### 🏗️ Architecture & Design
 

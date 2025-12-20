@@ -27,7 +27,11 @@ Archive behavior is controlled by three settings in `todo-config.json`:
 | `--force` | Bypass age-based retention (still respects `preserveRecentCount`) | `false` |
 | `--all` | Archive ALL completed tasks (bypasses both retention and preserve) | `false` |
 | `--count N` | Override `maxCompletedTasks` setting | config value |
-| `--help`, `-h` | Show help message | |
+| `-f, --format FMT` | Output format: `text` or `json` | auto-detect |
+| `--human` | Force human-readable text output | |
+| `--json` | Force JSON output | |
+| `-q, --quiet` | Suppress non-essential output | `false` |
+| `-h, --help` | Show help message | |
 
 ## Examples
 
@@ -137,9 +141,11 @@ Configure archive behavior in `.claude/todo-config.json`:
 ```json
 {
   "archive": {
+    "enabled": true,
     "daysUntilArchive": 7,
     "maxCompletedTasks": 15,
     "preserveRecentCount": 3,
+    "archiveOnSessionEnd": true,
     "autoArchiveOnComplete": false
   }
 }
@@ -147,13 +153,53 @@ Configure archive behavior in `.claude/todo-config.json`:
 
 | Setting | Description | Default |
 |---------|-------------|---------|
-| `daysUntilArchive` | Days after completion before eligible | 7 |
-| `maxCompletedTasks` | Threshold for archive prompt | 15 |
-| `preserveRecentCount` | Recent completions to always keep | 3 |
-| `autoArchiveOnComplete` | Auto-run archive on task completion | false |
+| `enabled` | Enable/disable archive functionality | `true` |
+| `daysUntilArchive` | Days after completion before eligible | `7` |
+| `maxCompletedTasks` | Threshold for archive prompt | `15` |
+| `preserveRecentCount` | Recent completions to always keep | `3` |
+| `archiveOnSessionEnd` | Check archive eligibility at session end | `true` |
+| `autoArchiveOnComplete` | Auto-run archive on each task completion | `false` |
+
+## JSON Output
+
+When using `--json` or piping output (LLM-Agent-First), returns structured JSON:
+
+```json
+{
+  "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
+  "_meta": {
+    "format": "json",
+    "command": "archive",
+    "timestamp": "2025-12-20T10:00:00Z",
+    "version": "0.23.0"
+  },
+  "success": true,
+  "archived": {
+    "count": 7,
+    "taskIds": ["T001", "T003", "T005", "T008", "T010", "T012", "T015"]
+  },
+  "remaining": {
+    "total": 25,
+    "pending": 18,
+    "active": 1,
+    "blocked": 3
+  }
+}
+```
+
+## Exit Codes
+
+| Code | Meaning |
+|------|---------|
+| `0` | Success (tasks archived or none eligible) |
+| `1` | General error |
+| `2` | Invalid input/arguments |
+| `3` | File not found |
+| `4` | Validation error |
 
 ## Safety Features
 
+- **File locking** prevents concurrent modifications
 - Creates backup before archiving
 - Atomic transaction (all-or-nothing)
 - Cleans up orphaned dependencies

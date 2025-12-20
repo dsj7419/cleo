@@ -2,8 +2,8 @@
 
 > **Authoritative standard for LLM-agent-first CLI design**
 >
-> **Version**: 3.1 | **Updated**: 2025-12-19
-> **Scope**: 33 commands, universal standards for agent automation
+> **Version**: 3.2 | **Updated**: 2025-12-19
+> **Scope**: 34 commands, universal standards for agent automation
 
 ---
 
@@ -37,13 +37,13 @@ This specification uses RFC 2119 keywords to indicate requirement levels:
 
 ### Mission Statement
 
-Design CLI tools with **LLM-agent-first** principles: JSON output by default for non-TTY contexts, human output opt-in, structured errors, and consistent behavior across all commands.
+Design CLI tools with **LLM-agent-first** principles: JSON output by default, human output opt-in via `--human` flag, structured errors, and consistent behavior across all commands.
 
 ### Core Principles
 
 | Principle | Requirement |
 |-----------|-------------|
-| **JSON by Default** | Non-TTY output MUST default to JSON |
+| **JSON by Default** | All commands MUST default to JSON output |
 | **Human Opt-In** | Human-readable output via explicit `--human` flag |
 | **Structured Errors** | All errors MUST return JSON with error codes |
 | **Consistent Flags** | All commands MUST support `--format` and `--quiet` |
@@ -62,7 +62,7 @@ Design CLI tools with **LLM-agent-first** principles: JSON output by default for
 
 ## Part 1: Command Inventory
 
-### All Commands (33 total)
+### All Commands (34 total)
 
 | # | Command | Script | Category | Requirements |
 |---|---------|--------|----------|--------------|
@@ -92,20 +92,21 @@ Design CLI tools with **LLM-agent-first** principles: JSON output by default for
 | 24 | `next` | `next.sh` | Read | JSON output, `--format`, `--quiet` |
 | 25 | `phase` | `phase.sh` | Write | JSON output, `--format`, `--quiet` |
 | 26 | `phases` | `phases.sh` | Read | JSON output, `--format`, `--quiet` |
-| 27 | `restore` | `restore.sh` | Maintenance | JSON output, `--format`, `--quiet`, `--dry-run` |
-| 28 | `session` | `session.sh` | Write | JSON output, `--format`, `--quiet` |
-| 29 | `show` | `show.sh` | Read | JSON output, `--format`, `--quiet` |
-| 30 | `stats` | `stats.sh` | Read | JSON output, `--format`, `--quiet` |
-| 31 | `sync` | `sync-todowrite.sh` | Sync | JSON output, `--format`, `--quiet`, `--dry-run` |
-| 32 | `update` | `update-task.sh` | Write | JSON output, `--format`, `--quiet`, `--dry-run` |
-| 33 | `validate` | `validate.sh` | Maintenance | JSON output, `--format`, `--quiet` |
+| 27 | `research` | `research.sh` | Read | JSON output, `--format`, `--quiet`, Context7 integration |
+| 28 | `restore` | `restore.sh` | Maintenance | JSON output, `--format`, `--quiet`, `--dry-run` |
+| 29 | `session` | `session.sh` | Write | JSON output, `--format`, `--quiet` |
+| 30 | `show` | `show.sh` | Read | JSON output, `--format`, `--quiet` |
+| 31 | `stats` | `stats.sh` | Read | JSON output, `--format`, `--quiet` |
+| 32 | `sync` | `sync-todowrite.sh` | Sync | JSON output, `--format`, `--quiet`, `--dry-run` |
+| 33 | `update` | `update-task.sh` | Write | JSON output, `--format`, `--quiet`, `--dry-run` |
+| 34 | `validate` | `validate.sh` | Maintenance | JSON output, `--format`, `--quiet` |
 
 ### Command Categories
 
 | Category | Commands | Special Requirements |
 |----------|----------|---------------------|
 | **Write** | add, archive, complete, focus, phase, session, update | MUST return created/updated object, MUST support `--dry-run` |
-| **Read** | analyze, blockers, dash, deps, exists, export, find, history, labels, list, log, next, phases, show, stats | MUST support filtering, MUST return structured data |
+| **Read** | analyze, blockers, commands, dash, deps, exists, export, find, history, labels, list, log, next, phases, research, show, stats | MUST support filtering, MUST return structured data |
 | **Sync** | extract, inject, sync | MUST support `--dry-run`, MUST report conflicts |
 | **Maintenance** | backup, config, init, migrate, migrate-backups, restore, validate | MUST report status, SHOULD support `--dry-run` |
 | **Setup** | init | MUST be idempotent |
@@ -173,23 +174,21 @@ Design CLI tools with **LLM-agent-first** principles: JSON output by default for
 }
 ```
 
-### Gap 2: TTY Auto-Detection Inconsistent
+### Gap 2: JSON Default Implementation
 
 **Location**: `lib/output-format.sh` `resolve_format()`
 
 **Current Issue**: Not all scripts call `resolve_format()` or respect its result.
 
-**Required Behavior**:
+**Required Behavior (LLM-Agent-First)**:
 ```bash
-# Default fallback: TTY-aware auto-detection
+# Default fallback: JSON by default (LLM-Agent-First)
 if [[ -z "$resolved_format" ]]; then
-  if [[ -t 1 ]]; then
-    resolved_format="text"  # Interactive terminal
-  else
-    resolved_format="json"  # Pipe/redirect/agent context
-  fi
+  resolved_format="json"  # JSON is always the default
 fi
 ```
+
+**Rationale**: Per LLM-Agent-First philosophy, agents are the primary consumer. JSON output by default enables seamless agent integration without requiring explicit flags. Developers use `--human` when they need human-readable output.
 
 **MUST** be implemented in ALL commands via `resolve_format()` call.
 
@@ -502,13 +501,15 @@ All JSON outputs **MUST** follow this envelope:
 
 | Flag | Long Form | Purpose | Default | Commands |
 |------|-----------|---------|---------|----------|
-| `-f` | `--format` | Output format | `json` (non-TTY) / `text` (TTY) | ALL |
+| `-f` | `--format` | Output format | `json` | ALL |
 | `-q` | `--quiet` | Suppress non-essential output | false | ALL |
 | `-v` | `--verbose` | Detailed output | false | ALL read commands |
-| | `--human` | Force human-readable | false | ALL |
-| | `--json` | Force JSON (shortcut for `--format json`) | false | ALL |
+| | `--human` | Force human-readable text | false | ALL |
+| | `--json` | Force JSON (shortcut for `--format json`) | N/A (already default) | ALL |
 | | `--dry-run` | Preview changes | false | ALL write commands |
 | | `--force` | Skip confirmations | false | Destructive commands |
+
+**LLM-Agent-First Principle**: JSON is the default output format. Use `--human` to get human-readable text output. The `--json` flag exists for explicit clarity but is redundant since JSON is already the default.
 
 #### Format Values
 
@@ -938,6 +939,7 @@ All commands **MUST** meet these requirements:
 | next | ✅ | ✅ | ✅ | N/A | ✅ | ✅ | ✅ |
 | phase | ✅ | ✅ | ✅ | N/A | ✅ | ✅ | ✅ |
 | phases | ✅ | ✅ | ✅ | N/A | ✅ | ✅ | ✅ |
+| research | ✅ | ✅ | ✅ | N/A | ✅ | ✅ | ✅ |
 | restore | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | session | ✅ | ✅ | ✅ | N/A | ✅ | ✅ | ✅ |
 | show | ✅ | ✅ | ✅ | N/A | ✅ | ✅ | ✅ |
@@ -948,7 +950,7 @@ All commands **MUST** meet these requirements:
 
 **Legend**: ✅ = REQUIRED | N/A = Not Applicable for this command type
 
-**All 33 commands MUST achieve 100% compliance with applicable requirements.**
+**All 34 commands MUST achieve 100% compliance with applicable requirements.**
 
 ---
 

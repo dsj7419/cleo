@@ -1,0 +1,214 @@
+# Archive System Guide
+
+> Conceptual guide for task archiving, retention strategies, and lifecycle management
+
+## Overview
+
+The archive system manages task lifecycle by moving completed tasks from the active `todo.json` to `todo-archive.json`. This keeps the active task list focused while preserving historical data for reference and analytics.
+
+## Why Archive?
+
+| Problem | Solution |
+|---------|----------|
+| Active task list grows unwieldy | Archive moves old completions out |
+| Need historical context for planning | Archived tasks remain searchable |
+| Want cycle time analytics | Archive tracks completion metadata |
+| Multiple agents writing concurrently | File locking prevents corruption |
+
+## Retention Model
+
+```
+                    ┌─────────────────────────────────────┐
+                    │         Completed Tasks             │
+                    └─────────────────────────────────────┘
+                                     │
+                    ┌────────────────┼────────────────┐
+                    ▼                ▼                ▼
+             ┌──────────┐    ┌──────────────┐  ┌──────────────┐
+             │ < 7 days │    │ 7+ days old  │  │ Preserved    │
+             │ (recent) │    │ (eligible)   │  │ (newest 3)   │
+             └──────────┘    └──────────────┘  └──────────────┘
+                    │                │                │
+                    ▼                ▼                ▼
+             ┌──────────┐    ┌──────────────┐  ┌──────────────┐
+             │  KEEP    │    │   ARCHIVE    │  │    KEEP      │
+             │ in todo  │    │  to archive  │  │   in todo    │
+             └──────────┘    └──────────────┘  └──────────────┘
+```
+
+### Three Retention Rules
+
+1. **Age-based** (`daysUntilArchive`): Tasks must be completed for N days
+2. **Preserve recent** (`preserveRecentCount`): Always keep N newest completions
+3. **Global toggle** (`enabled`): Enable/disable entire archive system
+
+## Archive Modes
+
+### Default Mode
+```bash
+claude-todo archive
+```
+- Respects `daysUntilArchive` (7 days)
+- Respects `preserveRecentCount` (3 tasks)
+- Safe for daily maintenance
+
+### Force Mode
+```bash
+claude-todo archive --force
+```
+- Ignores age requirement
+- Still respects `preserveRecentCount`
+- Use when: clearing backlog, keeping recent work accessible
+
+### All Mode
+```bash
+claude-todo archive --all
+```
+- Archives everything marked `done`
+- Ignores both age AND preserve count
+- Use when: project complete, fresh start needed
+
+## Integration Points
+
+### Session End
+When `archiveOnSessionEnd: true` (default), the session end flow checks archive eligibility:
+
+```
+session end → check completed count → archive if threshold met
+```
+
+### Task Completion
+When `autoArchiveOnComplete: true`, each completion triggers archive check:
+
+```
+complete T042 → archive runs → eligible tasks moved
+```
+
+Skip with `--skip-archive` flag:
+```bash
+claude-todo complete T042 --skip-archive
+```
+
+## Retrieving Archived Tasks
+
+### Search Archive
+```bash
+# Find task by ID (searches archive if not in active)
+claude-todo show T042 --include-archive
+
+# Search by text
+claude-todo find "auth" --include-archive
+```
+
+### List Archived
+```bash
+# View archived tasks
+claude-todo list --include-archive --status done
+```
+
+### Stats Include Archive
+```bash
+claude-todo stats  # Shows archive statistics
+```
+
+## Archive Metadata
+
+Each archived task receives tracking metadata:
+
+```json
+{
+  "id": "T042",
+  "title": "Implement login",
+  "status": "done",
+  "_archive": {
+    "archivedAt": "2025-12-20T10:00:00Z",
+    "reason": "auto",
+    "sessionId": "session_20251220_abc123",
+    "cycleTimeDays": 5
+  }
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `archivedAt` | When task was archived |
+| `reason` | `auto` (retention) or `manual` (--force/--all) |
+| `sessionId` | Session that triggered archive |
+| `cycleTimeDays` | Days from creation to completion |
+
+## Configuration
+
+```json
+{
+  "archive": {
+    "enabled": true,
+    "daysUntilArchive": 7,
+    "maxCompletedTasks": 15,
+    "preserveRecentCount": 3,
+    "archiveOnSessionEnd": true,
+    "autoArchiveOnComplete": false
+  }
+}
+```
+
+### Recommended Settings
+
+| Use Case | `daysUntilArchive` | `preserveRecentCount` | `autoArchiveOnComplete` |
+|----------|--------------------|-----------------------|-------------------------|
+| Active development | 7 | 5 | false |
+| Long-running project | 14 | 3 | false |
+| Quick iterations | 3 | 3 | true |
+| Minimal history | 1 | 1 | true |
+
+## Safety Features
+
+1. **File locking**: Prevents concurrent write corruption
+2. **Atomic writes**: All-or-nothing transactions
+3. **Backup creation**: Auto-backup before archive
+4. **Dependency cleanup**: Removes orphaned references
+5. **Validation**: JSON structure verified before write
+
+## Troubleshooting
+
+### No Tasks Archived
+```bash
+# Check: Are tasks old enough?
+claude-todo list --status done --format json | jq '.tasks[].completedAt'
+
+# Check: What would be archived?
+claude-todo archive --dry-run
+```
+
+### Want to Archive Now
+```bash
+# Force archive (ignores age, keeps recent)
+claude-todo archive --force
+
+# Archive everything
+claude-todo archive --all
+```
+
+### Find Archived Task
+```bash
+# Search by ID
+claude-todo show T042 --include-archive
+
+# Search by content
+claude-todo find "keyword" --include-archive
+```
+
+## Future Enhancements (T429)
+
+The Smart Archive Epic (T429) will add:
+- Label-based exemptions (`--exclude-labels epic`)
+- Relationship-aware archiving (don't orphan children)
+- Unarchive command
+- Phase-triggered archiving
+- Archive analytics
+
+## Related
+
+- [archive command](../commands/archive.md) - Command reference
+- [complete command](../commands/complete.md) - Task completion
+- [session command](../commands/session.md) - Session lifecycle
+- [Configuration](../reference/configuration.md) - Full config reference
