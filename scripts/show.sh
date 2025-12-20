@@ -135,8 +135,14 @@ find_task() {
   fi
 
   # Use jq without -e to avoid exit code 4 on no match
+  # Try .tasks[] first (active todo.json), then .archivedTasks[] (archive file)
   local result
   result=$(jq --arg id "$id" '.tasks[] | select(.id == $id)' "$file" 2>/dev/null) || true
+
+  if [[ -z "$result" ]]; then
+    # Try archive format (.archivedTasks[])
+    result=$(jq --arg id "$id" '.archivedTasks[] | select(.id == $id)' "$file" 2>/dev/null) || true
+  fi
 
   if [[ -n "$result" ]]; then
     echo "$result"
