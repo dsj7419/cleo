@@ -163,3 +163,4 @@ docs/.doctrees/
 # !lib/
 # !docs/
 # !tests/
+.claude/research/

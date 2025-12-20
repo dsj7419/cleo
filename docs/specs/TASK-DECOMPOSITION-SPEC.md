@@ -27,7 +27,7 @@ This specification is **AUTHORITATIVE** for:
 This specification **DEFERS TO**:
 - [SPEC-BIBLE-GUIDELINES.md](SPEC-BIBLE-GUIDELINES.md) for document structure
 - [LLM-TASK-ID-SYSTEM-DESIGN-SPEC.md](LLM-TASK-ID-SYSTEM-DESIGN-SPEC.md) for task ID format
-- [TASK-HIERARCHY-SPEC.md](TASK-HIERARCHY-SPEC.md) for type/parentId/size fields
+- [HIERARCHY-ENHANCEMENT-SPEC.md](HIERARCHY-ENHANCEMENT-SPEC.md) for type/parentId/size fields
 - [LLM-AGENT-FIRST-SPEC.md](LLM-AGENT-FIRST-SPEC.md) for JSON output standards
 - [CONSENSUS-FRAMEWORK-SPEC.md](CONSENSUS-FRAMEWORK-SPEC.md) for adversarial validation protocol
 
@@ -1326,7 +1326,7 @@ A conforming implementation MAY:
 |----------|--------------|
 | **[SPEC-BIBLE-GUIDELINES.md](SPEC-BIBLE-GUIDELINES.md)** | **AUTHORITATIVE** for document structure |
 | **[LLM-AGENT-FIRST-SPEC.md](LLM-AGENT-FIRST-SPEC.md)** | **AUTHORITATIVE** for JSON output, exit codes, error handling |
-| **[TASK-HIERARCHY-SPEC.md](TASK-HIERARCHY-SPEC.md)** | **AUTHORITATIVE** for type/parentId/size, depth/sibling limits |
+| **[HIERARCHY-ENHANCEMENT-SPEC.md](HIERARCHY-ENHANCEMENT-SPEC.md)** | **AUTHORITATIVE** for type/parentId/size, depth/sibling limits |
 | **[LLM-TASK-ID-SYSTEM-DESIGN-SPEC.md](LLM-TASK-ID-SYSTEM-DESIGN-SPEC.md)** | **AUTHORITATIVE** for task ID format |
 | **[CONSENSUS-FRAMEWORK-SPEC.md](CONSENSUS-FRAMEWORK-SPEC.md)** | **AUTHORITATIVE** for challenge protocol, evidence standards |
 | **[PHASE-SYSTEM-SPEC.md](PHASE-SYSTEM-SPEC.md)** | Related for phase assignment |

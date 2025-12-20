@@ -113,13 +113,13 @@
       }
     ]
   },
-  "lastUpdated": "2025-12-20T05:29:47Z",
+  "lastUpdated": "2025-12-20T06:06:26Z",
   "_meta": {
-    "checksum": "f76c5db2244dfea6",
+    "checksum": "2fb78175c9efb9d4",
     "configVersion": "2.1.0",
     "lastSessionId": null,
     "activeSession": null,
-    "lastModified": "2025-12-20T05:26:10Z",
+    "lastModified": "2025-12-20T05:38:53Z",
     "version": "2.3.0",
     "schemaVersion": "2.3.0"
   },
@@ -9284,7 +9284,7 @@
     {
       "id": "T538",
       "title": "Fix labels and list invalid option suggestion tests",
-      "status": "pending",
+      "status": "done",
       "priority": "low",
       "type": "task",
       "parentId": "T532",
@@ -9294,6 +9294,10 @@
       "labels": [
         "error-messages",
         "test-fixes"
+      ],
+      "completedAt": "2025-12-20T06:06:18Z",
+      "notes": [
+        "[COMPLETED 2025-12-20T06:06:18Z] Fixed 4 tests: labels/list invalid option suggestions, sibling limit skip, dependency removal exit code. Remaining: 3 migrate tests, 1 dry-run test, 6 TodoWrite sync tests."
       ]
     },
     {
@@ -9309,6 +9313,9 @@
       "labels": [
         "test-fixes",
         "todowrite-sync"
+      ],
+      "notes": [
+        "2025-12-20 06:06:26 UTC: Remaining 10 tests need deeper investigation: 3 migrate tests, 1 hierarchy dry-run, 6 TodoWrite sync tests. These likely need inject script JSON structure fixes."
       ]
     },
     {
@@ -9332,6 +9339,252 @@
       "createdAt": "2025-12-20T05:29:09Z",
       "phase": "polish",
       "completedAt": "2025-12-20T05:29:46Z"
+    },
+    {
+      "id": "T542",
+      "title": "EPIC: Smart Analyze Command v2.0",
+      "status": "pending",
+      "priority": "high",
+      "type": "epic",
+      "parentId": null,
+      "createdAt": "2025-12-20T05:58:44Z",
+      "phase": "core",
+      "description": "## Overview\nComprehensive enhancement of the analyze command to provide intelligent, context-aware task recommendations based on hierarchy, phase, concurrency, and weighted algorithms.\n\n## Current Limitations\n- Counts all blocked tasks equally (parent-child = cross-epic)\n- Epic children inflate \"unblocks X tasks\" artificially\n- No phase awareness or current phase prioritization\n- No size/complexity weighting\n- No file locking or concurrency awareness\n- No HITL warnings for investigation needs\n- No stale task detection\n\n## v2.0 Feature Categories\n\n### Tier 1: Core Algorithm Improvements\n- Hierarchy-aware dependency scoring\n- Phase-priority boosting\n- Configurable algorithm weights\n\n### Tier 2: Concurrency & Safety\n- Active .lock file detection\n- Running operation awareness\n- Task conflict detection\n- HITL warning system\n\n### Tier 3: Intelligence Enhancements\n- Size-based complexity weighting\n- Label domain clustering\n- Stale task detection\n- Critical path analysis\n\n### Tier 4: Advanced Features\n- Historical velocity tracking\n- Recommendation confidence scoring\n- Multi-agent workload balancing\n\n## References\n- docs/specs/FILE-LOCKING-SPEC.md\n- docs/specs/FILE-LOCKING-IMPLEMENTATION-REPORT.md\n- scripts/analyze.sh",
+      "labels": [
+        "algorithm",
+        "analyze",
+        "intelligence",
+        "v2.0"
+      ]
+    },
+    {
+      "id": "T543",
+      "title": "T542.1: Core Algorithm - Hierarchy-aware dependency scoring",
+      "status": "pending",
+      "priority": "critical",
+      "type": "task",
+      "parentId": "T542",
+      "createdAt": "2025-12-20T05:59:35Z",
+      "phase": "core",
+      "description": "Implement weighted scoring that distinguishes dependency types.\n\n## Current Behavior\nAll blocked tasks counted equally in leverage score.\n\n## Target Behavior\n- Parent→child dependencies: weight 0.3x (same scope)\n- Cross-epic dependencies: weight 1.0x (true blockers)\n- Cross-phase dependencies: weight 1.5x (phase alignment)\n\n## Implementation\n1. Check parentId relationship between blocker and blocked\n2. Check if tasks share same epic ancestor\n3. Apply weight multipliers to leverage calculation\n4. Update action_order sorting\n\n## Files\n- scripts/analyze.sh (main logic)\n- lib/hierarchy.sh (helper: get_epic_ancestor())\n\n## Config\n- analyze.hierarchyWeight.parentChild: 0.3\n- analyze.hierarchyWeight.crossEpic: 1.0\n- analyze.hierarchyWeight.crossPhase: 1.5",
+      "labels": [
+        "algorithm",
+        "analyze"
+      ]
+    },
+    {
+      "id": "T544",
+      "title": "T542.2: Core Algorithm - Phase-priority boosting",
+      "status": "pending",
+      "priority": "high",
+      "type": "task",
+      "parentId": "T542",
+      "createdAt": "2025-12-20T05:59:37Z",
+      "phase": "core",
+      "description": "Boost tasks matching current active phase in recommendations.\n\n## Current Behavior\nPhase ignored in analyze algorithm.\n\n## Target Behavior\n- Tasks in current phase: +50% priority boost\n- Tasks in adjacent phases: +25% boost\n- Tasks in distant phases: no boost\n\n## Implementation\n1. Read project.currentPhase from todo.json\n2. Calculate phase distance for each task\n3. Apply boost multiplier based on distance\n4. Show phase alignment indicator in output\n\n## Files\n- scripts/analyze.sh\n- lib/phase-tracking.sh (get_phase_order())\n\n## Config\n- analyze.phaseBoost.current: 1.5\n- analyze.phaseBoost.adjacent: 1.25\n- analyze.phaseBoost.distant: 1.0",
+      "labels": [
+        "analyze",
+        "phase-system"
+      ]
+    },
+    {
+      "id": "T545",
+      "title": "T542.3: Concurrency Safety - Lock file detection & warnings",
+      "status": "pending",
+      "priority": "high",
+      "type": "task",
+      "parentId": "T542",
+      "createdAt": "2025-12-20T05:59:39Z",
+      "phase": "core",
+      "description": "Detect active lock files and warn about concurrent operations.\n\n## Features\n\n### A. Active Lock Detection\n- Scan for .claude/*.lock files\n- Check lock file age (stale vs active)\n- Identify which operation holds lock\n\n### B. Running Operation Awareness\n- Parse lock file metadata (PID, timestamp, operation)\n- Check if PID is still running\n- Display active operations in analyze output\n\n### C. Task Conflict Detection\n- Identify tasks that would conflict with active locks\n- Warn about potential race conditions\n- Suggest waiting or HITL intervention\n\n### D. HITL Warning System\n- Flag tasks requiring human investigation\n- Show \"⚠️ CONCURRENT\" indicator\n- Add --ignore-locks flag to bypass\n\n## Output Additions\n```\nCONCURRENT OPERATIONS\n  ⚠️ todo.json locked by PID 12345 (add-task.sh, 3s ago)\n  → T429, T430 may conflict - wait or investigate\n```\n\n## Files\n- scripts/analyze.sh\n- lib/lock-detection.sh (new)\n\n## Config\n- analyze.lockAwareness.enabled: true\n- analyze.lockAwareness.staleThreshold: 300 (seconds)\n- analyze.lockAwareness.warnOnly: true (vs block)\n\n## References\n- docs/specs/FILE-LOCKING-SPEC.md",
+      "labels": [
+        "analyze",
+        "concurrency",
+        "file-locking"
+      ]
+    },
+    {
+      "id": "T546",
+      "title": "T542.4: Intelligence - Size & complexity weighting",
+      "status": "pending",
+      "priority": "medium",
+      "type": "task",
+      "parentId": "T542",
+      "createdAt": "2025-12-20T05:59:41Z",
+      "phase": "core",
+      "description": "Use task size field for intelligent prioritization.\n\n## Size Field Values\n- small: Quick wins, low complexity\n- medium: Standard tasks\n- large: Complex, multi-step work\n\n## Strategies (configurable)\n\n### Quick Wins First\nPrioritize small tasks to build momentum.\nWeight: small=3x, medium=2x, large=1x\n\n### Big Impact First\nPrioritize large tasks for maximum progress.\nWeight: small=1x, medium=2x, large=3x\n\n### Balanced\nEqual weighting across sizes.\nWeight: small=1x, medium=1x, large=1x\n\n## Implementation\n1. Read task.size field\n2. Apply strategy-based multiplier\n3. Factor into final recommendation score\n\n## Files\n- scripts/analyze.sh\n\n## Config\n- analyze.sizeStrategy: \"quick-wins\"|\"big-impact\"|\"balanced\"\n- analyze.sizeWeights.small: 1.0\n- analyze.sizeWeights.medium: 1.0\n- analyze.sizeWeights.large: 1.0",
+      "labels": [
+        "analyze",
+        "hierarchy"
+      ]
+    },
+    {
+      "id": "T547",
+      "title": "T542.5: Intelligence - Stale task detection & warnings",
+      "status": "pending",
+      "priority": "medium",
+      "type": "task",
+      "parentId": "T542",
+      "createdAt": "2025-12-20T05:59:42Z",
+      "phase": "core",
+      "description": "Detect and warn about stale/aging tasks.\n\n## Stale Indicators\n- Created > 30 days ago, still pending\n- No notes/updates in > 14 days\n- Blocked for > 7 days without progress\n- High priority but untouched > 7 days\n\n## Output Additions\n```\n⚠️ STALE TASKS (need review)\n  T123 [critical] - Created 45 days ago, no updates\n  T456 [high] - Blocked 21 days, investigate blocker\n```\n\n## Actions\n- Flag in analyze output\n- Suggest reviewing or archiving\n- Option to auto-downgrade priority\n\n## Files\n- scripts/analyze.sh\n- lib/staleness.sh (new)\n\n## Config\n- analyze.staleDetection.enabled: true\n- analyze.staleDetection.pendingDays: 30\n- analyze.staleDetection.noUpdateDays: 14\n- analyze.staleDetection.blockedDays: 7",
+      "labels": [
+        "analyze",
+        "quality"
+      ]
+    },
+    {
+      "id": "T548",
+      "title": "T542.6: Intelligence - Critical path analysis",
+      "status": "pending",
+      "priority": "medium",
+      "type": "task",
+      "parentId": "T542",
+      "createdAt": "2025-12-20T05:59:44Z",
+      "phase": "core",
+      "description": "Identify and highlight the critical path through dependencies.\n\n## Critical Path Definition\nLongest chain of dependent tasks from start to completion.\n\n## Features\n- Calculate dependency chain depths\n- Identify tasks on critical path\n- Highlight bottleneck tasks (many dependents)\n- Show estimated completion order\n\n## Output Additions\n```\nCRITICAL PATH (longest dependency chain)\n  T001 → T005 → T012 → T018 (4 tasks, chains 15 total)\n  \n  🔴 T005 is critical - delays cascade to 15 tasks\n```\n\n## Implementation\n1. Build dependency graph\n2. Find longest path (topological sort)\n3. Mark critical path tasks\n4. Calculate cascade impact\n\n## Files\n- scripts/analyze.sh\n- lib/critical-path.sh (new)\n\n## Existing\n- blockers analyze command has some of this logic",
+      "labels": [
+        "analyze",
+        "dependencies"
+      ]
+    },
+    {
+      "id": "T549",
+      "title": "T542.7: Configuration - Unified algorithm config schema",
+      "status": "pending",
+      "priority": "high",
+      "type": "task",
+      "parentId": "T542",
+      "createdAt": "2025-12-20T05:59:45Z",
+      "phase": "core",
+      "description": "Create comprehensive config schema for all analyze settings.\n\n## Config Structure\n```json\n{\n  \"analyze\": {\n    \"algorithm\": \"leverage_scoring_v2\",\n    \"hierarchyWeights\": {\n      \"parentChild\": 0.3,\n      \"crossEpic\": 1.0,\n      \"crossPhase\": 1.5\n    },\n    \"phaseBoost\": {\n      \"current\": 1.5,\n      \"adjacent\": 1.25,\n      \"distant\": 1.0\n    },\n    \"sizeStrategy\": \"balanced\",\n    \"sizeWeights\": {\n      \"small\": 1.0,\n      \"medium\": 1.0,\n      \"large\": 1.0\n    },\n    \"lockAwareness\": {\n      \"enabled\": true,\n      \"staleThreshold\": 300,\n      \"warnOnly\": true\n    },\n    \"staleDetection\": {\n      \"enabled\": true,\n      \"pendingDays\": 30,\n      \"noUpdateDays\": 14,\n      \"blockedDays\": 7\n    },\n    \"output\": {\n      \"showCriticalPath\": true,\n      \"showStaleWarnings\": true,\n      \"showConcurrentWarnings\": true,\n      \"maxRecommendations\": 10\n    }\n  }\n}\n```\n\n## Files\n- schemas/config.schema.json\n- lib/config.sh (add analyze config reading)\n- scripts/analyze.sh (read config)\n\n## Migration\n- Add defaults for new config options\n- Backward compatible with existing configs",
+      "labels": [
+        "analyze",
+        "config"
+      ]
+    },
+    {
+      "id": "T550",
+      "title": "T545.A: Implement lock file scanner",
+      "status": "pending",
+      "priority": "high",
+      "type": "subtask",
+      "parentId": "T545",
+      "createdAt": "2025-12-20T06:00:12Z",
+      "phase": "core",
+      "description": "Scan .claude/ directory for active lock files.\n\n## Implementation\n- Find all *.lock files in .claude/\n- Parse lock metadata (PID, timestamp, operation)\n- Check if PID is still running (kill -0)\n- Classify as active vs stale\n\n## Output\nReturns array of active locks:\n```json\n[{\n  \"file\": \"todo.json.lock\",\n  \"pid\": 12345,\n  \"operation\": \"add-task\",\n  \"age_seconds\": 3,\n  \"status\": \"active\"\n}]\n```\n\n## Files\n- lib/lock-detection.sh (new)",
+      "labels": [
+        "file-locking"
+      ]
+    },
+    {
+      "id": "T551",
+      "title": "T545.B: Implement task conflict detector",
+      "status": "pending",
+      "priority": "high",
+      "type": "subtask",
+      "parentId": "T545",
+      "createdAt": "2025-12-20T06:00:14Z",
+      "phase": "core",
+      "description": "Detect which tasks would conflict with active locks.\n\n## Conflict Rules\n- todo.json lock: All write tasks conflict\n- todo-archive.json lock: Archive tasks conflict\n- todo-log.json lock: Log tasks conflict\n- focus.json lock: Focus tasks conflict\n\n## Implementation\n1. Get active locks from scanner\n2. Map lock files to affected task types\n3. Flag conflicting tasks in analysis\n\n## Files\n- lib/lock-detection.sh\n- scripts/analyze.sh (integration)",
+      "labels": [
+        "analyze",
+        "file-locking"
+      ]
+    },
+    {
+      "id": "T552",
+      "title": "T545.C: Implement HITL warning system",
+      "status": "pending",
+      "priority": "medium",
+      "type": "subtask",
+      "parentId": "T545",
+      "createdAt": "2025-12-20T06:00:15Z",
+      "phase": "core",
+      "description": "Human-in-the-loop warning system for investigation needs.\n\n## HITL Triggers\n- Concurrent operation detected\n- Stale lock (may be orphaned)\n- Multiple locks on same resource\n- High-risk operation (archive, migrate)\n\n## Warning Levels\n- INFO: Informational, no action needed\n- WARN: Review recommended\n- BLOCK: Requires human decision\n\n## Output Format\n```\n⚠️ HITL REQUIRED\n  [WARN] Stale lock on todo.json (5 min old, PID 12345 not running)\n  → Suggested: rm .claude/todo.json.lock\n  \n  [BLOCK] Archive operation in progress\n  → Wait for completion or investigate\n```\n\n## Files\n- lib/hitl-warnings.sh (new)\n- scripts/analyze.sh (integration)",
+      "labels": [
+        "analyze",
+        "hitl"
+      ]
+    },
+    {
+      "id": "T553",
+      "title": "T545.D: Add --ignore-locks and --wait-for-locks flags",
+      "status": "pending",
+      "priority": "medium",
+      "type": "subtask",
+      "parentId": "T545",
+      "createdAt": "2025-12-20T06:00:17Z",
+      "phase": "core",
+      "description": "CLI flags to control lock-aware behavior.\n\n## Flags\n\n### --ignore-locks\nBypass lock detection entirely.\nUse case: Debugging, forced operation.\n\n### --wait-for-locks [timeout]\nWait for locks to release before analyzing.\nDefault timeout: 30 seconds.\n\n### --show-locks\nOnly show current lock status, don't analyze.\n\n## Examples\n```bash\nct analyze --ignore-locks\nct analyze --wait-for-locks 60\nct analyze --show-locks\n```\n\n## Files\n- scripts/analyze.sh",
+      "labels": [
+        "analyze",
+        "cli"
+      ]
+    },
+    {
+      "id": "T554",
+      "title": "DISCUSSION: Multi-agent workload balancing for analyze",
+      "status": "pending",
+      "priority": "low",
+      "type": "task",
+      "parentId": null,
+      "createdAt": "2025-12-20T06:00:46Z",
+      "phase": "core",
+      "description": "## Concept\nWhen multiple agents work on the same codebase, analyze could suggest task distribution to avoid conflicts.\n\n## Ideas\n- Track which agent is working on what (via session)\n- Suggest non-conflicting tasks to different agents\n- Detect agent \"territories\" by label/phase\n- Load balance based on agent capacity\n\n## Questions to Discuss\n1. How to identify different agents?\n2. Should this be in analyze or a separate command?\n3. What metadata to track per agent?\n4. How to handle agent crashes/orphaned work?\n\n## Dependencies\n- Requires session tracking\n- May need agent registry\n\n## Status\nDISCUSSION - Not yet scoped for implementation",
+      "labels": [
+        "analyze",
+        "future",
+        "multi-agent"
+      ]
+    },
+    {
+      "id": "T555",
+      "title": "DISCUSSION: Recommendation confidence scoring",
+      "status": "pending",
+      "priority": "low",
+      "type": "task",
+      "parentId": null,
+      "createdAt": "2025-12-20T06:00:48Z",
+      "phase": "core",
+      "description": "## Concept\nShow confidence level for each recommendation.\n\n## Confidence Factors\n- Clear dependency chain: +confidence\n- Matching current phase: +confidence\n- Recently updated: +confidence\n- Stale/old task: -confidence\n- Conflicting signals: -confidence\n- Missing size/labels: -confidence\n\n## Output Example\n```\nRECOMMENDATION\n  → T429 [critical] (confidence: 92%)\n    ✓ Phase match, ✓ Clear deps, ✓ Recent activity\n  \n  → T382 [high] (confidence: 71%)\n    ✓ Phase match, ⚠️ Stale 14 days, ✓ Clear deps\n```\n\n## Questions\n1. What factors matter most?\n2. Should low-confidence tasks be flagged?\n3. How to calibrate weights?\n\n## Status\nDISCUSSION - Interesting but complex",
+      "labels": [
+        "algorithm",
+        "analyze",
+        "future"
+      ]
+    },
+    {
+      "id": "T556",
+      "title": "DISCUSSION: Domain expertise routing",
+      "status": "pending",
+      "priority": "low",
+      "type": "task",
+      "parentId": null,
+      "createdAt": "2025-12-20T06:00:49Z",
+      "phase": "core",
+      "description": "## Concept\nSuggest tasks based on agent/user expertise domains.\n\n## How It Could Work\n1. Track which labels user completes most\n2. Build expertise profile over time\n3. Suggest tasks matching expertise\n4. Or suggest learning tasks outside comfort zone\n\n## Expertise Signals\n- Completion rate by label\n- Time to complete by label\n- Quality of work (if measurable)\n\n## Example\n```\nYOUR DOMAINS (by completion history)\n  frontend: 85% success rate\n  testing: 72% success rate\n  backend: 45% success rate\n\nSUGGESTED FOR YOU\n  T123 [frontend] - Matches your expertise\n  T456 [backend] - Stretch goal opportunity\n```\n\n## Questions\n1. Is this useful for LLM agents?\n2. Privacy concerns for human users?\n3. How to bootstrap new users?\n\n## Status\nDISCUSSION - Novel idea, needs validation",
+      "labels": [
+        "analyze",
+        "future",
+        "labels"
+      ]
+    },
+    {
+      "id": "T557",
+      "title": "DISCUSSION: Task dependency health scoring",
+      "status": "pending",
+      "priority": "low",
+      "type": "task",
+      "parentId": null,
+      "createdAt": "2025-12-20T06:00:52Z",
+      "phase": "core",
+      "description": "## Concept\nScore the \"health\" of dependency chains to identify risks.\n\n## Health Indicators\n\n### Healthy Dependencies\n- Short chains (< 3 levels)\n- Dependencies actively progressing\n- Clear ownership\n- No circular risks\n\n### Unhealthy Dependencies\n- Deep chains (> 5 levels)\n- Stale blockers\n- Orphaned tasks in chain\n- Single point of failure tasks\n\n## Output Example\n```\nDEPENDENCY HEALTH\n  ✅ T429 chain: HEALTHY (3 levels, active)\n  ⚠️ T382 chain: AT RISK (5 levels, T390 stale 21 days)\n  🔴 T339 chain: CRITICAL (blocked by completed task - bug?)\n```\n\n## Questions\n1. How to define \"healthy\"?\n2. What actions to suggest?\n3. Auto-fix obvious issues?\n\n## Status\nDISCUSSION - Could help with tech debt",
+      "labels": [
+        "analyze",
+        "dependencies",
+        "future"
+      ]
     }
   ],
   "phases": {
