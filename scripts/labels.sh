@@ -557,13 +557,12 @@ parse_arguments() {
         # Not a subcommand, will be parsed below
         ;;
       *)
-        # Invalid subcommand - show error
-        if [[ "$FORMAT" == "json" ]] && declare -f output_error >/dev/null 2>&1; then
+        # Invalid subcommand - show error with suggestion
+        if declare -f output_error >/dev/null 2>&1; then
           output_error "$E_INPUT_INVALID" "Invalid subcommand: $1" "${EXIT_INVALID_INPUT:-1}" true "Valid subcommands: $VALID_SUBCOMMANDS"
         else
-          output_error "$E_INPUT_INVALID" "Invalid subcommand: $1"
+          echo "[ERROR] Invalid subcommand: $1" >&2
           echo "Valid subcommands: $VALID_SUBCOMMANDS" >&2
-          echo "Run 'claude-todo labels --help' for usage" >&2
         fi
         exit "${EXIT_INVALID_INPUT:-1}"
         ;;

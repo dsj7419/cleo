@@ -247,8 +247,7 @@ fi
 
 # Validate format (Issue T142: reject invalid formats instead of silent fallback)
 if ! echo "$VALID_FORMATS" | grep -qw "$FORMAT"; then
-  log_error "Invalid format: $FORMAT"
-  echo "Valid formats: $VALID_FORMATS" >&2
+  output_error "$E_INPUT_INVALID" "Invalid format: $FORMAT" 1 true "Valid formats: $VALID_FORMATS"
   exit 1
 fi
 
