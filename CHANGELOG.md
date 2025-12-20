@@ -5,6 +5,28 @@ All notable changes to the claude-todo system will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.23.2] - 2025-12-20
+
+### Added
+- **`populate-hierarchy` command** - Populates `parentId` field based on conventions
+  - Naming convention: Titles starting with `T###.` set parentId to that epic (e.g., "T328.1" → parentId: T328)
+  - Depends on epic: If single dependency is an epic, sets it as parent
+  - Supports `--dry-run` to preview changes before applying
+  - LLM-Agent-First JSON output with summary and change details
+
+### Fixed
+- **`list --tree` now works** - Was documented but not implemented
+  - JSON output: Adds `tree` field with hierarchical structure (children nested)
+  - Human output (`--human`): Renders ASCII tree with status icons
+  - Works with filters: `--type epic`, `--parent T001`, `--children T001`
+
+### Changed
+- **`deps tree` JSON output enhanced** - Now LLM-Agent-First compliant
+  - Added `summary` with totalNodes, rootCount, leafCount
+  - Added `rootNodes` and `leafNodes` arrays
+  - Added `nodes` array with task metadata (id, title, status, type)
+  - Maintains backward compatibility with existing `dependency_graph` and `dependent_graph`
+
 ## [0.23.1] - 2025-12-20
 
 ### Fixed

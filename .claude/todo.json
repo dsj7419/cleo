@@ -3,7 +3,7 @@
   "version": "2.3.0",
   "project": {
     "name": "claude-todo",
-    "currentPhase": "polish",
+    "currentPhase": "core",
     "phases": {
       "setup": {
         "name": "Setup & Foundation",
@@ -113,22 +113,22 @@
       }
     ]
   },
-  "lastUpdated": "2025-12-20T07:09:58Z",
+  "lastUpdated": "2025-12-20T07:25:08Z",
   "_meta": {
-    "checksum": "2af8ee7da7ff7b2f",
+    "checksum": "d1ae17cd6ba18c02",
     "configVersion": "2.1.0",
     "lastSessionId": null,
     "activeSession": null,
-    "lastModified": "2025-12-20T05:38:53Z",
+    "lastModified": "2025-12-20T10:31:47Z",
     "version": "2.3.0",
     "schemaVersion": "2.3.0"
   },
   "focus": {
-    "currentTask": null,
+    "currentTask": "T382",
     "blockedUntil": null,
-    "sessionNote": "FILE LOCKING AUDIT SESSION (2025-12-20): Deployed 12 parallel agents to verify FILE-LOCKING-SPEC.md compliance. FINDINGS: Core lib/file-ops.sh VERIFIED COMPLETE (lock_file, unlock_file, atomic_write, save_json all working). 17 unit tests pass. GAPS FOUND: T452 archive.sh HIGH, T453 add-task.sh MEDIUM, T454 complete-task.sh MEDIUM, T350 phase-tracking.sh MEDIUM (5 functions), T530 migrate.sh MEDIUM (8 functions - NEW), T531 log.sh LOW (NEW). Updated FILE-LOCKING-IMPLEMENTATION-REPORT.md with all findings. Epic T451 now has 6 child tasks.",
+    "sessionNote": "test cleanup",
     "nextAction": "NEXT SESSION: Implement T452 (archive.sh - HIGH priority) first. Pattern: source lib/file-ops.sh, replace all raw writes with save_json(). Then T453, T454. T350/T530/T531 can follow. See FILE-LOCKING-IMPLEMENTATION-REPORT.md for fix patterns.",
-    "currentPhase": "polish"
+    "currentPhase": "core"
   },
   "tasks": [
     {
@@ -787,7 +787,7 @@
         "T328"
       ],
       "type": "task",
-      "parentId": null,
+      "parentId": "T328",
       "size": null,
       "files": [
         "docs/specs/HIERARCHY-ENHANCEMENT-SPEC.md",
@@ -819,7 +819,7 @@
         "T328"
       ],
       "type": "task",
-      "parentId": null,
+      "parentId": "T328",
       "size": null,
       "notes": [
         "2025-12-18 18:23:45 UTC: Updated target version from v0.15.0 to v0.17.0 per HIERARCHY-ENHANCEMENT-SPEC.md reconciliation",
@@ -845,7 +845,7 @@
         "T328"
       ],
       "type": "task",
-      "parentId": null,
+      "parentId": "T328",
       "size": null,
       "notes": [
         "2025-12-18 18:23:45 UTC: Updated target version from v0.15.0 to v0.17.0 per HIERARCHY-ENHANCEMENT-SPEC.md reconciliation",
@@ -877,7 +877,7 @@
         "T329"
       ],
       "type": "task",
-      "parentId": null,
+      "parentId": "T328",
       "size": null,
       "notes": [
         "2025-12-18 18:23:46 UTC: Updated target version from v0.15.0 to v0.17.0 per HIERARCHY-ENHANCEMENT-SPEC.md reconciliation",
@@ -908,7 +908,7 @@
         "T330"
       ],
       "type": "task",
-      "parentId": null,
+      "parentId": "T328",
       "size": null,
       "notes": [
         "2025-12-18 18:23:46 UTC: Updated target version from v0.15.0 to v0.17.0 per HIERARCHY-ENHANCEMENT-SPEC.md reconciliation",
@@ -935,7 +935,7 @@
         "T330"
       ],
       "type": "task",
-      "parentId": null,
+      "parentId": "T328",
       "size": null,
       "notes": [
         "2025-12-18 18:23:46 UTC: Updated target version from v0.15.0 to v0.17.0 per HIERARCHY-ENHANCEMENT-SPEC.md reconciliation",
@@ -961,7 +961,7 @@
         "T330"
       ],
       "type": "task",
-      "parentId": null,
+      "parentId": "T328",
       "size": null,
       "notes": [
         "2025-12-18 18:23:46 UTC: Updated target version from v0.15.0 to v0.17.0 per HIERARCHY-ENHANCEMENT-SPEC.md reconciliation",
@@ -993,7 +993,7 @@
         "T331"
       ],
       "type": "task",
-      "parentId": null,
+      "parentId": "T328",
       "size": null,
       "notes": [
         "2025-12-18 18:23:47 UTC: Updated target version from v0.15.0 to v0.17.0 per HIERARCHY-ENHANCEMENT-SPEC.md reconciliation",
@@ -1020,7 +1020,7 @@
         "T334"
       ],
       "type": "task",
-      "parentId": null,
+      "parentId": "T328",
       "size": null,
       "notes": [
         "2025-12-18 18:23:47 UTC: Updated target version from v0.15.0 to v0.17.0 per HIERARCHY-ENHANCEMENT-SPEC.md reconciliation",
@@ -1047,7 +1047,7 @@
         "T334"
       ],
       "type": "task",
-      "parentId": null,
+      "parentId": "T328",
       "size": null,
       "notes": [
         "2025-12-18 18:23:47 UTC: Updated target version from v0.15.0 to v0.17.0 per HIERARCHY-ENHANCEMENT-SPEC.md reconciliation",
@@ -1268,7 +1268,7 @@
         "T339"
       ],
       "type": "task",
-      "parentId": null,
+      "parentId": "T339",
       "size": null,
       "notes": [
         "2025-12-18 18:23:52 UTC: Updated target version from v0.16.0 to v0.18.0 per HIERARCHY-ENHANCEMENT-SPEC.md reconciliation"
@@ -1292,7 +1292,7 @@
         "T339"
       ],
       "type": "task",
-      "parentId": null,
+      "parentId": "T339",
       "size": null,
       "notes": [
         "2025-12-18 18:23:52 UTC: Updated target version from v0.16.0 to v0.18.0 per HIERARCHY-ENHANCEMENT-SPEC.md reconciliation"
@@ -1321,7 +1321,7 @@
         "T344"
       ],
       "type": "task",
-      "parentId": null,
+      "parentId": "T339",
       "size": null,
       "notes": [
         "2025-12-18 18:23:52 UTC: Updated target version from v0.16.0 to v0.18.0 per HIERARCHY-ENHANCEMENT-SPEC.md reconciliation"
@@ -1901,7 +1901,7 @@
     {
       "id": "T382",
       "title": "Config System Integration & Completion",
-      "status": "pending",
+      "status": "active",
       "priority": "high",
       "type": "epic",
       "parentId": null,
@@ -2032,7 +2032,7 @@
       "status": "pending",
       "priority": "high",
       "type": "task",
-      "parentId": null,
+      "parentId": "T382",
       "createdAt": "2025-12-18T00:43:52Z",
       "phase": "core",
       "description": "Global config file exists but is NOT integrated into the system:\n\nCurrent state:\n- ~/.claude-todo/config.json created by install.sh\n- schemas/global-config.schema.json defines structure\n- templates/global-config.template.json provides defaults\n- lib/config.sh has get_config_value() with priority resolution\n- BUT: No scripts actually use global config (they read project config directly)\n\nRequired integration:\n1. All scripts using project config should also check global config\n2. Priority order: CLI > env vars > project config > global config > defaults\n3. lib/config.sh already implements this - need to use it\n\nFiles to update:\n- scripts/archive.sh (currently reads .claude/todo-config.json only)\n- scripts/complete-task.sh\n- scripts/phase.sh  \n- lib/logging.sh\n- lib/output-format.sh\n- lib/backup.sh\n- All other config-aware scripts\n\nGlobal config schema (global-config.schema.json) includes:\n- output.* (format, colors, unicode, progress bars)\n- display.* (showArchiveCount, showLogSummary, warnStaleDays)\n- cli.aliases.* (command shortcuts)\n- cli.plugins.* (plugin directories)\n- cli.debug.* (debug options)\n- defaults.* (priority, labels)\n\nUse case: User sets output.defaultFormat=json globally, applies to ALL projects.",
@@ -2051,7 +2051,7 @@
       "status": "pending",
       "priority": "medium",
       "type": "task",
-      "parentId": null,
+      "parentId": "T382",
       "createdAt": "2025-12-18T00:44:07Z",
       "phase": "core",
       "description": "Review the interactive config editor for completeness and usability:\n\nCurrent implementation: scripts/config.sh cmd_edit() function\n\nItems to review:\n1. Menu categories - do they cover all config sections?\n   - Currently shows: Output, Archive, Logging, Validation, Defaults, Session, Display, Backup, CLI\n   - Verify all match actual schema sections\n   \n2. Value editing - does it handle all types correctly?\n   - Booleans (true/false toggle)\n   - Enums (selection from valid values)\n   - Integers (with min/max validation)\n   - Strings (free-form input)\n   - Arrays (for labels, directories)\n   \n3. Scope handling\n   - Project config vs global config editing\n   - --global flag should work with edit subcommand\n   \n4. Validation\n   - Schema validation before save\n   - Type checking on input\n   - Range validation for integers\n   \n5. UX improvements\n   - Clear current value display\n   - Help text for each setting\n   - Undo/cancel support\n   - Confirmation before save\n   \n6. Edge cases\n   - Missing config file (create new?)\n   - Invalid existing config\n   - Permission errors\n\nTest scenarios:\n- Edit project config values\n- Edit global config values  \n- Cancel without saving\n- Invalid input handling\n- Nested settings (validation.phaseValidation.*)",
@@ -2071,7 +2071,7 @@
       "status": "pending",
       "priority": "medium",
       "type": "task",
-      "parentId": null,
+      "parentId": "T382",
       "createdAt": "2025-12-18T00:44:24Z",
       "phase": "core",
       "description": "Environment variables should override config file settings:\n\nCurrent state:\n- lib/config.sh defines ENV_TO_CONFIG mapping\n- docs/commands/config.md documents env vars\n- BUT: Most scripts don't check env vars (read config directly with jq)\n\nDocumented environment variables (need implementation):\n- CLAUDE_TODO_FORMAT → output.defaultFormat\n- CLAUDE_TODO_OUTPUT_DEFAULT_FORMAT → output.defaultFormat  \n- CLAUDE_TODO_OUTPUT_SHOW_COLOR → output.showColor\n- CLAUDE_TODO_OUTPUT_SHOW_UNICODE → output.showUnicode\n- CLAUDE_TODO_OUTPUT_SHOW_PROGRESS_BARS → output.showProgressBars\n- CLAUDE_TODO_ARCHIVE_ENABLED → archive.enabled\n- CLAUDE_TODO_ARCHIVE_DAYS_UNTIL_ARCHIVE → archive.daysUntilArchive\n- CLAUDE_TODO_LOGGING_LEVEL → logging.level\n- CLAUDE_TODO_VALIDATION_STRICT_MODE → validation.strictMode\n- CLAUDE_TODO_SESSION_REQUIRE_SESSION_NOTE → session.requireSessionNote\n- CLAUDE_TODO_DEBUG → cli.debug.enabled\n\nPriority order (highest to lowest):\n1. CLI flags (--format json)\n2. Environment variables (CLAUDE_TODO_FORMAT=json)\n3. Project config (.claude/todo-config.json)\n4. Global config (~/.claude-todo/config.json)\n5. Built-in defaults\n\nImplementation:\n1. Use lib/config.sh get_config_value() which handles env vars\n2. Update all scripts to use this instead of direct jq reads\n3. Test each env var actually works\n4. Document in help output which env vars are supported",
@@ -2090,7 +2090,7 @@
       "status": "pending",
       "priority": "medium",
       "type": "task",
-      "parentId": null,
+      "parentId": "T382",
       "createdAt": "2025-12-18T00:44:37Z",
       "phase": "polish",
       "description": "Documentation needs to accurately reflect what's implemented:\n\nCurrent documentation issues:\n1. docs/commands/config.md - describes all features as working\n2. docs/reference/configuration.md - lists all settings without noting which work\n3. CHANGELOG.md - claims full config system implemented\n\nRequired updates:\n\n1. docs/reference/configuration.md\n   - Add 'Implementation Status' column to each setting table\n   - Mark which settings are: Implemented | Partial | Not Implemented\n   - Add section explaining current limitations\n   \n2. docs/commands/config.md\n   - Note which subcommands are fully functional\n   - Document known limitations\n   - Add troubleshooting for common issues\n\n3. Create docs/specs/CONFIG-SYSTEM-SPEC.md\n   - Architecture of config system\n   - Priority resolution logic\n   - Global vs project config\n   - Environment variable mapping\n   - Implementation roadmap\n\n4. Update CLAUDE.md injection\n   - Only show commands that actually work\n   - Remove or mark incomplete features\n\n5. Update schemas documentation\n   - Document which schema fields are enforced\n   - Which are advisory/not yet implemented\n\nAfter implementation tasks complete:\n- Remove implementation status warnings\n- Update to show all features working",
@@ -2108,7 +2108,7 @@
       "status": "pending",
       "priority": "medium",
       "type": "task",
-      "parentId": null,
+      "parentId": "T382",
       "createdAt": "2025-12-18T00:44:49Z",
       "phase": "polish",
       "description": "Config system needs comprehensive test coverage:\n\nTest categories:\n\n1. Unit tests for lib/config.sh\n   - get_config_value() priority resolution\n   - set_config_value() writes correctly\n   - get_effective_config() merges properly\n   - Environment variable detection\n   - Path parsing (dotted paths like output.defaultFormat)\n   \n2. Integration tests for config command\n   - ct config show (all, section, specific value)\n   - ct config get (single value retrieval)\n   - ct config set (update and validate)\n   - ct config list (all keys with values)\n   - ct config reset (restore defaults)\n   - ct config validate (schema validation)\n   - --global flag works for all subcommands\n   - --format json produces valid JSON\n   - --dry-run doesn't modify files\n\n3. Priority resolution tests\n   - CLI flag overrides everything\n   - Env var overrides config files\n   - Project config overrides global\n   - Global config overrides defaults\n   - Test each priority level\n   \n4. Settings implementation tests\n   - Each implemented setting actually affects behavior\n   - archive.* settings control archiving\n   - output.* settings control display\n   - logging.* settings control logging\n   \n5. Error handling tests\n   - Missing config file\n   - Invalid JSON\n   - Schema validation failures\n   - Permission errors\n   - Invalid config paths\n\nLocation: tests/unit/config.bats, tests/integration/config.bats",
@@ -2126,7 +2126,7 @@
       "status": "pending",
       "priority": "medium",
       "type": "task",
-      "parentId": null,
+      "parentId": "T382",
       "createdAt": "2025-12-18T00:45:02Z",
       "phase": "core",
       "description": "Project and global config schemas need synchronization:\n\nCurrent schemas:\n- schemas/config.schema.json (project config - full schema)\n- schemas/global-config.schema.json (global config - subset)\n\nIssues to address:\n1. Ensure global schema is proper subset of project schema\n2. Settings in global should also be in project\n3. Document which settings are global-only vs project-only\n4. Validate both schemas are valid JSON Schema draft-07\n\nSchema sections:\n- output.* - Should be in BOTH (user preferences)\n- display.* - Should be in BOTH (user preferences)\n- cli.* - Should be in BOTH (user preferences)\n- defaults.* - Should be in BOTH (user preferences)\n- archive.* - PROJECT ONLY (project-specific behavior)\n- logging.* - Could be BOTH (but project may override)\n- validation.* - PROJECT ONLY (project-specific rules)\n- session.* - PROJECT ONLY (project-specific behavior)\n- backup.* - PROJECT ONLY (project-specific paths)\n\nDecisions needed:\n- Which settings belong in global config?\n- Which are project-specific only?\n- How to handle conflicts?",
@@ -2145,7 +2145,7 @@
       "status": "pending",
       "priority": "medium",
       "type": "task",
-      "parentId": null,
+      "parentId": "T382",
       "createdAt": "2025-12-18T00:45:21Z",
       "phase": "core",
       "description": "Config reset and init behaviors need review:\n\nCurrent issues:\n1. ct config reset - Does it work correctly?\n   - Should reset to schema defaults\n   - Should support resetting single section\n   - Should support --global flag\n   - Need confirmation prompt for destructive action\n   \n2. ct init - Config initialization\n   - Creates .claude/todo-config.json from template\n   - Should NOT overwrite existing config\n   - --force should allow overwrite\n   - Should validate created config\n   \n3. install.sh - Global config initialization\n   - Creates ~/.claude-todo/config.json\n   - Currently copies from template\n   - Should NOT overwrite on reinstall\n   - Should offer to merge with existing\n   \n4. Config migration\n   - When schema version changes\n   - Old config files need migration\n   - Add config version field?\n   - Auto-migrate on read?\n\n5. Config validation on load\n   - Should scripts validate config on startup?\n   - What to do with invalid config?\n   - Fallback to defaults? Error out? Warn?\n\nTest scenarios:\n- Fresh install (no config exists)\n- Reinstall (config exists)\n- Upgrade (old schema version)\n- Corrupted config file\n- Missing required fields",
@@ -2946,7 +2946,7 @@
       "status": "pending",
       "priority": "high",
       "type": "task",
-      "parentId": null,
+      "parentId": "T429",
       "createdAt": "2025-12-18T18:32:18Z",
       "phase": "core",
       "description": "New command to restore archived tasks back to active todo list.\n\n## CLI\n```bash\nunarchive T045                 # Restore single task\nunarchive T045 T046 T047       # Restore multiple tasks\nunarchive --label feature-auth # Restore all with label\nunarchive --since 2025-12-15   # Restore archived after date\nunarchive --last 5             # Restore last N archived\nunarchive --dry-run            # Preview restoration\n```\n\n## Implementation\n1. Create scripts/unarchive.sh\n2. Move task from todo-archive.json to todo.json\n3. Update task metadata (remove archivedAt, etc.)\n4. Validate no ID conflicts\n5. Log restoration operation\n\n## Output\n```\nRestored 3 tasks from archive:\n  T045: Fix authentication bug\n  T046: Update documentation  \n  T047: Add unit tests\n\nTasks restored to status: pending\n```\n\n## Acceptance Criteria\n- [ ] Single task restoration works\n- [ ] Batch restoration by label/date\n- [ ] No ID conflicts (error if exists)\n- [ ] Metadata cleaned up\n- [ ] Operation logged",
@@ -2965,7 +2965,7 @@
       "status": "pending",
       "priority": "medium",
       "type": "task",
-      "parentId": null,
+      "parentId": "T429",
       "createdAt": "2025-12-18T18:32:32Z",
       "phase": "core",
       "description": "Enhance list command to search across archive.\n\n## CLI Enhancement\n```bash\nlist --include-archive         # Show both active and archived\nlist --archive-only            # Show only archived tasks\nlist --include-archive --label bug  # Filter archived by label\nlist --archive-only --status done   # Archived tasks (always done)\n```\n\n## Implementation\n1. Add flags to list-tasks.sh\n2. When --include-archive, merge todo.json + todo-archive.json\n3. When --archive-only, read only todo-archive.json\n4. Add visual indicator for archived tasks in output\n5. JSON output includes 'archived: true' field\n\n## Output Example\n```\n=== Active Tasks ===\nT328 [pending] Hierarchy Enhancement\n\n=== Archived Tasks ===\nT045 [archived] Fix authentication bug (archived 2025-12-15)\nT046 [archived] Update documentation (archived 2025-12-14)\n```\n\n## Acceptance Criteria\n- [ ] --include-archive shows both sources\n- [ ] --archive-only shows only archived\n- [ ] Filters work on archived tasks\n- [ ] Clear visual distinction",
@@ -2984,7 +2984,7 @@
       "status": "pending",
       "priority": "medium",
       "type": "task",
-      "parentId": null,
+      "parentId": "T429",
       "createdAt": "2025-12-18T18:32:44Z",
       "phase": "core",
       "description": "Track metadata about when/why/how tasks were archived.\n\n## Schema Change (archive.schema.json)\nAdd fields to archived task objects:\n```json\n{\n  \"archivedAt\": \"2025-12-18T10:00:00Z\",\n  \"archivedReason\": \"age\",        // age, manual, cascade, phase-advance\n  \"archivedFrom\": \"setup\",         // Original phase when archived\n  \"archivedBy\": \"session_xyz\",     // Session that archived\n  \"originalStatus\": \"done\"         // Status before archive\n}\n```\n\n## Implementation\n1. Update archive.schema.json with metadata fields\n2. Archive operation populates metadata\n3. Different reasons for different archive triggers:\n   - 'age': Normal age-based archive\n   - 'manual': User ran archive command\n   - 'cascade': Part of epic cascade\n   - 'phase-advance': Triggered by phase change\n4. Preserve for analytics/reporting\n\n## Acceptance Criteria\n- [ ] Schema includes metadata fields\n- [ ] All archive operations populate metadata\n- [ ] Reason accurately reflects trigger\n- [ ] Original phase/status preserved",
@@ -3003,7 +3003,7 @@
       "status": "pending",
       "priority": "medium",
       "type": "task",
-      "parentId": null,
+      "parentId": "T429",
       "createdAt": "2025-12-18T18:33:02Z",
       "phase": "core",
       "description": "Automatically archive completed tasks when phase advances.\n\n## Config\n```json\n{\n  \"archive\": {\n    \"archiveOnPhaseAdvance\": true,\n    \"phaseArchiveDelay\": 0,        // Days to wait after phase advance\n    \"phaseArchiveScope\": \"previous\" // 'previous' or 'all-before'\n  }\n}\n```\n\n## Behavior\nWhen `phase advance` or `phase complete` is run:\n1. Check archiveOnPhaseAdvance config\n2. Identify completed tasks in previous phase\n3. Wait phaseArchiveDelay days (or archive immediately if 0)\n4. Archive with reason='phase-advance'\n\n## CLI Enhancement\n```bash\nphase advance                    # Auto-archives if config enabled\nphase advance --archive          # Force archive previous phase\nphase advance --no-archive       # Skip archiving\nphase complete setup --archive   # Archive all 'setup' done tasks\n```\n\n## Acceptance Criteria\n- [ ] Config options implemented\n- [ ] phase advance triggers archive\n- [ ] Delay option works\n- [ ] Manual override flags work",
@@ -3024,7 +3024,7 @@
       "status": "pending",
       "priority": "medium",
       "type": "task",
-      "parentId": null,
+      "parentId": "T429",
       "createdAt": "2025-12-18T18:33:17Z",
       "phase": "core",
       "description": "Archive an epic and all its completed children in one operation.\n\n## CLI\n```bash\narchive --cascade-from T328      # Archive T328 + all done children\narchive --cascade-from T328 --dry-run  # Preview cascade\n```\n\n## Behavior\n1. Validate T328 is done (or --force to override)\n2. Find all descendants (children, grandchildren)\n3. Filter to only 'done' status\n4. Archive all with reason='cascade'\n5. Preserve hierarchy in archive\n\n## Implementation\n1. Add --cascade-from option to archive.sh\n2. Use lib/hierarchy.sh to find descendants\n3. Archive in order: deepest children first, then parents\n4. All archived tasks get archivedReason='cascade'\n\n## Output\n```\nCascade archive from T328 (EPIC: Hierarchy Enhancement):\n  Archiving 12 completed tasks:\n    T329 (child)\n    T330 (child)\n    T333 (grandchild of T330)\n    ...\n  \n  Skipping 3 incomplete tasks:\n    T337 [pending]\n    T338 [pending]\n    T339 [blocked]\n\nArchive 12 tasks? (y/N)\n```\n\n## Acceptance Criteria\n- [ ] Finds all descendants\n- [ ] Only archives done tasks\n- [ ] Preserves hierarchy relationships\n- [ ] Reason set to 'cascade'",
@@ -3045,7 +3045,7 @@
       "status": "pending",
       "priority": "low",
       "type": "task",
-      "parentId": null,
+      "parentId": "T429",
       "createdAt": "2025-12-18T18:33:29Z",
       "phase": "core",
       "description": "Interactive mode for selective task archiving.\n\n## CLI\n```bash\narchive --interactive    # Prompt for each eligible task\narchive -i               # Shorthand\n```\n\n## Behavior\nFor each eligible task, prompt:\n```\nArchive T045: Fix authentication bug\n  Status: done (completed 2025-12-10)\n  Labels: bug, backend\n  Phase: setup\n  \n  [y] Archive  [n] Skip  [a] Archive all remaining  [q] Quit\n```\n\n## Implementation\n1. Add --interactive / -i flag\n2. Iterate through eligible tasks\n3. Show task summary with context\n4. Handle y/n/a/q responses\n5. Track decisions for summary\n\n## Acceptance Criteria\n- [ ] Interactive prompts work\n- [ ] Shows useful task context\n- [ ] 'Archive all' option works\n- [ ] Final summary of decisions",
@@ -3064,7 +3064,7 @@
       "status": "pending",
       "priority": "low",
       "type": "task",
-      "parentId": null,
+      "parentId": "T429",
       "createdAt": "2025-12-18T18:33:41Z",
       "phase": "core",
       "description": "New command for archive analytics and reporting.\n\n## CLI\n```bash\narchive stats                    # Archive statistics\narchive stats --since 2025-12-01 # Stats for date range\narchive report                   # Detailed report\narchive report --format json     # Machine-readable\n```\n\n## Statistics Output\n```\nArchive Statistics\n==================\nTotal archived tasks: 156\nArchived this week: 23\nArchived this month: 45\n\nBy Reason:\n  age:           89 (57%)\n  manual:        34 (22%)\n  cascade:       21 (13%)\n  phase-advance: 12 (8%)\n\nBy Phase:\n  setup:       45\n  core:        67\n  polish:      32\n  maintenance: 12\n\nBy Label:\n  bug:           34\n  feature:       45\n  documentation: 23\n  \nAverage cycle time: 2.3 days\n```\n\n## Implementation\n1. Create scripts/archive-stats.sh or add subcommand\n2. Read todo-archive.json for analysis\n3. Calculate aggregations by reason, phase, label\n4. Support date range filtering\n5. JSON output for automation\n\n## Acceptance Criteria\n- [ ] Basic statistics work\n- [ ] Breakdown by reason/phase/label\n- [ ] Date range filtering\n- [ ] JSON output format",
@@ -3084,7 +3084,7 @@
       "status": "pending",
       "priority": "high",
       "type": "task",
-      "parentId": null,
+      "parentId": "T429",
       "createdAt": "2025-12-18T18:33:51Z",
       "phase": "core",
       "description": "Schema updates for all new archive configuration options.\n\n## New Fields\n```json\n{\n  \"archive\": {\n    \"exemptLabels\": [\"epic-type\", \"keep\", \"reference\"],\n    \"labelPolicies\": {},\n    \"archiveOnPhaseAdvance\": false,\n    \"phaseArchiveDelay\": 0,\n    \"phaseArchiveScope\": \"previous\",\n    \"defaultSafeMode\": false\n  }\n}\n```\n\n## Acceptance Criteria\n- [ ] All new config fields in schema\n- [ ] Defaults specified\n- [ ] Validation rules correct\n- [ ] Examples in schema",
@@ -3102,7 +3102,7 @@
       "status": "pending",
       "priority": "high",
       "type": "task",
-      "parentId": null,
+      "parentId": "T429",
       "createdAt": "2025-12-18T18:34:02Z",
       "phase": "core",
       "description": "Schema updates for archive metadata tracking.\n\n## New Fields in Archived Task\n```json\n{\n  \"archivedAt\": { \"type\": \"string\", \"format\": \"date-time\" },\n  \"archivedReason\": { \"enum\": [\"age\", \"manual\", \"cascade\", \"phase-advance\"] },\n  \"archivedFrom\": { \"type\": \"string\" },\n  \"archivedBy\": { \"type\": \"string\" },\n  \"originalStatus\": { \"type\": \"string\" }\n}\n```\n\n## Acceptance Criteria\n- [ ] Metadata fields added to schema\n- [ ] archivedReason enum defined\n- [ ] Migration for existing archives (add defaults)",
@@ -3120,7 +3120,7 @@
       "status": "pending",
       "priority": "medium",
       "type": "task",
-      "parentId": null,
+      "parentId": "T429",
       "createdAt": "2025-12-18T18:34:13Z",
       "phase": "core",
       "description": "Comprehensive documentation update for archive enhancements.\n\n## Sections to Add/Update\n1. New flags: --exclude-labels, --only-labels, --safe, --interactive, --cascade-from\n2. Config options: exemptLabels, labelPolicies, phase triggers\n3. Relationship-aware archiving explanation\n4. Warnings and safe mode\n5. Examples for each feature\n6. unarchive command (new page or section)\n\n## Acceptance Criteria\n- [ ] All new flags documented\n- [ ] Config options explained\n- [ ] Examples for common use cases\n- [ ] unarchive documented",
@@ -3143,7 +3143,7 @@
       "status": "pending",
       "priority": "high",
       "type": "task",
-      "parentId": null,
+      "parentId": "T429",
       "createdAt": "2025-12-18T18:34:25Z",
       "phase": "core",
       "description": "Comprehensive test suite for archive enhancements.\n\n## Test Files\n- tests/unit/test-archive-labels.bats\n- tests/unit/test-archive-relationships.bats\n- tests/unit/test-unarchive.bats\n- tests/integration/archive-workflow.bats\n\n## Test Cases\n### Label-based\n- exemptLabels prevents archiving\n- --exclude-labels filters correctly\n- --only-labels targets correctly\n- labelPolicies retention rules\n\n### Relationship-aware\n- --safe excludes hierarchy violations\n- --safe excludes dependency violations\n- Warnings shown for problematic tasks\n- --force overrides warnings\n\n### Unarchive\n- Single task restoration\n- Batch restoration by label\n- No ID conflicts\n- Metadata cleanup\n\n### Phase-triggered\n- archiveOnPhaseAdvance works\n- phaseArchiveDelay respected\n- Manual override flags\n\n## Acceptance Criteria\n- [ ] 50+ new tests\n- [ ] All features covered\n- [ ] Edge cases tested\n- [ ] Integration workflows tested",
@@ -3920,7 +3920,7 @@
       "status": "pending",
       "priority": "high",
       "type": "task",
-      "parentId": null,
+      "parentId": "T481",
       "createdAt": "2025-12-19T07:56:30Z",
       "phase": "core",
       "description": "Sub-epic for command-level implementation of v3.0 requirements. Parent: T481",
@@ -3935,7 +3935,7 @@
       "status": "pending",
       "priority": "high",
       "type": "task",
-      "parentId": null,
+      "parentId": "T481",
       "createdAt": "2025-12-19T07:56:49Z",
       "phase": "core",
       "description": "Return EXIT_NO_CHANGE (102) when updating with identical values. File: scripts/update-task.sh. Depends: T489",
@@ -3953,7 +3953,7 @@
       "status": "pending",
       "priority": "high",
       "type": "task",
-      "parentId": null,
+      "parentId": "T481",
       "createdAt": "2025-12-19T07:56:50Z",
       "phase": "core",
       "description": "Return EXIT_NO_CHANGE (102) when completing already-done task. File: scripts/complete-task.sh. Depends: T489",
@@ -3971,7 +3971,7 @@
       "status": "pending",
       "priority": "high",
       "type": "task",
-      "parentId": null,
+      "parentId": "T481",
       "createdAt": "2025-12-19T07:56:50Z",
       "phase": "core",
       "description": "Return EXIT_NO_CHANGE (102) for no-op operations. Files: scripts/archive.sh, scripts/restore.sh. Depends: T489",
@@ -3989,7 +3989,7 @@
       "status": "pending",
       "priority": "medium",
       "type": "task",
-      "parentId": null,
+      "parentId": "T481",
       "createdAt": "2025-12-19T07:56:50Z",
       "phase": "core",
       "description": "Detect duplicate title+phase within 60s window. File: scripts/add-task.sh. Depends: T489",
@@ -4007,7 +4007,7 @@
       "status": "pending",
       "priority": "high",
       "type": "task",
-      "parentId": null,
+      "parentId": "T481",
       "createdAt": "2025-12-19T07:56:53Z",
       "phase": "core",
       "description": "Output dryRun:true and wouldCreate/wouldUpdate objects. Files: add-task.sh, update-task.sh, complete-task.sh. Depends: T489",
@@ -4025,7 +4025,7 @@
       "status": "pending",
       "priority": "high",
       "type": "task",
-      "parentId": null,
+      "parentId": "T481",
       "createdAt": "2025-12-19T07:56:53Z",
       "phase": "core",
       "description": "Implement missing --dry-run flag. Generate ID, validate, return wouldCreate. Depends: T489",
@@ -4043,7 +4043,7 @@
       "status": "pending",
       "priority": "high",
       "type": "task",
-      "parentId": null,
+      "parentId": "T481",
       "createdAt": "2025-12-19T07:56:53Z",
       "phase": "core",
       "description": "Verify lib/validation.sh field length functions are called in add-task.sh, update-task.sh, focus.sh. Depends: T489",
@@ -4061,7 +4061,7 @@
       "status": "pending",
       "priority": "medium",
       "type": "task",
-      "parentId": null,
+      "parentId": "T481",
       "createdAt": "2025-12-19T07:56:55Z",
       "phase": "polish",
       "description": "Sub-epic for documentation and testing of v3.0 requirements. Parent: T481",
@@ -4077,7 +4077,7 @@
       "status": "pending",
       "priority": "medium",
       "type": "task",
-      "parentId": null,
+      "parentId": "T481",
       "createdAt": "2025-12-19T07:57:13Z",
       "phase": "polish",
       "description": "Update docs/specs/LLM-AGENT-FIRST-IMPLEMENTATION-REPORT.md to track v3.0 requirements implementation. Depends: T497",
@@ -4094,7 +4094,7 @@
       "status": "pending",
       "priority": "medium",
       "type": "task",
-      "parentId": null,
+      "parentId": "T481",
       "createdAt": "2025-12-19T07:57:13Z",
       "phase": "polish",
       "description": "Document recoverable errors (7,20,21,22) in command --help. Part 5.7. Depends: T497",
@@ -4111,7 +4111,7 @@
       "status": "pending",
       "priority": "medium",
       "type": "task",
-      "parentId": null,
+      "parentId": "T481",
       "createdAt": "2025-12-19T07:57:14Z",
       "phase": "polish",
       "description": "Create tests/compliance/ for input-validation, idempotency, dry-run-semantics checks. Depends: T497",
@@ -4128,7 +4128,7 @@
       "status": "pending",
       "priority": "medium",
       "type": "task",
-      "parentId": null,
+      "parentId": "T481",
       "createdAt": "2025-12-19T07:57:14Z",
       "phase": "polish",
       "description": "Integration tests for EXIT_NO_CHANGE (102) from update, complete, archive, restore. Depends: T497",
@@ -4145,7 +4145,7 @@
       "status": "pending",
       "priority": "high",
       "type": "task",
-      "parentId": null,
+      "parentId": "T481",
       "createdAt": "2025-12-19T07:57:16Z",
       "phase": "core",
       "description": "Update dev/compliance/checks/flags.sh to validate --dry-run JSON includes dryRun field. Related: T481",
@@ -4163,7 +4163,7 @@
       "status": "pending",
       "priority": "medium",
       "type": "task",
-      "parentId": null,
+      "parentId": "T481",
       "createdAt": "2025-12-19T07:57:16Z",
       "phase": "core",
       "description": "Document EXIT_NO_CHANGE (102) usage for idempotent ops in lib/exit-codes.sh. Related: T481",
@@ -4268,7 +4268,7 @@
       "status": "done",
       "priority": "high",
       "type": "task",
-      "parentId": null,
+      "parentId": "T481",
       "createdAt": "2025-12-19T17:57:56Z",
       "phase": "core",
       "description": "Fix 7 scripts bypassing TTY auto-detection with hardcoded FORMAT=text. Scripts: labels.sh, next.sh, phases.sh, session.sh, show.sh, stats.sh, validate.sh. Per Spec Part 2 Gap 2, use empty FORMAT default for resolve_format() TTY detection.",
@@ -5134,6 +5134,22 @@
         "dependencies",
         "future"
       ]
+    },
+    {
+      "id": "T558",
+      "title": "ENHANCE: Add 'empty: true' field to JSON output when matches=0",
+      "status": "pending",
+      "priority": "low",
+      "type": "task",
+      "parentId": null,
+      "createdAt": "2025-12-20T07:25:08Z",
+      "phase": "polish",
+      "description": "Exit code 100 (EXIT_NO_DATA) indicates empty results. Consider adding explicit 'empty: true' field to JSON output for clearer LLM agent parsing. Currently agents must check 'matches.length == 0' or 'summary.matches == 0'. An explicit boolean would be more direct. Affects: find, list, and other commands that can return empty results.",
+      "labels": [
+        "enhancement",
+        "find-command",
+        "lllm-agent-first"
+      ]
     }
   ],
   "phases": {
@@ -5150,5 +5166,6 @@
       "name": "Polish & Launch"
     }
   },
-  "labels": {}
+  "labels": {},
+  "checksum": "29d208e17a54eebc"
 }

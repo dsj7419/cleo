@@ -45,6 +45,12 @@ elif [[ -f "$LIB_DIR/exit-codes.sh" ]]; then
   source "$LIB_DIR/exit-codes.sh"
 fi
 
+# Source config library for display settings
+if [[ -f "$LIB_DIR/config.sh" ]]; then
+  # shellcheck source=../lib/config.sh
+  source "$LIB_DIR/config.sh"
+fi
+
 # Detect Unicode support (respects NO_COLOR, LANG=C, config)
 if declare -f detect_unicode_support >/dev/null 2>&1 && detect_unicode_support; then
   UNICODE_ENABLED=true
@@ -649,6 +655,28 @@ ACTIVE_COUNT=$(echo "$FILTERED_TASKS" | jq '[.[] | select(.status == "active")] 
 BLOCKED_COUNT=$(echo "$FILTERED_TASKS" | jq '[.[] | select(.status == "blocked")] | length')
 DONE_COUNT=$(echo "$FILTERED_TASKS" | jq '[.[] | select(.status == "done")] | length')
 
+# Build tree structure if --tree flag is set
+TREE_JSON="null"
+if [[ "$SHOW_TREE" == true ]]; then
+    # Build hierarchical tree from filtered tasks using parentId
+    TREE_JSON=$(echo "$FILTERED_TASKS" | jq '
+        # Index tasks by id
+        (map({(.id): .}) | add) as $lookup |
+
+        # Find root tasks (no parent or parent not in current set)
+        [.[] | select(.parentId == null or ($lookup[.parentId] == null))] as $roots |
+
+        # Recursive function to build tree
+        def build_tree(task):
+            task + {
+                children: [.[] | select(.parentId == task.id) | build_tree(.)]
+            };
+
+        # Build tree from roots
+        [$roots[] | . as $root | $lookup | to_entries | map(.value) | build_tree($root)]
+    ')
+fi
+
 # Format output based on selected format
 case "$FORMAT" in
   json)
@@ -668,7 +696,9 @@ case "$FORMAT" in
       --argjson pending "$PENDING_COUNT" \
       --argjson active "$ACTIVE_COUNT" \
       --argjson blocked "$BLOCKED_COUNT" \
-      --argjson done "$DONE_COUNT" '{
+      --argjson done "$DONE_COUNT" \
+      --argjson show_tree "$(if [[ "$SHOW_TREE" == true ]]; then echo true; else echo false; fi)" \
+      --argjson tree_data "$TREE_JSON" '{
       "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
       "_meta": {
         format: "json",
@@ -693,8 +723,9 @@ case "$FORMAT" in
         blocked: $blocked,
         done: $done
       },
-      tasks: .
-    }'
+      tasks: .,
+      tree: (if $show_tree then $tree_data else null end)
+    } | if .tree == null then del(.tree) else . end'
     ;;
 
   jsonl)
@@ -806,8 +837,50 @@ case "$FORMAT" in
       fi
     fi
 
-    # Render tasks grouped by priority or flat
-    if [[ "$GROUP_BY_PRIORITY" == true ]]; then
+    # Render as tree or list
+    if [[ "$SHOW_TREE" == true ]]; then
+      # ASCII tree rendering for --tree --human
+      echo ""
+      echo "HIERARCHY TREE"
+      if [[ "$UNICODE_ENABLED" == true ]]; then
+        echo "═══════════════════════════════════════════════════════════════════"
+      else
+        echo "==================================================================="
+      fi
+      echo ""
+
+      # Render tree using jq - simpler indented format
+      tree_output=""
+      if [[ "$UNICODE_ENABLED" == true ]]; then
+        tree_output=$(echo "$TREE_JSON" | jq -r '
+          def sicon: if . == "done" then "✓" elif . == "active" then "◉" elif . == "blocked" then "⊗" else "○" end;
+          def render(depth):
+            ("    " * depth) as $indent |
+            (if depth > 0 then "├── " else "" end) as $prefix |
+            "\($indent)\($prefix)\(.id) \(.status | sicon) \(.title[0:45])",
+            if (.children | length) > 0 then (.children[] | render(depth + 1)) else empty end;
+          .[] | render(0)
+        ' 2>/dev/null)
+      else
+        tree_output=$(echo "$TREE_JSON" | jq -r '
+          def sicon: if . == "done" then "+" elif . == "active" then "*" elif . == "blocked" then "x" else "o" end;
+          def render(depth):
+            ("    " * depth) as $indent |
+            (if depth > 0 then "+-- " else "" end) as $prefix |
+            "\($indent)\($prefix)\(.id) \(.status | sicon) \(.title[0:45])",
+            if (.children | length) > 0 then (.children[] | render(depth + 1)) else empty end;
+          .[] | render(0)
+        ' 2>/dev/null)
+      fi
+
+      if [[ -n "$tree_output" ]]; then
+        echo "$tree_output"
+      else
+        echo "  (No hierarchy data available - use --type epic or --parent to see hierarchy)"
+      fi
+      echo ""
+
+    elif [[ "$GROUP_BY_PRIORITY" == true ]]; then
       # Group by priority with section headers
       for priority_level in critical high medium low; do
         case "$priority_level" in
@@ -885,7 +958,24 @@ case "$FORMAT" in
       else
         echo -e "${DIM}---------------------------------------------------------------------${NC}"
       fi
-      echo -e "${DIM}Total: $TASK_COUNT tasks${NC}"
+
+      # Build footer line with optional archive count
+      footer_text="Total: $TASK_COUNT tasks"
+
+      # Check if archive count should be shown (display.showArchiveCount config)
+      show_archive_count="true"
+      if declare -f get_config_value >/dev/null 2>&1; then
+        show_archive_count=$(get_config_value "display.showArchiveCount" "true")
+      fi
+
+      if [[ "$show_archive_count" == "true" ]] && [[ -f "$ARCHIVE_FILE" ]]; then
+        archived_count=$(jq -r '._meta.totalArchived // (.archivedTasks | length) // 0' "$ARCHIVE_FILE" 2>/dev/null || echo "0")
+        if [[ "$archived_count" -gt 0 ]]; then
+          footer_text="$footer_text  |  Archived: $archived_count"
+        fi
+      fi
+
+      echo -e "${DIM}${footer_text}${NC}"
     fi
     ;;
 esac

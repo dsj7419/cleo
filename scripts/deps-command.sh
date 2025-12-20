@@ -647,10 +647,28 @@ output_json_format() {
             local current_timestamp
             current_timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-            jq -n --argjson graph "$graph" \
+            # Build enriched tree with task metadata for LLM agents
+            # Includes: summary, nodes with task info, and flat graphs
+            jq --argjson graph "$graph" \
                 --argjson reverse "$reverse_graph" \
                 --arg timestamp "$current_timestamp" \
-                --arg version "$VERSION" '{
+                --arg version "$VERSION" '
+            # Build task lookup from tasks array
+            (.tasks | map({(.id): {id, title, status, type: (.type // "task")}}) | add) as $lookup |
+
+            # Get all node IDs from graphs (use keys not keys[])
+            (($graph | keys) + ($reverse | keys) | unique) as $node_ids |
+
+            # Root nodes: appear in reverse (have dependents) but not in graph (no dependencies)
+            ([($reverse | keys)[] | select(. as $id | ($graph | has($id) | not) or (($graph[$id] // []) | length == 0))]) as $roots |
+
+            # Leaf nodes: appear in graph (have dependencies) but not in reverse (no dependents)
+            ([($graph | keys)[] | select(. as $id | ($reverse | has($id) | not) or (($reverse[$id] // []) | length == 0))]) as $leaves |
+
+            # Build nodes array with metadata
+            ([$node_ids[] as $id | $lookup[$id] // {id: $id, title: "Unknown", status: "unknown", type: "task"}]) as $nodes |
+
+            {
                 "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
                 "_meta": {
                     "format": "json",
@@ -660,9 +678,17 @@ output_json_format() {
                 },
                 "success": true,
                 "mode": "tree",
+                "summary": {
+                    "totalNodes": ($node_ids | length),
+                    "rootCount": ($roots | length),
+                    "leafCount": ($leaves | length)
+                },
+                "rootNodes": $roots,
+                "leafNodes": $leaves,
+                "nodes": $nodes,
                 "dependency_graph": $graph,
                 "dependent_graph": $reverse
-            }'
+            }' "$TODO_FILE"
             ;;
     esac
 }
