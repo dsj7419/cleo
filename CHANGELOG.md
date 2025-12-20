@@ -5,6 +5,24 @@ All notable changes to the claude-todo system will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.21.1] - 2025-12-20
+
+### Fixed
+- **File Locking Concurrency Fixes** - Completed T451 epic with 6 child tasks
+  - `scripts/archive.sh` (T452): Now sources `lib/file-ops.sh`, all writes use `save_json()` with locking
+  - `scripts/add-task.sh` (T453): `log_operation()` now uses `lock_file()`/`unlock_file()` + atomic write pattern
+  - `scripts/complete-task.sh` (T454): Focus clearing now uses `save_json()` instead of inline jq
+  - `lib/phase-tracking.sh` (T350): 4 functions converted from raw temp+mv to `save_json()`
+  - `lib/migrate.sh` (T530): 8 migration functions converted to `save_json()` for atomic writes
+  - `lib/logging.sh` + `scripts/log.sh` (T531): 4 logging functions converted to `save_json()`
+
+- **Race Condition Prevention** - All JSON write operations now protected by flock(2)
+  - Eliminates race conditions in concurrent task operations
+  - 18+ write operations now use atomic file locking via `save_json()`
+
+### Changed
+- **FILE-LOCKING-IMPLEMENTATION-REPORT.md** - Updated to reflect 100% completion status
+
 ## [0.21.0] - 2025-12-19
 
 ### Added

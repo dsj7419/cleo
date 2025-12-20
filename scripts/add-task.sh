@@ -408,11 +408,22 @@ update_checksum() {
   save_json "$file" "$updated_content"
 }
 
-# Log operation to todo-log.json
+# Log operation to todo-log.json (with file locking for concurrency safety)
 log_operation() {
   local operation="$1"
   local task_id="$2"
   local details="$3"
+
+  # Acquire lock on log file before any writes
+  local log_lock_fd=""
+  if ! lock_file "$LOG_FILE" log_lock_fd 30; then
+    echo "Warning: Could not acquire lock for log file, skipping log entry" >&2
+    return 1
+  fi
+
+  # Ensure lock is released on function exit/error
+  # shellcheck disable=SC2064
+  trap "unlock_file $log_lock_fd" RETURN
 
   if [[ ! -f "$LOG_FILE" ]]; then
     echo '{"entries":[]}' > "$LOG_FILE"
@@ -445,7 +456,28 @@ log_operation() {
   local updated_log
   updated_log=$(jq --argjson entry "$log_entry" '.entries += [$entry]' "$LOG_FILE")
 
-  echo "$updated_log" > "$LOG_FILE"
+  # Atomic write pattern (manual, since we already hold the lock - save_json would deadlock)
+  local temp_file="${LOG_FILE}.tmp"
+
+  # Validate JSON before writing
+  if ! echo "$updated_log" | jq empty 2>/dev/null; then
+    echo "Warning: Invalid JSON in log entry, skipping" >&2
+    return 1
+  fi
+
+  # Write to temp file with pretty-printing
+  if ! echo "$updated_log" | jq '.' > "$temp_file" 2>/dev/null; then
+    echo "Warning: Failed to write temp log file" >&2
+    rm -f "$temp_file" 2>/dev/null || true
+    return 1
+  fi
+
+  # Atomic rename (we already hold the lock)
+  if ! mv "$temp_file" "$LOG_FILE" 2>/dev/null; then
+    echo "Warning: Failed to update log file" >&2
+    rm -f "$temp_file" 2>/dev/null || true
+    return 1
+  fi
 }
 
 # Parse arguments

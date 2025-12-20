@@ -533,7 +533,8 @@ fi
 FOCUS_CLEARED=false
 CURRENT_FOCUS=$(jq -r '.focus.currentTask // ""' "$TODO_FILE")
 if [[ "$CURRENT_FOCUS" == "$TASK_ID" ]]; then
-  jq '.focus.currentTask = null' "$TODO_FILE" > "${TODO_FILE}.tmp" && mv "${TODO_FILE}.tmp" "$TODO_FILE"
+  updated_todo=$(jq '.focus.currentTask = null' "$TODO_FILE")
+  save_json "$TODO_FILE" "$updated_todo"
   FOCUS_CLEARED=true
   [[ "$FORMAT" != "json" ]] && log_info "Clearing focus from completed task"
 fi

@@ -82,7 +82,6 @@ count_phases_by_status() {
 set_current_phase() {
     local slug="$1"
     local todo_file="${2:-$TODO_FILE}"
-    local temp_file
 
     # Validate phase exists
     if ! jq -e --arg slug "$slug" '.project.phases[$slug]' "$todo_file" >/dev/null 2>&1; then
@@ -90,15 +89,17 @@ set_current_phase() {
         return 1
     fi
 
-    temp_file=$(mktemp)
     local timestamp
     timestamp=$(get_iso_timestamp)
 
-    jq --arg slug "$slug" --arg ts "$timestamp" '
+    local updated_content
+    updated_content=$(jq --arg slug "$slug" --arg ts "$timestamp" '
         .project.currentPhase = $slug |
         .focus.currentPhase = $slug |
         .lastUpdated = $ts
-    ' "$todo_file" > "$temp_file" && mv "$temp_file" "$todo_file"
+    ' "$todo_file")
+
+    save_json "$todo_file" "$updated_content"
 }
 
 # Start a phase (transition from pending to active)
@@ -108,7 +109,6 @@ start_phase() {
     local slug="$1"
     local todo_file="${2:-$TODO_FILE}"
     local current_status
-    local temp_file
 
     current_status=$(get_phase_status "$slug" "$todo_file")
 
@@ -117,17 +117,19 @@ start_phase() {
         return 1
     fi
 
-    temp_file=$(mktemp)
     local timestamp
     timestamp=$(get_iso_timestamp)
 
-    jq --arg slug "$slug" --arg ts "$timestamp" '
+    local updated_content
+    updated_content=$(jq --arg slug "$slug" --arg ts "$timestamp" '
         .project.phases[$slug].status = "active" |
         .project.phases[$slug].startedAt = $ts |
         .project.currentPhase = $slug |
         .focus.currentPhase = $slug |
         .lastUpdated = $ts
-    ' "$todo_file" > "$temp_file" && mv "$temp_file" "$todo_file"
+    ' "$todo_file")
+
+    save_json "$todo_file" "$updated_content"
 }
 
 # Complete a phase (transition from active to completed)
@@ -138,7 +140,6 @@ complete_phase() {
     local todo_file="${2:-$TODO_FILE}"
     local force="${3:-false}"
     local current_status
-    local temp_file
 
     current_status=$(get_phase_status "$slug" "$todo_file")
 
@@ -160,15 +161,17 @@ complete_phase() {
         fi
     fi
 
-    temp_file=$(mktemp)
     local timestamp
     timestamp=$(get_iso_timestamp)
 
-    jq --arg slug "$slug" --arg ts "$timestamp" '
+    local updated_content
+    updated_content=$(jq --arg slug "$slug" --arg ts "$timestamp" '
         .project.phases[$slug].status = "completed" |
         .project.phases[$slug].completedAt = $ts |
         .lastUpdated = $ts
-    ' "$todo_file" > "$temp_file" && mv "$temp_file" "$todo_file"
+    ' "$todo_file")
+
+    save_json "$todo_file" "$updated_content"
 }
 
 # Advance to next phase (complete current if needed, start next)
@@ -333,12 +336,9 @@ add_phase_history_entry() {
     local timestamp
     timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-    # Create temp file for atomic update
-    local temp_file
-    temp_file=$(mktemp)
-
     # Build the history entry and append to phaseHistory
-    if jq --arg phase "$phase_slug" \
+    local updated_content
+    if ! updated_content=$(jq --arg phase "$phase_slug" \
           --arg type "$transition_type" \
           --arg ts "$timestamp" \
           --argjson count "$task_count" \
@@ -355,13 +355,11 @@ add_phase_history_entry() {
             fromPhase: (if $from == "null" or $from == "" then null else $from end),
             reason: (if $reason == "" then null else $reason end)
         } | with_entries(select(.value != null))]
-    ' "$todo_file" > "$temp_file"; then
-        mv "$temp_file" "$todo_file"
-        return 0
-    else
-        rm -f "$temp_file"
+    ' "$todo_file"); then
         return 1
     fi
+
+    save_json "$todo_file" "$updated_content"
 }
 
 # Get last phase history entry for a specific phase

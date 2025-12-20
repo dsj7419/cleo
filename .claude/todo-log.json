@@ -3,9 +3,9 @@
   "version": "2.1.0",
   "project": "claude-todo",
   "_meta": {
-    "totalEntries": 1120,
+    "totalEntries": 1149,
     "firstEntry": "2025-12-13T07:14:38Z",
-    "lastEntry": "2025-12-20T00:39:10Z",
+    "lastEntry": "2025-12-20T01:26:34Z",
     "entriesPruned": 0
   },
   "entries": [
@@ -27973,6 +27973,646 @@
         "title": "Add cache schema version tracking to compliance checker",
         "status": "pending",
         "priority": "low"
+      }
+    },
+    {
+      "id": "log_783fe5cd6ea7",
+      "timestamp": "2025-12-20T00:58:45Z",
+      "sessionId": null,
+      "action": "task_updated",
+      "actor": "system",
+      "taskId": "T001",
+      "before": {
+        "title": "Completed task",
+        "status": "done",
+        "priority": "medium",
+        "description": "A completed task for testing",
+        "phase": null,
+        "labels": null,
+        "files": null,
+        "acceptance": null,
+        "depends": null,
+        "blockedBy": null
+      },
+      "after": {
+        "title": "Completed task",
+        "status": "done",
+        "priority": "medium",
+        "description": "A completed task for testing",
+        "phase": null,
+        "labels": null,
+        "files": null,
+        "acceptance": null,
+        "depends": null,
+        "blockedBy": null
+      },
+      "details": {
+        "operation": "update"
+      }
+    },
+    {
+      "id": "log_f8c34d5b578a",
+      "timestamp": "2025-12-20T00:58:45Z",
+      "sessionId": null,
+      "action": "task_updated",
+      "actor": "system",
+      "taskId": "T001",
+      "before": {
+        "title": "Completed task",
+        "status": "done",
+        "priority": "medium",
+        "description": "A completed task for testing",
+        "phase": null,
+        "labels": null,
+        "files": null,
+        "acceptance": null,
+        "depends": null,
+        "blockedBy": null
+      },
+      "after": {
+        "title": "Completed task",
+        "status": "done",
+        "priority": "medium",
+        "description": "A completed task for testing",
+        "phase": null,
+        "labels": [
+          "hierarchy-fix",
+          "v0.20"
+        ],
+        "files": null,
+        "acceptance": null,
+        "depends": null,
+        "blockedBy": null
+      },
+      "details": {
+        "operation": "update"
+      }
+    },
+    {
+      "id": "log_2bd028a358d6",
+      "timestamp": "2025-12-20T00:58:56Z",
+      "sessionId": null,
+      "action": "task_updated",
+      "actor": "system",
+      "taskId": "T001",
+      "before": {
+        "title": "Completed task",
+        "status": "done",
+        "priority": "medium",
+        "description": "A completed task for testing",
+        "phase": null,
+        "labels": null,
+        "files": null,
+        "acceptance": null,
+        "depends": null,
+        "blockedBy": null
+      },
+      "after": {
+        "title": "Completed task",
+        "status": "done",
+        "priority": "medium",
+        "description": "A completed task for testing",
+        "phase": null,
+        "labels": null,
+        "files": null,
+        "acceptance": null,
+        "depends": null,
+        "blockedBy": null
+      },
+      "details": {
+        "operation": "update"
+      }
+    },
+    {
+      "id": "log_02e4c90b5594",
+      "timestamp": "2025-12-20T00:58:57Z",
+      "sessionId": null,
+      "action": "focus_changed",
+      "actor": "claude",
+      "taskId": null,
+      "before": null,
+      "after": {
+        "currentTask": "T528"
+      },
+      "details": null
+    },
+    {
+      "id": "log_dbcf0c13edaf",
+      "timestamp": "2025-12-20T01:03:59Z",
+      "sessionId": null,
+      "action": "task_updated",
+      "actor": "system",
+      "taskId": "T350",
+      "before": {
+        "title": "Implement file locking for concurrent phase operations",
+        "status": "pending",
+        "priority": "low",
+        "description": "The test 'phase-edge: file lock prevents concurrent phase operations' in tests/edge-cases/phase-edge-cases.bats:481 is skipped pending implementation. Need to add file locking to phase.sh operations to prevent race conditions when multiple processes modify phases simultaneously.",
+        "phase": "core",
+        "labels": [
+          "enhancement",
+          "feature-phase",
+          "testing"
+        ],
+        "files": null,
+        "acceptance": null,
+        "depends": null,
+        "blockedBy": null
+      },
+      "after": {
+        "title": "Implement file locking for concurrent phase operations",
+        "status": "pending",
+        "priority": "medium",
+        "description": "The test 'phase-edge: file lock prevents concurrent phase operations' in tests/edge-cases/phase-edge-cases.bats:481 is skipped pending implementation. Need to add file locking to phase.sh operations to prevent race conditions when multiple processes modify phases simultaneously.",
+        "phase": "core",
+        "labels": [
+          "enhancement",
+          "feature-phase",
+          "testing"
+        ],
+        "files": null,
+        "acceptance": null,
+        "depends": null,
+        "blockedBy": null
+      },
+      "details": {
+        "operation": "update"
+      }
+    },
+    {
+      "id": "log_cf8fda85dfee",
+      "timestamp": "2025-12-20T01:04:00Z",
+      "sessionId": null,
+      "action": "task_updated",
+      "actor": "system",
+      "taskId": "T452",
+      "before": {
+        "title": "Add file locking to archive.sh",
+        "status": "pending",
+        "priority": "high",
+        "description": "archive.sh does not source lib/file-ops.sh and has no file locking. Vulnerable to race conditions during concurrent archive operations. Must: source lib/file-ops.sh, use save_json() for all writes, or wrap operations in lock_file()/unlock_file().",
+        "phase": "core",
+        "labels": [
+          "concurrency",
+          "file-locking",
+          "vulnerability"
+        ],
+        "files": null,
+        "acceptance": null,
+        "depends": null,
+        "blockedBy": null
+      },
+      "after": {
+        "title": "Add file locking to archive.sh",
+        "status": "pending",
+        "priority": "high",
+        "description": "archive.sh does not source lib/file-ops.sh and has no file locking. Vulnerable to race conditions during concurrent archive operations. Must: source lib/file-ops.sh, use save_json() for all writes, or wrap operations in lock_file()/unlock_file().",
+        "phase": "core",
+        "labels": [
+          "concurrency",
+          "file-locking",
+          "vulnerability"
+        ],
+        "files": [
+          "lib/file-ops.sh",
+          "scripts/archive.sh"
+        ],
+        "acceptance": null,
+        "depends": null,
+        "blockedBy": null
+      },
+      "details": {
+        "operation": "update"
+      }
+    },
+    {
+      "id": "log_c8ba2a0cb8a1",
+      "timestamp": "2025-12-20T01:04:02Z",
+      "sessionId": null,
+      "action": "task_updated",
+      "actor": "system",
+      "taskId": "T453",
+      "before": {
+        "title": "Fix unprotected log_operation() in add-task.sh",
+        "status": "pending",
+        "priority": "medium",
+        "description": "add-task.sh line 448: log_operation() writes to todo-log.json without file locking. Race condition vulnerability for concurrent add operations writing to log.",
+        "phase": "core",
+        "labels": [
+          "concurrency",
+          "file-locking",
+          "vulnerability"
+        ],
+        "files": null,
+        "acceptance": null,
+        "depends": null,
+        "blockedBy": null
+      },
+      "after": {
+        "title": "Fix unprotected log_operation() in add-task.sh",
+        "status": "pending",
+        "priority": "medium",
+        "description": "add-task.sh line 448: log_operation() writes to todo-log.json without file locking. Race condition vulnerability for concurrent add operations writing to log.",
+        "phase": "core",
+        "labels": [
+          "concurrency",
+          "file-locking",
+          "vulnerability"
+        ],
+        "files": [
+          "lib/logging.sh",
+          "scripts/add-task.sh"
+        ],
+        "acceptance": null,
+        "depends": null,
+        "blockedBy": null
+      },
+      "details": {
+        "operation": "update"
+      }
+    },
+    {
+      "id": "log_db276f885479",
+      "timestamp": "2025-12-20T01:04:03Z",
+      "sessionId": null,
+      "action": "task_updated",
+      "actor": "system",
+      "taskId": "T454",
+      "before": {
+        "title": "Fix unprotected focus-clearing in complete-task.sh",
+        "status": "pending",
+        "priority": "medium",
+        "description": "complete-task.sh line 536: Focus clearing uses inline jq+temp file without locking. Race condition when concurrent complete operations modify focus state.",
+        "phase": "core",
+        "labels": [
+          "concurrency",
+          "file-locking",
+          "vulnerability"
+        ],
+        "files": null,
+        "acceptance": null,
+        "depends": null,
+        "blockedBy": null
+      },
+      "after": {
+        "title": "Fix unprotected focus-clearing in complete-task.sh",
+        "status": "pending",
+        "priority": "medium",
+        "description": "complete-task.sh line 536: Focus clearing uses inline jq+temp file without locking. Race condition when concurrent complete operations modify focus state.",
+        "phase": "core",
+        "labels": [
+          "concurrency",
+          "file-locking",
+          "vulnerability"
+        ],
+        "files": [
+          "scripts/complete-task.sh"
+        ],
+        "acceptance": null,
+        "depends": null,
+        "blockedBy": null
+      },
+      "details": {
+        "operation": "update"
+      }
+    },
+    {
+      "id": "log_310be9f2fcda",
+      "timestamp": "2025-12-20T01:04:25Z",
+      "sessionId": null,
+      "action": "task_updated",
+      "actor": "system",
+      "taskId": "T350",
+      "before": {
+        "title": "Implement file locking for concurrent phase operations",
+        "status": "pending",
+        "priority": "medium",
+        "description": "The test 'phase-edge: file lock prevents concurrent phase operations' in tests/edge-cases/phase-edge-cases.bats:481 is skipped pending implementation. Need to add file locking to phase.sh operations to prevent race conditions when multiple processes modify phases simultaneously.",
+        "phase": "core",
+        "labels": [
+          "enhancement",
+          "feature-phase",
+          "testing"
+        ],
+        "files": null,
+        "acceptance": null,
+        "depends": null,
+        "blockedBy": null
+      },
+      "after": {
+        "title": "Implement file locking for concurrent phase operations",
+        "status": "pending",
+        "priority": "medium",
+        "description": "The test 'phase-edge: file lock prevents concurrent phase operations' in tests/edge-cases/phase-edge-cases.bats:481 is skipped pending implementation. Need to add file locking to phase.sh operations to prevent race conditions when multiple processes modify phases simultaneously.",
+        "phase": "core",
+        "labels": [
+          "concurrency",
+          "enhancement",
+          "feature-phase",
+          "file-locking",
+          "testing",
+          "vulnerability"
+        ],
+        "files": [
+          "lib/file-ops.sh",
+          "lib/phase-tracking.sh",
+          "scripts/phase.sh"
+        ],
+        "acceptance": null,
+        "depends": null,
+        "blockedBy": null
+      },
+      "details": {
+        "operation": "update"
+      }
+    },
+    {
+      "id": "log-1766192667-3044a1",
+      "timestamp": "2025-12-20T01:04:27Z",
+      "action": "task_created",
+      "taskId": "T530",
+      "actor": "system",
+      "details": {
+        "title": "Add file locking to migrate.sh and lib/migrate.sh",
+        "status": "pending",
+        "priority": "medium"
+      },
+      "before": null,
+      "after": {
+        "title": "Add file locking to migrate.sh and lib/migrate.sh",
+        "status": "pending",
+        "priority": "medium"
+      }
+    },
+    {
+      "id": "log-1766192668-ddf5fd",
+      "timestamp": "2025-12-20T01:04:28Z",
+      "action": "task_created",
+      "taskId": "T531",
+      "actor": "system",
+      "details": {
+        "title": "Add file locking to log.sh and lib/logging.sh",
+        "status": "pending",
+        "priority": "low"
+      },
+      "before": null,
+      "after": {
+        "title": "Add file locking to log.sh and lib/logging.sh",
+        "status": "pending",
+        "priority": "low"
+      }
+    },
+    {
+      "id": "log_8f815c1b88a5",
+      "timestamp": "2025-12-20T01:04:41Z",
+      "sessionId": null,
+      "action": "focus_changed",
+      "actor": "claude",
+      "taskId": null,
+      "before": {
+        "currentTask": "T528"
+      },
+      "after": {
+        "currentTask": "T529"
+      },
+      "details": null
+    },
+    {
+      "id": "log_fdad389878e3",
+      "timestamp": "2025-12-20T01:04:54Z",
+      "sessionId": null,
+      "action": "task_updated",
+      "actor": "system",
+      "taskId": "T451",
+      "before": {
+        "title": "File Locking & Concurrency Safety",
+        "status": "pending",
+        "priority": "high",
+        "description": "Epic for file locking implementation ensuring data integrity during concurrent operations. Core locking mechanism implemented in lib/file-ops.sh (T132). Remaining work: integrate locking into all write scripts, fix remaining vulnerabilities in archive.sh and phase.sh.",
+        "phase": "core",
+        "labels": [
+          "concurrency",
+          "data-integrity",
+          "file-locking"
+        ],
+        "files": null,
+        "acceptance": null,
+        "depends": null,
+        "blockedBy": null
+      },
+      "after": {
+        "title": "File Locking & Concurrency Safety",
+        "status": "pending",
+        "priority": "high",
+        "description": "Epic for file locking implementation ensuring data integrity during concurrent operations. Core locking mechanism implemented in lib/file-ops.sh (T132). Remaining work: integrate locking into all write scripts, fix remaining vulnerabilities in archive.sh and phase.sh.",
+        "phase": "core",
+        "labels": [
+          "concurrency",
+          "data-integrity",
+          "file-locking"
+        ],
+        "files": null,
+        "acceptance": null,
+        "depends": null,
+        "blockedBy": null
+      },
+      "details": {
+        "operation": "update"
+      }
+    },
+    {
+      "id": "log_19269ddc2319",
+      "timestamp": "2025-12-20T01:06:03Z",
+      "sessionId": "session_20251219_170603_697635",
+      "action": "session_start",
+      "actor": "system",
+      "taskId": null,
+      "before": null,
+      "after": null,
+      "details": "Session started"
+    },
+    {
+      "id": "log_b8e1102225ab",
+      "timestamp": "2025-12-20T01:06:25Z",
+      "sessionId": "session_20251219_170603_697635",
+      "action": "session_end",
+      "actor": "system",
+      "taskId": null,
+      "before": null,
+      "after": null,
+      "details": null
+    },
+    {
+      "id": "log_6ce25403faff",
+      "timestamp": "2025-12-20T01:06:30Z",
+      "sessionId": null,
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T528",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-20T01:06:30Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_80f81dfe6fa8",
+      "timestamp": "2025-12-20T01:06:32Z",
+      "sessionId": null,
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T529",
+      "before": {
+        "status": "active",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-20T01:06:32Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_8d136ebece88",
+      "timestamp": "2025-12-20T01:23:26Z",
+      "sessionId": null,
+      "action": "task_created",
+      "actor": "claude",
+      "taskId": "T999",
+      "before": null,
+      "after": {
+        "title": "Test task"
+      },
+      "details": null
+    },
+    {
+      "id": "log_092cde486065",
+      "timestamp": "2025-12-20T01:26:26Z",
+      "sessionId": null,
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T452",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-20T01:26:26Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_5a7820ee6baa",
+      "timestamp": "2025-12-20T01:26:28Z",
+      "sessionId": null,
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T453",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-20T01:26:28Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_6633cc4711bd",
+      "timestamp": "2025-12-20T01:26:29Z",
+      "sessionId": null,
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T454",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-20T01:26:29Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_450738b8ad77",
+      "timestamp": "2025-12-20T01:26:31Z",
+      "sessionId": null,
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T350",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-20T01:26:30Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_357b0b32a813",
+      "timestamp": "2025-12-20T01:26:32Z",
+      "sessionId": null,
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T530",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-20T01:26:32Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_a29b8d982e25",
+      "timestamp": "2025-12-20T01:26:34Z",
+      "sessionId": null,
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T531",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-20T01:26:34Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
       }
     }
   ]

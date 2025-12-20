@@ -305,17 +305,14 @@ update_version_field() {
     local file="$1"
     local new_version="$2"
 
-    local temp_file="${file}.tmp"
-
-    # Update version field
-    jq --arg ver "$new_version" '.version = $ver' "$file" > "$temp_file" || {
+    # Update version field using atomic save_json
+    local updated_content
+    updated_content=$(jq --arg ver "$new_version" '.version = $ver' "$file") || {
         echo "ERROR: Failed to update version field" >&2
-        rm -f "$temp_file"
         return 1
     }
 
-    # Atomic replace
-    mv "$temp_file" "$file"
+    save_json "$file" "$updated_content"
 }
 
 # Add field if missing (idempotent)
@@ -325,17 +322,16 @@ add_field_if_missing() {
     local path="$2"
     local default="$3"
 
-    local temp_file="${file}.tmp"
-
-    jq --argjson default "$default" \
+    # Add field using atomic save_json
+    local updated_content
+    updated_content=$(jq --argjson default "$default" \
        "if $path == null then $path = \$default else . end" \
-       "$file" > "$temp_file" || {
+       "$file") || {
         echo "ERROR: Failed to add field $path" >&2
-        rm -f "$temp_file"
         return 1
     }
 
-    mv "$temp_file" "$file"
+    save_json "$file" "$updated_content"
 }
 
 # Remove field if exists (idempotent)
@@ -344,15 +340,14 @@ remove_field_if_exists() {
     local file="$1"
     local path="$2"
 
-    local temp_file="${file}.tmp"
-
-    jq "del($path)" "$file" > "$temp_file" || {
+    # Remove field using atomic save_json
+    local updated_content
+    updated_content=$(jq "del($path)" "$file") || {
         echo "ERROR: Failed to remove field $path" >&2
-        rm -f "$temp_file"
         return 1
     }
 
-    mv "$temp_file" "$file"
+    save_json "$file" "$updated_content"
 }
 
 # Rename field (idempotent)
@@ -362,15 +357,14 @@ rename_field() {
     local old_path="$2"
     local new_path="$3"
 
-    local temp_file="${file}.tmp"
-
-    jq "$new_path = $old_path | del($old_path)" "$file" > "$temp_file" || {
+    # Rename field using atomic save_json
+    local updated_content
+    updated_content=$(jq "$new_path = $old_path | del($old_path)" "$file") || {
         echo "ERROR: Failed to rename field $old_path to $new_path" >&2
-        rm -f "$temp_file"
         return 1
     }
 
-    mv "$temp_file" "$file"
+    save_json "$file" "$updated_content"
 }
 
 # ============================================================================
@@ -381,11 +375,11 @@ rename_field() {
 # Args: $1 = file path
 migrate_config_field_naming() {
     local file="$1"
-    local temp_file="${file}.tmp"
 
     # Rename old field names to new show* prefix pattern
     # This maintains backward compatibility while standardizing naming
-    jq '
+    local updated_content
+    updated_content=$(jq '
         if .output then
             .output |= (
                 # Rename colorEnabled -> showColor
@@ -406,13 +400,12 @@ migrate_config_field_naming() {
                 else . end
             )
         else . end
-    ' "$file" > "$temp_file" || {
+    ' "$file") || {
         echo "ERROR: Failed to migrate config field names" >&2
-        rm -f "$temp_file"
         return 1
     }
 
-    mv "$temp_file" "$file"
+    save_json "$file" "$updated_content"
 }
 
 # Migration from any 2.x version to 2.1.0 for config.json
@@ -445,15 +438,15 @@ migrate_config_to_2_1_0() {
 # Converts project field from string to object with phases
 migrate_todo_to_2_2_0() {
     local file="$1"
-    local temp_file="${file}.tmp"
 
     # Check if project is already an object (idempotent)
     local project_type
     project_type=$(jq -r '.project | type' "$file" 2>/dev/null)
 
+    local updated_content
     if [[ "$project_type" == "object" ]]; then
         # Already migrated, just ensure phases have required fields and update version
-        jq '
+        updated_content=$(jq '
             # Ensure all phases have startedAt and completedAt fields
             .project.phases |= (
                 to_entries | map(
@@ -463,9 +456,8 @@ migrate_todo_to_2_2_0() {
                     )
                 ) | from_entries
             )
-        ' "$file" > "$temp_file" || {
+        ' "$file") || {
             echo "ERROR: Failed to update existing phase fields" >&2
-            rm -f "$temp_file"
             return 1
         }
     else
@@ -474,7 +466,7 @@ migrate_todo_to_2_2_0() {
         local default_phases
         default_phases=$(get_default_phases)
 
-        jq --argjson phases "$default_phases" '
+        updated_content=$(jq --argjson phases "$default_phases" '
             # Convert project string to object with phases from template
             if (.project | type) == "string" then
                 .project = {
@@ -483,15 +475,14 @@ migrate_todo_to_2_2_0() {
                     "phases": $phases
                 }
             else . end
-        ' "$file" > "$temp_file" || {
+        ' "$file") || {
             echo "ERROR: Failed to migrate project field" >&2
-            rm -f "$temp_file"
             return 1
         }
     fi
 
-    # Move temp file to original
-    mv "$temp_file" "$file" || {
+    # Save the updated content atomically
+    save_json "$file" "$updated_content" || {
         echo "ERROR: Failed to update file" >&2
         return 1
     }
@@ -499,14 +490,14 @@ migrate_todo_to_2_2_0() {
     # Update version fields
     update_version_field "$file" "2.2.0" || return 1
 
-    # Update _meta.version to match
-    jq '._meta.version = "2.2.0"' "$file" > "$temp_file" || {
+    # Update _meta.version to match using atomic save_json
+    local meta_updated
+    meta_updated=$(jq '._meta.version = "2.2.0"' "$file") || {
         echo "ERROR: Failed to update _meta.version" >&2
-        rm -f "$temp_file"
         return 1
     }
 
-    mv "$temp_file" "$file"
+    save_json "$file" "$meta_updated"
 
     # Log migration if log_migration is available
     if declare -f log_migration >/dev/null 2>&1; then
@@ -521,7 +512,6 @@ migrate_todo_to_2_2_0() {
 # Migrates label conventions to structured fields
 migrate_todo_to_2_3_0() {
     local file="$1"
-    local temp_file="${file}.tmp"
 
     echo "  Adding hierarchy fields (type, parentId, size) to tasks..."
 
@@ -537,7 +527,8 @@ migrate_todo_to_2_3_0() {
     #   - "size:small" or "size-small" → size: "small", remove label
     #   - "size:medium" or "size-medium" → size: "medium", remove label
     #   - "size:large" or "size-large" → size: "large", remove label
-    jq '
+    local updated_content
+    updated_content=$(jq '
         # Helper to check if label matches prefix with either : or - separator
         def matches_prefix($prefix):
             startswith($prefix + ":") or startswith($prefix + "-");
@@ -630,21 +621,19 @@ migrate_todo_to_2_3_0() {
         # Update version fields
         .version = "2.3.0" |
         ._meta.version = "2.3.0"
-    ' "$file" > "$temp_file" || {
+    ' "$file") || {
         echo "ERROR: Failed to add hierarchy fields" >&2
-        rm -f "$temp_file"
         return 1
     }
 
     # Validate the result
-    if ! jq empty "$temp_file" 2>/dev/null; then
+    if ! echo "$updated_content" | jq empty 2>/dev/null; then
         echo "ERROR: Migration produced invalid JSON" >&2
-        rm -f "$temp_file"
         return 1
     fi
 
-    # Atomic replace
-    mv "$temp_file" "$file" || {
+    # Atomic save using save_json
+    save_json "$file" "$updated_content" || {
         echo "ERROR: Failed to update file" >&2
         return 1
     }
@@ -998,7 +987,6 @@ show_repair_preview() {
 # Returns: 0 on success, 1 on failure
 execute_repair() {
     local file="$1"
-    local temp_file="${file}.repair.tmp"
 
     # Get canonical phases
     local canonical_phases
@@ -1006,7 +994,8 @@ execute_repair() {
 
     # Build the repair jq filter
     # This is a complex but idempotent transformation
-    jq --argjson canonical "$canonical_phases" '
+    local updated_content
+    updated_content=$(jq --argjson canonical "$canonical_phases" '
         # Start with the original
         . as $original |
 
@@ -1055,24 +1044,22 @@ execute_repair() {
         # Ensure focus has all fields
         .focus.sessionNote = (.focus.sessionNote // null) |
         .focus.nextAction = (.focus.nextAction // null)
-    ' "$file" > "$temp_file" 2>/dev/null
+    ' "$file" 2>/dev/null)
 
     local jq_status=$?
     if [[ $jq_status -ne 0 ]]; then
         echo "ERROR: jq transformation failed" >&2
-        rm -f "$temp_file"
         return 1
     fi
 
     # Validate the result
-    if ! jq empty "$temp_file" 2>/dev/null; then
+    if ! echo "$updated_content" | jq empty 2>/dev/null; then
         echo "ERROR: Repair produced invalid JSON" >&2
-        rm -f "$temp_file"
         return 1
     fi
 
-    # Atomic replace
-    mv "$temp_file" "$file"
+    # Atomic save using save_json
+    save_json "$file" "$updated_content"
 
     return 0
 }

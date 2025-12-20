@@ -33,6 +33,12 @@ if [[ -f "$LIB_DIR/backup.sh" ]]; then
   source "$LIB_DIR/backup.sh"
 fi
 
+# Source file-ops library for atomic writes with file locking
+if [[ -f "$LIB_DIR/file-ops.sh" ]]; then
+  # shellcheck source=../lib/file-ops.sh
+  source "$LIB_DIR/file-ops.sh"
+fi
+
 # Source output formatting library
 if [[ -f "$LIB_DIR/output-format.sh" ]]; then
   # shellcheck source=../lib/output-format.sh
@@ -175,7 +181,7 @@ done
 if [[ ! -f "$ARCHIVE_FILE" ]]; then
   # v2.2.0+: .project is an object with .name; v2.1.x: .project was a string
   PROJECT_NAME=$(jq -r '.project.name // .project // "unknown"' "$TODO_FILE")
-  cat > "$ARCHIVE_FILE" << EOF
+  INITIAL_ARCHIVE_CONTENT=$(cat << EOF
 {
   "version": "$VERSION",
   "project": "$PROJECT_NAME",
@@ -185,6 +191,12 @@ if [[ ! -f "$ARCHIVE_FILE" ]]; then
   "statistics": { "byPhase": {}, "byPriority": {"critical":0,"high":0,"medium":0,"low":0}, "byLabel": {}, "averageCycleTime": null }
 }
 EOF
+)
+  if declare -f save_json >/dev/null 2>&1; then
+    save_json "$ARCHIVE_FILE" "$INITIAL_ARCHIVE_CONTENT"
+  else
+    echo "$INITIAL_ARCHIVE_CONTENT" > "$ARCHIVE_FILE"
+  fi
   [[ "$QUIET" != true && "$FORMAT" != "json" ]] && log_info "Created $ARCHIVE_FILE"
 fi
 
@@ -407,7 +419,7 @@ if ! jq --argjson tasks "$TASKS_WITH_METADATA" --arg ts "$TIMESTAMP" '
   .phaseSummary = (
     .archivedTasks | group_by(.phase // "no-phase") |
     map({
-      key: .[0].phase // "no-phase",
+      key: (.[0].phase // "no-phase"),
       value: {
         totalTasks: length,
         firstCompleted: (map(.completedAt // empty) | sort | first // null),
@@ -516,10 +528,50 @@ else
   [[ -f "$LOG_FILE" ]] && cp "$LOG_FILE" "${LOG_FILE}${BACKUP_SUFFIX}"
 fi
 
-# Step 6: Atomic commit - move all temp files to final locations
-mv "$ARCHIVE_TMP" "$ARCHIVE_FILE"
-mv "$TODO_TMP" "$TODO_FILE"
-[[ -f "$LOG_TMP" ]] && mv "$LOG_TMP" "$LOG_FILE"
+# Step 6: Atomic commit with file locking via save_json()
+# Note: save_json() handles locking, validation, and atomic rename internally
+if declare -f save_json >/dev/null 2>&1; then
+  # Use save_json for locked atomic writes
+  ARCHIVE_CONTENT=$(cat "$ARCHIVE_TMP")
+  if ! save_json "$ARCHIVE_FILE" "$ARCHIVE_CONTENT"; then
+    if [[ "$FORMAT" == "json" ]] && declare -f output_error >/dev/null 2>&1; then
+      output_error "E_FILE_WRITE_ERROR" "Failed to save archive file with locking" "${EXIT_FILE_ERROR:-3}" false
+    else
+      log_error "Failed to save archive file with locking"
+    fi
+    exit "${EXIT_FILE_ERROR:-3}"
+  fi
+  rm -f "$ARCHIVE_TMP"
+
+  TODO_CONTENT=$(cat "$TODO_TMP")
+  if ! save_json "$TODO_FILE" "$TODO_CONTENT"; then
+    if [[ "$FORMAT" == "json" ]] && declare -f output_error >/dev/null 2>&1; then
+      output_error "E_FILE_WRITE_ERROR" "Failed to save todo file with locking" "${EXIT_FILE_ERROR:-3}" false
+    else
+      log_error "Failed to save todo file with locking"
+    fi
+    exit "${EXIT_FILE_ERROR:-3}"
+  fi
+  rm -f "$TODO_TMP"
+
+  if [[ -f "$LOG_TMP" ]]; then
+    LOG_CONTENT=$(cat "$LOG_TMP")
+    if ! save_json "$LOG_FILE" "$LOG_CONTENT"; then
+      if [[ "$FORMAT" == "json" ]] && declare -f output_error >/dev/null 2>&1; then
+        output_error "E_FILE_WRITE_ERROR" "Failed to save log file with locking" "${EXIT_FILE_ERROR:-3}" false
+      else
+        log_error "Failed to save log file with locking"
+      fi
+      exit "${EXIT_FILE_ERROR:-3}"
+    fi
+    rm -f "$LOG_TMP"
+  fi
+else
+  # Fallback: direct mv if file-ops.sh not available
+  mv "$ARCHIVE_TMP" "$ARCHIVE_FILE"
+  mv "$TODO_TMP" "$TODO_FILE"
+  [[ -f "$LOG_TMP" ]] && mv "$LOG_TMP" "$LOG_FILE"
+fi
 
 # Remove trap since we succeeded
 trap - EXIT

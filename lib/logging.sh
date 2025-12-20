@@ -19,6 +19,15 @@ else
     exit 1
 fi
 
+# Source file-ops for atomic writes with file locking
+if [[ -f "$_LIB_DIR/file-ops.sh" ]]; then
+    # shellcheck source=lib/file-ops.sh
+    source "$_LIB_DIR/file-ops.sh"
+else
+    echo "ERROR: Cannot find file-ops.sh in $_LIB_DIR" >&2
+    exit 1
+fi
+
 # ============================================================================
 # VERSION
 # ============================================================================
@@ -289,8 +298,8 @@ log_operation() {
     local session_id="${7:-null}"
     local log_path="${8:-$LOG_FILE}"
     local log_entry
-    local temp_file
     local timestamp
+    local updated_log
 
     # Initialize log file if needed
     if [[ ! -f "$log_path" ]]; then
@@ -305,10 +314,9 @@ log_operation() {
     fi
 
     timestamp=$(get_timestamp)
-    temp_file=$(mktemp)
 
-    # Atomic append using jq
-    if jq \
+    # Build updated log content
+    updated_log=$(jq \
         --argjson entry "$log_entry" \
         --arg timestamp "$timestamp" \
         '
@@ -320,16 +328,20 @@ log_operation() {
         else
             .
         end
-        ' "$log_path" > "$temp_file"; then
+        ' "$log_path")
 
-        # Replace original file atomically
-        mv "$temp_file" "$log_path"
-        return 0
-    else
-        echo "ERROR: Failed to append log entry" >&2
-        rm -f "$temp_file"
+    if [[ $? -ne 0 ]]; then
+        echo "ERROR: Failed to build log entry" >&2
         return 1
     fi
+
+    # Atomic write with file locking via save_json
+    if ! save_json "$log_path" "$updated_log"; then
+        echo "ERROR: Failed to save log entry" >&2
+        return 1
+    fi
+
+    return 0
 }
 
 # ============================================================================
@@ -345,8 +357,8 @@ rotate_log() {
     local retention_days="${1:-30}"
     local log_path="${2:-$LOG_FILE}"
     local cutoff_timestamp
-    local temp_file
     local pruned_count
+    local updated_log
 
     if [[ ! -f "$log_path" ]]; then
         echo "ERROR: Log file does not exist: $log_path" >&2
@@ -356,10 +368,14 @@ rotate_log() {
     # Calculate cutoff date (retention_days ago) - uses platform-compat
     cutoff_timestamp=$(date_days_ago "$retention_days")
 
-    temp_file=$(create_temp_file)
+    # Get pruned count before modification
+    pruned_count=$(jq -r \
+        --arg cutoff "$cutoff_timestamp" \
+        '.entries | map(select(.timestamp < $cutoff)) | length' \
+        "$log_path")
 
-    # Filter entries and update metadata
-    if jq \
+    # Build updated log content with filtered entries
+    updated_log=$(jq \
         --arg cutoff "$cutoff_timestamp" \
         '
         .entries as $all_entries |
@@ -374,21 +390,21 @@ rotate_log() {
             ._meta.firstEntry = null |
             ._meta.lastEntry = null
         end
-        ' "$log_path" > "$temp_file"; then
+        ' "$log_path")
 
-        pruned_count=$(jq -r \
-            --arg cutoff "$cutoff_timestamp" \
-            '.entries | map(select(.timestamp < $cutoff)) | length' \
-            "$log_path")
-
-        mv "$temp_file" "$log_path"
-        echo "Pruned $pruned_count log entries older than $retention_days days" >&2
-        return 0
-    else
-        echo "ERROR: Failed to rotate log file" >&2
-        rm -f "$temp_file"
+    if [[ $? -ne 0 ]]; then
+        echo "ERROR: Failed to build rotated log content" >&2
         return 1
     fi
+
+    # Atomic write with file locking via save_json
+    if ! save_json "$log_path" "$updated_log"; then
+        echo "ERROR: Failed to save rotated log file" >&2
+        return 1
+    fi
+
+    echo "Pruned $pruned_count log entries older than $retention_days days" >&2
+    return 0
 }
 
 # Check if log rotation is needed based on config
@@ -724,9 +740,9 @@ log_phase_deleted() {
 # Output: Number of entries migrated
 migrate_log_entries() {
     local log_path="${1:-$LOG_FILE}"
-    local temp_file
     local backup_file
     local migrated_count
+    local updated_log
 
     if [[ ! -f "$log_path" ]]; then
         echo "ERROR: Log file does not exist: $log_path" >&2
@@ -770,11 +786,8 @@ migrate_log_entries() {
         return 1
     fi
 
-    # Create temp file for migration
-    temp_file=$(create_temp_file)
-
-    # Transform entries using jq
-    if jq --arg version "$CLAUDE_TODO_VERSION" '
+    # Transform entries using jq - build updated content in memory
+    updated_log=$(jq --arg version "$CLAUDE_TODO_VERSION" '
         # Define action value mappings from old to new schema
         def map_action_value:
             if . == "create" then "task_created"
@@ -824,24 +837,28 @@ migrate_log_entries() {
                 } + (if has("error") then {error: .error} else {} end)
             end
         ))
-    ' "$log_path" > "$temp_file"; then
-        # Validate migrated file has valid JSON
-        if jq empty "$temp_file" 2>/dev/null; then
-            # Replace original atomically
-            mv "$temp_file" "$log_path"
-            echo "Successfully migrated $migrated_count entries" >&2
-            echo "$migrated_count"
-            return 0
-        else
-            echo "ERROR: Migrated file contains invalid JSON" >&2
-            rm -f "$temp_file"
-            return 1
-        fi
-    else
-        echo "ERROR: Failed to migrate log entries" >&2
-        rm -f "$temp_file"
+    ' "$log_path")
+
+    if [[ $? -ne 0 ]]; then
+        echo "ERROR: Failed to build migrated log content" >&2
         return 1
     fi
+
+    # Validate migrated content has valid JSON
+    if ! echo "$updated_log" | jq empty 2>/dev/null; then
+        echo "ERROR: Migrated content contains invalid JSON" >&2
+        return 1
+    fi
+
+    # Atomic write with file locking via save_json
+    if ! save_json "$log_path" "$updated_log"; then
+        echo "ERROR: Failed to save migrated log file" >&2
+        return 1
+    fi
+
+    echo "Successfully migrated $migrated_count entries" >&2
+    echo "$migrated_count"
+    return 0
 }
 
 # ============================================================================

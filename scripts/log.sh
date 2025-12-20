@@ -545,12 +545,18 @@ ENTRY=$(jq -n \
     details: $details
   }')
 
-# Add entry to log
-jq --argjson entry "$ENTRY" --arg ts "$TIMESTAMP" '
+# Build updated log content
+UPDATED_LOG=$(jq --argjson entry "$ENTRY" --arg ts "$TIMESTAMP" '
   .entries += [$entry] |
   ._meta.totalEntries += 1 |
   ._meta.lastEntry = $ts |
   ._meta.firstEntry = (._meta.firstEntry // $ts)
-' "$LOG_FILE" > "${LOG_FILE}.tmp" && mv "${LOG_FILE}.tmp" "$LOG_FILE"
+' "$LOG_FILE")
+
+# Atomic write with file locking via save_json
+if ! save_json "$LOG_FILE" "$UPDATED_LOG"; then
+  log_error "Failed to save log entry"
+  exit 1
+fi
 
 log_info "Logged: $ACTION ($LOG_ID)"
