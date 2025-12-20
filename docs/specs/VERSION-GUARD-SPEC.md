@@ -1,5 +1,7 @@
 # Version Guard System Specification
 
+> **SUPERSEDED**: This document has been superseded by [HEALTH-REGISTRY-SPEC.md](./HEALTH-REGISTRY-SPEC.md) which provides a comprehensive health registry system including version guards, health monitoring, and multi-agent coordination.
+
 ## Overview
 
 This specification defines a three-layer defense system for schema integrity in claude-todo,
