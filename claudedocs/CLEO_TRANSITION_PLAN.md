@@ -19,16 +19,19 @@
 
 ## 1. Executive Summary
 
-C.L.E.O. acts as the persistent memory and logistics layer for *any* CLI-based AI agent. The transition involves:
+C.L.E.O. acts as the persistent memory and logistics layer for any CLI-based AI agent. The transition involves:
 1.  **Rebranding**: `claude-todo` → `cleo`.
 2.  **Generalization**: Abstracting `.claude/` directories to `.cleo/`.
-3.  **Multi-Agent Ecosystem**: Native support for **concurrent** agents (Claude, Gemini, Kimi, Codex) interacting with the same project.
+3.  **Multi-Agent Ecosystem**: Native support for **concurrent** agents (Claude, Gemini, Kimi) interacting with the same project.
+4.  **Sync R&D**: Research and design a universal `sync` command for each agent's native task API.
+
+---
 
 ## 2. Architectural Changes
 
 ### A. Configuration Schema Expansion (`schemas/config.schema.json`)
 
-We will add an `agents` section (plural) to support multiple active agents.
+We will add an `agents` section to support multiple active agents.
 
 ```json
 "agents": {
@@ -36,7 +39,7 @@ We will add an `agents` section (plural) to support multiple active agents.
   "properties": {
     "active": {
       "type": "array",
-      "items": { "type": "string", "enum": ["claude", "gemini", "codex", "kimi"] },
+      "items": { "type": "string", "enum": ["claude", "gemini", "kimi"] },
       "default": ["claude"],
       "description": "List of active agents enabled for this project."
     },
@@ -44,9 +47,7 @@ We will add an `agents` section (plural) to support multiple active agents.
       "type": "object",
       "properties": {
         "claude": { "type": "object", "properties": { "docsFile": { "const": "CLAUDE.md" } } },
-        "gemini": { "type": "object", "properties": { "docsFile": { "const": "AGENTS.md" } } },
-        "kimi": { "type": "object", "properties": { "docsFile": { "const": "INSTRUCTIONS.md" } } },
-        "codex": { "type": "object", "properties": { "docsFile": { "const": "INSTRUCTIONS.md" } } }
+        "gemini": { "type": "object", "properties": { "docsFile": { "const": "AGENTS.md" } } }
       }
     }
   }
@@ -57,16 +58,16 @@ We will add an `agents` section (plural) to support multiple active agents.
 
 *   **Global Home**: `~/.claude-todo` → `~/.cleo`
 *   **Project Directory**: `.claude/` → `.cleo/`
-*   **Legacy Fallback**: Legacy agents might still look for `.claude/`. We may consider symlinking `.claude` -> `.cleo` during the transition period if strictly necessary, but preferably we update the agents' instruction files to look in `.cleo`.
+*   **Legacy Fallback**: A migration script will be provided. Post-migration, the system will look for `.cleo/` only, to maintain clean logic.
+
+---
 
 ## 3. Implementation Steps
 
-### Phase 1: Templating & Branding (Immediate)
-
+### Phase 1: Templating & Branding
 1.  **Create `templates/AGENT-INJECTION.md`**: Generic CLEO instructions.
 2.  **Create Agent-Specific Headers**:
     *   `templates/agents/GEMINI-HEADER.md`
-    *   `templates/agents/CODEX-HEADER.md`
     *   `templates/agents/KIMI-HEADER.md`
 
 ### Phase 2: Core Library Updates (Config & Logging)
@@ -74,65 +75,66 @@ We will add an `agents` section (plural) to support multiple active agents.
 
 ### Phase 3: Initialization & Installation (`install.sh`, `init.sh`)
 
-**Crucial Change**: Installation and Initialization are now **Multi-Select**.
-
 1.  **Update `scripts/install.sh`**:
-    *   **Interactive Selection**: "Which agents do you use? [x] Claude [ ] Gemini [x] Kimi"
-    *   **Global Config**: Write enabled agents to `~/.cleo/config.json`.
-    *   **Path Setup**: Ensure paths like `.gemini/`, `.kimi/` are known/created if standard.
-
+    *   **Interactive Selection**: Prompt user to select agents to install support for.
 2.  **Update `scripts/init.sh`**:
-    *   **Loop Processing**: Iterate through all enabled agents in `agents.active`.
+    *   **Loop Processing**: Iterate through enabled agents in the config (`agents.active`).
     *   **Gemini Logic**:
         *   Check/Create `.gemini/settings.json`.
         *   Update `contextFileName` to include `AGENTS.md`.
-        *   Inject/Append to `AGENTS.md`.
+        *   Inject/Append instructions to `AGENTS.md`.
     *   **Claude Logic**:
-        *   Inject/Append to `CLAUDE.md`.
-    *   **Kimi Logic**:
-        *   Inject/Append to `INSTRUCTIONS.md`.
+        *   Inject/Append instructions to `CLAUDE.md`.
 
-### Phase 4: Sync System Generalization (Buffer Sync)
+---
 
-The `sync` command will be refactored to support concurrent syncing for multiple active agents.
+## 4. Sync System - Research & Design Phase
 
-*   **`cleo sync --inject`**:
-    *   Iterates through all active agents.
-    *   **Claude**: Updates TodoWrite (if session active).
-    *   **Gemini**: Updates `<!-- CLEO-STATE -->` block in `AGENTS.md`.
-    *   **Kimi**: Updates `SetTodoList` call or text block in `INSTRUCTIONS.md`.
+**Objective**: Create a universal `cleo sync` command that correctly uses the native todo system of the active agent.
 
-*   **`cleo sync --extract`**:
-    *   Accepts `--source <agent>` flag (defaulting to the one detected or specified).
-    *   Extracts task completions from that specific agent's buffer and updates the persistent `todo.json`.
+### 4.A: Agent API Investigation (R&D Tasks)
 
-## 4. Multi-Agent CLI Experience
+*   **Gemini**:
+    *   **Tool**: `write_todos`
+    *   **Interface**: `todos: [{description: string, status: string}]`
+    *   **Research**: Investigate API call parameters, limitations, and how to format the task list. Confirm if `cancelled` status is applicable or should be mapped to `done`.
+*   **Kimi**:
+    *   **Tool**: `SetTodoList`
+    *   **Interface**: `todos: [{"content": string, "status": string}]`
+    *   **Research**: Investigate the exact behavior. Does it replace or update? What are the valid `status` values?
+*   **Claude**:
+    *   **Tool**: TodoWrite (Internal Mechanism)
+    *   **Interface**: `content`, `activeForm`, `status`.
+    *   **Action**: Document the existing implementation as the "Claude Adapter".
 
-The same project can support a user switching between agents:
+### 4.B: Active Agent Detection
 
-| Feature | Claude Code | Gemini CLI | Kimi / Codex |
-| :--- | :--- | :--- | :--- |
-| **Command** | `claude-todo` / `ct` | `cleo` | `cleo` |
-| **Context** | `CLAUDE.md` | `AGENTS.md` | `INSTRUCTIONS.md` |
-| **Sync** | `ct sync` (TodoWrite) | `cleo sync` (Context File) | `cleo sync` (Context File/API) |
+The system needs to know which agent is running to use the correct sync adapter.
+
+**Proposed Solution**:
+1.  The agent will start a session with an identity flag: `cleo session start --agent gemini`
+2.  This command writes the active agent's identity to a state file: `.cleo/session.json`.
+    ```json
+    { "sessionId": "...", "startTime": "...", "activeAgent": "gemini" }
+    ```
+3.  When `cleo sync` is called, it reads `activeAgent` from `session.json` and loads the corresponding adapter (e.g., `lib/sync/gemini_adapter.sh`).
+
+---
 
 ## 5. Verification Plan
 
 *   **Mock Project**: `/mnt/projects/cleo-testing`
 *   **Test Cases**:
-    1.  **Multi-Agent Init**: Run `cleo init` with Claude + Gemini enabled. Verify *both* `CLAUDE.md` and `AGENTS.md` are updated.
+    1.  **Multi-Agent Init**: Run `cleo init` with Claude + Gemini enabled. Verify `CLAUDE.md` and `AGENTS.md` are updated.
     2.  **Gemini Config**: Verify `.gemini/settings.json` is correctly patched using `jq`.
-    3.  **Sync Broadcasting**: Verify `cleo sync --inject` updates the state in *all* relevant docs files simultaneously.
+    3.  **Agent Detection**: Verify `cleo session start --agent gemini` correctly creates `.cleo/session.json` with the right `activeAgent`.
 
 ---
 
 ## 6. Q&A Clarifications
 
-### Q1: Can I have Claude AND Gemini active?
-**Answer**: Yes. `cleo init` will check your config (or flags) and update *both* `CLAUDE.md` and `AGENTS.md` (and `.gemini/settings.json`). This allows you to switch agents mid-project and have both fully context-aware.
+### Q1: How does `install.sh` work?
+**Answer**: It will ask you once (globally): "Select the agents you use: [ ] Claude [ ] Gemini [ ] Kimi". This sets your global default. `cleo init` will use this default unless you provide override flags.
 
-### Q2: How does `install.sh` work?
-**Answer**: It asks you once (globally). "Select your agents: [Claude, Gemini]". This sets your global default. When you run `cleo init` in a new project, it defaults to these, but you can override with flags.
-
-### Q3: What about the `sync` command?
-**Answer**: It becomes a broadcaster. `cleo sync --inject` pushes the current `active` tasks to *all* configured agent buffers/context files, ensuring every agent has the latest state.
+### Q2: What's the plan for `sync` now?
+**Answer**: It's a **research phase**. We will investigate each agent's API to understand how to build a reliable adapter. The goal is a universal `cleo sync` command, but the implementation depends on the R&D outcome.
