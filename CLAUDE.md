@@ -1,103 +1,16 @@
-# CLAUDE-TODO System
-
-Task management system for Claude Code with anti-hallucination validation, auto-archiving, and audit trails.
-
-## Stack
-- Bash scripts (primary implementation)
-- JSON Schema (validation)
-- jq (JSON manipulation)
-
-## Commands
-```bash
-./install.sh                        # Global installation to ~/.claude-todo/
-claude-todo init                    # Initialize project (.claude/ directory)
-claude-todo add "Task"              # Create task
-claude-todo update <id> [OPTIONS]   # Update existing task
-claude-todo complete <id>           # Mark complete
-claude-todo list                    # Display tasks
-claude-todo focus set <id>          # Set focus to task (marks active)
-claude-todo focus show              # Show current focus
-claude-todo session start           # Start work session
-claude-todo session end             # End work session
-claude-todo export --format todowrite  # Export to TodoWrite format
-claude-todo archive                 # Archive completed tasks
-claude-todo validate                # Validate all JSON files
-claude-todo stats                   # Show statistics
-
-# Analysis Commands (v0.8.2+)
-claude-todo analyze                 # Task triage with leverage scoring
-claude-todo analyze --json          # Machine-readable output
-claude-todo analyze --auto-focus    # Auto-set focus to top task
-claude-todo dash                    # Comprehensive dashboard overview
-claude-todo dash --compact          # Single-line summary
-claude-todo labels                  # List all labels with counts
-claude-todo labels show <label>     # Show tasks with specific label
-claude-todo next                    # Get next task suggestion
-claude-todo next --explain          # Show reasoning for suggestion
-
-# Phase Tracking (v0.13.0+)
-claude-todo phases                  # List phases with progress
-claude-todo phases show <slug>      # Tasks in specific phase
-claude-todo phases stats            # Detailed phase statistics
-claude-todo phase set <slug>        # Set current project phase
-claude-todo phase show              # Show current phase details
-
-claude-todo help                    # Show all commands
-```
-
-## Structure
-```
-schemas/          # JSON Schema definitions              [SHIPPED]
-templates/        # Starter templates for new projects   [SHIPPED]
-scripts/          # User-facing operational scripts      [SHIPPED]
-lib/              # Shared functions                     [SHIPPED]
-docs/             # Documentation (user-facing subset)   [SHIPPED]
-dev/              # Development scripts (bump-version, benchmark)  [REPO ONLY]
-tests/            # Test suite with fixtures             [REPO ONLY]
-```
-
-## Key Files
-- Schema definitions: `schemas/todo.schema.json` (v2.2.0 with project.phases)
-- Library core: `lib/validation.sh`, `lib/file-ops.sh`, `lib/logging.sh`, `lib/phase-tracking.sh`
-- Main scripts: `scripts/add-task.sh`, `scripts/update-task.sh`, `scripts/complete-task.sh`
-- Phase commands: `scripts/phase.sh`, `scripts/phases.sh`
-- Dev tools: `dev/bump-version.sh`, `dev/validate-version.sh`, `dev/benchmark-performance.sh`
-
-## Rules
-- **CRITICAL**: All write operations MUST use atomic pattern (temp file → validate → backup → rename)
-- **CRITICAL**: Every task requires both `title` AND `description` fields (anti-hallucination)
-- **IMPORTANT**: Run `validate.sh` after any manual JSON edits
-- Status enum is strict: `pending | active | blocked | done` only
-- Task IDs must be unique across todo.json AND todo-archive.json
-- All operations log to todo-log.json (append-only)
-
-## Anti-Hallucination Checks
-Before any task operation, validate:
-1. ID uniqueness (no duplicates)
-2. Status is valid enum value
-3. Timestamps not in future
-4. title/description both present and different
-5. No duplicate task descriptions
-
-## Time Estimates — PROHIBITED
-**DO NOT** estimate hours, days, or duration for any task. Ever.
-You cannot accurately predict time. Estimates create false precision and bad decisions.
-**Instead**: Describe scope, complexity, and dependencies. Use relative sizing if pressed (small/medium/large). If a user insists on time estimates, state clearly that you cannot provide accurate predictions and redirect to scope-based planning.
-
-## Docs
-- Main Index for docs: docs/INDEX.md
-- Quick Reference for Claude-TODO: docs/QUICK-REFERENCE.md
-### 
-- Architecture: docs/architecture/ARCHITECTURE.md
-- Data Flows: docs/architecture/DATA-FLOWS.md
-- Installation: docs/reference/installation.md
-- Usage: docs/usage.md
-
-
-<!-- CLAUDE-TODO:START v0.24.0 -->
+<!-- CLAUDE-TODO:START v0.28.0 -->
 ## Task Management (claude-todo)
 
 Use `ct` (alias for `claude-todo`) for all task operations. Full docs: `~/.claude-todo/docs/TODO_Task_Management.md`
+
+### ALWAYS USE Data Integrity
+- **JSON auto-detection**: Piped output → JSON (no `--format` needed)
+- **Native filters**: Use `--status`, `--label`, `--phase` instead of jq
+- **Context-efficient**: Prefer `find` over `list` for task discovery
+- **Command discovery**: `ct commands -r critical` (no jq needed)
+- **CLI only** - NEVER edit `.claude/*.json` directly
+- **Verify state** - Use `claude-todo list` before assuming
+- **Session discipline** - ALWAYS Start/end sessions properly
 
 ### Essential Commands
 ```bash
@@ -114,22 +27,260 @@ ct analyze                 # Task triage (JSON default)
 ct analyze --auto-focus    # Auto-set focus to top task
 ```
 
-### LLM-Agent-First Design
-- **JSON auto-detection**: Piped output → JSON (no `--format` needed)
-- **Native filters**: Use `--status`, `--label`, `--phase` instead of jq
-- **Context-efficient**: Prefer `find` over `list` for task discovery
-- **Command discovery**: `ct commands -r critical` (no jq needed)
+### Command Discovery
+```bash
+claude-todo commands -r critical    # Show critical commands (no jq needed)
+```
 
-### Phase Tracking (v0.13.3+)
+### MUST use Session Protocol
+```bash
+claude-todo session start           # Start work session
+claude-todo session end             # End work session
+```
+
+### Phase Tracking
 ```bash
 ct phases                  # List phases with progress
 ct phase set <slug>        # Set current project phase
 ct phase show              # Show current phase
+ct phase set <slug>        # Set current project phase
 ct list --phase core       # Filter tasks by phase
 ```
+### Phase Integration
+- Tasks can be assigned to project phases
+- Phases provide progress tracking and organization
+- Use `claude-todo list --phase <slug>` to filter by phase
 
 ### Data Integrity
 - **CLI only** - Never edit `.claude/*.json` directly
 - **Verify state** - Use `ct list` before assuming
 - **Session discipline** - Start/end sessions properly
 <!-- CLAUDE-TODO:END -->
+
+# Repository Guidelines
+
+## Project Overview
+
+**CLAUDE-TODO** is the task management protocol for solo developers and their AI coding agents. Built specifically for Claude Code with LLM-agent-first design principles.
+
+### Core Mission
+- **Anti-hallucination validation**: Every operation is validated before execution
+- **Context persistence**: State is maintained across sessions with immutable audit trails 
+- **Structured output**: JSON by default, with human-readable formatting opt-in
+- **Atomic operations**: All writes use temp file → validate → backup → rename pattern
+
+### Critical Philosophy
+**NO TIME ESTIMATES** - This system explicitly prohibits estimating hours, days, or duration for any task. Instead, describe scope, complexity, and dependencies using relative sizing (small/medium/large) when needed.
+
+## Project Structure & Module Organization
+
+```
+scripts/          # CLI command entrypoints (user-facing operational scripts)
+lib/              # Shared Bash helpers (validation, logging, file ops, config)
+schemas/          # JSON Schema definitions for validation
+templates/        # Starter templates for new projects
+tests/            # BATS test suite with unit/, integration/, golden/, fixtures/
+docs/             # User-facing documentation
+claudedocs/       # Internal research and specifications
+archive/          # Historical data and early designs
+dev/              # Development scripts (bump-version, benchmark, validation)
+```
+
+### Key Architecture Principles
+- **Scripts/** contains only user-facing operational commands
+- **Lib/** contains all shared functions used by multiple scripts
+- **Atomic file operations** are mandatory for all write operations
+- **JSON Schema validation** runs on every data modification
+- **Append-only logging** to todo-log.json for audit trails
+
+## Build, Test, and Development Commands
+
+### Installation & Setup
+```bash
+./install.sh --check-deps           # Verify Bash/jq prerequisites
+./install.sh                        # Install symlinks for local development
+git submodule update --init --recursive  # Pull BATS helper libraries
+```
+
+### Validation & Testing
+```bash
+claude-todo version                 # Verify CLI installation
+claude-todo --validate              # Validate installation and data integrity
+./tests/run-all-tests.sh            # Run full BATS test suite
+bats tests/unit/*.bats              # Run specific unit tests
+bats tests/integration/*.bats       # Run integration tests
+bash -n scripts/*.sh lib/*.sh       # Quick syntax check on shell changes
+```
+
+### Development Tools
+```bash
+./dev/bump-version.sh               # Update version across files
+./dev/validate-version.sh           # Verify version consistency
+./dev/benchmark-performance.sh      # Performance testing
+```
+
+## Coding Style & Naming Conventions
+
+### Shell Script Standards
+- **Bash only**: `#!/usr/bin/env bash` shebang required
+- **Error handling**: `set -euo pipefail` where appropriate
+- **Indentation**: 4 spaces (no tabs)
+- **Naming conventions**:
+  - Functions/variables: `snake_case`
+  - Constants: `UPPER_SNAKE_CASE`
+- **Best practices**:
+  - Always quote variable expansions
+  - Prefer `[[ ... ]]` over `[ ... ]` for conditionals
+  - Use `$()` for command substitution (not backticks)
+
+### JSON Standards
+- **Indentation**: 2 spaces
+- **Keys**: camelCase
+- **Formatting**: No trailing commas
+- **Validation**: Must pass JSON Schema validation
+
+## Critical Rules & Constraints
+
+### **CRITICAL: Atomic Operations**
+All write operations MUST follow this pattern:
+1. Write to temporary file
+2. Validate against JSON Schema
+3. Create backup of original
+4. Atomic rename to replace original
+
+### **CRITICAL: Anti-Hallucination Requirements**
+Every task MUST have:
+- Both `title` AND `description` fields
+- Different content for title and description
+- Valid status from enum: `pending | active | blocked | done`
+- Unique ID across todo.json AND todo-archive.json
+- Timestamps not in the future
+- No duplicate task descriptions
+
+### **IMPORTANT: Time Estimates Prohibited**
+**NEVER** estimate hours, days, or duration. Describe scope, complexity, and dependencies instead.
+
+## Testing Guidelines
+
+### Test Structure
+- **Unit tests**: `tests/unit/` - Test individual functions
+- **Integration tests**: `tests/integration/` - Test command workflows
+- **Golden tests**: `tests/golden/` - Test output formatting
+- **Fixtures**: `tests/fixtures/` - Test data setup
+
+### Test Naming
+- Files: `feature-name.bats`
+- Tests: `@test "feature should expected_outcome"`
+
+### Test Requirements
+- New features require tests
+- Bug fixes require tests that reproduce the issue
+- Prefer fixtures for data setup
+- Tests must pass before merging
+
+## Commit & Pull Request Guidelines
+
+### Commit Messages
+Format: `<type>: <summary>`
+- Types: `feat`, `fix`, `docs`, `test`, `refactor`, `chore`
+- Scopes: `chore(docs):`, `fix(validation):`, etc.
+- Keep summaries under 50 characters
+
+### Branch Naming
+- `feature/description`
+- `fix/description`
+- `docs/description`
+- `test/description`
+- `refactor/description`
+
+### PR Requirements
+- Clear description of changes
+- Link to relevant issues
+- All tests must pass (`./tests/run-all-tests.sh`)
+- Follow existing code style
+
+### Data Integrity
+- **CLI only** - Never edit `.claude/*.json` directly
+- **Verify state** - Use `claude-todo list` before assuming
+- **Session discipline** - Start/end sessions properly
+
+## Key Files & Entry Points
+
+### Core Scripts
+- `scripts/add-task.sh` - Task creation
+- `scripts/update-task.sh` - Task updates
+- `scripts/complete-task.sh` - Task completion
+- `scripts/phase.sh` - Phase management
+- `scripts/phases.sh` - Phase listing
+
+### Library Functions
+- `lib/validation.sh` - JSON Schema validation
+- `lib/file-ops.sh` - Atomic file operations
+- `lib/logging.sh` - Audit trail logging
+- `lib/phase-tracking.sh` - Phase management
+
+### Schema Definitions
+- `schemas/todo.schema.json` - Main task schema
+
+## Backup System Architecture
+
+The backup system implements a **two-tier design**:
+
+### Tier 1: Operational Backups (Atomic Write Safety)
+- **Location**: `lib/file-ops.sh`
+- **Directory**: `.backups/` (relative to data files)
+- **Purpose**: Automatic rollback protection for every write operation
+- **Trigger**: Automatic on `atomic_write()` / `save_json()`
+- **Retention**: Last 5 backups per file (numbered: `.1`, `.2`, etc.)
+
+### Tier 2: Recovery Backups (Point-in-Time Snapshots)
+- **Location**: `lib/backup.sh`
+- **Directory**: `.claude/backups/{type}/`
+- **Types**: `snapshot`, `safety`, `archive`, `migration`
+- **Purpose**: User-initiated and pre-destructive operation backups
+- **Trigger**: Manual (`backup` command) or automatic (before destructive ops)
+- **Features**: Metadata, checksums, retention policies
+
+### Key Functions
+| Function | File | Purpose |
+|----------|------|---------|
+| `atomic_write()` | file-ops.sh | Tier 1 write with backup |
+| `backup_file()` | file-ops.sh | Tier 1 numbered backup |
+| `create_snapshot_backup()` | backup.sh | Tier 2 full snapshot |
+| `create_safety_backup()` | backup.sh | Tier 2 pre-operation backup |
+| `rotate_backups()` | backup.sh | Tier 2 retention enforcement |
+| `list_typed_backups()` | backup.sh | Tier 2 backup listing |
+| `restore_typed_backup()` | backup.sh | Tier 2 recovery |
+
+## Validation & Error Handling
+
+### Pre-Operation Checks
+Before any task operation, validate:
+1. ID uniqueness across all files
+2. Status is valid enum value
+3. Timestamps are not in future
+4. Title and description both present and different
+5. No duplicate task descriptions
+
+### Error Recovery
+- All operations log to `todo-log.json` (append-only)
+- Backup files created during atomic operations
+- Validation errors prevent operations
+- Clear error messages for debugging
+
+## Agent Notes
+
+### When Using AI Agents
+1. **Follow CLAUDE.md** - It defines repository-specific workflow expectations
+2. **Respect atomic operations** - Never bypass the temp→validate→backup→rename pattern
+3. **Maintain data integrity** - Always validate before and after operations
+4. **Use proper testing** - Add tests for new features and bug fixes
+5. **Follow commit conventions** - Use proper types and scopes
+6. **No time estimates** - Focus on scope and complexity instead
+
+### Common Pitfalls to Avoid
+- Don't edit JSON files directly - use CLI commands only
+- Don't skip validation steps - they're critical for data integrity
+- Don't add time estimates - they're explicitly prohibited
+- Don't forget atomic operations - all writes must be atomic
+- Don't skip testing - new features need tests

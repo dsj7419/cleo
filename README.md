@@ -3,7 +3,7 @@
 > **The task management protocol for solo developers and their AI coding agents**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/version-0.24.0-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.28.0-blue.svg)](CHANGELOG.md)
 [![LLM-Agent-First](https://img.shields.io/badge/design-LLM--Agent--First-purple.svg)](docs/specs/LLM-AGENT-FIRST-SPEC.md)
 [![Tests](https://img.shields.io/badge/tests-passing-brightgreen.svg)](tests/)
 
@@ -180,15 +180,43 @@ ct find "auth" # Fast fuzzy search (99% less tokens than list)
 
 **Built-in aliases**: `ls`, `done`, `new`, `edit`, `rm`, `check`, `tags`, `overview`, `dig`
 
+### Tab Completion
+
+Enable shell completion for faster command entry and context-aware suggestions:
+
+**Bash** (add to `~/.bashrc`):
+```bash
+source ~/.claude-todo/completions/bash-completion.sh
+```
+
+**Zsh** (add to `~/.zshrc`):
+```bash
+fpath=(~/.claude-todo/completions $fpath)
+autoload -Uz compinit && compinit
+```
+
+**Features:**
+- Context-aware `--parent` completion (shows only valid parents: epics and tasks, not subtasks)
+- All commands, subcommands, and flags
+- Task ID completion with status filtering
+- Phase, label, and priority value completion
+
+```bash
+# Example usage
+claude-todo add --parent <TAB>     # Shows T001, T002 (epic/task only)
+claude-todo list --status <TAB>    # Shows pending, active, blocked, done
+claude-todo focus set <TAB>        # Shows pending/active task IDs
+```
+
 ---
 
 ## Command Reference
 
-### 34 Commands Across 4 Categories
+### 37 Commands Across 4 Categories
 
 | Category | Commands | Purpose |
 |----------|----------|---------|
-| **Write (7)** | `add`, `update`, `complete`, `focus`, `session`, `phase`, `archive` | Modify task state |
+| **Write (10)** | `add`, `update`, `complete`, `focus`, `session`, `phase`, `archive`, `promote`, `reparent`, `populate-hierarchy` | Modify task state |
 | **Read (17)** | `list`, `show`, `find`, `analyze`, `next`, `dash`, `deps`, `blockers`, `phases`, `labels`, `stats`, `log`, `commands`, `exists`, `export`, `history`, `research` | Query and analyze |
 | **Sync (3)** | `sync`, `inject`, `extract` | TodoWrite integration |
 | **Maintenance (7)** | `init`, `validate`, `backup`, `restore`, `migrate`, `migrate-backups`, `config` | System administration |

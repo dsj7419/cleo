@@ -660,20 +660,21 @@ TREE_JSON="null"
 if [[ "$SHOW_TREE" == true ]]; then
     # Build hierarchical tree from filtered tasks using parentId
     TREE_JSON=$(echo "$FILTERED_TASKS" | jq '
-        # Index tasks by id
-        (map({(.id): .}) | add) as $lookup |
+        # Store the full task list
+        . as $tasks |
 
-        # Find root tasks (no parent or parent not in current set)
-        [.[] | select(.parentId == null or ($lookup[.parentId] == null))] as $roots |
+        # Get children of a task
+        def get_children($parent_id):
+          [$tasks[] | select(.parentId == $parent_id)];
 
-        # Recursive function to build tree
-        def build_tree(task):
-            task + {
-                children: [.[] | select(.parentId == task.id) | build_tree(.)]
-            };
+        # Recursive tree building
+        def build_tree($task):
+          $task + {
+            children: [get_children($task.id)[] | build_tree(.)]
+          };
 
-        # Build tree from roots
-        [$roots[] | . as $root | $lookup | to_entries | map(.value) | build_tree($root)]
+        # Find root tasks
+        [$tasks[] | select(.parentId == null) | build_tree(.)]
     ')
 fi
 
@@ -681,8 +682,19 @@ fi
 case "$FORMAT" in
   json)
     # JSON format with metadata envelope
-    # Use stdin piping to avoid "Argument list too long" with large task arrays
-    echo "$FILTERED_TASKS" | jq \
+    # FIX: Use temporary files to avoid "Argument list too long" with large datasets
+    TEMP_TASKS_FILE=$(mktemp)
+    TEMP_TREE_FILE=$(mktemp)
+    trap "rm -f '$TEMP_TASKS_FILE' '$TEMP_TREE_FILE'" EXIT
+
+    # Write data to temp files (avoids shell argument limits)
+    echo "$FILTERED_TASKS" > "$TEMP_TASKS_FILE"
+    echo "$TREE_JSON" > "$TEMP_TREE_FILE"
+
+    # Use --slurpfile to read large JSON from files instead of command line
+    jq -n \
+      --slurpfile tasks "$TEMP_TASKS_FILE" \
+      --slurpfile tree_data "$TEMP_TREE_FILE" \
       --arg version "$VERSION" \
       --arg timestamp "$CURRENT_TIMESTAMP" \
       --arg checksum "$TASKS_CHECKSUM" \
@@ -698,7 +710,7 @@ case "$FORMAT" in
       --argjson blocked "$BLOCKED_COUNT" \
       --argjson done "$DONE_COUNT" \
       --argjson show_tree "$(if [[ "$SHOW_TREE" == true ]]; then echo true; else echo false; fi)" \
-      --argjson tree_data "$TREE_JSON" '{
+      '{
       "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
       "_meta": {
         format: "json",
@@ -723,8 +735,8 @@ case "$FORMAT" in
         blocked: $blocked,
         done: $done
       },
-      tasks: .,
-      tree: (if $show_tree then $tree_data else null end)
+      tasks: $tasks[0],
+      tree: (if $show_tree then $tree_data[0] else null end)
     } | if .tree == null then del(.tree) else . end'
     ;;
 

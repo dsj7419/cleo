@@ -67,6 +67,9 @@ Output (text):
 Task: Implement user authentication
   ID: T001
   Status: active
+  Path: T001 > T002  (hierarchy breadcrumb)
+  Parent: T001 (Auth Epic)
+  Children: 2 done, 1 pending
 
 Session Note: Working on JWT implementation
 Next Action: Write integration tests
@@ -77,9 +80,26 @@ Output (JSON):
 {
   "currentTask": "T001",
   "sessionNote": "Working on JWT implementation",
-  "nextAction": "Write integration tests"
+  "nextAction": "Write integration tests",
+  "hierarchy": {
+    "parent": "T001 (Auth Epic)",
+    "children": "2 done, 1 pending",
+    "breadcrumb": "T001 > T002"
+  }
 }
 ```
+
+## Hierarchy Context (v0.27.0+)
+
+When showing focus, hierarchy context is displayed:
+
+| Field | Description |
+|-------|-------------|
+| Path | Breadcrumb trail showing ancestor chain |
+| Parent | Parent task with ID and title |
+| Children | Summary of child task statuses |
+
+This helps maintain context when working on nested tasks within epics.
 
 ### Session Notes
 

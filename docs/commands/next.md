@@ -30,7 +30,11 @@ The recommendation engine works as follows:
    - `medium` = 50 points
    - `low` = 25 points
 4. **Apply phase bonus**: +30 points if task phase matches current focus phase
-5. **Break ties**: Use creation date (older tasks first)
+5. **Apply hierarchy bonuses** (v0.27.0+):
+   - +30 points if task is in same epic as focused task
+   - +10 points if task is a leaf (no children)
+   - +5 points if sibling completion is ≥50% (momentum bonus)
+6. **Break ties**: Use creation date (older tasks first)
 
 ## Options
 
@@ -371,8 +375,59 @@ claude-todo update T020 --depends T015,T018
 - `claude-todo dash` - View comprehensive dashboard
 - `claude-todo update ID --priority PRIORITY` - Change task priority
 
+## Hierarchy-Aware Scoring (v0.27.0+)
+
+The `next` command considers task hierarchy when making recommendations:
+
+### Epic Context Bonus (+30)
+
+When a task is focused, tasks in the same epic receive a significant bonus:
+
+```bash
+# Focus on Auth Epic
+claude-todo focus set T001  # Auth Epic
+
+# Tasks within T001's hierarchy get +30 bonus
+claude-todo next --explain
+# "Implement JWT" (T002, under T001) gets epic context bonus
+```
+
+### Leaf Task Bonus (+10)
+
+Tasks without children are preferred to encourage bottom-up completion:
+
+```bash
+# Prefers "Write tests" (no children) over "Auth Epic" (has children)
+claude-todo next --explain
+```
+
+### Sibling Momentum Bonus (+5)
+
+When 50% or more siblings are complete, remaining siblings get a bonus:
+
+```bash
+# Epic has 4 tasks: 2 done, 2 pending
+# The 2 pending tasks get +5 momentum bonus
+claude-todo next --explain
+```
+
+### Parent Context Display
+
+Suggestions show parent context for hierarchy awareness:
+
+```
+NEXT TASK SUGGESTION
+
+📌 T015 - Write JWT tests
+   Priority: high (score: 75)
+   Parent: T010 - Auth Epic
+   Hierarchy Score: +40 (epic: +30, leaf: +10)
+   Final Score: 115
+```
+
 ## Version History
 
 - **v0.8.0**: Initial implementation with priority-based scoring
 - **v0.8.2**: Added phase alignment bonus (+10) and explain mode
 - **v0.13.0**: Increased phase alignment bonus to +30 for stronger phase prioritization
+- **v0.27.0**: Added hierarchy-aware scoring (epic context, leaf preference, sibling momentum)

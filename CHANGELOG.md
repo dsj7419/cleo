@@ -5,6 +5,42 @@ All notable changes to the claude-todo system will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.28.0] - 2025-12-23
+
+### Added
+- **Hierarchy Index Caching (T348)**: O(1) lookups for hierarchy operations
+  - New cache files: `hierarchy.index.json`, `children.index.json`, `depth.index.json`
+  - New functions in `lib/cache.sh`:
+    - `cache_init_hierarchy()`: Initialize hierarchy cache
+    - `cache_get_parent()`: O(1) parent lookup
+    - `cache_get_children()`: O(1) children lookup
+    - `cache_get_depth()`: O(1) depth lookup
+    - `cache_get_child_count()`: O(1) child count
+    - `cache_get_root_tasks()`, `cache_get_leaf_tasks()`, `cache_get_tasks_at_depth()`
+    - `cache_hierarchy_stats()`: JSON statistics
+  - Auto-rebuilds when todo.json changes (checksum-based staleness detection)
+  - 11 unit tests in `tests/unit/cache-hierarchy.bats`
+
+- **Tab Completion (T347)**: Bash and Zsh completion scripts
+  - `completions/bash-completion.sh`: Full Bash completion support
+  - `completions/zsh-completion.zsh`: Full Zsh completion support
+  - Context-aware `--parent` completion (only suggests epic/task types, not subtasks)
+  - Task ID completion with title hints
+  - Phase, label, status, priority completion
+  - All command options and subcommands
+
+### Fixed
+- **Tree Performance Bug**: Fixed "Argument list too long" error with large datasets
+  - Changed `list-tasks.sh` to use temporary files + `--slurpfile` instead of CLI arguments
+  - Prevents shell argument limit errors when tree JSON is large (500+ tasks)
+
+### Documentation
+- Updated `docs/commands/focus.md` with hierarchy context features
+- Updated `docs/commands/next.md` with hierarchy-aware scoring documentation
+  - Epic context bonus (+30)
+  - Leaf task bonus (+10)
+  - Sibling momentum bonus (+5)
+
 ## [0.27.0] - 2025-12-23
 
 ### Added
