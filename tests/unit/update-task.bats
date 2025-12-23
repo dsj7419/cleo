@@ -620,3 +620,144 @@ teardown() {
     local after_t2=$(jq -c '.tasks[1]' "$TODO_FILE")
     [[ "$original_t2" == "$after_t2" ]]
 }
+
+# =============================================================================
+# Idempotency Tests (LLM-Agent-First Spec v3.0, Part 5.6)
+# =============================================================================
+
+@test "idempotent update same priority returns EXIT_NO_CHANGE (102)" {
+    create_independent_tasks
+    # First update to set priority
+    bash "$UPDATE_SCRIPT" T001 --priority high > /dev/null
+
+    # Second update with same value should return 102
+    run bash "$UPDATE_SCRIPT" T001 --priority high
+    [ "$status" -eq 102 ]
+    assert_output --partial "No changes needed"
+}
+
+@test "idempotent update same status returns EXIT_NO_CHANGE (102)" {
+    create_independent_tasks
+    # Task is already pending
+    run bash "$UPDATE_SCRIPT" T001 --status pending
+    [ "$status" -eq 102 ]
+}
+
+@test "idempotent update JSON output includes noChange flag" {
+    create_independent_tasks
+    bash "$UPDATE_SCRIPT" T001 --priority high > /dev/null
+
+    run bash "$UPDATE_SCRIPT" T001 --priority high --json
+    [ "$status" -eq 102 ]
+
+    local no_change=$(echo "$output" | jq -r '.noChange')
+    [[ "$no_change" == "true" ]]
+
+    local success=$(echo "$output" | jq -r '.success')
+    [[ "$success" == "true" ]]
+
+    local message=$(echo "$output" | jq -r '.message')
+    [[ "$message" == *"No changes needed"* ]]
+}
+
+@test "idempotent update with actual changes returns success (0)" {
+    create_independent_tasks
+    # Update to different priority
+    run bash "$UPDATE_SCRIPT" T001 --priority high --json
+    assert_success
+
+    # Verify output shows change was made (noChange should not be present or be false)
+    local no_change=$(echo "$output" | jq -r '.noChange // "absent"')
+    [[ "$no_change" == "absent" || "$no_change" == "false" ]]
+}
+
+@test "idempotent update add existing label returns EXIT_NO_CHANGE" {
+    create_independent_tasks
+    bash "$UPDATE_SCRIPT" T001 --labels bug > /dev/null
+
+    # Adding same label again should return 102
+    run bash "$UPDATE_SCRIPT" T001 --labels bug
+    [ "$status" -eq 102 ]
+}
+
+@test "idempotent update add new label returns success" {
+    create_independent_tasks
+    bash "$UPDATE_SCRIPT" T001 --labels bug > /dev/null
+
+    # Adding different label should succeed
+    run bash "$UPDATE_SCRIPT" T001 --labels feature
+    assert_success
+
+    local labels=$(jq -c '.tasks[0].labels | sort' "$TODO_FILE")
+    [[ "$labels" == '["bug","feature"]' ]]
+}
+
+@test "idempotent update clear empty array returns EXIT_NO_CHANGE" {
+    create_independent_tasks
+    # Task has no labels initially
+
+    # Clearing non-existent labels should return 102
+    run bash "$UPDATE_SCRIPT" T001 --clear-labels
+    [ "$status" -eq 102 ]
+}
+
+@test "idempotent update clear populated array returns success" {
+    create_independent_tasks
+    bash "$UPDATE_SCRIPT" T001 --labels bug > /dev/null
+
+    # Clearing existing labels should succeed
+    run bash "$UPDATE_SCRIPT" T001 --clear-labels
+    assert_success
+}
+
+@test "idempotent update same title returns EXIT_NO_CHANGE" {
+    create_independent_tasks
+    local current_title=$(jq -r '.tasks[0].title' "$TODO_FILE")
+
+    run bash "$UPDATE_SCRIPT" T001 --title "$current_title"
+    [ "$status" -eq 102 ]
+}
+
+@test "idempotent update same description returns EXIT_NO_CHANGE" {
+    create_independent_tasks
+    bash "$UPDATE_SCRIPT" T001 --description "Test description" > /dev/null
+
+    run bash "$UPDATE_SCRIPT" T001 --description "Test description"
+    [ "$status" -eq 102 ]
+}
+
+@test "idempotent update notes always returns success (append-only)" {
+    create_independent_tasks
+    bash "$UPDATE_SCRIPT" T001 --notes "First note" > /dev/null
+
+    # Adding same note should still succeed (notes are append-only, never idempotent)
+    run bash "$UPDATE_SCRIPT" T001 --notes "First note"
+    assert_success
+
+    local count=$(jq '.tasks[0].notes | length' "$TODO_FILE")
+    [[ "$count" -eq 2 ]]
+}
+
+@test "idempotent update same type returns EXIT_NO_CHANGE" {
+    create_independent_tasks
+    # Default type is "task"
+    run bash "$UPDATE_SCRIPT" T001 --type task
+    [ "$status" -eq 102 ]
+}
+
+@test "idempotent update same size returns EXIT_NO_CHANGE" {
+    create_independent_tasks
+    bash "$UPDATE_SCRIPT" T001 --size medium > /dev/null
+
+    run bash "$UPDATE_SCRIPT" T001 --size medium
+    [ "$status" -eq 102 ]
+}
+
+@test "idempotent update quiet mode suppresses output" {
+    create_independent_tasks
+    bash "$UPDATE_SCRIPT" T001 --priority high > /dev/null
+
+    run bash "$UPDATE_SCRIPT" T001 --priority high --quiet
+    [ "$status" -eq 102 ]
+    assert_output ""
+}

@@ -3,11 +3,11 @@
   "_meta": {
     "version": "1.0.0",
     "lastUpdated": "2025-12-22",
-    "totalCommands": 37,
+    "totalCommands": 38,
     "specCompliance": "LLM-AGENT-FIRST-SPEC v3.0"
   },
   "categories": {
-    "write": ["add", "archive", "complete", "focus", "phase", "populate-hierarchy", "promote", "reparent", "session", "update"],
+    "write": ["add", "archive", "complete", "focus", "phase", "populate-hierarchy", "promote", "reparent", "session", "unarchive", "update"],
     "read": ["analyze", "blockers", "commands", "dash", "deps", "exists", "export", "find", "history", "labels", "list", "log", "next", "phases", "research", "show", "stats"],
     "sync": ["extract", "inject", "sync"],
     "maintenance": ["backup", "config", "init", "migrate", "migrate-backups", "restore", "validate"]
@@ -425,6 +425,17 @@
       "agentRelevance": "critical"
     },
     {
+      "name": "unarchive",
+      "script": "unarchive.sh",
+      "category": "write",
+      "doc": "unarchive.md",
+      "synopsis": "Restore archived tasks back to todo.json with status options",
+      "flags": ["--format", "--quiet", "--dry-run", "--status", "--preserve-status", "--json", "--human"],
+      "exitCodes": [0, 1, 2, 3, 4, 6],
+      "jsonOutput": true,
+      "agentRelevance": "medium"
+    },
+    {
       "name": "update",
       "script": "update-task.sh",
       "category": "write",
@@ -465,6 +476,7 @@
     "checkExists": "exists",
     "dependencies": "deps",
     "blockedTasks": "blockers",
-    "webResearch": "research"
+    "webResearch": "research",
+    "restoreArchived": "unarchive"
   }
 }

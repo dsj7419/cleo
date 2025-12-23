@@ -449,6 +449,8 @@ declare -A CMD_MAP=(
   [research]="research.sh"
   [reparent]="reparent.sh"
   [promote]="promote.sh"
+  [unarchive]="unarchive.sh"
+  [archive-stats]="archive-stats.sh"
 )
 
 # Brief descriptions for main help
@@ -487,6 +489,8 @@ declare -A CMD_DESC=(
   [research]="Multi-source web research aggregation (Tavily, Context7, Reddit)"
   [reparent]="Move a task to a different parent task"
   [promote]="Remove parent from a task (make it root-level)"
+  [unarchive]="Restore archived tasks back to todo.json"
+  [archive-stats]="Generate analytics and reports from archived tasks"
 )
 
 # ============================================
@@ -723,7 +727,7 @@ show_main_help() {
   echo "       claude-todo help <command>    Show detailed command help"
   echo ""
   echo "Commands:"
-  for cmd in init add update complete list find focus session archive validate stats backup restore export migrate migrate-backups log dash next labels deps blockers phases phase exists history show analyze config commands; do
+  for cmd in init add update complete list find focus session archive unarchive validate stats backup restore export migrate migrate-backups log dash next labels deps blockers phases phase exists history show analyze config commands; do
     printf "  %-14s %s\n" "$cmd" "${CMD_DESC[$cmd]}"
   done
   echo "  version        Show version"

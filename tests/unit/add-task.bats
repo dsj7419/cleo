@@ -644,3 +644,141 @@ teardown() {
     count=$(jq '.tasks | length' "$TODO_FILE")
     [ "$count" -eq 1 ]
 }
+
+# =============================================================================
+# Duplicate Detection Tests (T493 - LLM-Agent-First Spec v3.0 Part 5.6)
+# =============================================================================
+
+@test "add detects duplicate within 60s window" {
+    create_empty_todo
+    # Create first task
+    bash "$ADD_SCRIPT" "Duplicate Test Task" > /dev/null
+
+    # Try to create same task again immediately
+    run bash "$ADD_SCRIPT" "Duplicate Test Task" --human
+    assert_success
+    assert_output --partial "Duplicate detected"
+    assert_output --partial "T001"
+
+    # Verify only one task exists
+    local count
+    count=$(jq '.tasks | length' "$TODO_FILE")
+    [ "$count" -eq 1 ]
+}
+
+@test "add detects duplicate with matching phase" {
+    create_empty_todo
+    # Add phase first
+    jq '.project.phases = {"core": {"name": "Core", "order": 1}}' "$TODO_FILE" > "${TODO_FILE}.tmp"
+    mv "${TODO_FILE}.tmp" "$TODO_FILE"
+
+    # Create first task with phase
+    bash "$ADD_SCRIPT" "Phased Task" --phase core > /dev/null
+
+    # Try to create same task with same phase
+    run bash "$ADD_SCRIPT" "Phased Task" --phase core --human
+    assert_success
+    assert_output --partial "Duplicate detected"
+    assert_output --partial "phase 'core'"
+
+    # Verify only one task exists
+    local count
+    count=$(jq '.tasks | length' "$TODO_FILE")
+    [ "$count" -eq 1 ]
+}
+
+@test "add allows same title with different phase" {
+    create_empty_todo
+    # Add phases first
+    jq '.project.phases = {"core": {"name": "Core", "order": 1}, "testing": {"name": "Testing", "order": 2}}' "$TODO_FILE" > "${TODO_FILE}.tmp"
+    mv "${TODO_FILE}.tmp" "$TODO_FILE"
+
+    # Create first task with core phase
+    bash "$ADD_SCRIPT" "Multi-phase Task" --phase core > /dev/null
+
+    # Create same title with different phase - should succeed
+    run bash "$ADD_SCRIPT" "Multi-phase Task" --phase testing
+    assert_success
+    refute_output --partial "Duplicate detected"
+
+    # Verify two tasks exist
+    local count
+    count=$(jq '.tasks | length' "$TODO_FILE")
+    [ "$count" -eq 2 ]
+}
+
+@test "add duplicate returns JSON with duplicate flag" {
+    create_empty_todo
+    # Create first task
+    bash "$ADD_SCRIPT" "JSON Duplicate Test" > /dev/null
+
+    # Try duplicate with JSON output
+    run bash "$ADD_SCRIPT" "JSON Duplicate Test" --json
+    assert_success
+
+    # Parse JSON output
+    local is_duplicate success task_id
+    is_duplicate=$(echo "$output" | jq -r '.duplicate')
+    success=$(echo "$output" | jq -r '.success')
+    task_id=$(echo "$output" | jq -r '.task.id')
+
+    [ "$is_duplicate" = "true" ]
+    [ "$success" = "true" ]
+    [ "$task_id" = "T001" ]
+}
+
+@test "add duplicate quiet mode returns existing ID" {
+    create_empty_todo
+    # Create first task
+    bash "$ADD_SCRIPT" "Quiet Duplicate" -q > /dev/null
+
+    # Try duplicate in quiet mode
+    run bash "$ADD_SCRIPT" "Quiet Duplicate" -q
+    assert_success
+    assert_output "T001"
+}
+
+@test "add duplicate exits with success code 0" {
+    create_empty_todo
+    # Create first task
+    bash "$ADD_SCRIPT" "Exit Code Test" > /dev/null
+
+    # Try duplicate - should exit 0 (success, not error)
+    bash "$ADD_SCRIPT" "Exit Code Test" > /dev/null
+    local exit_code=$?
+    [ "$exit_code" -eq 0 ]
+}
+
+@test "add allows duplicate outside time window" {
+    create_empty_todo
+    # Create task with old timestamp (simulate task created 2 minutes ago)
+    local old_timestamp
+    old_timestamp=$(date -u -d "2 minutes ago" +"%Y-%m-%dT%H:%M:%SZ")
+    jq --arg ts "$old_timestamp" '.tasks = [{"id":"T001","title":"Old Task","status":"pending","priority":"medium","type":"task","createdAt":$ts}]' "$TODO_FILE" > "${TODO_FILE}.tmp"
+    mv "${TODO_FILE}.tmp" "$TODO_FILE"
+
+    # Try to create same task - should succeed since original is outside 60s window
+    run bash "$ADD_SCRIPT" "Old Task"
+    assert_success
+    refute_output --partial "Duplicate detected"
+
+    # Verify two tasks exist
+    local count
+    count=$(jq '.tasks | length' "$TODO_FILE")
+    [ "$count" -eq 2 ]
+}
+
+@test "add duplicate JSON includes message with seconds" {
+    create_empty_todo
+    # Create first task
+    bash "$ADD_SCRIPT" "Message Test" > /dev/null
+
+    # Try duplicate with JSON output
+    run bash "$ADD_SCRIPT" "Message Test" --json
+    assert_success
+
+    # Verify message field exists and contains timing info
+    local message
+    message=$(echo "$output" | jq -r '.message')
+    [[ "$message" == *"seconds ago"* ]]
+}

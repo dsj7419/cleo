@@ -281,18 +281,22 @@ CURRENT_STATUS=$(echo "$TASK" | jq -r '.status')
 # Capture createdAt for cycle time calculation
 CREATED_AT=$(echo "$TASK" | jq -r '.createdAt // empty')
 
+# Idempotency check: Per LLM-AGENT-FIRST-SPEC.md Part 5.6
+# Completing already-done task returns EXIT_NO_CHANGE (102)
+# Agents should treat EXIT_NO_CHANGE as success, not retry
 if [[ "$CURRENT_STATUS" == "done" ]]; then
   TASK_TITLE=$(echo "$TASK" | jq -r '.title')
   COMPLETED_AT=$(echo "$TASK" | jq -r '.completedAt')
 
   if [[ "$FORMAT" == "json" ]]; then
-    # For JSON output, report this as already completed (not an error)
+    # JSON output with noChange: true per spec Part 5.6
     TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
     jq -n \
       --arg version "${CLAUDE_TODO_VERSION:-unknown}" \
       --arg timestamp "$TIMESTAMP" \
       --arg taskId "$TASK_ID" \
       --arg completedAt "$COMPLETED_AT" \
+      --arg message "Task $TASK_ID is already complete" \
       --argjson task "$TASK" \
       '{
         "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
@@ -303,8 +307,9 @@ if [[ "$CURRENT_STATUS" == "done" ]]; then
           "version": $version
         },
         "success": true,
-        "alreadyCompleted": true,
+        "noChange": true,
         "taskId": $taskId,
+        "message": $message,
         "completedAt": $completedAt,
         "task": $task
       }'
@@ -314,7 +319,7 @@ if [[ "$CURRENT_STATUS" == "done" ]]; then
     echo ""
     echo "Task: $TASK_TITLE"
     echo "Completed at: $COMPLETED_AT"
-    exit 0
+    exit "${EXIT_NO_CHANGE:-102}"
   fi
 fi
 

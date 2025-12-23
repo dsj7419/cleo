@@ -81,6 +81,27 @@ SHOW_WARNINGS=""  # Empty means use config, explicit true/false from --no-warnin
 COMMAND_NAME="archive"
 ONLY_LABELS=""
 EXCLUDE_LABELS=""
+SAFE_MODE=""  # CLI override - empty means use config default
+CASCADE_ARCHIVE=false  # Archive completed parents with all completed children
+CASCADE_FROM=""        # Archive specific task and all its completed descendants
+INTERACTIVE=false      # Interactive mode: review each task before archiving
+PHASE_TRIGGER=""       # Phase-triggered archiving: archive completed tasks from specified phase
+
+# Phase trigger tracking (populated during phase filter processing)
+PHASE_TRIGGER_INFO='null'
+
+# Relationship safety tracking (populated during safe mode checks)
+BLOCKED_BY_CHILDREN='[]'
+BLOCKED_BY_DEPENDENTS='[]'
+
+# Cascade tracking (populated during cascade processing)
+CASCADE_APPLIED=false
+CASCADED_FAMILIES='[]'
+CASCADE_FROM_INFO='null'  # Tracks --cascade-from details for JSON output
+
+# Interactive mode tracking
+INTERACTIVE_APPROVED=0
+INTERACTIVE_SKIPPED=0
 
 # Warning collection (populated before archive operation)
 declare -a ARCHIVE_WARNINGS=()
@@ -106,6 +127,25 @@ Options:
                            Merges with config exemptLabels
                            Cannot be used with --only-labels
                            Example: --exclude-labels "important,keep"
+  --safe              Enable safe mode (default from config)
+                      Prevents archiving tasks with:
+                      - Active children (would orphan them)
+                      - Active dependents (would break references)
+  --no-safe           Disable safe mode (override config)
+  --cascade           Archive completed parent with all completed children
+                      together (respects --safe for incomplete families)
+                      If a parent is done but has non-done children, cascade
+                      is skipped for that family with a warning
+  --cascade-from ID   Archive task and all its completed descendants
+                      Useful for archiving completed epics with subtasks
+                      Only archives the specified task and descendants that
+                      are status=done; warns about incomplete descendants
+                      Example: --cascade-from T001
+  --phase-complete PHASE  Archive all completed tasks from specified phase
+                          Use when a project phase is finished
+                          Example: --phase-complete setup
+  -i, --interactive   Review each task before archiving
+                      Prompts: (y)es, (n)o, (a)ll remaining, (q)uit
   --no-warnings       Suppress relationship warnings
   -f, --format FMT    Output format: text, json (default: auto-detect)
   --human             Force human-readable text output
@@ -116,6 +156,7 @@ Options:
 Archive Behavior:
   Default:  Only archive tasks older than daysUntilArchive (default 7 days)
             Keeps preserveRecentCount most recent completed tasks (default 3)
+            Safe mode is ON by default (checks relationships)
 
   --force:  Ignores daysUntilArchive - archives regardless of age
             Still keeps preserveRecentCount tasks (safe for recent work)
@@ -123,11 +164,17 @@ Archive Behavior:
   --all:    Archives everything marked 'done' without exceptions
             Use with caution - removes ALL completed tasks
 
+  --cascade: When a parent task is completed and ALL its children are also
+             completed, archives the entire family together. Incomplete
+             families (parent done, some children not done) are skipped.
+
 Config (from todo-config.json):
   - daysUntilArchive: Days after completion before archiving (default: 7)
   - maxCompletedTasks: Threshold triggering archive prompt (default: 15)
   - preserveRecentCount: Recent completions to keep (default: 3)
   - labelPolicies: Per-label retention rules (see below)
+  - relationshipSafety.preventOrphanChildren: Block orphaning (default: true)
+  - relationshipSafety.preventBrokenDependencies: Block broken deps (default: true)
 
 Label Policies (optional):
   Configure per-label retention in todo-config.json:
@@ -144,10 +191,15 @@ JSON Output (--format json):
   task statistics. Useful for LLM agent automation workflows.
 
 Examples:
-  claude-todo archive               # Archive based on config rules
+  claude-todo archive               # Archive based on config rules (safe mode on)
   claude-todo archive --dry-run     # Preview what would be archived
   claude-todo archive --force       # Archive all, keep 3 most recent
   claude-todo archive --all         # Archive everything (nuclear option)
+  claude-todo archive --cascade     # Archive complete families together
+  claude-todo archive --cascade-from T001  # Archive epic T001 and all done descendants
+  claude-todo archive --phase-complete setup  # Archive completed tasks from 'setup' phase
+  claude-todo archive --interactive # Review each task before archiving
+  claude-todo archive --no-safe     # Disable relationship safety checks
   claude-todo archive --json        # JSON output for scripting
 EOF
   exit 0
@@ -181,6 +233,14 @@ while [[ $# -gt 0 ]]; do
     --exclude-labels=*) EXCLUDE_LABELS="${1#*=}"; shift ;;
     --only-labels=*) ONLY_LABELS="${1#*=}"; shift ;;
     --no-warnings) SHOW_WARNINGS=false; shift ;;
+    --safe) SAFE_MODE=true; shift ;;
+    --no-safe) SAFE_MODE=false; shift ;;
+    --cascade) CASCADE_ARCHIVE=true; shift ;;
+    --cascade-from) CASCADE_FROM="$2"; shift 2 ;;
+    --cascade-from=*) CASCADE_FROM="${1#*=}"; shift ;;
+    --phase-complete) PHASE_TRIGGER="$2"; shift 2 ;;
+    --phase-complete=*) PHASE_TRIGGER="${1#*=}"; shift ;;
+    -i|--interactive) INTERACTIVE=true; shift ;;
     -f|--format) FORMAT="$2"; shift 2 ;;
     --human) FORMAT="text"; shift ;;
     --json) FORMAT="json"; shift ;;
@@ -245,6 +305,34 @@ EOF
   [[ "$QUIET" != true && "$FORMAT" != "json" ]] && log_info "Created $ARCHIVE_FILE"
 fi
 
+# Validate --cascade-from task exists and is completed
+if [[ -n "$CASCADE_FROM" ]]; then
+  # Verify task exists
+  ROOT_TASK=$(jq --arg id "$CASCADE_FROM" '.tasks[] | select(.id == $id)' "$TODO_FILE")
+  if [[ -z "$ROOT_TASK" || "$ROOT_TASK" == "null" ]]; then
+    if [[ "$FORMAT" == "json" ]] && declare -f output_error >/dev/null 2>&1; then
+      output_error "E_TASK_NOT_FOUND" "Task $CASCADE_FROM not found" "${EXIT_INVALID_INPUT:-1}" true
+    else
+      log_error "Task $CASCADE_FROM not found"
+    fi
+    exit "${EXIT_INVALID_INPUT:-1}"
+  fi
+
+  # Verify task is completed
+  ROOT_STATUS=$(echo "$ROOT_TASK" | jq -r '.status')
+  if [[ "$ROOT_STATUS" != "done" ]]; then
+    if [[ "$FORMAT" == "json" ]] && declare -f output_error >/dev/null 2>&1; then
+      output_error "E_INVALID_STATE" "Task $CASCADE_FROM is not completed (status: $ROOT_STATUS)" "${EXIT_INVALID_INPUT:-1}" true "Complete the task before archiving with --cascade-from"
+    else
+      log_error "Task $CASCADE_FROM is not completed (status: $ROOT_STATUS)"
+    fi
+    exit "${EXIT_INVALID_INPUT:-1}"
+  fi
+
+  [[ "$QUIET" != true && "$FORMAT" != "json" ]] && \
+    log_info "Cascade-from: archiving $CASCADE_FROM and all completed descendants"
+fi
+
 # Read config using config.sh library for priority resolution (env > project > global > default)
 if declare -f get_config_value >/dev/null 2>&1; then
   DAYS_UNTIL_ARCHIVE=$(get_config_value "archive.daysUntilArchive" "7")
@@ -300,9 +388,40 @@ if ! echo "$LABEL_POLICIES" | jq -e 'type == "object"' >/dev/null 2>&1; then
   LABEL_POLICIES='{}'
 fi
 
+# Load relationship safety settings for --safe mode
+if declare -f get_config_value >/dev/null 2>&1; then
+  PREVENT_ORPHAN_CHILDREN=$(get_config_value "archive.relationshipSafety.preventOrphanChildren" "true")
+  PREVENT_BROKEN_DEPS=$(get_config_value "archive.relationshipSafety.preventBrokenDependencies" "true")
+else
+  PREVENT_ORPHAN_CHILDREN=$(jq -r '.archive.relationshipSafety.preventOrphanChildren // true' "$CONFIG_FILE")
+  PREVENT_BROKEN_DEPS=$(jq -r '.archive.relationshipSafety.preventBrokenDependencies // true' "$CONFIG_FILE")
+fi
+
+# Resolve SAFE_MODE: CLI override > config default
+if [[ -z "$SAFE_MODE" ]]; then
+  # No CLI override - use config values (safe if either setting is true)
+  if [[ "$PREVENT_ORPHAN_CHILDREN" == "true" || "$PREVENT_BROKEN_DEPS" == "true" ]]; then
+    SAFE_MODE=true
+  else
+    SAFE_MODE=false
+  fi
+fi
+
 # Check if we have any label policies configured
 if [[ "$LABEL_POLICIES" != "{}" ]]; then
   [[ "$QUIET" != true && "$FORMAT" != "json" ]] && log_info "Label policies active: $(echo "$LABEL_POLICIES" | jq -r 'keys | join(", ")')"
+fi
+
+# Load phase trigger settings from config (v0.31.0+)
+# Allows automatic phase-triggered archiving when a phase is marked complete
+if declare -f get_config_value >/dev/null 2>&1; then
+  PHASE_TRIGGERS_ENABLED=$(get_config_value "archive.phaseTriggers.enabled" "false")
+  PHASE_TRIGGERS_PHASES=$(get_config_value "archive.phaseTriggers.phases" '[]')
+  PHASE_TRIGGERS_PHASE_ONLY=$(get_config_value "archive.phaseTriggers.archivePhaseOnly" "true")
+else
+  PHASE_TRIGGERS_ENABLED=$(jq -r '.archive.phaseTriggers.enabled // false' "$CONFIG_FILE")
+  PHASE_TRIGGERS_PHASES=$(jq -r '.archive.phaseTriggers.phases // []' "$CONFIG_FILE")
+  PHASE_TRIGGERS_PHASE_ONLY=$(jq -r '.archive.phaseTriggers.archivePhaseOnly // true' "$CONFIG_FILE")
 fi
 
 # Apply SHOW_WARNINGS: CLI override > config default
@@ -312,6 +431,27 @@ if [[ -z "$SHOW_WARNINGS" ]]; then
   else
     SHOW_WARNINGS=$(jq -r '.archive.interactive.showWarnings // true' "$CONFIG_FILE")
   fi
+fi
+
+# Load interactive config (v0.31.0+)
+# Config can enable interactive mode by default: archive.interactive.confirmBeforeArchive
+CONFIRM_BEFORE_ARCHIVE="false"
+if declare -f get_config_value >/dev/null 2>&1; then
+  CONFIRM_BEFORE_ARCHIVE=$(get_config_value "archive.interactive.confirmBeforeArchive" "false")
+else
+  CONFIRM_BEFORE_ARCHIVE=$(jq -r '.archive.interactive.confirmBeforeArchive // false' "$CONFIG_FILE")
+fi
+
+# CLI --interactive flag overrides config
+if [[ "$INTERACTIVE" == "true" ]]; then
+  CONFIRM_BEFORE_ARCHIVE="true"
+fi
+
+# Skip interactive mode if not a terminal (non-TTY environments)
+if [[ "$CONFIRM_BEFORE_ARCHIVE" == "true" && ! -t 0 ]]; then
+  [[ "$QUIET" != true && "$FORMAT" != "json" ]] && log_warn "Interactive mode requires a terminal, falling back to non-interactive"
+  CONFIRM_BEFORE_ARCHIVE="false"
+  INTERACTIVE=false
 fi
 
 [[ -n "$MAX_OVERRIDE" ]] && MAX_COMPLETED="$MAX_OVERRIDE"
@@ -398,6 +538,71 @@ if [[ "$EXEMPTED_COUNT" -gt 0 && "$QUIET" != true && "$FORMAT" != "json" ]]; the
   done
 fi
 
+# Apply --phase-complete filter: ONLY archive completed tasks from specified phase
+# This runs BEFORE other filters to scope the archive operation to a single phase
+if [[ -n "$PHASE_TRIGGER" ]]; then
+  # Count tasks in phase before filtering for statistics
+  PHASE_TASKS_COUNT=$(echo "$COMPLETED_TASKS" | jq --arg phase "$PHASE_TRIGGER" '
+    [.[] | select(.phase == $phase)] | length
+  ')
+
+  # Filter to only tasks from the specified phase
+  COMPLETED_TASKS=$(echo "$COMPLETED_TASKS" | jq --arg phase "$PHASE_TRIGGER" '
+    [.[] | select(.phase == $phase)]
+  ')
+
+  # Update completed count after phase filtering
+  COMPLETED_COUNT=$(echo "$COMPLETED_TASKS" | jq 'length')
+
+  # Build phase trigger info for JSON output
+  PHASE_TRIGGER_INFO=$(jq -n \
+    --arg phase "$PHASE_TRIGGER" \
+    --argjson tasksInPhase "$PHASE_TASKS_COUNT" \
+    --argjson tasksAfterFilter "$COMPLETED_COUNT" \
+    '{
+      "enabled": true,
+      "phase": $phase,
+      "tasksInPhase": $tasksInPhase,
+      "tasksAfterFilter": $tasksAfterFilter
+    }'
+  )
+
+  [[ "$QUIET" != true && "$FORMAT" != "json" ]] && \
+    log_info "Phase-triggered archive: filtering to phase '$PHASE_TRIGGER' ($COMPLETED_COUNT tasks)"
+
+  # If no tasks in the specified phase, exit early with appropriate output
+  if [[ "$COMPLETED_COUNT" -eq 0 ]]; then
+    if [[ "$FORMAT" == "json" ]]; then
+      REMAINING_TOTAL=$(jq '.tasks | length' "$TODO_FILE")
+      REMAINING_PENDING=$(jq '[.tasks[] | select(.status == "pending")] | length' "$TODO_FILE")
+      REMAINING_ACTIVE=$(jq '[.tasks[] | select(.status == "active")] | length' "$TODO_FILE")
+      REMAINING_BLOCKED=$(jq '[.tasks[] | select(.status == "blocked")] | length' "$TODO_FILE")
+      TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+      jq -n \
+        --arg ts "$TIMESTAMP" \
+        --arg ver "${CLAUDE_TODO_VERSION:-$(get_version)}" \
+        --argjson total "$REMAINING_TOTAL" \
+        --argjson pending "$REMAINING_PENDING" \
+        --argjson active "$REMAINING_ACTIVE" \
+        --argjson blocked "$REMAINING_BLOCKED" \
+        --argjson phaseTrigger "$PHASE_TRIGGER_INFO" \
+        '{
+          "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
+          "_meta": {"format": "json", "command": "archive", "timestamp": $ts, "version": $ver},
+          "success": true,
+          "archived": {"count": 0, "taskIds": []},
+          "exempted": {"count": 0, "taskIds": []},
+          "phaseTrigger": $phaseTrigger,
+          "remaining": {"total": $total, "pending": $pending, "active": $active, "blocked": $blocked}
+        }'
+    else
+      log_info "No completed tasks in phase '$PHASE_TRIGGER' to archive"
+    fi
+    exit "${EXIT_SUCCESS:-0}"
+  fi
+fi
+
 # Apply --only-labels filter: ONLY archive tasks with specified labels
 if [[ -n "$ONLY_LABELS" ]]; then
   ONLY_LABELS_JSON=$(echo "$ONLY_LABELS" | jq -R 'split(",") | map(gsub("^\\s+|\\s+$"; ""))')
@@ -467,6 +672,275 @@ TASKS_TO_ARCHIVE=$(echo "$COMPLETED_TASKS" | jq \
 ')
 
 ARCHIVE_COUNT=$(echo "$TASKS_TO_ARCHIVE" | jq 'length')
+
+# Idempotency check: Filter out tasks that are already in the archive
+# Per spec Part 5.6: Re-archiving already-archived tasks is a no-op
+ARCHIVED_IDS=$(jq '[.archivedTasks[].id]' "$ARCHIVE_FILE" 2>/dev/null || echo '[]')
+ALREADY_ARCHIVED_IDS='[]'
+ALREADY_ARCHIVED_COUNT=0
+
+if [[ "$ARCHIVE_COUNT" -gt 0 ]]; then
+  CANDIDATE_IDS=$(echo "$TASKS_TO_ARCHIVE" | jq '[.[].id]')
+  ALREADY_ARCHIVED_IDS=$(echo "$CANDIDATE_IDS" "$ARCHIVED_IDS" | jq -s '
+    .[0] as $candidates | .[1] as $existing |
+    [$candidates[] | select(. as $id | $existing | index($id))]
+  ')
+  ALREADY_ARCHIVED_COUNT=$(echo "$ALREADY_ARCHIVED_IDS" | jq 'length')
+
+  if [[ "$ALREADY_ARCHIVED_COUNT" -gt 0 ]]; then
+    # Filter out already-archived tasks
+    TASKS_TO_ARCHIVE=$(echo "$TASKS_TO_ARCHIVE" | jq --argjson alreadyArchived "$ALREADY_ARCHIVED_IDS" '
+      [.[] | select(.id as $id | $alreadyArchived | index($id) | not)]
+    ')
+    ARCHIVE_COUNT=$(echo "$TASKS_TO_ARCHIVE" | jq 'length')
+
+    if [[ "$QUIET" != true && "$FORMAT" != "json" ]]; then
+      log_warn "Skipping $ALREADY_ARCHIVED_COUNT task(s) already in archive:"
+      echo "$ALREADY_ARCHIVED_IDS" | jq -r '.[] | "  - \(.)"'
+    fi
+  fi
+fi
+
+# If ALL eligible tasks were already archived, return no-change (idempotent)
+if [[ "$ARCHIVE_COUNT" -eq 0 && "$ALREADY_ARCHIVED_COUNT" -gt 0 ]]; then
+  TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+  REMAINING_TOTAL=$(jq '.tasks | length' "$TODO_FILE")
+  REMAINING_PENDING=$(jq '[.tasks[] | select(.status == "pending")] | length' "$TODO_FILE")
+  REMAINING_ACTIVE=$(jq '[.tasks[] | select(.status == "active")] | length' "$TODO_FILE")
+  REMAINING_BLOCKED=$(jq '[.tasks[] | select(.status == "blocked")] | length' "$TODO_FILE")
+
+  if [[ "$FORMAT" == "json" ]]; then
+    jq -n \
+      --arg ts "$TIMESTAMP" \
+      --arg ver "${CLAUDE_TODO_VERSION:-$(get_version)}" \
+      --argjson tasksSkipped "$ALREADY_ARCHIVED_IDS" \
+      --argjson total "$REMAINING_TOTAL" \
+      --argjson pending "$REMAINING_PENDING" \
+      --argjson active "$REMAINING_ACTIVE" \
+      --argjson blocked "$REMAINING_BLOCKED" \
+      '{
+        "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
+        "_meta": {"format": "json", "command": "archive", "timestamp": $ts, "version": $ver},
+        "success": true,
+        "noChange": true,
+        "message": "All tasks already archived",
+        "tasksSkipped": $tasksSkipped,
+        "archived": {"count": 0, "taskIds": []},
+        "remaining": {"total": $total, "pending": $pending, "active": $active, "blocked": $blocked}
+      }'
+  else
+    [[ "$QUIET" != true ]] && log_info "No changes made - all eligible tasks already archived"
+  fi
+  exit "${EXIT_NO_CHANGE:-102}"
+fi
+
+
+# Cascade-from mode: Archive specific task and ALL its completed descendants
+# This is different from --cascade: we start from a specified root task and include all descendants
+if [[ -n "$CASCADE_FROM" ]]; then
+  # NOTE: Using --slurpfile with process substitution to avoid "Argument list too long" error
+  # when tasks array exceeds ARG_MAX (~128KB-2MB)
+
+  # Recursively find all descendants (children, grandchildren, etc.)
+  ALL_DESCENDANTS=$(jq --arg rootId "$CASCADE_FROM" --slurpfile tasks <(jq '.tasks' "$TODO_FILE") '
+    # Recursive function to find all descendants (slurpfile wraps in array, use [0])
+    def descendants($id):
+      [$tasks[0][] | select(.parentId == $id) | .id] as $children |
+      if ($children | length) == 0 then []
+      else $children + ([$children[] | descendants(.)] | flatten)
+      end;
+
+    # Include root task plus all descendants
+    [$rootId] + descendants($rootId) | unique
+  ' <<< 'null')
+
+  TOTAL_DESCENDANTS=$(echo "$ALL_DESCENDANTS" | jq 'length - 1')  # Exclude root from count
+
+  # Get completed descendants only
+  COMPLETED_DESCENDANTS=$(jq --argjson ids "$ALL_DESCENDANTS" --slurpfile tasks <(jq '.tasks' "$TODO_FILE") '
+    [$tasks[0][] | select(.id as $id | $ids | index($id)) | select(.status == "done")]
+  ' <<< 'null')
+
+  COMPLETED_COUNT=$(echo "$COMPLETED_DESCENDANTS" | jq 'length')
+
+  # Get incomplete descendants for warning
+  INCOMPLETE_DESCENDANTS=$(jq --argjson ids "$ALL_DESCENDANTS" --slurpfile tasks <(jq '.tasks' "$TODO_FILE") '
+    [$tasks[0][] | select(.id as $id | $ids | index($id)) | select(.status != "done")]
+  ' <<< 'null')
+
+  INCOMPLETE_COUNT=$(echo "$INCOMPLETE_DESCENDANTS" | jq 'length')
+
+  # Warn about incomplete descendants
+  if [[ "$INCOMPLETE_COUNT" -gt 0 && "$QUIET" != true && "$FORMAT" != "json" ]]; then
+    log_warn "$INCOMPLETE_COUNT descendants are not completed and will NOT be archived:"
+    echo "$INCOMPLETE_DESCENDANTS" | jq -r '.[] | "  - \(.id): \(.title) [\(.status)]"'
+  fi
+
+  # Replace TASKS_TO_ARCHIVE with the completed descendants
+  # This bypasses normal retention rules since we explicitly requested this cascade
+  TASKS_TO_ARCHIVE="$COMPLETED_DESCENDANTS"
+  ARCHIVE_COUNT=$(echo "$TASKS_TO_ARCHIVE" | jq 'length')
+
+  # Build cascade-from info for JSON output
+  CASCADE_FROM_INFO=$(jq -n \
+    --arg rootTask "$CASCADE_FROM" \
+    --argjson totalDescendants "$TOTAL_DESCENDANTS" \
+    --argjson completedDescendants "$((COMPLETED_COUNT - 1))" \
+    --argjson incompleteDescendants "$INCOMPLETE_COUNT" \
+    '{
+      "rootTask": $rootTask,
+      "totalDescendants": $totalDescendants,
+      "completedDescendants": $completedDescendants,
+      "incompleteDescendants": $incompleteDescendants
+    }'
+  )
+
+  [[ "$QUIET" != true && "$FORMAT" != "json" ]] && \
+    log_info "Cascade from $CASCADE_FROM: archiving $ARCHIVE_COUNT tasks ($TOTAL_DESCENDANTS descendants, $INCOMPLETE_COUNT incomplete)"
+fi
+
+# Cascade mode: Archive completed parents with all completed children together
+# This runs BEFORE safe mode so cascaded families bypass the orphan check
+if [[ "$CASCADE_ARCHIVE" == "true" && "$ARCHIVE_COUNT" -gt 0 ]]; then
+  # Get all tasks for cascade analysis
+  ALL_TASKS=$(jq '.tasks' "$TODO_FILE")
+  CANDIDATE_IDS_FOR_CASCADE=$(echo "$TASKS_TO_ARCHIVE" | jq '[.[].id]')
+
+  # Find completed parent tasks in our archive candidates that have children
+  # A "cascadable family" requires:
+  # 1. Parent is in TASKS_TO_ARCHIVE (completed and eligible)
+  # 2. ALL children of that parent are also status=done
+  CASCADE_RESULT=$(jq -n \
+    --argjson tasks "$ALL_TASKS" \
+    --argjson candidates "$CANDIDATE_IDS_FOR_CASCADE" \
+    '
+    # Find parent IDs that are candidates for archive
+    ($tasks | map(select(.id as $id | $candidates | index($id))) | map(select(.parentId == null or .parentId == "null"))) as $rootCandidates |
+
+    # For each potential parent in candidates, check if ALL its children are done
+    [
+      $tasks[] |
+      select(.id as $id | $candidates | index($id)) |
+      . as $parent |
+      # Find all children of this parent
+      [$tasks[] | select(.parentId == $parent.id)] as $children |
+      select($children | length > 0) |  # Only parents with children
+      {
+        parent: $parent.id,
+        children: [$children[].id],
+        allChildrenDone: ([$children[] | .status == "done"] | all),
+        doneChildren: [$children[] | select(.status == "done") | .id],
+        notDoneChildren: [$children[] | select(.status != "done") | .id]
+      }
+    ] |
+    # Separate complete families from incomplete ones
+    {
+      completeFamilies: [.[] | select(.allChildrenDone)],
+      incompleteFamilies: [.[] | select(.allChildrenDone | not)]
+    }
+    '
+  )
+
+  COMPLETE_FAMILIES=$(echo "$CASCADE_RESULT" | jq '.completeFamilies')
+  INCOMPLETE_FAMILIES=$(echo "$CASCADE_RESULT" | jq '.incompleteFamilies')
+  COMPLETE_FAMILY_COUNT=$(echo "$COMPLETE_FAMILIES" | jq 'length')
+  INCOMPLETE_FAMILY_COUNT=$(echo "$INCOMPLETE_FAMILIES" | jq 'length')
+
+  # Process complete families - ensure all children are added to archive list
+  if [[ "$COMPLETE_FAMILY_COUNT" -gt 0 ]]; then
+    CASCADE_APPLIED=true
+    CASCADED_FAMILIES="$COMPLETE_FAMILIES"
+
+    # Get all children IDs from complete families that need to be added
+    CHILDREN_TO_ADD=$(echo "$COMPLETE_FAMILIES" | jq '[.[].children[]] | unique')
+
+    # Add children to archive list if not already there
+    TASKS_TO_ARCHIVE=$(jq -n \
+      --argjson current "$TASKS_TO_ARCHIVE" \
+      --argjson allTasks "$ALL_TASKS" \
+      --argjson childrenIds "$CHILDREN_TO_ADD" \
+      '
+      # Get current archive IDs
+      [$current[].id] as $currentIds |
+      # Find children not yet in archive list
+      [$allTasks[] | select(.id as $id | ($childrenIds | index($id)) and ($currentIds | index($id) | not))] as $newChildren |
+      # Combine
+      $current + $newChildren
+      '
+    )
+
+    if [[ "$QUIET" != true && "$FORMAT" != "json" ]]; then
+      log_info "Cascade mode: $COMPLETE_FAMILY_COUNT complete family/families will be archived together"
+      echo "$COMPLETE_FAMILIES" | jq -r '.[] | "  - Parent \(.parent) with children: \(.children | join(", "))"'
+    fi
+  fi
+
+  # Warn about incomplete families
+  if [[ "$INCOMPLETE_FAMILY_COUNT" -gt 0 && "$QUIET" != true && "$FORMAT" != "json" ]]; then
+    log_warn "Cascade mode: $INCOMPLETE_FAMILY_COUNT family/families skipped (incomplete children)"
+    echo "$INCOMPLETE_FAMILIES" | jq -r '.[] | "  - Parent \(.parent): not done children: \(.notDoneChildren | join(", "))"'
+  fi
+
+  # Update archive count after cascade additions
+  ARCHIVE_COUNT=$(echo "$TASKS_TO_ARCHIVE" | jq 'length')
+fi
+
+# Safe mode: Block archiving tasks that would orphan children or break dependencies
+if [[ "$SAFE_MODE" == "true" && "$ARCHIVE_COUNT" -gt 0 ]]; then
+  # Get IDs of tasks we're considering for archive
+  CANDIDATE_IDS=$(echo "$TASKS_TO_ARCHIVE" | jq '[.[].id]')
+
+  # Check for active children that would be orphaned
+  BLOCKED_BY_CHILDREN=$(jq --argjson candidateIds "$CANDIDATE_IDS" '
+    [.tasks[] |
+     select(.status != "done" and .parentId != null) |
+     select(.parentId as $p | $candidateIds | index($p)) |
+     .parentId
+    ] | unique
+  ' "$TODO_FILE")
+
+  CHILDREN_BLOCKED_COUNT=$(echo "$BLOCKED_BY_CHILDREN" | jq 'length')
+
+  if [[ "$CHILDREN_BLOCKED_COUNT" -gt 0 ]]; then
+    # Remove tasks with active children from archive candidates
+    TASKS_TO_ARCHIVE=$(echo "$TASKS_TO_ARCHIVE" | jq --argjson blockedIds "$BLOCKED_BY_CHILDREN" '
+      [.[] | select(.id as $id | $blockedIds | index($id) | not)]
+    ')
+
+    if [[ "$QUIET" != true && "$FORMAT" != "json" ]]; then
+      log_warn "Safe mode: Skipping $CHILDREN_BLOCKED_COUNT task(s) with active children"
+      echo "$BLOCKED_BY_CHILDREN" | jq -r '.[] | "  - \(.)"'
+    fi
+  fi
+
+  # Recalculate candidate IDs after removing blocked parents
+  CANDIDATE_IDS=$(echo "$TASKS_TO_ARCHIVE" | jq '[.[].id]')
+
+  # Check for active tasks that depend on archive candidates
+  BLOCKED_BY_DEPENDENTS=$(jq --argjson candidateIds "$CANDIDATE_IDS" '
+    [.tasks[] |
+     select(.status != "done" and .depends != null and (.depends | length) > 0) |
+     .depends | map(select(. as $d | $candidateIds | index($d)))
+    ] | flatten | unique
+  ' "$TODO_FILE")
+
+  DEPS_BLOCKED_COUNT=$(echo "$BLOCKED_BY_DEPENDENTS" | jq 'length')
+
+  if [[ "$DEPS_BLOCKED_COUNT" -gt 0 ]]; then
+    # Remove tasks that have active dependents from archive candidates
+    TASKS_TO_ARCHIVE=$(echo "$TASKS_TO_ARCHIVE" | jq --argjson blockedIds "$BLOCKED_BY_DEPENDENTS" '
+      [.[] | select(.id as $id | $blockedIds | index($id) | not)]
+    ')
+
+    if [[ "$QUIET" != true && "$FORMAT" != "json" ]]; then
+      log_warn "Safe mode: Skipping $DEPS_BLOCKED_COUNT task(s) with active dependents"
+      echo "$BLOCKED_BY_DEPENDENTS" | jq -r '.[] | "  - \(.)"'
+    fi
+  fi
+
+  # Update archive count after safe mode filtering
+  ARCHIVE_COUNT=$(echo "$TASKS_TO_ARCHIVE" | jq 'length')
+fi
 
 # Collect warnings about relationship impacts (before archive operation)
 # These warnings inform the user even when not blocking the operation
@@ -544,12 +1018,25 @@ if [[ "$ARCHIVE_COUNT" -eq 0 ]]; then
       --argjson exemptedIds "$EXEMPTED_IDS" \
       --argjson warnings "$WARNINGS_JSON" \
       --argjson onlyLabelsFilter "$ONLY_LABELS_OUTPUT" \
+      --argjson safeMode "$SAFE_MODE" \
+      --argjson blockedByChildren "$BLOCKED_BY_CHILDREN" \
+      --argjson blockedByDependents "$BLOCKED_BY_DEPENDENTS" \
+      --argjson cascadeApplied "$CASCADE_APPLIED" \
+      --argjson cascadedFamilies "$CASCADED_FAMILIES" \
+      --argjson cascadeFrom "$CASCADE_FROM_INFO" \
+      --argjson phaseTrigger "$PHASE_TRIGGER_INFO" \
       '{
         "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
         "_meta": {"format": "json", "command": "archive", "timestamp": $ts, "version": $ver},
         "success": true,
+        "safeMode": $safeMode,
+        "cascadeApplied": $cascadeApplied,
+        "cascadedFamilies": $cascadedFamilies,
+        "cascadeFrom": $cascadeFrom,
+        "phaseTrigger": $phaseTrigger,
         "archived": {"count": 0, "taskIds": []},
         "exempted": {"count": $exemptedCount, "taskIds": $exemptedIds},
+        "blockedByRelationships": {"byChildren": $blockedByChildren, "byDependents": $blockedByDependents},
         "excludeLabelsApplied": $excludeLabelsApplied,
         "effectiveExemptLabels": $effectiveExemptLabels,
         "filters": {"onlyLabels": $onlyLabelsFilter, "excludeLabels": (if $excludeLabelsApplied then $effectiveExemptLabels else null end)},
@@ -564,6 +1051,79 @@ if [[ "$ARCHIVE_COUNT" -eq 0 ]]; then
 fi
 
 [[ "$QUIET" != true && "$FORMAT" != "json" ]] && log_info "Tasks to archive: $ARCHIVE_COUNT"
+
+# Interactive mode: Review each task before archiving
+# Only applies if confirmBeforeArchive is true, not in dry-run mode, and text output
+if [[ "$CONFIRM_BEFORE_ARCHIVE" == "true" && "$DRY_RUN" != "true" && "$FORMAT" != "json" ]]; then
+  APPROVED_TASKS='[]'
+  SKIPPED_TASKS='[]'
+
+  echo ""
+  echo "Interactive Archive Mode - Review each task:"
+  echo "  (y)es to archive, (n)o to skip, (a)ll remaining, (q)uit"
+  echo ""
+
+  ARCHIVE_ALL_REMAINING=false
+
+  while IFS= read -r task; do
+    if [[ "$ARCHIVE_ALL_REMAINING" == "true" ]]; then
+      APPROVED_TASKS=$(echo "$APPROVED_TASKS" | jq --argjson task "$task" '. + [$task]')
+      INTERACTIVE_APPROVED=$((INTERACTIVE_APPROVED + 1))
+      continue
+    fi
+
+    TASK_ID=$(echo "$task" | jq -r '.id')
+    TASK_TITLE=$(echo "$task" | jq -r '.title')
+    TASK_COMPLETED=$(echo "$task" | jq -r '.completedAt // "unknown"')
+    TASK_LABELS=$(echo "$task" | jq -r '(.labels // []) | join(", ")')
+
+    echo "Task: $TASK_ID - $TASK_TITLE"
+    echo "  Completed: $TASK_COMPLETED"
+    [[ -n "$TASK_LABELS" ]] && echo "  Labels: $TASK_LABELS"
+
+    read -p "Archive this task? [y/n/a/q]: " -n 1 -r REPLY
+    echo ""
+
+    case "$REPLY" in
+      y|Y)
+        APPROVED_TASKS=$(echo "$APPROVED_TASKS" | jq --argjson task "$task" '. + [$task]')
+        INTERACTIVE_APPROVED=$((INTERACTIVE_APPROVED + 1))
+        ;;
+      n|N)
+        SKIPPED_TASKS=$(echo "$SKIPPED_TASKS" | jq --argjson task "$task" '. + [$task]')
+        INTERACTIVE_SKIPPED=$((INTERACTIVE_SKIPPED + 1))
+        ;;
+      a|A)
+        ARCHIVE_ALL_REMAINING=true
+        APPROVED_TASKS=$(echo "$APPROVED_TASKS" | jq --argjson task "$task" '. + [$task]')
+        INTERACTIVE_APPROVED=$((INTERACTIVE_APPROVED + 1))
+        ;;
+      q|Q)
+        log_info "Archive cancelled by user"
+        exit "${EXIT_SUCCESS:-0}"
+        ;;
+      *)
+        # Default to skip for any other input
+        SKIPPED_TASKS=$(echo "$SKIPPED_TASKS" | jq --argjson task "$task" '. + [$task]')
+        INTERACTIVE_SKIPPED=$((INTERACTIVE_SKIPPED + 1))
+        ;;
+    esac
+  done < <(echo "$TASKS_TO_ARCHIVE" | jq -c '.[]')
+
+  # Update TASKS_TO_ARCHIVE with only approved tasks
+  TASKS_TO_ARCHIVE="$APPROVED_TASKS"
+  ARCHIVE_COUNT=$(echo "$TASKS_TO_ARCHIVE" | jq 'length')
+
+  echo ""
+  log_info "Approved: $INTERACTIVE_APPROVED tasks, Skipped: $INTERACTIVE_SKIPPED tasks"
+
+  # If no tasks were approved, exit early
+  if [[ "$ARCHIVE_COUNT" -eq 0 ]]; then
+    log_info "No tasks approved for archiving"
+    exit "${EXIT_SUCCESS:-0}"
+  fi
+fi
+
 
 if [[ "$DRY_RUN" == true ]]; then
   if [[ "$FORMAT" == "json" ]]; then
@@ -595,13 +1155,26 @@ if [[ "$DRY_RUN" == true ]]; then
       --argjson exemptedIds "$EXEMPTED_IDS" \
       --argjson warnings "$WARNINGS_JSON" \
       --argjson onlyLabelsFilter "$ONLY_LABELS_OUTPUT" \
+      --argjson safeMode "$SAFE_MODE" \
+      --argjson blockedByChildren "$BLOCKED_BY_CHILDREN" \
+      --argjson blockedByDependents "$BLOCKED_BY_DEPENDENTS" \
+      --argjson cascadeApplied "$CASCADE_APPLIED" \
+      --argjson cascadedFamilies "$CASCADED_FAMILIES" \
+      --argjson cascadeFrom "$CASCADE_FROM_INFO" \
+      --argjson phaseTrigger "$PHASE_TRIGGER_INFO" \
       '{
         "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
         "_meta": {"format": "json", "command": "archive", "timestamp": $ts, "version": $ver},
         "success": true,
         "dryRun": true,
-        "archived": {"count": $count, "taskIds": $ids},
+        "wouldArchive": {"count": $count, "taskIds": $ids},
+        "safeMode": $safeMode,
+        "cascadeApplied": $cascadeApplied,
+        "cascadedFamilies": $cascadedFamilies,
+        "cascadeFrom": $cascadeFrom,
+        "phaseTrigger": $phaseTrigger,
         "exempted": {"count": $exemptedCount, "taskIds": $exemptedIds},
+        "blockedByRelationships": {"byChildren": $blockedByChildren, "byDependents": $blockedByDependents},
         "filters": {"onlyLabels": $onlyLabelsFilter, "excludeLabels": (if $excludeLabelsApplied then $effectiveExemptLabels else null end)},
         "warnings": $warnings,
         "warningCount": ($warnings | length),
@@ -616,6 +1189,21 @@ if [[ "$DRY_RUN" == true ]]; then
       echo "Exempted tasks (protected by labels):"
       echo "$EXEMPTED_TASKS" | jq -r '.[] | "  - \(.id): \(.title) [\(.labels | join(", "))]"'
     fi
+    # Show cascade information in dry-run text output
+    if [[ "$CASCADE_APPLIED" == "true" ]]; then
+      echo ""
+      echo "Cascade families to archive together:"
+      echo "$CASCADED_FAMILIES" | jq -r '.[] | "  - Parent \(.parent) with children: \(.children | join(", "))"'
+    fi
+    # Show cascade-from information in dry-run text output
+    if [[ -n "$CASCADE_FROM" ]]; then
+      echo ""
+      echo "Cascade from $CASCADE_FROM:"
+      echo "  Root task: $CASCADE_FROM"
+      echo "  Total descendants: $(echo "$CASCADE_FROM_INFO" | jq -r '.totalDescendants')"
+      echo "  Completed (to archive): $(echo "$CASCADE_FROM_INFO" | jq -r '.completedDescendants + 1') (including root)"
+      echo "  Incomplete (skipped): $(echo "$CASCADE_FROM_INFO" | jq -r '.incompleteDescendants')"
+    fi
     echo ""
     echo "No changes made."
   fi
@@ -624,24 +1212,118 @@ fi
 
 # Get task IDs to archive
 ARCHIVE_IDS=$(echo "$TASKS_TO_ARCHIVE" | jq -r '.[].id')
+ARCHIVE_IDS_ARRAY=$(echo "$TASKS_TO_ARCHIVE" | jq '[.[].id]')
 
 # Add archive metadata to tasks
 TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 SESSION_ID=$(jq -r '._meta.activeSession // "system"' "$TODO_FILE")
 
-TASKS_WITH_METADATA=$(echo "$TASKS_TO_ARCHIVE" | jq --arg ts "$TIMESTAMP" --arg sid "$SESSION_ID" '
-  map(. + {
-    "_archive": {
-      "archivedAt": $ts,
-      "reason": "auto",
-      "sessionId": $sid,
-      "cycleTimeDays": (
-        if .completedAt and .createdAt then
-          (((.completedAt | fromdateiso8601) - (.createdAt | fromdateiso8601)) / 86400 | floor)
-        else null end
-      )
+# Determine archive source based on CLI flags
+if [[ "$ARCHIVE_ALL" == "true" ]]; then
+  ARCHIVE_SOURCE="all"
+elif [[ "$FORCE" == "true" ]]; then
+  ARCHIVE_SOURCE="force"
+elif [[ -n "$PHASE_TRIGGER" ]]; then
+  ARCHIVE_SOURCE="phase-trigger"
+elif [[ -n "$CASCADE_FROM" ]]; then
+  ARCHIVE_SOURCE="cascade-from"
+elif [[ -n "$ONLY_LABELS" ]]; then
+  ARCHIVE_SOURCE="manual"
+else
+  ARCHIVE_SOURCE="auto"
+fi
+
+# Build trigger details JSON
+TRIGGER_DETAILS=$(jq -n \
+  --arg configRule "daysUntilArchive=$DAYS_UNTIL_ARCHIVE" \
+  '{
+    "configRule": $configRule
+  }'
+)
+
+# Add phase trigger info to trigger details if applicable
+if [[ -n "$PHASE_TRIGGER" ]]; then
+  TRIGGER_DETAILS=$(echo "$TRIGGER_DETAILS" | jq --arg phase "$PHASE_TRIGGER" '. + {phase: $phase}')
+fi
+
+# Capture relationship state for each task being archived
+# Get all tasks to check relationships
+ALL_TASKS=$(jq '.tasks' "$TODO_FILE")
+
+# Build relationship state data: which tasks have children, which have dependents
+# Children: tasks where parentId matches an archiving task's ID
+CHILDREN_BY_PARENT=$(echo "$ALL_TASKS" | jq --argjson archiveIds "$ARCHIVE_IDS_ARRAY" '
+  [.[] | select(.parentId != null) | {parentId: .parentId, childId: .id}] |
+  group_by(.parentId) |
+  map({key: .[0].parentId, value: [.[].childId]}) |
+  from_entries
+')
+
+# Dependents: tasks that depend on archiving tasks
+DEPENDENTS_BY_TASK=$(echo "$ALL_TASKS" | jq --argjson archiveIds "$ARCHIVE_IDS_ARRAY" '
+  [.[] | select(.depends != null and (.depends | length) > 0) |
+   .id as $taskId | .depends[] | select(. as $d | $archiveIds | index($d)) |
+   {dependencyId: ., dependentId: $taskId}
+  ] |
+  group_by(.dependencyId) |
+  map({key: .[0].dependencyId, value: [.[].dependentId]}) |
+  from_entries
+')
+
+# Generate enhanced metadata for each task
+TASKS_WITH_METADATA=$(echo "$TASKS_TO_ARCHIVE" | jq \
+  --arg ts "$TIMESTAMP" \
+  --arg sid "$SESSION_ID" \
+  --arg source "$ARCHIVE_SOURCE" \
+  --argjson trigger "$TRIGGER_DETAILS" \
+  --argjson childrenByParent "$CHILDREN_BY_PARENT" \
+  --argjson dependentsByTask "$DEPENDENTS_BY_TASK" \
+  --argjson labelPolicies "$LABEL_POLICIES" \
+  '
+  map(
+    # Determine reason based on labels and policies
+    ((.labels // []) | any(. as $l | $labelPolicies[$l].daysUntilArchive != null)) as $hasLabelPolicy |
+
+    . + {
+      "_archive": {
+        "archivedAt": $ts,
+        "reason": (
+          if $hasLabelPolicy then "label-policy"
+          elif $source == "force" then "force"
+          elif $source == "all" then "force"
+          elif $source == "manual" then "manual"
+          else "auto"
+          end
+        ),
+        "archiveSource": $source,
+        "sessionId": $sid,
+        "cycleTimeDays": (
+          if .completedAt and .createdAt then
+            (((.completedAt | fromdateiso8601) - (.createdAt | fromdateiso8601)) / 86400 | floor)
+          else null end
+        ),
+        "triggerDetails": (
+          $trigger |
+          # Add label policy info if applicable
+          if $hasLabelPolicy then
+            . + {"labelPolicy": ((.labels // []) | map(select($labelPolicies[.] != null)) | first // null)}
+          else . end
+        ),
+        "relationshipState": {
+          "hadChildren": (($childrenByParent[.id] // []) | length > 0),
+          "childIds": ($childrenByParent[.id] // []),
+          "hadDependents": (($dependentsByTask[.id] // []) | length > 0),
+          "dependentIds": ($dependentsByTask[.id] // []),
+          "parentId": (.parentId // null)
+        },
+        "restoreInfo": {
+          "originalStatus": .status,
+          "canRestore": true,
+          "restoreBlockers": []
+        }
+      }
     }
-  })
+  )
 ')
 
 # ATOMIC TRANSACTION: Generate all temp files, validate, then commit
@@ -889,7 +1571,7 @@ if [[ "$FORMAT" == "json" ]]; then
 
   jq -n \
     --arg ts "$OUTPUT_TIMESTAMP" \
-    --arg ver "$VERSION" \
+    --arg ver "${CLAUDE_TODO_VERSION:-$(get_version)}" \
     --argjson count "$ARCHIVE_COUNT" \
     --argjson ids "$ARCHIVE_IDS_JSON" \
     --argjson total "$REMAINING_TOTAL" \
@@ -902,12 +1584,29 @@ if [[ "$FORMAT" == "json" ]]; then
     --argjson exemptedIds "$EXEMPTED_IDS" \
     --argjson warnings "$WARNINGS_JSON" \
     --argjson onlyLabelsFilter "$ONLY_LABELS_OUTPUT" \
+    --argjson safeMode "$SAFE_MODE" \
+    --argjson blockedByChildren "$BLOCKED_BY_CHILDREN" \
+    --argjson blockedByDependents "$BLOCKED_BY_DEPENDENTS" \
+    --argjson cascadeApplied "$CASCADE_APPLIED" \
+    --argjson cascadedFamilies "$CASCADED_FAMILIES" \
+    --argjson cascadeFrom "$CASCADE_FROM_INFO" \
+    --argjson interactiveEnabled "${INTERACTIVE:-false}" \
+    --argjson interactiveApproved "$INTERACTIVE_APPROVED" \
+    --argjson interactiveSkipped "$INTERACTIVE_SKIPPED" \
+      --argjson phaseTrigger "$PHASE_TRIGGER_INFO" \
     '{
       "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
       "_meta": {"format": "json", "command": "archive", "timestamp": $ts, "version": $ver},
       "success": true,
+      "safeMode": $safeMode,
+      "cascadeApplied": $cascadeApplied,
+      "cascadedFamilies": $cascadedFamilies,
+      "cascadeFrom": $cascadeFrom,
+      "interactive": (if $interactiveEnabled then {"enabled": true, "approved": $interactiveApproved, "skipped": $interactiveSkipped} else null end),
+        "phaseTrigger": $phaseTrigger,
       "archived": {"count": $count, "taskIds": $ids},
       "exempted": {"count": $exemptedCount, "taskIds": $exemptedIds},
+      "blockedByRelationships": {"byChildren": $blockedByChildren, "byDependents": $blockedByDependents},
       "filters": {"onlyLabels": $onlyLabelsFilter, "excludeLabels": (if $excludeLabelsApplied then $effectiveExemptLabels else null end)},
       "warnings": $warnings,
       "warningCount": ($warnings | length),
@@ -958,6 +1657,23 @@ else
         echo ""
         echo "  Exempted tasks (protected by labels): $EXEMPTED_COUNT"
         echo "$EXEMPTED_TASKS" | jq -r '.[] | "    - \(.id): \(.title)"'
+      fi
+
+      # Show cascade information if applied
+      if [[ "$CASCADE_APPLIED" == "true" ]]; then
+        echo ""
+        echo "  Cascaded families archived together:"
+        echo "$CASCADED_FAMILIES" | jq -r '.[] | "    - Parent \(.parent) with children: \(.children | join(", "))"'
+      fi
+
+      # Show cascade-from information if applied
+      if [[ -n "$CASCADE_FROM" ]]; then
+        echo ""
+        echo "  Cascade from $CASCADE_FROM:"
+        echo "    Root task: $CASCADE_FROM"
+        echo "    Total descendants: $(echo "$CASCADE_FROM_INFO" | jq -r '.totalDescendants')"
+        echo "    Completed (archived): $(echo "$CASCADE_FROM_INFO" | jq -r '.completedDescendants + 1') (including root)"
+        echo "    Incomplete (skipped): $(echo "$CASCADE_FROM_INFO" | jq -r '.incompleteDescendants')"
       fi
     fi
   fi

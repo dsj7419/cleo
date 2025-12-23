@@ -40,7 +40,13 @@
       },
       "write_commands": {
         "required": ["--dry-run"],
-        "commands": ["add", "archive", "complete", "extract", "inject", "migrate", "migrate-backups", "restore", "sync", "update"]
+        "commands": ["add", "archive", "complete", "extract", "focus", "inject", "migrate", "migrate-backups", "phase", "restore", "session", "sync", "update"],
+        "patterns": {
+          "dry_run_flag": "--dry-run\\)",
+          "dry_run_variable": "^DRY_RUN=false",
+          "dry_run_json_field": "\"dryRun\"[[:space:]]*:[[:space:]]*true",
+          "dry_run_would_naming": "would(Create|Update|Delete|Archive|Restore|Complete|Migrate|Inject|Extract|Set|Start|End)"
+        }
       },
       "format_resolution": {
         "required": true,

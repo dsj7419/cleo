@@ -209,7 +209,8 @@ teardown() {
 EOF
 
     # Use --all to bypass both age retention AND preserveRecentCount
-    bash "$ARCHIVE_SCRIPT" --all
+    # Use --no-safe to allow archiving even with active dependents (tests dependency cleanup)
+    bash "$ARCHIVE_SCRIPT" --all --no-safe
 
     # T002's depends should be cleaned up
     local depends

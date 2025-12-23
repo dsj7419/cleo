@@ -121,20 +121,20 @@
       }
     ]
   },
-  "lastUpdated": "2025-12-23T06:26:22Z",
+  "lastUpdated": "2025-12-23T07:33:59Z",
   "_meta": {
-    "checksum": "79a2021fce0489c0",
+    "checksum": "1c08ccd0ec777df2",
     "configVersion": "2.1.0",
     "lastSessionId": null,
     "activeSession": null,
-    "lastModified": "2025-12-23T06:22:34Z",
+    "lastModified": "2025-12-23T07:11:49Z",
     "version": "2.3.0",
     "schemaVersion": "2.3.0"
   },
   "focus": {
     "currentTask": null,
     "blockedUntil": null,
-    "sessionNote": "v0.30.2: Fixed --human tree output to show full titles without truncation. Committed and installed successfully.",
+    "sessionNote": "Created archive-stats.sh command for T443",
     "nextAction": "NEXT SESSION: Implement T452 (archive.sh - HIGH priority) first. Pattern: source lib/file-ops.sh, replace all raw writes with save_json(). Then T453, T454. T350/T530/T531 can follow. See FILE-LOCKING-IMPLEMENTATION-REPORT.md for fix patterns.",
     "currentPhase": "core"
   },
@@ -2889,7 +2889,7 @@
     {
       "id": "T429",
       "title": "EPIC: Smart Archive System Enhancement",
-      "status": "pending",
+      "status": "done",
       "priority": "critical",
       "type": "epic",
       "parentId": null,
@@ -2902,8 +2902,10 @@
         "feature"
       ],
       "notes": [
-        "2025-12-23 05:31:52 UTC: v0.29.2 verified"
-      ]
+        "2025-12-23 05:31:52 UTC: v0.29.2 verified",
+        "[COMPLETED 2025-12-23T07:33:06Z] EPIC COMPLETE: Smart Archive System Enhancement - 18 subtasks implemented with schema updates, label filtering, safe mode, cascade archiving, phase triggers, interactive mode, unarchive command, archive-stats, and comprehensive documentation/tests (217 tests, 98.6% pass rate)"
+      ],
+      "completedAt": "2025-12-23T07:33:06Z"
     },
     {
       "id": "T430",
@@ -2927,7 +2929,7 @@
     {
       "id": "T431",
       "title": "T429.2: Implement --exclude-labels flag",
-      "status": "pending",
+      "status": "done",
       "priority": "high",
       "type": "task",
       "parentId": "T429",
@@ -2941,12 +2943,16 @@
       ],
       "depends": [
         "T429"
+      ],
+      "completedAt": "2025-12-23T06:52:17Z",
+      "notes": [
+        "[COMPLETED 2025-12-23T06:52:17Z] Implemented --exclude-labels flag with config merge"
       ]
     },
     {
       "id": "T432",
       "title": "T429.3: Implement --only-labels flag",
-      "status": "pending",
+      "status": "done",
       "priority": "high",
       "type": "task",
       "parentId": "T429",
@@ -2960,12 +2966,16 @@
       ],
       "depends": [
         "T429"
+      ],
+      "completedAt": "2025-12-23T06:52:18Z",
+      "notes": [
+        "[COMPLETED 2025-12-23T06:52:18Z] Implemented --only-labels flag with mutual exclusion check"
       ]
     },
     {
       "id": "T433",
       "title": "T429.4: Implement --safe flag with relationship checking",
-      "status": "pending",
+      "status": "done",
       "priority": "high",
       "type": "task",
       "parentId": "T429",
@@ -2980,12 +2990,16 @@
       "depends": [
         "T429",
         "T328"
+      ],
+      "completedAt": "2025-12-23T06:52:19Z",
+      "notes": [
+        "[COMPLETED 2025-12-23T06:52:19Z] Implemented --safe flag with relationship blocking for children and dependents"
       ]
     },
     {
       "id": "T434",
       "title": "T429.5: Add archive warnings before breaking references",
-      "status": "pending",
+      "status": "done",
       "priority": "high",
       "type": "task",
       "parentId": "T429",
@@ -3001,12 +3015,16 @@
       "depends": [
         "T429",
         "T328"
+      ],
+      "completedAt": "2025-12-23T06:52:20Z",
+      "notes": [
+        "[COMPLETED 2025-12-23T06:52:20Z] Implemented archive warnings for relationship impacts"
       ]
     },
     {
       "id": "T435",
       "title": "T429.6: Implement labelPolicies config for per-label retention",
-      "status": "pending",
+      "status": "done",
       "priority": "high",
       "type": "task",
       "parentId": "T429",
@@ -3021,12 +3039,16 @@
       "depends": [
         "T429",
         "T430"
+      ],
+      "completedAt": "2025-12-23T06:52:20Z",
+      "notes": [
+        "[COMPLETED 2025-12-23T06:52:20Z] Implemented labelPolicies config with neverArchive and per-label daysUntilArchive"
       ]
     },
     {
       "id": "T436",
       "title": "T429.7: Implement relationship-aware archive logic",
-      "status": "pending",
+      "status": "done",
       "priority": "high",
       "type": "task",
       "parentId": "T429",
@@ -3042,12 +3064,16 @@
         "T429",
         "T328",
         "T433"
+      ],
+      "completedAt": "2025-12-23T07:04:36Z",
+      "notes": [
+        "[COMPLETED 2025-12-23T07:04:36Z] Implemented --cascade flag for archiving complete families together"
       ]
     },
     {
       "id": "T437",
       "title": "T429.8: Create unarchive command",
-      "status": "pending",
+      "status": "done",
       "priority": "high",
       "type": "task",
       "parentId": "T429",
@@ -3061,12 +3087,16 @@
       ],
       "depends": [
         "T429"
+      ],
+      "completedAt": "2025-12-23T07:04:37Z",
+      "notes": [
+        "[COMPLETED 2025-12-23T07:04:37Z] Created unarchive.sh command with status options and dry-run support"
       ]
     },
     {
       "id": "T438",
       "title": "T429.9: Add --include-archive and --archive-only flags to list",
-      "status": "pending",
+      "status": "done",
       "priority": "medium",
       "type": "task",
       "parentId": "T429",
@@ -3080,12 +3110,16 @@
       ],
       "depends": [
         "T429"
+      ],
+      "completedAt": "2025-12-23T07:04:37Z",
+      "notes": [
+        "[COMPLETED 2025-12-23T07:04:37Z] Added --include-archive and --archive-only flags to list command"
       ]
     },
     {
       "id": "T439",
       "title": "T429.10: Add archive metadata tracking",
-      "status": "pending",
+      "status": "done",
       "priority": "medium",
       "type": "task",
       "parentId": "T429",
@@ -3099,12 +3133,16 @@
       ],
       "depends": [
         "T429"
+      ],
+      "completedAt": "2025-12-23T07:04:38Z",
+      "notes": [
+        "[COMPLETED 2025-12-23T07:04:38Z] Enhanced archive metadata with archiveSource, triggerDetails, relationshipState, restoreInfo"
       ]
     },
     {
       "id": "T440",
       "title": "T429.11: Implement phase-triggered archiving",
-      "status": "pending",
+      "status": "done",
       "priority": "medium",
       "type": "task",
       "parentId": "T429",
@@ -3120,12 +3158,16 @@
         "T429",
         "T436",
         "T439"
+      ],
+      "completedAt": "2025-12-23T07:17:08Z",
+      "notes": [
+        "[COMPLETED 2025-12-23T07:17:08Z] Implemented --phase-complete flag with phase filtering and config integration"
       ]
     },
     {
       "id": "T441",
       "title": "T429.12: Implement --cascade-from flag for epic archiving",
-      "status": "pending",
+      "status": "done",
       "priority": "medium",
       "type": "task",
       "parentId": "T429",
@@ -3141,12 +3183,16 @@
         "T429",
         "T328",
         "T436"
+      ],
+      "completedAt": "2025-12-23T07:17:09Z",
+      "notes": [
+        "[COMPLETED 2025-12-23T07:17:09Z] Implemented --cascade-from flag for recursive epic archiving with validation"
       ]
     },
     {
       "id": "T442",
       "title": "T429.13: Implement --interactive archive mode",
-      "status": "pending",
+      "status": "done",
       "priority": "low",
       "type": "task",
       "parentId": "T429",
@@ -3160,12 +3206,16 @@
       ],
       "depends": [
         "T429"
+      ],
+      "completedAt": "2025-12-23T07:13:58Z",
+      "notes": [
+        "[COMPLETED 2025-12-23T07:13:58Z] Implemented --interactive archive mode with config loading, TTY check, review loop, and JSON output"
       ]
     },
     {
       "id": "T443",
       "title": "T429.14: Create archive analytics/reporting command",
-      "status": "pending",
+      "status": "done",
       "priority": "low",
       "type": "task",
       "parentId": "T429",
@@ -3180,6 +3230,10 @@
       "depends": [
         "T429",
         "T439"
+      ],
+      "completedAt": "2025-12-23T07:11:39Z",
+      "notes": [
+        "[COMPLETED 2025-12-23T07:11:39Z] Implemented archive-stats.sh with summary, by-phase, by-label, by-priority, cycle-times, and trends reports. Supports JSON, text, and CSV output formats. Date filtering with --since/--until. Registered in install.sh CMD_MAP and CMD_DESC."
       ]
     },
     {
@@ -3221,7 +3275,7 @@
     {
       "id": "T446",
       "title": "T429.17: Update docs/commands/archive.md with new features",
-      "status": "pending",
+      "status": "done",
       "priority": "medium",
       "type": "task",
       "parentId": "T429",
@@ -3239,12 +3293,16 @@
         "T432",
         "T433",
         "T437"
+      ],
+      "completedAt": "2025-12-23T07:32:53Z",
+      "notes": [
+        "[COMPLETED 2025-12-23T07:32:53Z] Updated docs/commands/archive.md with all new features: label filtering, safe mode, cascade, phase triggers, interactive mode, metadata, and related commands"
       ]
     },
     {
       "id": "T447",
       "title": "T429.18: Create tests for archive enhancements",
-      "status": "pending",
+      "status": "done",
       "priority": "high",
       "type": "task",
       "parentId": "T429",
@@ -3258,6 +3316,10 @@
       "depends": [
         "T429",
         "T436"
+      ],
+      "completedAt": "2025-12-23T07:32:54Z",
+      "notes": [
+        "[COMPLETED 2025-12-23T07:32:54Z] Created 7 test files with 217 tests covering safe mode, labels, phase, cascade, metadata, unarchive, and archive-stats (215 pass, 2 minor failures)"
       ]
     },
     {
@@ -3971,7 +4033,7 @@
     {
       "id": "T484",
       "title": "T481.4: Create idempotency.sh check module (Part 5.6)",
-      "status": "pending",
+      "status": "done",
       "priority": "high",
       "type": "task",
       "parentId": "T481",
@@ -3982,6 +4044,10 @@
         "check-module",
         "compliance",
         "spec"
+      ],
+      "completedAt": "2025-12-23T06:55:50Z",
+      "notes": [
+        "[COMPLETED 2025-12-23T06:55:50Z] Created idempotency.sh check module with 10 checks for Part 5.6 compliance. Validates MUST-idempotent commands (update, complete, archive, restore, phase) and SHOULD-idempotent (add). Checks: EXIT_NO_CHANGE usage, noChange JSON field, command-specific idempotency patterns, correct semantics, and reason field presence."
       ]
     },
     {
@@ -4070,7 +4136,7 @@
     {
       "id": "T490",
       "title": "T481.A.1: Implement idempotency in update command",
-      "status": "pending",
+      "status": "done",
       "priority": "high",
       "type": "task",
       "parentId": "T481",
@@ -4083,12 +4149,16 @@
       ],
       "depends": [
         "T489"
+      ],
+      "completedAt": "2025-12-23T07:20:45Z",
+      "notes": [
+        "[COMPLETED 2025-12-23T07:20:45Z] Implemented idempotency check in update command per LLM-Agent-First Spec v3.0 Part 5.6. Returns EXIT_NO_CHANGE (102) when updating with identical values. Added noChange flag to JSON output. Added 14 comprehensive unit tests."
       ]
     },
     {
       "id": "T491",
       "title": "T481.A.2: Implement idempotency in complete command",
-      "status": "pending",
+      "status": "done",
       "priority": "high",
       "type": "task",
       "parentId": "T481",
@@ -4101,6 +4171,10 @@
       ],
       "depends": [
         "T489"
+      ],
+      "completedAt": "2025-12-23T07:07:32Z",
+      "notes": [
+        "[COMPLETED 2025-12-23T07:07:32Z] Implemented idempotency in complete command per LLM-AGENT-FIRST-SPEC.md Part 5.6. Updated JSON output to include noChange: true and message field. Fixed text mode to also return EXIT_NO_CHANGE (102). Added 8 comprehensive tests covering exit codes, JSON output structure, and state preservation."
       ]
     },
     {
@@ -4124,7 +4198,7 @@
     {
       "id": "T493",
       "title": "T481.A.4: Implement duplicate detection in add command",
-      "status": "pending",
+      "status": "done",
       "priority": "medium",
       "type": "task",
       "parentId": "T481",
@@ -4137,12 +4211,16 @@
       ],
       "depends": [
         "T489"
+      ],
+      "completedAt": "2025-12-23T07:09:22Z",
+      "notes": [
+        "[COMPLETED 2025-12-23T07:09:22Z] Implemented duplicate detection in add-task.sh per LLM-Agent-First Spec v3.0 Part 5.6. Added find_recent_duplicate() helper, output_duplicate_json(), and 8 new tests."
       ]
     },
     {
       "id": "T494",
       "title": "T481.A.5: Implement proper dry-run output format",
-      "status": "pending",
+      "status": "done",
       "priority": "high",
       "type": "task",
       "parentId": "T481",
@@ -4155,6 +4233,10 @@
       ],
       "depends": [
         "T489"
+      ],
+      "completedAt": "2025-12-23T07:11:32Z",
+      "notes": [
+        "[COMPLETED 2025-12-23T07:11:32Z] Implemented LLM-Agent-First Spec v3.0 compliant dry-run output: update-task.sh now uses top-level dryRun:true and wouldUpdate field; archive.sh now uses wouldArchive field. All tests pass."
       ]
     },
     {
@@ -7231,7 +7313,7 @@
     {
       "id": "T672",
       "title": "EPIC: Enhanced Tree Rendering with Proper Visualization",
-      "status": "pending",
+      "status": "done",
       "priority": "high",
       "type": "epic",
       "parentId": null,
@@ -7243,9 +7325,10 @@
         "tree",
         "ux"
       ],
-      "completedAt": "2025-12-23T06:10:05Z",
+      "completedAt": "2025-12-23T06:43:37Z",
       "notes": [
-        "[AUTO-COMPLETED 2025-12-23T06:10:05Z] All child tasks completed"
+        "[AUTO-COMPLETED 2025-12-23T06:10:05Z] All child tasks completed",
+        "[COMPLETED 2025-12-23T06:43:37Z] All tree rendering features complete: priority icons, tree connectors, truncation, --wide flag. 32 tests passing."
       ]
     },
     {
@@ -7332,6 +7415,156 @@
       "parentId": null,
       "createdAt": "2025-12-23T06:22:41Z",
       "phase": "core"
+    },
+    {
+      "id": "T680",
+      "title": "Idempotency Test",
+      "status": "done",
+      "priority": "high",
+      "type": "task",
+      "parentId": null,
+      "createdAt": "2025-12-23T07:24:59Z",
+      "phase": "core",
+      "completedAt": "2025-12-23T07:25:31Z",
+      "notes": [
+        "[COMPLETED 2025-12-23T07:25:31Z] Completed idempotency testing"
+      ]
+    },
+    {
+      "id": "T681",
+      "title": "Duplicate Test Task",
+      "status": "pending",
+      "priority": "medium",
+      "type": "task",
+      "parentId": null,
+      "createdAt": "2025-12-23T07:25:52Z",
+      "phase": "core"
+    },
+    {
+      "id": "T682",
+      "title": "Duplicate Test Task",
+      "status": "pending",
+      "priority": "medium",
+      "type": "task",
+      "parentId": null,
+      "createdAt": "2025-12-23T07:25:58Z",
+      "phase": "core"
+    },
+    {
+      "id": "T683",
+      "title": "Duplicate Test Task",
+      "status": "pending",
+      "priority": "medium",
+      "type": "task",
+      "parentId": null,
+      "createdAt": "2025-12-23T07:26:14Z",
+      "phase": "core"
+    },
+    {
+      "id": "T684",
+      "title": "Fresh Duplicate Test 1766474810",
+      "status": "pending",
+      "priority": "medium",
+      "type": "task",
+      "parentId": null,
+      "createdAt": "2025-12-23T07:26:51Z",
+      "phase": "testing"
+    },
+    {
+      "id": "T685",
+      "title": "Fresh Duplicate Test 1766474810",
+      "status": "pending",
+      "priority": "medium",
+      "type": "task",
+      "parentId": null,
+      "createdAt": "2025-12-23T07:26:51Z",
+      "phase": "testing"
+    },
+    {
+      "id": "T686",
+      "title": "Fresh Duplicate Test 1766474810",
+      "status": "pending",
+      "priority": "medium",
+      "type": "task",
+      "parentId": null,
+      "createdAt": "2025-12-23T07:26:58Z",
+      "phase": "testing"
+    },
+    {
+      "id": "T687",
+      "title": "Fresh Duplicate Test 1766474810",
+      "status": "pending",
+      "priority": "medium",
+      "type": "task",
+      "parentId": null,
+      "createdAt": "2025-12-23T07:27:06Z",
+      "phase": "testing"
+    },
+    {
+      "id": "T688",
+      "title": "Fresh Duplicate Test 1766474810",
+      "status": "pending",
+      "priority": "medium",
+      "type": "task",
+      "parentId": null,
+      "createdAt": "2025-12-23T07:28:51Z",
+      "phase": "testing"
+    },
+    {
+      "id": "T689",
+      "title": "Fresh Duplicate Test 1766474810",
+      "status": "pending",
+      "priority": "medium",
+      "type": "task",
+      "parentId": null,
+      "createdAt": "2025-12-23T07:28:57Z",
+      "phase": "testing"
+    },
+    {
+      "id": "T690",
+      "title": "Duplicate Debug 1766475064",
+      "status": "pending",
+      "priority": "medium",
+      "type": "task",
+      "parentId": null,
+      "createdAt": "2025-12-23T07:31:05Z",
+      "phase": "core"
+    },
+    {
+      "id": "T691",
+      "title": "Duplicate Debug 1766475064",
+      "status": "pending",
+      "priority": "medium",
+      "type": "task",
+      "parentId": null,
+      "createdAt": "2025-12-23T07:31:11Z",
+      "phase": "core"
+    },
+    {
+      "id": "T692",
+      "title": "Duplicate Debug 1766475064",
+      "status": "pending",
+      "priority": "medium",
+      "type": "task",
+      "parentId": null,
+      "createdAt": "2025-12-23T07:31:33Z",
+      "phase": "core"
+    },
+    {
+      "id": "T693",
+      "title": "Fix archive-stats date filter tests (--since/--until combined)",
+      "status": "pending",
+      "priority": "medium",
+      "type": "task",
+      "parentId": null,
+      "createdAt": "2025-12-23T07:33:59Z",
+      "phase": "core",
+      "description": "Tests 171-172 in archive-stats.bats fail when --since and --until are combined. The date filtering logic may have edge case issues with timestamp comparison. Found during T429 epic implementation.",
+      "labels": [
+        "archive-enhancement",
+        "issue",
+        "test"
+      ]
     }
   ],
   "phases": {

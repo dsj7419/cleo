@@ -287,3 +287,98 @@ teardown() {
     notes=$(jq -r '.tasks[] | select(.id == "T001") | .notes // "null"' "$TODO_FILE")
     [ "$notes" = "null" ]
 }
+
+# =============================================================================
+# T491: Idempotency - completing already-done task returns EXIT_NO_CHANGE (102)
+# Spec: LLM-AGENT-FIRST-SPEC.md Part 5.6
+# =============================================================================
+
+@test "T491: complete on already-done task returns EXIT_NO_CHANGE (102)" {
+    # First, complete the task
+    run bash "$COMPLETE_SCRIPT" T001 --skip-notes
+    assert_success
+
+    # Second completion attempt should return 102
+    run bash "$COMPLETE_SCRIPT" T001 --skip-notes
+    [ "$status" -eq 102 ]
+}
+
+@test "T491: idempotent complete shows warning in text mode" {
+    bash "$COMPLETE_SCRIPT" T001 --skip-notes
+
+    run bash "$COMPLETE_SCRIPT" T001 --skip-notes
+    [ "$status" -eq 102 ]
+    [[ "$output" =~ "already completed" ]]
+}
+
+@test "T491: idempotent complete JSON includes noChange: true" {
+    bash "$COMPLETE_SCRIPT" T001 --skip-notes
+
+    run bash "$COMPLETE_SCRIPT" T001 --skip-notes --json
+    [ "$status" -eq 102 ]
+
+    local no_change
+    no_change=$(echo "$output" | jq -r '.noChange')
+    [ "$no_change" = "true" ]
+}
+
+@test "T491: idempotent complete JSON includes success: true" {
+    bash "$COMPLETE_SCRIPT" T001 --skip-notes
+
+    run bash "$COMPLETE_SCRIPT" T001 --skip-notes --json
+    [ "$status" -eq 102 ]
+
+    local success
+    success=$(echo "$output" | jq -r '.success')
+    [ "$success" = "true" ]
+}
+
+@test "T491: idempotent complete JSON includes message" {
+    bash "$COMPLETE_SCRIPT" T001 --skip-notes
+
+    run bash "$COMPLETE_SCRIPT" T001 --skip-notes --json
+    [ "$status" -eq 102 ]
+
+    local message
+    message=$(echo "$output" | jq -r '.message')
+    [[ "$message" =~ "already complete" ]]
+}
+
+@test "T491: idempotent complete JSON preserves completedAt" {
+    bash "$COMPLETE_SCRIPT" T001 --skip-notes
+
+    local original_completed_at
+    original_completed_at=$(jq -r '.tasks[] | select(.id == "T001") | .completedAt' "$TODO_FILE")
+
+    run bash "$COMPLETE_SCRIPT" T001 --skip-notes --json
+    [ "$status" -eq 102 ]
+
+    local json_completed_at
+    json_completed_at=$(echo "$output" | jq -r '.completedAt')
+    [ "$json_completed_at" = "$original_completed_at" ]
+}
+
+@test "T491: idempotent complete does not modify task" {
+    bash "$COMPLETE_SCRIPT" T001 --skip-notes --notes "First completion"
+
+    local first_checksum
+    first_checksum=$(jq -r '._meta.checksum' "$TODO_FILE")
+
+    # Second completion attempt
+    run bash "$COMPLETE_SCRIPT" T001 --skip-notes
+    [ "$status" -eq 102 ]
+
+    local second_checksum
+    second_checksum=$(jq -r '._meta.checksum' "$TODO_FILE")
+
+    # Checksum should remain unchanged
+    [ "$first_checksum" = "$second_checksum" ]
+}
+
+@test "T491: text mode idempotent complete also returns 102" {
+    bash "$COMPLETE_SCRIPT" T001 --skip-notes
+
+    run bash "$COMPLETE_SCRIPT" T001 --skip-notes --human
+    [ "$status" -eq 102 ]
+    [[ "$output" =~ "already completed" ]]
+}

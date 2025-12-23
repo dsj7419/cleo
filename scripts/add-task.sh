@@ -158,6 +158,12 @@ Hierarchy Examples (v0.17.0):
   claude-todo add "Login endpoint" --parent T001 --size medium
   claude-todo add "Validate email" --parent T002 --type subtask --size small
 
+Duplicate Detection (v0.31.0):
+  Tasks with same title+phase created within 60s are detected as duplicates.
+  Duplicate detection returns existing task with exit code 0 (success).
+  Configurable: DUPLICATE_WINDOW=60 (seconds, env var)
+  This prevents LLM agents from creating duplicates during retry loops.
+
 Exit Codes:
   0  = Success (EXIT_SUCCESS)
   2  = Invalid input or arguments (EXIT_INVALID_INPUT)
@@ -202,6 +208,104 @@ check_deps() {
     echo "         brew install jq          # macOS" >&2
     exit "${EXIT_DEPENDENCY_ERROR:-5}"
   fi
+}
+
+# Find recent duplicate task by title and phase within time window
+# Arguments:
+#   $1 - title: Task title to match
+#   $2 - phase: Phase to match (can be empty)
+#   $3 - window_seconds: Time window in seconds (default: 60)
+# Returns:
+#   JSON object of duplicate task if found, empty otherwise
+# Notes:
+#   Part of LLM-Agent-First Spec v3.0 (Part 5.6 - Idempotency)
+#   Prevents duplicate task creation during agent retry loops
+find_recent_duplicate() {
+  local title="$1"
+  local phase="${2:-}"
+  local window_seconds="${3:-60}"
+
+  if [[ ! -f "$TODO_FILE" ]]; then
+    return 0
+  fi
+
+  # Get current timestamp in seconds since epoch
+  local now
+  now=$(date +%s)
+  local cutoff=$((now - window_seconds))
+
+  # Find matching task created within window using jq
+  # Use 'first' to get only the first match and avoid multi-line output
+  # Handle both ISO 8601 with and without milliseconds
+  local result
+  if [[ -n "$phase" ]]; then
+    # Match title AND phase
+    result=$(jq --arg title "$title" --arg phase "$phase" --argjson cutoff "$cutoff" '
+      first(
+        .tasks[] |
+        select(.title == $title and .phase == $phase) |
+        select(
+          (.createdAt |
+            gsub("\\.[0-9]+Z$"; "Z") |
+            try (strptime("%Y-%m-%dT%H:%M:%SZ") | mktime) catch 0
+          ) > $cutoff
+        )
+      )
+    ' "$TODO_FILE" 2>/dev/null)
+  else
+    # Match title only when phase is empty, and task has no phase or empty phase
+    result=$(jq --arg title "$title" --argjson cutoff "$cutoff" '
+      first(
+        .tasks[] |
+        select(.title == $title and (.phase == null or .phase == "")) |
+        select(
+          (.createdAt |
+            gsub("\\.[0-9]+Z$"; "Z") |
+            try (strptime("%Y-%m-%dT%H:%M:%SZ") | mktime) catch 0
+          ) > $cutoff
+        )
+      )
+    ' "$TODO_FILE" 2>/dev/null)
+  fi
+
+  # Return first matching task (if any, and not null/empty)
+  if [[ -n "$result" && "$result" != "null" ]]; then
+    echo "$result"
+  fi
+}
+
+# Output duplicate detection result in JSON format
+# Arguments:
+#   $1 - duplicate_task: JSON object of the duplicate task
+#   $2 - seconds_ago: How long ago the duplicate was created
+# Returns:
+#   Formatted JSON output to stdout
+output_duplicate_json() {
+  local duplicate_task="$1"
+  local seconds_ago="${2:-0}"
+
+  local version="${CLAUDE_TODO_VERSION:-$(get_version 2>/dev/null || echo '0.30.0')}"
+  local timestamp
+  timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+
+  jq -n \
+    --arg version "$version" \
+    --arg timestamp "$timestamp" \
+    --argjson task "$duplicate_task" \
+    --argjson seconds_ago "$seconds_ago" \
+    '{
+      "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
+      "_meta": {
+        "format": "json",
+        "version": $version,
+        "command": "add",
+        "timestamp": $timestamp
+      },
+      "success": true,
+      "duplicate": true,
+      "message": ("Task with identical title" + (if $task.phase then " and phase" else "" end) + " was created \($seconds_ago) seconds ago"),
+      "task": $task
+    }'
 }
 
 # Generate unique task ID with file locking to prevent race conditions
@@ -832,6 +936,54 @@ fi
 # Set up trap to ensure lock is released on exit/error
 # shellcheck disable=SC2064
 trap "unlock_file $ADD_LOCK_FD" EXIT ERR INT TERM
+
+# ============================================================================
+# DUPLICATE DETECTION (LLM-Agent-First Spec v3.0 Part 5.6)
+# Check for recent duplicate before creating task - prevents agent retry loops
+# from creating duplicates when retrying after network failures
+# ============================================================================
+DUPLICATE_WINDOW="${DUPLICATE_WINDOW:-60}"  # Configurable window in seconds
+duplicate_task=$(find_recent_duplicate "$TITLE" "$PHASE" "$DUPLICATE_WINDOW")
+
+if [[ -n "$duplicate_task" ]]; then
+  # Calculate how long ago the duplicate was created
+  duplicate_created=$(echo "$duplicate_task" | jq -r '.createdAt // empty')
+  duplicate_id=$(echo "$duplicate_task" | jq -r '.id')
+  seconds_ago=0
+
+  if [[ -n "$duplicate_created" ]]; then
+    # Parse timestamp and calculate age
+    created_epoch=$(date -d "$duplicate_created" +%s 2>/dev/null || echo "0")
+    now_epoch=$(date +%s)
+    if [[ "$created_epoch" -gt 0 ]]; then
+      seconds_ago=$((now_epoch - created_epoch))
+    fi
+  fi
+
+  # Release lock early since we're not creating a task
+  unlock_file "$ADD_LOCK_FD"
+  trap - EXIT ERR INT TERM
+
+  # Output duplicate detection result
+  if [[ "$FORMAT" == "json" ]]; then
+    output_duplicate_json "$duplicate_task" "$seconds_ago"
+  elif [[ "$QUIET" == true ]]; then
+    echo "$duplicate_id"
+  else
+    log_warn "Duplicate detected: $duplicate_id was created ${seconds_ago}s ago with same title${PHASE:+ and phase '$PHASE'}"
+    echo ""
+    echo "Existing task: $duplicate_id"
+    echo "Title: $TITLE"
+    [[ -n "$PHASE" ]] && echo "Phase: $PHASE"
+    echo "Created: ${seconds_ago}s ago"
+    echo ""
+    echo -e "${YELLOW}No new task created (duplicate within ${DUPLICATE_WINDOW}s window)${NC}"
+  fi
+
+  # Exit SUCCESS - duplicate detection is helpful, not an error
+  # This enables safe agent retry loops per LLM-Agent-First spec
+  exit $EXIT_SUCCESS
+fi
 
 # Generate task ID (lock is now held, preventing concurrent ID collisions)
 TASK_ID=$(generate_task_id)

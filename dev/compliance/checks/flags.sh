@@ -105,21 +105,72 @@ check_flags() {
         [[ "$verbose" == "true" ]] && print_check fail "resolve_format()" "TTY-aware format resolution missing"
     fi
 
-    # Check 6: --dry-run flag (only for write commands)
+    # Check 6-9: --dry-run compliance (only for write commands)
     if needs_dry_run "$command" "$schema"; then
-        if pattern_exists "$script" "--dry-run\\)"; then
-            results+=('{"check": "dry_run", "passed": true, "details": "--dry-run flag supported (required for write command)"}')
+        # Get patterns from schema (with fallbacks)
+        local dry_run_flag_pattern
+        dry_run_flag_pattern="${PATTERN_DRY_RUN_FLAG:-$(echo "$schema" | jq -r '.requirements.flags.write_commands.patterns.dry_run_flag // "--dry-run\\)"')}"
+        local dry_run_var_pattern
+        dry_run_var_pattern="${PATTERN_DRY_RUN_VAR:-$(echo "$schema" | jq -r '.requirements.flags.write_commands.patterns.dry_run_variable // "^DRY_RUN=false"')}"
+        local dry_run_json_pattern
+        dry_run_json_pattern="${PATTERN_DRY_RUN_JSON:-$(echo "$schema" | jq -r '.requirements.flags.write_commands.patterns.dry_run_json_field // "\"dryRun\"[[:space:]]*:[[:space:]]*true"')}"
+        local dry_run_would_pattern
+        dry_run_would_pattern="${PATTERN_DRY_RUN_WOULD:-$(echo "$schema" | jq -r '.requirements.flags.write_commands.patterns.dry_run_would_naming // "would(Create|Update|Delete|Archive|Restore|Complete|Migrate|Inject|Extract|Set|Start|End)"')}"
+
+        # Check 6: --dry-run flag present
+        if pattern_exists "$script" "$dry_run_flag_pattern"; then
+            results+=('{"check": "dry_run_flag", "passed": true, "details": "--dry-run flag supported (required for write command)"}')
             ((passed++)) || true
             [[ "$verbose" == "true" ]] && print_check pass "--dry-run flag (required for write command)"
         else
-            results+=('{"check": "dry_run", "passed": false, "details": "--dry-run flag missing (required for write command)"}')
+            results+=('{"check": "dry_run_flag", "passed": false, "details": "--dry-run flag missing (required for write command)"}')
             ((failed++)) || true
             [[ "$verbose" == "true" ]] && print_check fail "--dry-run flag" "Required for write commands"
         fi
+
+        # Check 7: DRY_RUN variable properly initialized
+        if pattern_exists "$script" "$dry_run_var_pattern"; then
+            results+=('{"check": "dry_run_variable", "passed": true, "details": "DRY_RUN variable properly initialized to false"}')
+            ((passed++)) || true
+            [[ "$verbose" == "true" ]] && print_check pass "DRY_RUN variable initialization"
+        else
+            results+=('{"check": "dry_run_variable", "passed": false, "details": "DRY_RUN variable not initialized (should be DRY_RUN=false)"}')
+            ((failed++)) || true
+            [[ "$verbose" == "true" ]] && print_check fail "DRY_RUN variable" "Must be initialized to false"
+        fi
+
+        # Check 8: Dry-run output includes dryRun: true field
+        if pattern_exists "$script" "$dry_run_json_pattern"; then
+            results+=('{"check": "dry_run_json_field", "passed": true, "details": "Dry-run JSON output includes dryRun: true field"}')
+            ((passed++)) || true
+            [[ "$verbose" == "true" ]] && print_check pass "dryRun JSON field in output"
+        else
+            results+=('{"check": "dry_run_json_field", "passed": false, "details": "Dry-run JSON output missing dryRun: true field"}')
+            ((failed++)) || true
+            [[ "$verbose" == "true" ]] && print_check fail "dryRun JSON field" "Output must include \"dryRun\": true"
+        fi
+
+        # Check 9: Dry-run uses would* naming convention
+        if pattern_exists "$script" "$dry_run_would_pattern"; then
+            results+=('{"check": "dry_run_would_naming", "passed": true, "details": "Dry-run output uses would* naming convention"}')
+            ((passed++)) || true
+            [[ "$verbose" == "true" ]] && print_check pass "would* naming convention"
+        else
+            results+=('{"check": "dry_run_would_naming", "passed": false, "details": "Dry-run output missing would* naming (wouldCreate, wouldUpdate, etc.)"}')
+            ((failed++)) || true
+            [[ "$verbose" == "true" ]] && print_check fail "would* naming" "Use wouldCreate/wouldUpdate/wouldDelete/wouldArchive"
+        fi
     else
-        results+=('{"check": "dry_run", "passed": true, "skipped": true, "details": "--dry-run not required (read-only command)"}')
+        results+=('{"check": "dry_run_flag", "passed": true, "skipped": true, "details": "--dry-run not required (read-only command)"}')
         ((skipped++)) || true
         [[ "$verbose" == "true" ]] && print_check skip "--dry-run (not required for read command)"
+        # Skip additional dry-run checks for read commands
+        results+=('{"check": "dry_run_variable", "passed": true, "skipped": true, "details": "DRY_RUN variable not required (read-only command)"}')
+        ((skipped++)) || true
+        results+=('{"check": "dry_run_json_field", "passed": true, "skipped": true, "details": "dryRun JSON field not required (read-only command)"}')
+        ((skipped++)) || true
+        results+=('{"check": "dry_run_would_naming", "passed": true, "skipped": true, "details": "would* naming not required (read-only command)"}')
+        ((skipped++)) || true
     fi
 
     # Build JSON result
