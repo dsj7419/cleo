@@ -50,6 +50,7 @@ By default, completed tasks are hidden. Use `--status done` or `--all` to includ
 | `--parent ID` | | Filter tasks with specified parent ID | |
 | `--children ID` | | Show direct children of task ID | |
 | `--tree` | | Display tasks in hierarchical tree view | `false` |
+| `--wide` | | Show full titles in tree view (implied by `--human`) | `false` |
 
 ## Examples
 
@@ -126,6 +127,21 @@ claude-todo list --parent T001
 # Tree view (hierarchical display)
 claude-todo list --tree
 ```
+
+**Tree View Example** (v0.30.0):
+```
+T001 ○ 🔴 Auth System Epic
+├── T002 ○ 🟡 Login endpoint
+│   ├── T003 ○ 🔵 Validate email format
+│   └── T004 ○ 🔵 Hash password
+└── T005 ○ 🔵 Logout endpoint
+```
+
+Tree features:
+- **Status icons**: ✓ done, ◉ active, ⊗ blocked, ○ pending
+- **Priority icons**: 🔴 critical, 🟡 high, 🔵 medium, ⚪ low
+- **Tree connectors**: ├── (middle child), └── (last child), │ (continuation)
+- **Full titles**: `--human` shows full titles without truncation
 
 ### Display Customization
 

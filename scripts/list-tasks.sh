@@ -138,7 +138,7 @@ Hierarchy Filters (v0.17.0):
       --parent ID           Filter by parent task ID
       --children ID         Show direct children of task ID
       --tree                Display tasks in hierarchical tree view
-      --wide                Show full titles in tree view (no truncation)
+      --wide                Show full titles in tree view (implied by --human)
 
 Sorting:
   --sort FIELD              Sort by field: status|priority|createdAt|title (default: priority)
@@ -880,8 +880,9 @@ case "$FORMAT" in
       echo ""
 
       # Calculate title width for tree rendering (T675, T676)
-      if [[ "$WIDE_MODE" == true ]]; then
-        title_width=999  # Effectively unlimited
+      # --human format or --wide flag shows full titles without truncation
+      if [[ "$WIDE_MODE" == true ]] || [[ "$FORMAT" == "text" ]]; then
+        title_width=999  # Effectively unlimited for human-readable output
       else
         title_width=$TREE_TITLE_WIDTH
       fi

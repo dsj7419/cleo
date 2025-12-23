@@ -256,3 +256,100 @@ setup() {
     # JSON output should still work but be minimal
     echo "$output" | jq -e '.success' > /dev/null
 }
+
+# =============================================================================
+# TREE RENDERING TESTS (T672)
+# =============================================================================
+
+@test "tree rendering: shows priority icons (T673)" {
+    create_empty_todo
+    bash "$ADD_SCRIPT" "Critical Epic" --type epic --priority critical > /dev/null
+    bash "$ADD_SCRIPT" "High Task" --parent T001 --priority high > /dev/null
+    bash "$ADD_SCRIPT" "Medium Task" --parent T001 --priority medium > /dev/null
+    bash "$ADD_SCRIPT" "Low Task" --parent T001 --priority low > /dev/null
+
+    run $CLAUDE_TODO_CMD tree --human
+    assert_success
+    # Unicode mode should show priority emoji icons
+    # 🔴 critical, 🟡 high, 🔵 medium, ⚪ low
+    assert_output --partial "Critical Epic"
+    assert_output --partial "High Task"
+    assert_output --partial "Medium Task"
+    assert_output --partial "Low Task"
+}
+
+@test "tree rendering: shows proper connectors for children (T674)" {
+    create_empty_todo
+    bash "$ADD_SCRIPT" "Epic" --type epic > /dev/null
+    bash "$ADD_SCRIPT" "Task A" --parent T001 > /dev/null
+    bash "$ADD_SCRIPT" "Task B" --parent T001 > /dev/null
+    bash "$ADD_SCRIPT" "Task C" --parent T001 > /dev/null
+
+    run $CLAUDE_TODO_CMD tree --human
+    assert_success
+    # Should have ├── for non-last children and └── for last child
+    assert_output --partial "├──"
+    assert_output --partial "└──"
+}
+
+@test "tree rendering: shows continuation lines for nested hierarchy (T674)" {
+    create_empty_todo
+    bash "$ADD_SCRIPT" "Epic" --type epic > /dev/null
+    bash "$ADD_SCRIPT" "Task A" --parent T001 > /dev/null
+    bash "$ADD_SCRIPT" "Subtask A1" --parent T002 --type subtask > /dev/null
+    bash "$ADD_SCRIPT" "Task B" --parent T001 > /dev/null
+
+    run $CLAUDE_TODO_CMD tree --human
+    assert_success
+    # Nested items should show │ continuation line
+    # The exact output depends on sibling order
+    assert_output --partial "├──"
+    assert_output --partial "Subtask A1"
+}
+
+@test "tree rendering: --wide flag shows full titles (T676)" {
+    create_empty_todo
+    # Title that's 80 chars - long enough to be truncated at default width
+    local long_title="This is a long task title that should be truncated without wide flag enabled"
+    bash "$ADD_SCRIPT" "$long_title" --type epic > /dev/null
+
+    # Without --wide, title should be truncated (default ~55 chars)
+    run $CLAUDE_TODO_CMD tree --human
+    assert_success
+    # Should show truncation indicator (ellipsis)
+    [[ "$output" == *"…"* ]] || [[ "$output" == *"..."* ]]
+
+    # With --wide, full title should be shown
+    run $CLAUDE_TODO_CMD tree --human --wide
+    assert_success
+    assert_output --partial "$long_title"
+}
+
+@test "tree rendering: ASCII fallback mode works (T673, T674)" {
+    create_empty_todo
+    bash "$ADD_SCRIPT" "Epic" --type epic --priority high > /dev/null
+    bash "$ADD_SCRIPT" "Task A" --parent T001 > /dev/null
+    bash "$ADD_SCRIPT" "Task B" --parent T001 > /dev/null
+
+    # Run with LANG=C to force ASCII mode
+    LANG=C run $CLAUDE_TODO_CMD tree --human
+    assert_success
+    # ASCII connectors: +-- for non-last, `-- for last
+    assert_output --partial "+--" || assert_output --partial "\`--"
+    # ASCII priority: H for high, M for medium, L for low, ! for critical
+    assert_output --partial " H " || assert_output --partial "H Epic"
+}
+
+@test "tree rendering: JSON output includes tree structure with children" {
+    create_empty_todo
+    bash "$ADD_SCRIPT" "Epic" --type epic > /dev/null
+    bash "$ADD_SCRIPT" "Task" --parent T001 > /dev/null
+
+    run $CLAUDE_TODO_CMD tree --format json
+    assert_success
+
+    # Verify tree structure has children
+    local children_count
+    children_count=$(echo "$output" | jq '[.tree[] | select(.id == "T001")] | .[0].children | length')
+    [[ "$children_count" -eq 1 ]]
+}

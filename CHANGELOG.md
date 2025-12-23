@@ -5,6 +5,23 @@ All notable changes to the claude-todo system will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.30.2] - 2025-12-23
+
+### Added
+- **Enhanced Tree Rendering** (T672 EPIC): Improved `list --tree` output
+  - Priority icons: 🔴 critical, 🟡 high, 🔵 medium, ⚪ low (ASCII fallback: !HML)
+  - Proper tree connectors: ├── (middle child), └── (last child), │ (continuation)
+  - Terminal-width-aware truncation (based on $COLUMNS)
+  - `--wide` flag for full titles without truncation
+  - `--human` format now implies `--wide` (no truncation for human-readable output)
+
+### Documentation
+- Updated `docs/commands/list.md` with tree rendering examples
+- Added tree features reference with status/priority icons and connector explanation
+
+### Tests
+- 6 new tests in `tree-alias.bats` for T672 tree rendering features
+
 ## [0.30.1] - 2025-12-23
 
 ### Fixed
