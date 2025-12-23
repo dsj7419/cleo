@@ -3,9 +3,9 @@
   "version": "2.1.0",
   "project": "claude-todo",
   "_meta": {
-    "totalEntries": 1507,
+    "totalEntries": 1514,
     "firstEntry": "2025-12-13T07:14:38Z",
-    "lastEntry": "2025-12-23T05:04:09Z",
+    "lastEntry": "2025-12-23T05:28:57Z",
     "entriesPruned": 0
   },
   "entries": [
@@ -35979,6 +35979,167 @@
       "before": null,
       "after": null,
       "details": "Session started"
+    },
+    {
+      "id": "log_dedb947fc79a",
+      "timestamp": "2025-12-23T05:24:18Z",
+      "sessionId": "session_20251222_210409_d4cc8a",
+      "action": "focus_changed",
+      "actor": "claude",
+      "taskId": null,
+      "before": null,
+      "after": {
+        "currentTask": "T633"
+      },
+      "details": null
+    },
+    {
+      "id": "log_2185be5f86a9",
+      "timestamp": "2025-12-23T05:24:20Z",
+      "sessionId": "session_20251222_210409_d4cc8a",
+      "action": "focus_changed",
+      "actor": "claude",
+      "taskId": null,
+      "before": {
+        "currentTask": "T633"
+      },
+      "after": {
+        "currentTask": "T632"
+      },
+      "details": null
+    },
+    {
+      "id": "log_6fea3878bacd",
+      "timestamp": "2025-12-23T05:24:24Z",
+      "sessionId": "session_20251222_210409_d4cc8a",
+      "action": "focus_changed",
+      "actor": "claude",
+      "taskId": null,
+      "before": {
+        "currentTask": "T632"
+      },
+      "after": {
+        "currentTask": "T631"
+      },
+      "details": null
+    },
+    {
+      "id": "log_35319a2d1693",
+      "timestamp": "2025-12-23T05:28:29Z",
+      "sessionId": "session_20251222_210409_d4cc8a",
+      "action": "task_updated",
+      "actor": "system",
+      "taskId": "T665",
+      "before": {
+        "title": "BUG: update-task.sh line 1190 - VERSION unbound variable",
+        "status": "pending",
+        "priority": "high",
+        "description": "update-task.sh fails with 'VERSION: unbound variable' at line 1190. Discovered when trying to add notes to T650. Likely missing 'source lib/version.sh' or variable not exported.",
+        "phase": "core",
+        "labels": [
+          "bug"
+        ],
+        "files": null,
+        "acceptance": null,
+        "depends": null,
+        "blockedBy": null
+      },
+      "after": {
+        "title": "BUG: update-task.sh line 1190 - VERSION unbound variable",
+        "status": "pending",
+        "priority": "high",
+        "description": "update-task.sh fails with 'VERSION: unbound variable' at line 1190. Discovered when trying to add notes to T650. Likely missing 'source lib/version.sh' or variable not exported.",
+        "phase": "core",
+        "labels": [
+          "bug"
+        ],
+        "files": null,
+        "acceptance": null,
+        "depends": null,
+        "blockedBy": null
+      },
+      "details": {
+        "operation": "update"
+      }
+    },
+    {
+      "id": "log_1ed9c46c19a1",
+      "timestamp": "2025-12-23T05:28:48Z",
+      "sessionId": "session_20251222_210409_d4cc8a",
+      "action": "task_updated",
+      "actor": "system",
+      "taskId": "T665",
+      "before": {
+        "title": "BUG: update-task.sh line 1190 - VERSION unbound variable",
+        "status": "pending",
+        "priority": "high",
+        "description": "update-task.sh fails with 'VERSION: unbound variable' at line 1190. Discovered when trying to add notes to T650. Likely missing 'source lib/version.sh' or variable not exported.",
+        "phase": "core",
+        "labels": [
+          "bug"
+        ],
+        "files": null,
+        "acceptance": null,
+        "depends": null,
+        "blockedBy": null
+      },
+      "after": {
+        "title": "BUG: update-task.sh line 1190 - VERSION unbound variable",
+        "status": "pending",
+        "priority": "high",
+        "description": "update-task.sh fails with 'VERSION: unbound variable' at line 1190. Discovered when trying to add notes to T650. Likely missing 'source lib/version.sh' or variable not exported.",
+        "phase": "core",
+        "labels": [
+          "bug"
+        ],
+        "files": null,
+        "acceptance": null,
+        "depends": null,
+        "blockedBy": null
+      },
+      "details": {
+        "operation": "update"
+      }
+    },
+    {
+      "id": "log_2a7852068c14",
+      "timestamp": "2025-12-23T05:28:56Z",
+      "sessionId": "session_20251222_210409_d4cc8a",
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T665",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-23T05:28:56Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_8c8745d7b84b",
+      "timestamp": "2025-12-23T05:28:57Z",
+      "sessionId": "session_20251222_210409_d4cc8a",
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T560",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-23T05:28:56Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
     }
   ]
 }

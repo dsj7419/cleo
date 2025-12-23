@@ -84,6 +84,8 @@ _setup_scripts() {
     export FIND_SCRIPT="${SCRIPTS_DIR}/find.sh"
     export SHOW_SCRIPT="${SCRIPTS_DIR}/show.sh"
     export EXISTS_SCRIPT="${SCRIPTS_DIR}/exists.sh"
+    # Dispatcher (install.sh wrapper script)
+    export DISPATCHER_SCRIPT="${PROJECT_ROOT}/install.sh"
 }
 
 # Standard setup every test file uses

@@ -9,6 +9,10 @@
 # - JSON format support
 # - Error handling
 #
+# Note: Since tree is an alias handled by the installed dispatcher, these tests
+# use the installed claude-todo command directly. For unit testing of list --tree,
+# see hierarchy.bats.
+#
 # Reference: T648 implementation plan, T647 decision
 # =============================================================================
 
@@ -17,6 +21,16 @@ setup() {
     load '../test_helper/assertions'
     load '../test_helper/fixtures'
     common_setup
+
+    # Use the installed claude-todo command for alias tests
+    # Fall back to ct if claude-todo not in PATH
+    if command -v claude-todo &>/dev/null; then
+        CLAUDE_TODO_CMD="claude-todo"
+    elif command -v ct &>/dev/null; then
+        CLAUDE_TODO_CMD="ct"
+    else
+        skip "claude-todo not installed - run ./install.sh first"
+    fi
 }
 
 # =============================================================================
@@ -29,7 +43,7 @@ setup() {
     bash "$ADD_SCRIPT" "Child Task" --parent T001 --type task > /dev/null
 
     # Run tree alias via dispatcher
-    run bash "$INSTALL_SCRIPT" tree
+    run $CLAUDE_TODO_CMD tree
     assert_success
     # Should show tree output format
     assert_output --partial "Epic Task"
@@ -42,7 +56,7 @@ setup() {
     bash "$ADD_SCRIPT" "Task A" --parent T001 > /dev/null
     bash "$ADD_SCRIPT" "Task B" --parent T001 > /dev/null
 
-    run bash "$INSTALL_SCRIPT" tree
+    run $CLAUDE_TODO_CMD tree
     assert_success
     # Should show all tasks
     assert_output --partial "Epic"
@@ -60,7 +74,7 @@ setup() {
     bash "$ADD_SCRIPT" "Active Task" --parent T001 > /dev/null
     bash "$UPDATE_SCRIPT" T002 --status active > /dev/null
 
-    run bash "$INSTALL_SCRIPT" tree --status pending
+    run $CLAUDE_TODO_CMD tree --status pending
     assert_success
     assert_output --partial "Pending Epic"
     # Active task should not appear when filtering pending only
@@ -71,7 +85,7 @@ setup() {
     bash "$ADD_SCRIPT" "Critical Epic" --type epic --priority critical > /dev/null
     bash "$ADD_SCRIPT" "Low Priority" --type epic --priority low > /dev/null
 
-    run bash "$INSTALL_SCRIPT" tree --priority critical
+    run $CLAUDE_TODO_CMD tree --priority critical
     assert_success
     assert_output --partial "Critical Epic"
     refute_output --partial "Low Priority"
@@ -82,7 +96,7 @@ setup() {
     bash "$ADD_SCRIPT" "Epic" --type epic > /dev/null
     bash "$ADD_SCRIPT" "Regular Task" --type task > /dev/null
 
-    run bash "$INSTALL_SCRIPT" tree --type epic
+    run $CLAUDE_TODO_CMD tree --type epic
     assert_success
     assert_output --partial "Epic"
     refute_output --partial "Regular Task"
@@ -94,10 +108,15 @@ setup() {
     bash "$ADD_SCRIPT" "Child A" --parent T001 > /dev/null
     bash "$ADD_SCRIPT" "Orphan Task" --type task > /dev/null
 
-    run bash "$INSTALL_SCRIPT" tree --parent T001
+    # --parent filters to show tasks with that parentId
+    # Tree view shows filtered tasks but may not show hierarchy since parent is excluded
+    run $CLAUDE_TODO_CMD tree --parent T001 --format json
     assert_success
-    assert_output --partial "Child A"
-    refute_output --partial "Orphan Task"
+    # Verify Child A is in results
+    echo "$output" | jq -e '.tasks[] | select(.title == "Child A")' > /dev/null
+    # Verify Orphan Task is NOT in results
+    local orphan_count=$(echo "$output" | jq '[.tasks[] | select(.title == "Orphan Task")] | length')
+    [[ "$orphan_count" -eq 0 ]]
 }
 
 # =============================================================================
@@ -109,7 +128,7 @@ setup() {
     bash "$ADD_SCRIPT" "Epic" --type epic > /dev/null
     bash "$ADD_SCRIPT" "Task" --parent T001 > /dev/null
 
-    run bash "$INSTALL_SCRIPT" tree --format json
+    run $CLAUDE_TODO_CMD tree --format json
     assert_success
 
     # Verify valid JSON with required envelope
@@ -123,7 +142,7 @@ setup() {
     create_empty_todo
     bash "$ADD_SCRIPT" "Test Epic" --type epic > /dev/null
 
-    run bash "$INSTALL_SCRIPT" tree --human
+    run $CLAUDE_TODO_CMD tree --human
     assert_success
     # Human output should not be JSON
     [[ "$output" != *'"$schema"'* ]]
@@ -134,7 +153,7 @@ setup() {
     create_empty_todo
     bash "$ADD_SCRIPT" "Epic" --type epic > /dev/null
 
-    run bash "$INSTALL_SCRIPT" tree --json
+    run $CLAUDE_TODO_CMD tree --json
     assert_success
     # Should be valid JSON
     echo "$output" | jq -e '.success == true' > /dev/null
@@ -150,7 +169,7 @@ setup() {
     bash "$ADD_SCRIPT" "Task" --parent T001 > /dev/null
 
     # Get both outputs
-    run bash "$INSTALL_SCRIPT" tree --format json
+    run $CLAUDE_TODO_CMD tree --format json
     assert_success
     local tree_output="$output"
 
@@ -176,7 +195,7 @@ setup() {
     create_empty_todo
     bash "$ADD_SCRIPT" "Epic" --type epic > /dev/null
 
-    run bash "$INSTALL_SCRIPT" tree
+    run $CLAUDE_TODO_CMD tree
     local tree_status=$status
 
     run bash "$LIST_SCRIPT" --tree
@@ -193,7 +212,7 @@ setup() {
 @test "tree alias --type with invalid value returns error" {
     create_empty_todo
 
-    run bash "$INSTALL_SCRIPT" tree --type invalid
+    run $CLAUDE_TODO_CMD tree --type invalid
     assert_failure
     # Should return exit code 2 (EXIT_INVALID_INPUT)
     [[ "$status" -eq 2 ]]
@@ -204,7 +223,7 @@ setup() {
     bash "$ADD_SCRIPT" "Epic" --type epic > /dev/null
 
     for valid_type in epic task subtask; do
-        run bash "$INSTALL_SCRIPT" tree --type "$valid_type"
+        run $CLAUDE_TODO_CMD tree --type "$valid_type"
         assert_success
     done
 }
@@ -216,13 +235,13 @@ setup() {
 @test "tree alias with empty todo.json handles gracefully" {
     create_empty_todo
 
-    run bash "$INSTALL_SCRIPT" tree
+    run $CLAUDE_TODO_CMD tree
     # Should succeed or show "no tasks" message
     [[ "$status" -eq 0 ]] || assert_output --partial "No tasks"
 }
 
 @test "tree alias help shows list help" {
-    run bash "$INSTALL_SCRIPT" help tree
+    run $CLAUDE_TODO_CMD help tree
     assert_success
     # Help should mention --tree since tree maps to list
     assert_output --partial "list"
@@ -232,7 +251,7 @@ setup() {
     create_empty_todo
     bash "$ADD_SCRIPT" "Epic" --type epic > /dev/null
 
-    run bash "$INSTALL_SCRIPT" tree --quiet --format json
+    run $CLAUDE_TODO_CMD tree --quiet --format json
     assert_success
     # JSON output should still work but be minimal
     echo "$output" | jq -e '.success' > /dev/null

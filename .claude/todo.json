@@ -121,18 +121,18 @@
       }
     ]
   },
-  "lastUpdated": "2025-12-23T02:58:00Z",
+  "lastUpdated": "2025-12-23T05:28:56Z",
   "_meta": {
-    "checksum": "b81dfa558ad90018",
+    "checksum": "173cfdc3dfa1a577",
     "configVersion": "2.1.0",
     "lastSessionId": null,
     "activeSession": "session_20251222_210409_d4cc8a",
-    "lastModified": "2025-12-23T05:04:09Z",
+    "lastModified": "2025-12-23T05:24:24Z",
     "version": "2.3.0",
     "schemaVersion": "2.3.0"
   },
   "focus": {
-    "currentTask": null,
+    "currentTask": "T631",
     "blockedUntil": null,
     "sessionNote": "T634 completed: Created comprehensive disaster recovery documentation at docs/reference/disaster-recovery.md (810 lines, 20KB). Covers 5 scenarios with step-by-step CLI recovery procedures. Updated INDEX.md with links.",
     "nextAction": "NEXT SESSION: Implement T452 (archive.sh - HIGH priority) first. Pattern: source lib/file-ops.sh, replace all raw writes with save_json(). Then T453, T454. T350/T530/T531 can follow. See FILE-LOCKING-IMPLEMENTATION-REPORT.md for fix patterns.",
@@ -5306,7 +5306,7 @@
     {
       "id": "T560",
       "title": "FIX: TodoWrite sync - .injected.todos is null",
-      "status": "pending",
+      "status": "done",
       "priority": "high",
       "type": "task",
       "parentId": null,
@@ -5317,6 +5317,10 @@
         "bug",
         "testing",
         "todowrite-sync"
+      ],
+      "completedAt": "2025-12-23T05:28:56Z",
+      "notes": [
+        "[COMPLETED 2025-12-23T05:28:56Z] Already fixed in commit c13a27b - all 23 todowrite-sync tests pass"
       ]
     },
     {
@@ -6380,7 +6384,7 @@
     {
       "id": "T631",
       "title": "P3-1: Implement manifest-based backup tracking",
-      "status": "pending",
+      "status": "active",
       "priority": "medium",
       "type": "subtask",
       "parentId": "T630",
@@ -7038,7 +7042,7 @@
     {
       "id": "T665",
       "title": "BUG: update-task.sh line 1190 - VERSION unbound variable",
-      "status": "pending",
+      "status": "done",
       "priority": "high",
       "type": "task",
       "parentId": null,
@@ -7047,7 +7051,13 @@
       "description": "update-task.sh fails with 'VERSION: unbound variable' at line 1190. Discovered when trying to add notes to T650. Likely missing 'source lib/version.sh' or variable not exported.",
       "labels": [
         "bug"
-      ]
+      ],
+      "notes": [
+        "2025-12-23 05:28:29 UTC: Fixed VERSION bug",
+        "2025-12-23 05:28:48 UTC: Fixed VERSION unbound variable bug",
+        "[COMPLETED 2025-12-23T05:28:56Z] Fixed: replaced $VERSION with ${CLAUDE_TODO_VERSION:-$(get_version)} at line 1191"
+      ],
+      "completedAt": "2025-12-23T05:28:56Z"
     }
   ],
   "phases": {

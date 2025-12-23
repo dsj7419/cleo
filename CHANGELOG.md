@@ -5,6 +5,14 @@ All notable changes to the claude-todo system will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.29.2] - 2025-12-23
+
+### Fixed
+- **VERSION Unbound Variable** (T665): Fixed `update-task.sh` line 1191
+  - Replaced `$VERSION` with `${CLAUDE_TODO_VERSION:-$(get_version)}`
+  - Matches pattern used throughout codebase and in dry-run output
+  - Bug caused "VERSION: unbound variable" error when adding notes
+
 ## [0.29.1] - 2025-12-23
 
 ### Added

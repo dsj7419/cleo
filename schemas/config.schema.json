@@ -423,7 +423,7 @@
         },
         "scheduled": {
           "type": "object",
-          "description": "Scheduled/automatic backup settings for session events.",
+          "description": "Scheduled/automatic backup settings for session events and operations.",
           "additionalProperties": false,
           "properties": {
             "onSessionStart": {
@@ -435,6 +435,18 @@
               "type": "boolean",
               "default": false,
               "description": "Create safety backup when session ends."
+            },
+            "onArchive": {
+              "type": "boolean",
+              "default": true,
+              "description": "Create safety backup before archive operations."
+            },
+            "intervalMinutes": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1440,
+              "default": 0,
+              "description": "Optional interval (minutes) for timed backups. 0 disables interval-based backups. When set, backups are created on CLI invocation if interval has elapsed since last backup."
             }
           }
         }

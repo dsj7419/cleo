@@ -148,6 +148,11 @@ readonly DEFAULT_MAX_ARCHIVE_BACKUPS=3
 readonly DEFAULT_SAFETY_RETENTION_DAYS=7
 readonly DEFAULT_SCHEDULED_ON_SESSION_START=false
 readonly DEFAULT_SCHEDULED_ON_SESSION_END=false
+readonly DEFAULT_SCHEDULED_ON_ARCHIVE=true
+readonly DEFAULT_SCHEDULED_INTERVAL_MINUTES=0
+
+# Schedule state file for tracking interval-based backups
+readonly SCHEDULE_STATE_FILENAME=".schedule"
 
 # Manifest file for O(1) backup lookups
 readonly MANIFEST_FILENAME="backup-manifest.json"
@@ -665,6 +670,8 @@ _load_backup_config() {
     SAFETY_RETENTION_DAYS="$DEFAULT_SAFETY_RETENTION_DAYS"
     SCHEDULED_ON_SESSION_START="$DEFAULT_SCHEDULED_ON_SESSION_START"
     SCHEDULED_ON_SESSION_END="$DEFAULT_SCHEDULED_ON_SESSION_END"
+    SCHEDULED_ON_ARCHIVE="$DEFAULT_SCHEDULED_ON_ARCHIVE"
+    SCHEDULED_INTERVAL_MINUTES="$DEFAULT_SCHEDULED_INTERVAL_MINUTES"
 
     # Override with config file values if available
     if [[ -f "$config_file" ]]; then
@@ -677,6 +684,8 @@ _load_backup_config() {
         SAFETY_RETENTION_DAYS=$(jq -r '.backup.safetyRetentionDays // 7' "$config_file" 2>/dev/null || echo "$DEFAULT_SAFETY_RETENTION_DAYS")
         SCHEDULED_ON_SESSION_START=$(jq -r '.backup.scheduled.onSessionStart // false' "$config_file" 2>/dev/null || echo "$DEFAULT_SCHEDULED_ON_SESSION_START")
         SCHEDULED_ON_SESSION_END=$(jq -r '.backup.scheduled.onSessionEnd // false' "$config_file" 2>/dev/null || echo "$DEFAULT_SCHEDULED_ON_SESSION_END")
+        SCHEDULED_ON_ARCHIVE=$(jq -r '.backup.scheduled.onArchive // true' "$config_file" 2>/dev/null || echo "$DEFAULT_SCHEDULED_ON_ARCHIVE")
+        SCHEDULED_INTERVAL_MINUTES=$(jq -r '.backup.scheduled.intervalMinutes // 0' "$config_file" 2>/dev/null || echo "$DEFAULT_SCHEDULED_INTERVAL_MINUTES")
     fi
 
     return 0
@@ -1037,6 +1046,9 @@ create_incremental_backup() {
 
     echo "$metadata" > "$backup_path/metadata.json"
 
+    # Add to manifest for O(1) lookups
+    _add_to_manifest "$backup_id" "$BACKUP_TYPE_INCREMENTAL" "$backup_path" "$files_json" "$file_size" "" || true
+
     # Rotate old incremental backups
     rotate_backups "$BACKUP_TYPE_INCREMENTAL"
 
@@ -1119,6 +1131,9 @@ create_archive_backup() {
         "$total_size")
 
     echo "$metadata" > "$backup_path/metadata.json"
+
+    # Add to manifest for O(1) lookups
+    _add_to_manifest "$backup_id" "$BACKUP_TYPE_ARCHIVE" "$backup_path" "$files_json" "$total_size" "" || true
 
     # Rotate old archive backups
     rotate_backups "$BACKUP_TYPE_ARCHIVE"
@@ -1204,6 +1219,9 @@ create_migration_backup() {
 
     echo "$metadata" > "$backup_path/metadata.json"
 
+    # Add to manifest for O(1) lookups (migration backups have neverDelete=true)
+    _add_to_manifest "$backup_id" "$BACKUP_TYPE_MIGRATION" "$backup_path" "$files_json" "$total_size" "" || true
+
     # Migration backups are NEVER rotated
 
     echo "$backup_path"
@@ -1283,8 +1301,11 @@ rotate_backups() {
         local old_backup="$1"
         local error_output
         local current_deleted current_errors
+        local backup_id
+        backup_id=$(basename "$old_backup")
         if error_output=$(rm -rf "$old_backup" 2>&1); then
-            # Successfully deleted
+            # Successfully deleted - also remove from manifest
+            _remove_from_manifest "$backup_id" 2>/dev/null || true
             current_deleted=$(cat "$deleted_marker")
             echo "$((current_deleted + 1))" > "$deleted_marker"
         else
@@ -1549,7 +1570,12 @@ prune_backups() {
                     backup_mtime=$(get_file_mtime "$backup")
 
                     if [[ "$backup_mtime" -lt "$cutoff_epoch" ]]; then
-                        rm -rf "$backup" 2>/dev/null || true
+                        local backup_id
+                        backup_id=$(basename "$backup")
+                        if rm -rf "$backup" 2>/dev/null; then
+                            # Successfully deleted - also remove from manifest
+                            _remove_from_manifest "$backup_id" 2>/dev/null || true
+                        fi
                     fi
                 done
         fi
@@ -1625,6 +1651,9 @@ parse_relative_date() {
 #   $4 = name pattern (glob)
 #   $5 = grep pattern (content search)
 #   $6 = limit (number)
+#   $7 = on date (exact date match, YYYY-MM-DD)
+#   $8 = task ID pattern (search for specific task IDs)
+#   $9 = verbose mode (include matched content snippets)
 # Output: JSON array of matching backups or text list
 # Returns: 0 on success
 find_backups() {
@@ -1634,6 +1663,9 @@ find_backups() {
     local name_pattern="${4:-}"
     local grep_pattern="${5:-}"
     local limit="${6:-20}"
+    local on_date="${7:-}"
+    local task_id_pattern="${8:-}"
+    local verbose_mode="${9:-false}"
 
     # Load config
     _load_backup_config
@@ -1658,6 +1690,26 @@ find_backups() {
         until_iso=$(parse_relative_date "$until") || return 1
         if [[ -n "$until_iso" ]]; then
             until_epoch=$(iso_to_epoch "$until_iso") || until_epoch=0
+        fi
+    fi
+
+    # Handle --on date filter (exact date match)
+    # Converts to since/until range for the entire day
+    local on_date_start_epoch=0
+    local on_date_end_epoch=0
+    if [[ -n "$on_date" ]]; then
+        # Parse the on_date (expect YYYY-MM-DD or relative like "today", "yesterday")
+        local on_date_iso
+        on_date_iso=$(parse_relative_date "$on_date") || return 1
+        if [[ -n "$on_date_iso" ]]; then
+            # Extract just the date part (YYYY-MM-DD)
+            local date_only="${on_date_iso:0:10}"
+            # Set start to beginning of day
+            local day_start="${date_only}T00:00:00Z"
+            # Set end to end of day
+            local day_end="${date_only}T23:59:59Z"
+            on_date_start_epoch=$(iso_to_epoch "$day_start") || on_date_start_epoch=0
+            on_date_end_epoch=$(iso_to_epoch "$day_end") || on_date_end_epoch=0
         fi
     fi
 
@@ -1735,6 +1787,13 @@ find_backups() {
                 continue
             fi
 
+            # Apply --on date filter (exact day match)
+            if [[ $on_date_start_epoch -gt 0 ]]; then
+                if [[ $backup_epoch -lt $on_date_start_epoch || $backup_epoch -gt $on_date_end_epoch ]]; then
+                    continue
+                fi
+            fi
+
             # Apply content grep filter
             if [[ -n "$grep_pattern" ]]; then
                 local found_match=false
@@ -1765,6 +1824,50 @@ find_backups() {
                 fi
             fi
 
+            # Apply task ID filter (search for specific task ID in backup files)
+            local matched_snippets=()
+            if [[ -n "$task_id_pattern" ]]; then
+                local found_task=false
+
+                # Search todo.json for the task ID
+                for json_file in "$backup_path"/*.json; do
+                    [[ ! -f "$json_file" ]] && continue
+                    local filename
+                    filename=$(basename "$json_file")
+                    # Only search in todo files, not metadata
+                    [[ "$filename" == "metadata.json" ]] && continue
+                    [[ "$filename" == "backup-metadata.json" ]] && continue
+
+                    # Use jq to find task by ID (more accurate than grep)
+                    if [[ "$filename" == "todo.json" ]]; then
+                        if jq -e --arg id "$task_id_pattern" '.tasks[]? | select(.id == $id)' "$json_file" >/dev/null 2>&1; then
+                            found_task=true
+                            # Capture snippet if verbose
+                            if [[ "$verbose_mode" == "true" ]]; then
+                                local snippet
+                                snippet=$(jq -c --arg id "$task_id_pattern" '.tasks[]? | select(.id == $id) | {id, title, status}' "$json_file" 2>/dev/null)
+                                [[ -n "$snippet" ]] && matched_snippets+=("$filename:$snippet")
+                            fi
+                            break
+                        fi
+                    elif [[ "$filename" == "todo-archive.json" ]]; then
+                        if jq -e --arg id "$task_id_pattern" '.archivedTasks[]? | select(.id == $id)' "$json_file" >/dev/null 2>&1; then
+                            found_task=true
+                            if [[ "$verbose_mode" == "true" ]]; then
+                                local snippet
+                                snippet=$(jq -c --arg id "$task_id_pattern" '.archivedTasks[]? | select(.id == $id) | {id, title, status}' "$json_file" 2>/dev/null)
+                                [[ -n "$snippet" ]] && matched_snippets+=("$filename:$snippet")
+                            fi
+                            break
+                        fi
+                    fi
+                done
+
+                if [[ "$found_task" == false ]]; then
+                    continue
+                fi
+            fi
+
             # Build result entry
             local total_size=0
             local file_count=0
@@ -1788,6 +1891,13 @@ find_backups() {
 
             # Add to results
             local result_entry
+
+            # Build matched snippets JSON array for verbose mode
+            local snippets_json="[]"
+            if [[ "$verbose_mode" == "true" && ${#matched_snippets[@]} -gt 0 ]]; then
+                snippets_json=$(printf '%s\n' "${matched_snippets[@]}" | jq -R -s 'split("\n") | map(select(length > 0))')
+            fi
+
             result_entry=$(jq -n \
                 --arg name "$backup_name" \
                 --arg path "$backup_path" \
@@ -1796,6 +1906,8 @@ find_backups() {
                 --argjson size "$total_size" \
                 --arg sizeHuman "$size_human" \
                 --argjson fileCount "$file_count" \
+                --argjson matchedSnippets "$snippets_json" \
+                --argjson verbose "$([[ "$verbose_mode" == "true" ]] && echo true || echo false)" \
                 '{
                     name: $name,
                     path: $path,
@@ -1804,7 +1916,7 @@ find_backups() {
                     size: $size,
                     sizeHuman: $sizeHuman,
                     fileCount: $fileCount
-                }')
+                } + (if $verbose then {matchedSnippets: $matchedSnippets} else {} end)')
 
             results+=("$result_entry")
             ((count++))
@@ -1913,3 +2025,208 @@ export -f list_typed_backups
 export -f restore_typed_backup
 export -f get_backup_metadata
 export -f prune_backups
+
+# Check config and create archive backup before archive operations if enabled
+# Args: $1 = config file path (optional)
+# Output: Backup path if created, empty if skipped
+# Returns: 0 on success, 1 on error
+auto_backup_on_archive() {
+    local config_file="${1:-${CLAUDE_TODO_DIR:-.claude}/todo-config.json}"
+
+    # Load config to check scheduled settings
+    _load_backup_config "$config_file"
+
+    # Check if backups are enabled globally
+    if [[ "$BACKUP_ENABLED" != "true" ]]; then
+        return 0  # Silently skip if disabled
+    fi
+
+    # Check if archive backup is enabled
+    if [[ "$SCHEDULED_ON_ARCHIVE" != "true" ]]; then
+        return 0  # Silently skip if not enabled
+    fi
+
+    # Create archive backup (backs up todo.json and todo-archive.json)
+    local backup_path
+    backup_path=$(create_archive_backup)
+    local result=$?
+
+    if [[ $result -eq 0 && -n "$backup_path" ]]; then
+        echo "$backup_path"
+    fi
+
+    return $result
+}
+
+# Get the path to the schedule state file
+# Args: none
+# Output: Path to schedule state file
+_get_schedule_state_path() {
+    local backup_dir="${BACKUP_DIR:-$DEFAULT_BACKUP_DIR}"
+    echo "$backup_dir/$SCHEDULE_STATE_FILENAME"
+}
+
+# Get timestamp of last backup from schedule state
+# Args: $1 = config file path (optional)
+# Output: ISO timestamp of last backup, or empty if never backed up
+# Returns: 0 on success
+get_last_backup_time() {
+    local config_file="${1:-${CLAUDE_TODO_DIR:-.claude}/todo-config.json}"
+
+    # Load config to get backup directory
+    _load_backup_config "$config_file"
+
+    local state_file
+    state_file=$(_get_schedule_state_path)
+
+    if [[ ! -f "$state_file" ]]; then
+        echo ""
+        return 0
+    fi
+
+    # Read last backup timestamp from state file
+    local last_backup
+    last_backup=$(jq -r '.lastBackupTimestamp // empty' "$state_file" 2>/dev/null)
+    echo "$last_backup"
+    return 0
+}
+
+# Record backup timestamp in schedule state
+# Args: $1 = config file path (optional)
+# Returns: 0 on success, 1 on error
+schedule_backup() {
+    local config_file="${1:-${CLAUDE_TODO_DIR:-.claude}/todo-config.json}"
+
+    # Load config to get backup directory
+    _load_backup_config "$config_file"
+
+    local state_file
+    state_file=$(_get_schedule_state_path)
+
+    # Ensure backup directory exists
+    local backup_dir="${BACKUP_DIR:-$DEFAULT_BACKUP_DIR}"
+    if [[ ! -d "$backup_dir" ]]; then
+        mkdir -p "$backup_dir" || return 1
+    fi
+
+    local timestamp
+    timestamp=$(get_iso_timestamp)
+
+    # Calculate next scheduled time if interval is set
+    local next_scheduled=""
+    if [[ "$SCHEDULED_INTERVAL_MINUTES" -gt 0 ]]; then
+        local current_epoch
+        current_epoch=$(date +%s)
+        local next_epoch=$((current_epoch + SCHEDULED_INTERVAL_MINUTES * 60))
+        # Convert to ISO format (platform-compatible)
+        if date --version >/dev/null 2>&1; then
+            # GNU date
+            next_scheduled=$(date -u -d "@$next_epoch" +"%Y-%m-%dT%H:%M:%SZ")
+        else
+            # BSD date (macOS)
+            next_scheduled=$(date -u -r "$next_epoch" +"%Y-%m-%dT%H:%M:%SZ")
+        fi
+    fi
+
+    # Write schedule state
+    jq -n \
+        --arg lastBackup "$timestamp" \
+        --arg nextScheduled "$next_scheduled" \
+        --argjson intervalMinutes "$SCHEDULED_INTERVAL_MINUTES" \
+        '{
+            lastBackupTimestamp: $lastBackup,
+            nextScheduledTimestamp: (if $nextScheduled == "" then null else $nextScheduled end),
+            intervalMinutes: $intervalMinutes
+        }' > "$state_file" || return 1
+
+    return 0
+}
+
+# Check if auto backup is enabled and due based on interval
+# Args: $1 = config file path (optional)
+# Output: "true" if backup is due, "false" otherwise
+# Returns: 0 always
+should_auto_backup() {
+    local config_file="${1:-${CLAUDE_TODO_DIR:-.claude}/todo-config.json}"
+
+    # Load config to check scheduled settings
+    _load_backup_config "$config_file"
+
+    # Check if backups are enabled globally
+    if [[ "$BACKUP_ENABLED" != "true" ]]; then
+        echo "false"
+        return 0
+    fi
+
+    # Check if interval-based backups are configured
+    if [[ "$SCHEDULED_INTERVAL_MINUTES" -le 0 ]]; then
+        echo "false"
+        return 0
+    fi
+
+    # Get last backup time
+    local last_backup
+    last_backup=$(get_last_backup_time "$config_file")
+
+    # If never backed up, backup is due
+    if [[ -z "$last_backup" ]]; then
+        echo "true"
+        return 0
+    fi
+
+    # Calculate if interval has elapsed
+    local last_epoch current_epoch elapsed_minutes
+    last_epoch=$(iso_to_epoch "$last_backup" 2>/dev/null || echo 0)
+    current_epoch=$(date +%s)
+
+    if [[ "$last_epoch" -eq 0 ]]; then
+        # Failed to parse timestamp, assume backup is due
+        echo "true"
+        return 0
+    fi
+
+    elapsed_minutes=$(( (current_epoch - last_epoch) / 60 ))
+
+    if [[ "$elapsed_minutes" -ge "$SCHEDULED_INTERVAL_MINUTES" ]]; then
+        echo "true"
+    else
+        echo "false"
+    fi
+
+    return 0
+}
+
+# Perform scheduled backup if due (interval-based)
+# Args: $1 = config file path (optional)
+# Output: Backup path if created, empty if skipped
+# Returns: 0 on success, 1 on error
+perform_scheduled_backup() {
+    local config_file="${1:-${CLAUDE_TODO_DIR:-.claude}/todo-config.json}"
+
+    # Check if backup is due
+    local is_due
+    is_due=$(should_auto_backup "$config_file")
+
+    if [[ "$is_due" != "true" ]]; then
+        return 0  # Not due, skip
+    fi
+
+    # Create snapshot backup
+    local backup_path
+    backup_path=$(create_snapshot_backup "scheduled")
+    local result=$?
+
+    if [[ $result -eq 0 && -n "$backup_path" ]]; then
+        # Record backup time for next interval check
+        schedule_backup "$config_file" || true
+        echo "$backup_path"
+    fi
+
+    return $result
+}
+
+export -f auto_backup_on_archive
+export -f get_last_backup_time
+export -f schedule_backup
+export -f should_auto_backup
+export -f perform_scheduled_backup

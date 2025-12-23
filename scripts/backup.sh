@@ -59,14 +59,18 @@ VERIFY_MODE=false
 VERIFY_TARGET=""
 STATUS_MODE=false
 FIND_MODE=false
+SEARCH_MODE=false
 FIND_SINCE=""
 FIND_UNTIL=""
+FIND_ON=""
 FIND_TYPE="all"
 FIND_NAME=""
 FIND_GREP=""
-FIND_LIMIT=20
+FIND_TASK_ID=""
+FIND_LIMIT=10
 FORMAT=""
 QUIET=false
+AUTO_MODE=false
 COMMAND_NAME="backup"
 
 # Exit code for verify failure (per BACKUP-SYSTEM-SPEC.md Part 7.1)
@@ -82,26 +86,31 @@ Subcommands:
   status              Show backup system health and status
   verify <ID|PATH>    Verify backup integrity by recalculating checksums
   find [OPTIONS]      Search backups by date, type, name, or content
+  search [OPTIONS]    Alias for 'find' with enhanced search options
 
 Options:
   --destination DIR   Custom backup location (default: .claude/backups)
   --compress          Create compressed tarball of backup
   --name NAME         Custom backup name (appended to timestamp)
   --list              List available backups
-  --verbose           Show detailed output
+  --verbose           Show detailed output (includes matched content snippets)
   -f, --format FMT    Output format: text, json (default: auto-detect)
   --human             Force human-readable text output
   --json              Force JSON output
   -q, --quiet         Suppress non-essential output
+  --auto              Run scheduled/automatic backup if due (interval-based)
   -h, --help          Show this help
 
-Find Options (use with 'find' subcommand):
+Search Options (use with 'find' or 'search' subcommand):
   --since DATE        Show backups created after DATE (ISO or relative: "7d", "1w")
   --until DATE        Show backups created before DATE
+  --on DATE           Show backups created on exact DATE (YYYY-MM-DD or relative)
   --type TYPE         Filter by backup type (snapshot, safety, archive, migration)
   --name PATTERN      Filter by backup name pattern (glob: "*session*")
+  --contains PATTERN  Search backup content for pattern (alias: --grep)
   --grep PATTERN      Search backup content for pattern
-  --limit N           Limit results (default: 20)
+  --task-id ID        Search for backups containing specific task ID (e.g., T001)
+  --limit N           Limit results (default: 10)
 
 Backs up:
   - todo.json
@@ -135,6 +144,10 @@ Examples:
   $(basename "$0") find --since 7d --type snapshot    # Find recent snapshots
   $(basename "$0") find --name "*session*"            # Find by name pattern
   $(basename "$0") find --grep "T001"                 # Search content for task ID
+  $(basename "$0") search --since 7d --contains "important"   # Search with combined filters
+  $(basename "$0") search --task-id T045 --type snapshot      # Find backups containing task
+  $(basename "$0") search --on 2025-12-20                     # Find backups from exact date
+  $(basename "$0") search --task-id T001 --verbose            # Show matched content snippets
 EOF
   exit 0
 }
@@ -1313,6 +1326,10 @@ while [[ $# -gt 0 ]]; do
       QUIET=true
       shift
       ;;
+    --auto)
+      AUTO_MODE=true
+      shift
+      ;;
     -h|--help)
       usage
       ;;
@@ -1328,10 +1345,11 @@ while [[ $# -gt 0 ]]; do
       STATUS_MODE=true
       shift
       ;;
-    find)
+    find|search)
       FIND_MODE=true
+      [[ "$1" == "search" ]] && SEARCH_MODE=true
       shift
-      # Parse find-specific options
+      # Parse find/search-specific options
       while [[ $# -gt 0 ]]; do
         case $1 in
           --since)
@@ -1342,6 +1360,10 @@ while [[ $# -gt 0 ]]; do
             FIND_UNTIL="$2"
             shift 2
             ;;
+          --on)
+            FIND_ON="$2"
+            shift 2
+            ;;
           --type)
             FIND_TYPE="$2"
             shift 2
@@ -1350,8 +1372,12 @@ while [[ $# -gt 0 ]]; do
             FIND_NAME="$2"
             shift 2
             ;;
-          --grep)
+          --grep|--contains)
             FIND_GREP="$2"
+            shift 2
+            ;;
+          --task-id)
+            FIND_TASK_ID="$2"
             shift 2
             ;;
           --limit)
@@ -1382,7 +1408,7 @@ while [[ $# -gt 0 ]]; do
             usage
             ;;
           -*)
-            log_error "Unknown find option: $1"
+            log_error "Unknown find/search option: $1"
             exit "${EXIT_USAGE_ERROR:-64}"
             ;;
           *)
@@ -1508,7 +1534,97 @@ if [[ "$STATUS_MODE" == true ]]; then
   exit 0
 fi
 
-# Handle find subcommand
+# Handle --auto mode (scheduled/interval-based backups)
+if [[ "$AUTO_MODE" == true ]]; then
+  # Source the backup library for scheduled backup functions
+  if [[ -f "$LIB_DIR/backup.sh" ]]; then
+    # shellcheck source=../lib/backup.sh
+    source "$LIB_DIR/backup.sh"
+  else
+    log_error "Cannot find backup library"
+    exit "${EXIT_FILE_ERROR:-4}"
+  fi
+
+  # Check if scheduled backup is due and perform it
+  is_due=$(should_auto_backup "$CONFIG_FILE")
+
+  if [[ "$is_due" == "true" ]]; then
+    backup_path=$(perform_scheduled_backup "$CONFIG_FILE")
+
+    if [[ -n "$backup_path" ]]; then
+      if [[ "$FORMAT" == "json" ]]; then
+        jq -n \
+          --arg timestamp "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
+          --arg path "$backup_path" \
+          '{
+            "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
+            "_meta": {
+              "command": "backup",
+              "subcommand": "auto",
+              "timestamp": $timestamp,
+              "format": "json"
+            },
+            "success": true,
+            "performed": true,
+            "backup": {
+              "path": $path,
+              "type": "scheduled"
+            }
+          }'
+      else
+        log_info "Scheduled backup created: $backup_path"
+      fi
+    else
+      if [[ "$FORMAT" == "json" ]]; then
+        jq -n \
+          --arg timestamp "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
+          '{
+            "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
+            "_meta": {
+              "command": "backup",
+              "subcommand": "auto",
+              "timestamp": $timestamp,
+              "format": "json"
+            },
+            "success": false,
+            "performed": false,
+            "reason": "Backup creation failed"
+          }'
+      else
+        log_error "Failed to create scheduled backup"
+      fi
+      exit 1
+    fi
+  else
+    # Backup not due
+    if [[ "$FORMAT" == "json" ]]; then
+      last_backup=$(get_last_backup_time "$CONFIG_FILE")
+      jq -n \
+        --arg timestamp "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
+        --arg lastBackup "${last_backup:-null}" \
+        '{
+          "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
+          "_meta": {
+            "command": "backup",
+            "subcommand": "auto",
+            "timestamp": $timestamp,
+            "format": "json"
+          },
+          "success": true,
+          "performed": false,
+          "reason": "Backup not due (interval not elapsed)",
+          "lastBackup": (if $lastBackup == "" or $lastBackup == "null" then null else $lastBackup end)
+        }'
+    else
+      if [[ "$QUIET" != true ]]; then
+        log_info "Scheduled backup not due (interval not elapsed)"
+      fi
+    fi
+  fi
+  exit 0
+fi
+
+# Handle find/search subcommand
 if [[ "$FIND_MODE" == true ]]; then
   # Source the backup library for find_backups function
   if [[ -f "$LIB_DIR/backup.sh" ]]; then
@@ -1519,10 +1635,19 @@ if [[ "$FIND_MODE" == true ]]; then
     exit "${EXIT_FILE_ERROR:-4}"
   fi
 
-  # Run the search
-  results_json=$(find_backups "$FIND_SINCE" "$FIND_UNTIL" "$FIND_TYPE" "$FIND_NAME" "$FIND_GREP" "$FIND_LIMIT")
+  # Determine verbose mode string
+  VERBOSE_STR="false"
+  [[ "$VERBOSE" == true ]] && VERBOSE_STR="true"
+
+  # Run the search with all parameters
+  # Args: since, until, type, name, grep, limit, on, task_id, verbose
+  results_json=$(find_backups "$FIND_SINCE" "$FIND_UNTIL" "$FIND_TYPE" "$FIND_NAME" "$FIND_GREP" "$FIND_LIMIT" "$FIND_ON" "$FIND_TASK_ID" "$VERBOSE_STR")
 
   result_count=$(echo "$results_json" | jq 'length')
+
+  # Determine subcommand name
+  SUBCOMMAND_NAME="find"
+  [[ "$SEARCH_MODE" == true ]] && SUBCOMMAND_NAME="search"
 
   if [[ "$FORMAT" == "json" ]]; then
     # JSON output
@@ -1534,14 +1659,18 @@ if [[ "$FIND_MODE" == true ]]; then
       --argjson limit "$FIND_LIMIT" \
       --arg since "${FIND_SINCE:-}" \
       --arg until "${FIND_UNTIL:-}" \
+      --arg onDate "${FIND_ON:-}" \
       --arg type "$FIND_TYPE" \
       --arg namePattern "${FIND_NAME:-}" \
       --arg grepPattern "${FIND_GREP:-}" \
+      --arg taskId "${FIND_TASK_ID:-}" \
+      --argjson verbose "$([[ "$VERBOSE" == true ]] && echo true || echo false)" \
+      --arg subcommand "$SUBCOMMAND_NAME" \
       '{
         "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
         "_meta": {
           "command": "backup",
-          "subcommand": "find",
+          "subcommand": $subcommand,
           "timestamp": $timestamp,
           "format": "json"
         },
@@ -1551,9 +1680,12 @@ if [[ "$FIND_MODE" == true ]]; then
         "filters": {
           "since": (if $since == "" then null else $since end),
           "until": (if $until == "" then null else $until end),
+          "on": (if $onDate == "" then null else $onDate end),
           "type": $type,
           "namePattern": (if $namePattern == "" then null else $namePattern end),
-          "grepPattern": (if $grepPattern == "" then null else $grepPattern end)
+          "grepPattern": (if $grepPattern == "" then null else $grepPattern end),
+          "taskId": (if $taskId == "" then null else $taskId end),
+          "verbose": $verbose
         },
         "backups": $results,
         "directory": $dir
@@ -1567,9 +1699,11 @@ if [[ "$FIND_MODE" == true ]]; then
       echo -e "${BLUE}Filters applied:${NC}"
       [[ -n "$FIND_SINCE" ]] && echo "  Since: $FIND_SINCE"
       [[ -n "$FIND_UNTIL" ]] && echo "  Until: $FIND_UNTIL"
+      [[ -n "$FIND_ON" ]] && echo "  On date: $FIND_ON"
       [[ "$FIND_TYPE" != "all" ]] && echo "  Type: $FIND_TYPE"
       [[ -n "$FIND_NAME" ]] && echo "  Name pattern: $FIND_NAME"
       [[ -n "$FIND_GREP" ]] && echo "  Content grep: $FIND_GREP"
+      [[ -n "$FIND_TASK_ID" ]] && echo "  Task ID: $FIND_TASK_ID"
       echo ""
       echo "Try 'claude-todo backup --list' to see all backups."
     else
@@ -1586,13 +1720,15 @@ if [[ "$FIND_MODE" == true ]]; then
       echo ""
 
       # Print filters if any active
-      if [[ -n "$FIND_SINCE" || -n "$FIND_UNTIL" || "$FIND_TYPE" != "all" || -n "$FIND_NAME" || -n "$FIND_GREP" ]]; then
+      if [[ -n "$FIND_SINCE" || -n "$FIND_UNTIL" || -n "$FIND_ON" || "$FIND_TYPE" != "all" || -n "$FIND_NAME" || -n "$FIND_GREP" || -n "$FIND_TASK_ID" ]]; then
         echo -e "${BLUE}Filters:${NC}"
         [[ -n "$FIND_SINCE" ]] && echo "  Since: $FIND_SINCE"
         [[ -n "$FIND_UNTIL" ]] && echo "  Until: $FIND_UNTIL"
+        [[ -n "$FIND_ON" ]] && echo "  On date: $FIND_ON"
         [[ "$FIND_TYPE" != "all" ]] && echo "  Type: $FIND_TYPE"
         [[ -n "$FIND_NAME" ]] && echo "  Name pattern: $FIND_NAME"
         [[ -n "$FIND_GREP" ]] && echo "  Content grep: $FIND_GREP"
+        [[ -n "$FIND_TASK_ID" ]] && echo "  Task ID: $FIND_TASK_ID"
         echo ""
       fi
 
@@ -1601,7 +1737,7 @@ if [[ "$FIND_MODE" == true ]]; then
       printf "  %-12s %-20s %-35s %10s\n" "------------" "--------------------" "-----------------------------------" "----------"
 
       # Print each result
-      echo "$results_json" | jq -r '.[] | "\(.type)\t\(.timestamp)\t\(.name)\t\(.sizeHuman)"' | while IFS=$'\t' read -r btype btimestamp bname bsize; do
+      echo "$results_json" | jq -r '.[] | "\(.type)\t\(.timestamp)\t\(.name)\t\(.sizeHuman)\t\(.matchedSnippets // [] | join("; "))"' | while IFS=$'\t' read -r btype btimestamp bname bsize bsnippets; do
         # Format timestamp for display (remove T and Z)
         display_ts=$(echo "$btimestamp" | sed 's/T/ /; s/Z$//' | cut -c1-19)
 
@@ -1612,6 +1748,11 @@ if [[ "$FIND_MODE" == true ]]; then
         fi
 
         printf "  %-12s %-20s %-35s %10s\n" "$btype" "$display_ts" "$display_name" "$bsize"
+
+        # Show matched snippets in verbose mode
+        if [[ "$VERBOSE" == true && -n "$bsnippets" && "$bsnippets" != "null" ]]; then
+          echo -e "    ${YELLOW}Matched:${NC} $bsnippets"
+        fi
       done
 
       echo ""
