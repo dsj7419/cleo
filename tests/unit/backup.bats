@@ -819,102 +819,118 @@ teardown() {
 # Manifest Tracking Tests - Per T631 Requirements
 # =============================================================================
 
+# Helper to ensure BACKUP_DIR is set correctly for manifest tests
+# (file-ops.sh sets BACKUP_DIR=".backups" for Tier 1, but manifest functions need Tier 2)
+_setup_manifest_test() {
+    _load_backup_config
+    rm -f "$BACKUP_DIR/backup-manifest.json"
+}
+
 @test "_init_manifest creates manifest file if missing" {
-    # Remove any existing manifest
-    rm -f "$BACKUP_DIR_ABS/manifest.json"
+    _setup_manifest_test
 
     run _init_manifest
 
     [[ $status -eq 0 ]]
-    [[ -f "$BACKUP_DIR_ABS/manifest.json" ]]
+    [[ -f "$BACKUP_DIR/backup-manifest.json" ]]
 
     # Verify manifest structure
     local version
-    version=$(jq -r '._meta.version' "$BACKUP_DIR_ABS/manifest.json")
+    version=$(jq -r '._meta.version' "$BACKUP_DIR/backup-manifest.json")
     [[ "$version" == "1.0.0" ]]
 
     local backups_count
-    backups_count=$(jq '.backups | length' "$BACKUP_DIR_ABS/manifest.json")
+    backups_count=$(jq '.backups | length' "$BACKUP_DIR/backup-manifest.json")
     [[ "$backups_count" -eq 0 ]]
 }
 
 @test "_init_manifest is idempotent" {
+    _setup_manifest_test
+
     # Initialize manifest twice
     _init_manifest
     local first_created
-    first_created=$(jq -r '._meta.created' "$BACKUP_DIR_ABS/manifest.json")
+    first_created=$(jq -r '._meta.created' "$BACKUP_DIR/backup-manifest.json")
 
     sleep 0.1
     _init_manifest
 
     # Created timestamp should not change
     local second_created
-    second_created=$(jq -r '._meta.created' "$BACKUP_DIR_ABS/manifest.json")
+    second_created=$(jq -r '._meta.created' "$BACKUP_DIR/backup-manifest.json")
     [[ "$first_created" == "$second_created" ]]
 }
 
 @test "_add_to_manifest adds backup entry with correct fields" {
+    _setup_manifest_test
     _init_manifest
 
     # Add a test backup entry
     local files_json='[{"source": "todo.json", "backup": "todo.json", "size": 100, "checksum": "abc123"}]'
-    run _add_to_manifest "snapshot_20251220_120000" "snapshot" "$BACKUP_DIR_ABS/snapshot/snapshot_20251220_120000" "$files_json" 100 ""
+    run _add_to_manifest "snapshot_20251220_120000" "snapshot" "$BACKUP_DIR/snapshot/snapshot_20251220_120000" "$files_json" 100 ""
 
     [[ $status -eq 0 ]]
 
     # Verify entry was added
     local entry_id
-    entry_id=$(jq -r '.backups[0].id' "$BACKUP_DIR_ABS/manifest.json")
+    entry_id=$(jq -r '.backups[0].id' "$BACKUP_DIR/backup-manifest.json")
     [[ "$entry_id" == "snapshot_20251220_120000" ]]
 
     local entry_type
-    entry_type=$(jq -r '.backups[0].type' "$BACKUP_DIR_ABS/manifest.json")
+    entry_type=$(jq -r '.backups[0].type' "$BACKUP_DIR/backup-manifest.json")
     [[ "$entry_type" == "snapshot" ]]
 
     local entry_size
-    entry_size=$(jq -r '.backups[0].sizeBytes' "$BACKUP_DIR_ABS/manifest.json")
+    entry_size=$(jq -r '.backups[0].sizeBytes' "$BACKUP_DIR/backup-manifest.json")
     [[ "$entry_size" -eq 100 ]]
 }
 
 @test "_add_to_manifest sets neverDelete for migration backups" {
+    _setup_manifest_test
     _init_manifest
 
+    # Call without run to keep exported functions available
     local files_json='[{"source": "todo.json", "backup": "todo.json", "size": 100, "checksum": "abc123"}]'
-    _add_to_manifest "migration_v1.0.0_20251220_120000" "migration" "$BACKUP_DIR_ABS/migration/migration_v1.0.0_20251220_120000" "$files_json" 100 ""
+    _add_to_manifest "migration_v1.0.0_20251220_120000" "migration" "$BACKUP_DIR/migration/migration_v1.0.0_20251220_120000" "$files_json" 100 ""
 
     local never_delete
-    never_delete=$(jq -r '.backups[0].neverDelete' "$BACKUP_DIR_ABS/manifest.json")
+    never_delete=$(jq -r '.backups[0].neverDelete' "$BACKUP_DIR/backup-manifest.json")
     [[ "$never_delete" == "true" ]]
 }
 
 @test "_add_to_manifest includes custom name when provided" {
+    _setup_manifest_test
     _init_manifest
 
+    # Call without run to keep exported functions available
     local files_json='[{"source": "todo.json", "backup": "todo.json", "size": 100, "checksum": "abc123"}]'
-    _add_to_manifest "snapshot_20251220_120000_before_refactor" "snapshot" "$BACKUP_DIR_ABS/snapshot/snapshot_20251220_120000_before_refactor" "$files_json" 100 "before_refactor"
+    _add_to_manifest "snapshot_20251220_120000_before_refactor" "snapshot" "$BACKUP_DIR/snapshot/snapshot_20251220_120000_before_refactor" "$files_json" 100 "before_refactor"
 
     local name
-    name=$(jq -r '.backups[0].name' "$BACKUP_DIR_ABS/manifest.json")
+    name=$(jq -r '.backups[0].name' "$BACKUP_DIR/backup-manifest.json")
     [[ "$name" == "before_refactor" ]]
 }
 
 @test "_get_from_manifest returns entry by ID" {
+    _setup_manifest_test
     _init_manifest
 
+    # Call without run to keep exported functions available
     local files_json='[{"source": "todo.json", "backup": "todo.json", "size": 100, "checksum": "abc123"}]'
-    _add_to_manifest "snapshot_20251220_120000" "snapshot" "$BACKUP_DIR_ABS/snapshot/snapshot_20251220_120000" "$files_json" 100 ""
+    _add_to_manifest "snapshot_20251220_120000" "snapshot" "$BACKUP_DIR/snapshot/snapshot_20251220_120000" "$files_json" 100 ""
 
-    run _get_from_manifest "snapshot_20251220_120000"
+    local entry
+    entry=$(_get_from_manifest "snapshot_20251220_120000")
 
-    [[ $status -eq 0 ]]
-    [[ -n "$output" ]]
+    [[ -n "$entry" ]]
 
     local entry_type
-    entry_type=$(echo "$output" | jq -r '.type')
+    entry_type=$(echo "$entry" | jq -r '.type')
     [[ "$entry_type" == "snapshot" ]]
 }
 
 @test "_get_from_manifest returns empty for non-existent ID" {
+    _setup_manifest_test
     _init_manifest
 
     run _get_from_manifest "nonexistent_backup"
@@ -924,35 +940,35 @@ teardown() {
 }
 
 @test "_remove_from_manifest removes entry by ID" {
+    _setup_manifest_test
     _init_manifest
 
-    # Add two entries
+    # Add two entries (call without run to keep exported functions available)
     local files_json='[{"source": "todo.json", "backup": "todo.json", "size": 100, "checksum": "abc123"}]'
-    _add_to_manifest "snapshot_20251220_120000" "snapshot" "$BACKUP_DIR_ABS/snapshot/snapshot_20251220_120000" "$files_json" 100 ""
-    _add_to_manifest "snapshot_20251220_130000" "snapshot" "$BACKUP_DIR_ABS/snapshot/snapshot_20251220_130000" "$files_json" 100 ""
+    _add_to_manifest "snapshot_20251220_120000" "snapshot" "$BACKUP_DIR/snapshot/snapshot_20251220_120000" "$files_json" 100 ""
+    _add_to_manifest "snapshot_20251220_130000" "snapshot" "$BACKUP_DIR/snapshot/snapshot_20251220_130000" "$files_json" 100 ""
 
     # Verify we have 2 entries
     local count_before
-    count_before=$(jq '.backups | length' "$BACKUP_DIR_ABS/manifest.json")
+    count_before=$(jq '.backups | length' "$BACKUP_DIR/backup-manifest.json")
     [[ "$count_before" -eq 2 ]]
 
     # Remove one entry
-    run _remove_from_manifest "snapshot_20251220_120000"
-
-    [[ $status -eq 0 ]]
+    _remove_from_manifest "snapshot_20251220_120000"
 
     # Should have 1 entry left
     local count_after
-    count_after=$(jq '.backups | length' "$BACKUP_DIR_ABS/manifest.json")
+    count_after=$(jq '.backups | length' "$BACKUP_DIR/backup-manifest.json")
     [[ "$count_after" -eq 1 ]]
 
     # Remaining entry should be the second one
     local remaining_id
-    remaining_id=$(jq -r '.backups[0].id' "$BACKUP_DIR_ABS/manifest.json")
+    remaining_id=$(jq -r '.backups[0].id' "$BACKUP_DIR/backup-manifest.json")
     [[ "$remaining_id" == "snapshot_20251220_130000" ]]
 }
 
 @test "_remove_from_manifest succeeds for non-existent ID (no-op)" {
+    _setup_manifest_test
     _init_manifest
 
     run _remove_from_manifest "nonexistent_backup"
@@ -961,42 +977,45 @@ teardown() {
 }
 
 @test "_get_backups_from_manifest returns all backups" {
+    _setup_manifest_test
     _init_manifest
 
+    # Call without run to keep exported functions available
     local files_json='[{"source": "todo.json", "backup": "todo.json", "size": 100, "checksum": "abc123"}]'
-    _add_to_manifest "snapshot_20251220_120000" "snapshot" "$BACKUP_DIR_ABS/snapshot/snapshot_20251220_120000" "$files_json" 100 ""
-    _add_to_manifest "safety_20251220_130000" "safety" "$BACKUP_DIR_ABS/safety/safety_20251220_130000" "$files_json" 50 ""
+    _add_to_manifest "snapshot_20251220_120000" "snapshot" "$BACKUP_DIR/snapshot/snapshot_20251220_120000" "$files_json" 100 ""
+    _add_to_manifest "safety_20251220_130000" "safety" "$BACKUP_DIR/safety/safety_20251220_130000" "$files_json" 50 ""
 
-    run _get_backups_from_manifest "all"
-
-    [[ $status -eq 0 ]]
+    local result
+    result=$(_get_backups_from_manifest "all")
 
     local count
-    count=$(echo "$output" | jq 'length')
+    count=$(echo "$result" | jq 'length')
     [[ "$count" -eq 2 ]]
 }
 
 @test "_get_backups_from_manifest filters by type" {
+    _setup_manifest_test
     _init_manifest
 
+    # Call without run to keep exported functions available
     local files_json='[{"source": "todo.json", "backup": "todo.json", "size": 100, "checksum": "abc123"}]'
-    _add_to_manifest "snapshot_20251220_120000" "snapshot" "$BACKUP_DIR_ABS/snapshot/snapshot_20251220_120000" "$files_json" 100 ""
-    _add_to_manifest "safety_20251220_130000" "safety" "$BACKUP_DIR_ABS/safety/safety_20251220_130000" "$files_json" 50 ""
+    _add_to_manifest "snapshot_20251220_120000" "snapshot" "$BACKUP_DIR/snapshot/snapshot_20251220_120000" "$files_json" 100 ""
+    _add_to_manifest "safety_20251220_130000" "safety" "$BACKUP_DIR/safety/safety_20251220_130000" "$files_json" 50 ""
 
-    run _get_backups_from_manifest "snapshot"
-
-    [[ $status -eq 0 ]]
+    local result
+    result=$(_get_backups_from_manifest "snapshot")
 
     local count
-    count=$(echo "$output" | jq 'length')
+    count=$(echo "$result" | jq 'length')
     [[ "$count" -eq 1 ]]
 
     local entry_type
-    entry_type=$(echo "$output" | jq -r '.[0].type')
+    entry_type=$(echo "$result" | jq -r '.[0].type')
     [[ "$entry_type" == "snapshot" ]]
 }
 
 @test "_manifest_exists returns true when manifest exists" {
+    _setup_manifest_test
     _init_manifest
 
     run _manifest_exists
@@ -1005,7 +1024,8 @@ teardown() {
 }
 
 @test "_manifest_exists returns false when manifest missing" {
-    rm -f "$BACKUP_DIR_ABS/manifest.json"
+    _setup_manifest_test
+    # Manifest already removed by _setup_manifest_test
 
     run _manifest_exists
 
@@ -1013,15 +1033,14 @@ teardown() {
 }
 
 @test "_rebuild_manifest scans backup directories" {
+    _setup_manifest_test
+
     # Create some backup directories with metadata
-    mkdir -p "$BACKUP_DIR_ABS/snapshot/snapshot_20251220_120000"
-    echo '{"backupType": "snapshot", "timestamp": "2025-12-20T12:00:00Z", "files": [{"source": "todo.json", "checksum": "abc"}], "totalSize": 100}' > "$BACKUP_DIR_ABS/snapshot/snapshot_20251220_120000/metadata.json"
+    mkdir -p "$BACKUP_DIR/snapshot/snapshot_20251220_120000"
+    echo '{"backupType": "snapshot", "timestamp": "2025-12-20T12:00:00Z", "files": [{"source": "todo.json", "checksum": "abc"}], "totalSize": 100}' > "$BACKUP_DIR/snapshot/snapshot_20251220_120000/metadata.json"
 
-    mkdir -p "$BACKUP_DIR_ABS/safety/safety_20251220_130000_update_todo.json"
-    echo '{"backupType": "safety", "timestamp": "2025-12-20T13:00:00Z", "files": [{"source": "todo.json", "checksum": "def"}], "totalSize": 50}' > "$BACKUP_DIR_ABS/safety/safety_20251220_130000_update_todo.json/metadata.json"
-
-    # Remove any existing manifest to force rebuild
-    rm -f "$BACKUP_DIR_ABS/manifest.json"
+    mkdir -p "$BACKUP_DIR/safety/safety_20251220_130000_update_todo.json"
+    echo '{"backupType": "safety", "timestamp": "2025-12-20T13:00:00Z", "files": [{"source": "todo.json", "checksum": "def"}], "totalSize": 50}' > "$BACKUP_DIR/safety/safety_20251220_130000_update_todo.json/metadata.json"
 
     run _rebuild_manifest
 
@@ -1030,23 +1049,22 @@ teardown() {
 
     # Verify manifest was created with correct entries
     local count
-    count=$(jq '.backups | length' "$BACKUP_DIR_ABS/manifest.json")
+    count=$(jq '.backups | length' "$BACKUP_DIR/backup-manifest.json")
     [[ "$count" -eq 2 ]]
 }
 
 @test "create_snapshot_backup adds entry to manifest" {
-    # Remove manifest to start fresh
-    rm -f "$BACKUP_DIR_ABS/manifest.json"
+    _setup_manifest_test
 
     local backup_path
     backup_path=$(create_snapshot_backup "test_manifest")
 
     # Manifest should exist
-    [[ -f "$BACKUP_DIR_ABS/manifest.json" ]]
+    [[ -f "$BACKUP_DIR/backup-manifest.json" ]]
 
     # Should have at least one entry
     local count
-    count=$(jq '.backups | length' "$BACKUP_DIR_ABS/manifest.json")
+    count=$(jq '.backups | length' "$BACKUP_DIR/backup-manifest.json")
     [[ "$count" -ge 1 ]]
 
     # Entry should match the created backup
@@ -1058,12 +1076,12 @@ teardown() {
 }
 
 @test "create_incremental_backup adds entry to manifest" {
-    rm -f "$BACKUP_DIR_ABS/manifest.json"
+    _setup_manifest_test
 
     local backup_path
     backup_path=$(create_incremental_backup "$CLAUDE_TODO_DIR/todo.json")
 
-    [[ -f "$BACKUP_DIR_ABS/manifest.json" ]]
+    [[ -f "$BACKUP_DIR/backup-manifest.json" ]]
 
     local backup_id
     backup_id=$(basename "$backup_path")
@@ -1073,12 +1091,12 @@ teardown() {
 }
 
 @test "create_archive_backup adds entry to manifest" {
-    rm -f "$BACKUP_DIR_ABS/manifest.json"
+    _setup_manifest_test
 
     local backup_path
     backup_path=$(create_archive_backup)
 
-    [[ -f "$BACKUP_DIR_ABS/manifest.json" ]]
+    [[ -f "$BACKUP_DIR/backup-manifest.json" ]]
 
     local backup_id
     backup_id=$(basename "$backup_path")
@@ -1088,12 +1106,12 @@ teardown() {
 }
 
 @test "create_migration_backup adds entry to manifest with neverDelete" {
-    rm -f "$BACKUP_DIR_ABS/manifest.json"
+    _setup_manifest_test
 
     local backup_path
     backup_path=$(create_migration_backup "2.0.0")
 
-    [[ -f "$BACKUP_DIR_ABS/manifest.json" ]]
+    [[ -f "$BACKUP_DIR/backup-manifest.json" ]]
 
     local backup_id
     backup_id=$(basename "$backup_path")
@@ -1107,23 +1125,24 @@ teardown() {
 }
 
 @test "rotate_backups removes entries from manifest" {
-    # Initialize manifest and create excess backups
+    _setup_manifest_test
     _init_manifest
 
+    # Call without run to keep exported functions available
     local files_json='[{"source": "todo.json", "backup": "todo.json", "size": 100, "checksum": "abc123"}]'
 
     # Create 12 snapshot backups in manifest (exceeds default MAX_SNAPSHOTS=10)
     for i in {1..12}; do
         local padded=$(printf "%02d" "$i")
         local backup_id="snapshot_20251201_0000${padded}"
-        mkdir -p "$BACKUP_DIR_ABS/snapshot/$backup_id"
-        _add_to_manifest "$backup_id" "snapshot" "$BACKUP_DIR_ABS/snapshot/$backup_id" "$files_json" 100 ""
+        mkdir -p "$BACKUP_DIR/snapshot/$backup_id"
+        _add_to_manifest "$backup_id" "snapshot" "$BACKUP_DIR/snapshot/$backup_id" "$files_json" 100 ""
         sleep 0.05
     done
 
     # Verify manifest has 12 snapshot entries
     local snapshot_count_before
-    snapshot_count_before=$(jq '[.backups[] | select(.type == "snapshot")] | length' "$BACKUP_DIR_ABS/manifest.json")
+    snapshot_count_before=$(jq '[.backups[] | select(.type == "snapshot")] | length' "$BACKUP_DIR/backup-manifest.json")
     [[ "$snapshot_count_before" -eq 12 ]]
 
     # Run rotation
@@ -1131,6 +1150,234 @@ teardown() {
 
     # Manifest should have <=10 snapshot entries after rotation
     local snapshot_count_after
-    snapshot_count_after=$(jq '[.backups[] | select(.type == "snapshot")] | length' "$BACKUP_DIR_ABS/manifest.json")
+    snapshot_count_after=$(jq '[.backups[] | select(.type == "snapshot")] | length' "$BACKUP_DIR/backup-manifest.json")
     [[ "$snapshot_count_after" -le 10 ]]
+}
+
+# =============================================================================
+# Scheduled Backup Tests - T632
+# =============================================================================
+
+@test "get_last_backup_time returns empty when no schedule state exists" {
+    # Ensure no schedule file exists
+    rm -f "$BACKUP_DIR_ABS/.schedule"
+
+    run get_last_backup_time "$CLAUDE_TODO_DIR/todo-config.json"
+
+    [[ $status -eq 0 ]]
+    [[ "$output" == "" ]]
+}
+
+@test "schedule_backup creates schedule state file" {
+    run schedule_backup "$CLAUDE_TODO_DIR/todo-config.json"
+
+    [[ $status -eq 0 ]]
+    [[ -f "$BACKUP_DIR_ABS/.schedule" ]]
+
+    # Verify file contains valid JSON with lastBackupTimestamp
+    local has_timestamp
+    has_timestamp=$(jq -r '.lastBackupTimestamp // empty' "$BACKUP_DIR_ABS/.schedule")
+    [[ -n "$has_timestamp" ]]
+}
+
+@test "get_last_backup_time returns timestamp after schedule_backup" {
+    schedule_backup "$CLAUDE_TODO_DIR/todo-config.json"
+
+    run get_last_backup_time "$CLAUDE_TODO_DIR/todo-config.json"
+
+    [[ $status -eq 0 ]]
+    [[ "$output" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$ ]]
+}
+
+@test "should_auto_backup returns false when interval not configured" {
+    # Config has no intervalMinutes (defaults to 0 = disabled)
+    run should_auto_backup "$CLAUDE_TODO_DIR/todo-config.json"
+
+    [[ $status -eq 0 ]]
+    [[ "$output" == "false" ]]
+}
+
+@test "should_auto_backup returns true when never backed up and interval configured" {
+    # Update config with interval
+    cat > "$CLAUDE_TODO_DIR/todo-config.json" << EOF
+{
+  "version": "2.1.0",
+  "backup": {
+    "enabled": true,
+    "directory": "$BACKUP_DIR_REL",
+    "scheduled": {
+      "intervalMinutes": 60
+    }
+  }
+}
+EOF
+    # Remove any existing schedule
+    rm -f "$BACKUP_DIR_ABS/.schedule"
+
+    run should_auto_backup "$CLAUDE_TODO_DIR/todo-config.json"
+
+    [[ $status -eq 0 ]]
+    [[ "$output" == "true" ]]
+}
+
+@test "should_auto_backup returns false when interval not elapsed" {
+    # Update config with interval
+    cat > "$CLAUDE_TODO_DIR/todo-config.json" << EOF
+{
+  "version": "2.1.0",
+  "backup": {
+    "enabled": true,
+    "directory": "$BACKUP_DIR_REL",
+    "scheduled": {
+      "intervalMinutes": 60
+    }
+  }
+}
+EOF
+    # Record a recent backup
+    schedule_backup "$CLAUDE_TODO_DIR/todo-config.json"
+
+    run should_auto_backup "$CLAUDE_TODO_DIR/todo-config.json"
+
+    [[ $status -eq 0 ]]
+    [[ "$output" == "false" ]]
+}
+
+@test "auto_backup_on_archive creates backup when onArchive is true" {
+    # Config with onArchive enabled (default)
+    cat > "$CLAUDE_TODO_DIR/todo-config.json" << EOF
+{
+  "version": "2.1.0",
+  "backup": {
+    "enabled": true,
+    "directory": "$BACKUP_DIR_REL",
+    "scheduled": {
+      "onArchive": true
+    }
+  }
+}
+EOF
+
+    local backup_path
+    backup_path=$(auto_backup_on_archive "$CLAUDE_TODO_DIR/todo-config.json")
+    local result=$?
+
+    [[ $result -eq 0 ]]
+    [[ -n "$backup_path" ]]  # Should return backup path
+    [[ -d "$backup_path" ]]  # Backup directory should exist
+}
+
+@test "auto_backup_on_archive skips backup when onArchive is false" {
+    # Config with onArchive disabled
+    cat > "$CLAUDE_TODO_DIR/todo-config.json" << EOF
+{
+  "version": "2.1.0",
+  "backup": {
+    "enabled": true,
+    "directory": "$BACKUP_DIR_REL",
+    "scheduled": {
+      "onArchive": false
+    }
+  }
+}
+EOF
+
+    local backup_path
+    backup_path=$(auto_backup_on_archive "$CLAUDE_TODO_DIR/todo-config.json")
+    local result=$?
+
+    [[ $result -eq 0 ]]
+    [[ -z "$backup_path" ]]  # Should return empty (no backup created)
+}
+
+@test "auto_backup_on_session_start creates backup when configured" {
+    # Config with onSessionStart enabled
+    cat > "$CLAUDE_TODO_DIR/todo-config.json" << EOF
+{
+  "version": "2.1.0",
+  "backup": {
+    "enabled": true,
+    "directory": "$BACKUP_DIR_REL",
+    "scheduled": {
+      "onSessionStart": true
+    }
+  }
+}
+EOF
+
+    local backup_path
+    backup_path=$(auto_backup_on_session_start "$CLAUDE_TODO_DIR/todo-config.json")
+    local result=$?
+
+    [[ $result -eq 0 ]]
+    [[ -n "$backup_path" ]]  # Should return backup path
+    [[ -d "$backup_path" ]]  # Backup directory should exist
+}
+
+@test "auto_backup_on_session_end creates backup when configured" {
+    # Config with onSessionEnd enabled
+    cat > "$CLAUDE_TODO_DIR/todo-config.json" << EOF
+{
+  "version": "2.1.0",
+  "backup": {
+    "enabled": true,
+    "directory": "$BACKUP_DIR_REL",
+    "scheduled": {
+      "onSessionEnd": true
+    }
+  }
+}
+EOF
+
+    run auto_backup_on_session_end "$CLAUDE_TODO_DIR/todo-config.json"
+
+    [[ $status -eq 0 ]]
+    [[ -n "$output" ]]  # Should return backup path
+}
+
+@test "perform_scheduled_backup creates backup and records timestamp" {
+    # Config with interval
+    cat > "$CLAUDE_TODO_DIR/todo-config.json" << EOF
+{
+  "version": "2.1.0",
+  "backup": {
+    "enabled": true,
+    "directory": "$BACKUP_DIR_REL",
+    "scheduled": {
+      "intervalMinutes": 60
+    }
+  }
+}
+EOF
+    # Remove any existing schedule
+    rm -f "$BACKUP_DIR_ABS/.schedule"
+
+    run perform_scheduled_backup "$CLAUDE_TODO_DIR/todo-config.json"
+
+    [[ $status -eq 0 ]]
+    [[ -n "$output" ]]  # Should return backup path
+    [[ -f "$BACKUP_DIR_ABS/.schedule" ]]  # Schedule file should be created
+}
+
+@test "perform_scheduled_backup skips when not due" {
+    # Config with interval
+    cat > "$CLAUDE_TODO_DIR/todo-config.json" << EOF
+{
+  "version": "2.1.0",
+  "backup": {
+    "enabled": true,
+    "directory": "$BACKUP_DIR_REL",
+    "scheduled": {
+      "intervalMinutes": 60
+    }
+  }
+}
+EOF
+    # Record a recent backup
+    schedule_backup "$CLAUDE_TODO_DIR/todo-config.json"
+
+    run perform_scheduled_backup "$CLAUDE_TODO_DIR/todo-config.json"
+
+    [[ $status -eq 0 ]]
+    [[ -z "$output" ]]  # Should return empty (not due)
 }

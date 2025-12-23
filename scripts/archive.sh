@@ -522,8 +522,9 @@ for temp_file in "$ARCHIVE_TMP" "$TODO_TMP" ${LOG_TMP:+"$LOG_TMP"}; do
 done
 
 # Step 5: Create archive backup before committing changes using unified backup library
-if declare -f create_archive_backup >/dev/null 2>&1; then
-  BACKUP_PATH=$(create_archive_backup 2>&1) || {
+# Uses auto_backup_on_archive() which respects config setting backup.scheduled.onArchive
+if declare -f auto_backup_on_archive >/dev/null 2>&1; then
+  BACKUP_PATH=$(auto_backup_on_archive "$CONFIG_FILE" 2>&1) || {
     [[ "$QUIET" != true && "$FORMAT" != "json" ]] && log_warn "Backup library failed, using fallback backup method"
     # Fallback to inline backup if library fails
     BACKUP_SUFFIX=".backup.$(date +%s)"
@@ -534,8 +535,20 @@ if declare -f create_archive_backup >/dev/null 2>&1; then
   if [[ -n "$BACKUP_PATH" && "$QUIET" != true && "$FORMAT" != "json" ]]; then
     log_info "Archive backup created: $BACKUP_PATH"
   fi
+elif declare -f create_archive_backup >/dev/null 2>&1; then
+  # Fallback to direct create_archive_backup if auto_backup_on_archive not available
+  BACKUP_PATH=$(create_archive_backup 2>&1) || {
+    [[ "$QUIET" != true && "$FORMAT" != "json" ]] && log_warn "Backup library failed, using fallback backup method"
+    BACKUP_SUFFIX=".backup.$(date +%s)"
+    cp "$ARCHIVE_FILE" "${ARCHIVE_FILE}${BACKUP_SUFFIX}"
+    cp "$TODO_FILE" "${TODO_FILE}${BACKUP_SUFFIX}"
+    [[ -f "$LOG_FILE" ]] && cp "$LOG_FILE" "${LOG_FILE}${BACKUP_SUFFIX}"
+  }
+  if [[ -n "$BACKUP_PATH" && "$QUIET" != true && "$FORMAT" != "json" ]]; then
+    log_info "Archive backup created: $BACKUP_PATH"
+  fi
 else
-  # Fallback if backup library not available
+  # Fallback if backup library not available at all
   BACKUP_SUFFIX=".backup.$(date +%s)"
   cp "$ARCHIVE_FILE" "${ARCHIVE_FILE}${BACKUP_SUFFIX}"
   cp "$TODO_FILE" "${TODO_FILE}${BACKUP_SUFFIX}"

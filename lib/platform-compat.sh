@@ -388,6 +388,45 @@ safe_find_sorted_by_mtime() {
 # CHECKSUM GENERATION
 # ============================================================================
 
+# Generate checksum from stdin (cross-platform)
+# Reads from stdin and outputs checksum
+# Returns: checksum string (SHA256 or MD5)
+safe_checksum_stdin() {
+    # Try SHA256 (preferred)
+    if command_exists sha256sum; then
+        sha256sum 2>/dev/null | cut -d' ' -f1
+        return 0
+    fi
+
+    # Try macOS shasum
+    if command_exists shasum; then
+        shasum -a 256 2>/dev/null | cut -d' ' -f1
+        return 0
+    fi
+
+    # Try openssl
+    if command_exists openssl; then
+        openssl dgst -sha256 2>/dev/null | awk '{print $NF}'
+        return 0
+    fi
+
+    # Fallback to MD5
+    if command_exists md5sum; then
+        md5sum 2>/dev/null | cut -d' ' -f1
+        return 0
+    fi
+
+    # macOS md5
+    if command_exists md5; then
+        md5 2>/dev/null
+        return 0
+    fi
+
+    # Final fallback: return 0 as pseudo-checksum
+    echo "0"
+    return 1
+}
+
 # Generate file checksum (cross-platform)
 # Args: $1 = file path
 # Returns: checksum string (SHA256 or MD5)
@@ -477,6 +516,7 @@ export -f validate_json_schema
 export -f safe_find
 export -f safe_find_sorted_by_mtime
 export -f safe_checksum
+export -f safe_checksum_stdin
 export -f create_temp_file
 
 # Export platform constant

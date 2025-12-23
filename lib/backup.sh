@@ -684,7 +684,7 @@ _load_backup_config() {
         SAFETY_RETENTION_DAYS=$(jq -r '.backup.safetyRetentionDays // 7' "$config_file" 2>/dev/null || echo "$DEFAULT_SAFETY_RETENTION_DAYS")
         SCHEDULED_ON_SESSION_START=$(jq -r '.backup.scheduled.onSessionStart // false' "$config_file" 2>/dev/null || echo "$DEFAULT_SCHEDULED_ON_SESSION_START")
         SCHEDULED_ON_SESSION_END=$(jq -r '.backup.scheduled.onSessionEnd // false' "$config_file" 2>/dev/null || echo "$DEFAULT_SCHEDULED_ON_SESSION_END")
-        SCHEDULED_ON_ARCHIVE=$(jq -r '.backup.scheduled.onArchive // true' "$config_file" 2>/dev/null || echo "$DEFAULT_SCHEDULED_ON_ARCHIVE")
+        SCHEDULED_ON_ARCHIVE=$(jq -r 'if .backup.scheduled.onArchive == null then true else .backup.scheduled.onArchive end' "$config_file" 2>/dev/null || echo "$DEFAULT_SCHEDULED_ON_ARCHIVE")
         SCHEDULED_INTERVAL_MINUTES=$(jq -r '.backup.scheduled.intervalMinutes // 0' "$config_file" 2>/dev/null || echo "$DEFAULT_SCHEDULED_INTERVAL_MINUTES")
     fi
 

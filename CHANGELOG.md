@@ -5,6 +5,26 @@ All notable changes to the claude-todo system will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.29.3] - 2025-12-23
+
+### Fixed
+- **Missing safe_checksum_stdin Function**: Added `safe_checksum_stdin()` to `lib/platform-compat.sh`
+  - Companion to `safe_checksum()` for checksumming piped data
+  - Fixes manifest-related backup tests that were failing with "command not found"
+
+- **Backup Config Detection**: Fixed `onArchive` config detection in `lib/backup.sh`
+  - Changed from `// true` to explicit null check for correct boolean handling
+  - Fixes case where `onArchive: false` was being treated as null → true
+
+- **Archive Backup Function**: Updated `scripts/archive.sh` to use `auto_backup_on_archive()`
+  - Respects `backup.scheduled.onArchive` config setting
+  - Falls back to `create_archive_backup()` if auto function unavailable
+
+### Tests
+- Fixed manifest tests in `tests/unit/backup.bats` to use correct `BACKUP_DIR`
+  - Added `_setup_manifest_test()` helper for proper Tier 2 directory setup
+  - Fixes BACKUP_DIR confusion between Tier 1 (.backups) and Tier 2 (backups/)
+
 ## [0.29.2] - 2025-12-23
 
 ### Fixed
