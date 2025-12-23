@@ -82,6 +82,20 @@ claude-todo list [--type TYPE] [--parent ID] [--children ID] [--tree]
 | `--children ID` | | Show direct children of task ID |
 | `--tree` | | Display hierarchical tree view |
 
+### Tree Alias
+
+For convenience, the `tree` command provides direct access to hierarchical tree view:
+
+```bash
+claude-todo tree              # Same as: claude-todo list --tree
+ct tree                       # Short form
+ct tree --status pending      # Tree with status filter
+ct tree --type epic           # Show only epics in tree format
+ct tree --parent T001         # Show subtree rooted at T001
+```
+
+The `tree` alias accepts all `list` command filters and options.
+
 ### Viewing Task Details
 
 The `show` command displays hierarchy context:

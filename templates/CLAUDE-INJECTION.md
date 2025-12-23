@@ -1,4 +1,4 @@
-<!-- CLAUDE-TODO:START v0.29.0 -->
+<!-- CLAUDE-TODO:START v0.29.1 -->
 ## Task Management (claude-todo)
 
 Use `ct` (alias for `claude-todo`) for all task operations. Full docs: `~/.claude-todo/docs/TODO_Task_Management.md`
@@ -71,7 +71,7 @@ ct list --phase $(ct phase show -q)  # Focus on current phase tasks
 ### Hierarchy Automation (v0.24.0+)
 - **Auto-complete**: Parent completes when all children done (if enabled)
 - **Orphan repair**: `ct validate --fix-orphans unlink`
-- **Tree view**: `ct list --tree` or `ct list --tree --children T001` for subtree
+- **Tree view**: `ct tree` or `ct list --tree` (equivalent). Subtree: `ct tree --parent T001`
 - **Reparent**: `ct reparent T005 --to T001` (move to different parent)
 - **Promote**: `ct promote T005` (remove parent, make root)
 

@@ -238,9 +238,21 @@
       "doc": "list.md",
       "synopsis": "View tasks with filtering (status, priority, label, phase, type, parent)",
       "flags": ["--format", "--quiet", "--status", "--priority", "--label", "--phase", "--type", "--parent", "--children", "--tree"],
-      "exitCodes": [0, 100],
+      "exitCodes": [0, 2, 100],
       "jsonOutput": true,
-      "agentRelevance": "critical"
+      "agentRelevance": "critical",
+      "aliases": ["ls", "tree"]
+    },
+    {
+      "name": "tree",
+      "aliasFor": "list --tree",
+      "category": "read",
+      "doc": "hierarchy.md",
+      "synopsis": "Display task hierarchy as tree (alias for list --tree)",
+      "flags": ["--format", "--quiet", "--status", "--priority", "--label", "--phase", "--type", "--parent"],
+      "exitCodes": [0, 2, 100],
+      "jsonOutput": true,
+      "agentRelevance": "high"
     },
     {
       "name": "log",

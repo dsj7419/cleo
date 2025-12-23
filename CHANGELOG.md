@@ -5,6 +5,47 @@ All notable changes to the claude-todo system will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.29.1] - 2025-12-23
+
+### Added
+- **Tree Alias Command** (T648): New `tree` alias for hierarchical task display
+  - `ct tree` is equivalent to `ct list --tree`
+  - Accepts all `list` filters: `--status`, `--priority`, `--type`, `--parent`
+  - Example: `ct tree --parent T001` shows subtree rooted at T001
+  - Example: `ct tree --type epic` shows only epics in tree format
+
+- **Aliased Flags Support**: Enhanced dispatcher to handle command aliases with flags
+  - `resolve_command()` now returns format `type:command:aliased_flags`
+  - Supports aliases like `[tree]="list --tree"` that include flags
+  - Extensible pattern for future aliases needing flag injection
+
+### Fixed
+- **Type Filter Validation** (T646): Added validation for `--type` filter value
+  - Rejects invalid types with proper error message and exit code 2
+  - Valid values: `epic`, `task`, `subtask`
+
+- **Magic Exit Codes** (T646): Replaced hardcoded exit codes in `list-tasks.sh`
+  - Dependency check: now uses `$EXIT_DEPENDENCY_ERROR` (5)
+  - File not found: now uses `$EXIT_NOT_FOUND` (4)
+  - Invalid input: now uses `$EXIT_INVALID_INPUT` (2)
+
+- **Error Messages**: Improved error output with recovery suggestions
+  - jq dependency error includes installation instructions
+  - File not found includes `claude-todo init` suggestion
+
+### Documentation
+- Updated `docs/commands/hierarchy.md` with tree alias documentation
+- Updated `docs/commands/COMMANDS-INDEX.json` with tree command entry
+- Updated `templates/CLAUDE-INJECTION.md` with tree alias examples
+
+### Tests
+- New `tests/unit/tree-alias.bats`: Comprehensive tree alias test suite
+  - Alias resolution tests
+  - Flag passthrough tests (status, priority, type, parent)
+  - JSON format tests
+  - Output parity tests (tree vs list --tree)
+  - Filter validation tests
+
 ## [0.29.0] - 2025-12-23
 
 ### Added

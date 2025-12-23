@@ -504,6 +504,13 @@ declare -A CMD_ALIASES=(
   [tags]="labels"
   [search]="find"
   [dig]="research"
+  [tree]="list --tree"
+)
+
+# Aliases that include flags (need special handling in resolve_command)
+# Format: alias -> "command flag1 flag2..."
+declare -A ALIASED_FLAGS=(
+  [tree]="--tree"
 )
 
 # ============================================
@@ -670,23 +677,35 @@ debug_validate() {
 # ============================================
 # RESOLVE COMMAND (handles aliases and plugins)
 # ============================================
+# Returns: "type:command:aliased_flags" where aliased_flags may be empty
 resolve_command() {
   local cmd="$1"
+  local original_cmd="$cmd"
+  local aliased_flags=""
 
   # Check if it's an alias first
   if [[ -n "${CMD_ALIASES[$cmd]:-}" ]]; then
-    cmd="${CMD_ALIASES[$cmd]}"
+    local alias_val="${CMD_ALIASES[$cmd]}"
+    # Split alias into command and flags (first word is command)
+    cmd="${alias_val%% *}"
+    # Check for aliased flags (stored separately for clarity)
+    if [[ -n "${ALIASED_FLAGS[$original_cmd]:-}" ]]; then
+      aliased_flags="${ALIASED_FLAGS[$original_cmd]}"
+    elif [[ "$alias_val" == *" "* ]]; then
+      # Fallback: extract flags from alias value itself
+      aliased_flags="${alias_val#* }"
+    fi
   fi
 
   # Check plugins (plugins override core commands)
   if [[ -n "${PLUGIN_MAP[$cmd]:-}" ]]; then
-    echo "plugin:${PLUGIN_MAP[$cmd]}"
+    echo "plugin:${PLUGIN_MAP[$cmd]}:$aliased_flags"
     return 0
   fi
 
   # Check core commands
   if [[ -n "${CMD_MAP[$cmd]:-}" ]]; then
-    echo "core:$cmd"
+    echo "core:$cmd:$aliased_flags"
     return 0
   fi
 
@@ -790,10 +809,12 @@ case "$CMD" in
     if [[ -n "${2:-}" ]]; then
       resolved=$(resolve_command "$2")
       if [[ $? -eq 0 ]]; then
-        if [[ "$resolved" == plugin:* ]]; then
-          bash "${resolved#plugin:}" --help
+        # Parse resolved format: type:command:aliased_flags
+        IFS=':' read -r resolved_type resolved_cmd resolved_flags <<< "$resolved"
+        if [[ "$resolved_type" == "plugin" ]]; then
+          bash "$resolved_cmd" --help
         else
-          bash "$SCRIPT_DIR/${CMD_MAP[${resolved#core:}]}" --help
+          bash "$SCRIPT_DIR/${CMD_MAP[$resolved_cmd]}" --help
         fi
       else
         echo "Unknown command: $2"
@@ -808,14 +829,18 @@ case "$CMD" in
     resolved=$(resolve_command "$CMD")
     if [[ $? -eq 0 ]]; then
       shift
-      if [[ "$resolved" == plugin:* ]]; then
-        [[ "$DEBUG" == "1" ]] && echo "[DEBUG] Executing plugin: ${resolved#plugin:}" >&2
-        exec bash "${resolved#plugin:}" "$@"
+      # Parse resolved format: type:command:aliased_flags
+      IFS=':' read -r resolved_type resolved_cmd resolved_flags <<< "$resolved"
+      if [[ "$resolved_type" == "plugin" ]]; then
+        [[ "$DEBUG" == "1" ]] && echo "[DEBUG] Executing plugin: $resolved_cmd" >&2
+        # shellcheck disable=SC2086
+        exec bash "$resolved_cmd" $resolved_flags "$@"
       else
-        target_cmd="${resolved#core:}"
-        script="$SCRIPT_DIR/${CMD_MAP[$target_cmd]}"
-        [[ "$DEBUG" == "1" ]] && echo "[DEBUG] Executing: $script" >&2
-        exec bash "$script" "$@"
+        script="$SCRIPT_DIR/${CMD_MAP[$resolved_cmd]}"
+        [[ "$DEBUG" == "1" ]] && echo "[DEBUG] Executing: $script $resolved_flags" >&2
+        # Inject aliased flags before user arguments
+        # shellcheck disable=SC2086
+        exec bash "$script" $resolved_flags "$@"
       fi
     else
       echo "Unknown command: $CMD"

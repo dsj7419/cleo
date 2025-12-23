@@ -185,8 +185,8 @@ log_error() {
 # Check dependencies
 check_deps() {
   if ! command -v jq &> /dev/null; then
-    log_error "jq is required but not installed"
-    exit 1
+    output_error "$E_DEPENDENCY_MISSING" "jq is required but not installed" "$EXIT_DEPENDENCY_ERROR" true "Install jq: brew install jq (macOS) or apt install jq (Linux)"
+    exit "$EXIT_DEPENDENCY_ERROR"
   fi
 }
 
@@ -226,7 +226,7 @@ while [[ $# -gt 0 ]]; do
       else
         output_error "$E_INPUT_INVALID" "Unknown option: $1"
       fi
-      exit "${EXIT_INVALID_INPUT:-1}"
+      exit "$EXIT_INVALID_INPUT"
       ;;
     *) shift ;;
   esac
@@ -253,14 +253,14 @@ fi
 
 # Validate format (Issue T142: reject invalid formats instead of silent fallback)
 if ! echo "$VALID_FORMATS" | grep -qw "$FORMAT"; then
-  output_error "$E_INPUT_INVALID" "Invalid format: $FORMAT" 1 true "Valid formats: $VALID_FORMATS"
-  exit 1
+  output_error "$E_INPUT_INVALID" "Invalid format: $FORMAT" "$EXIT_INVALID_INPUT" true "Valid formats: $VALID_FORMATS"
+  exit "$EXIT_INVALID_INPUT"
 fi
 
 # Check if todo.json exists
 if [[ ! -f "$TODO_FILE" ]]; then
-  log_error "$TODO_FILE not found. Run claude-todo init first."
-  exit 1
+  output_error "$E_FILE_NOT_FOUND" "$TODO_FILE not found. Run 'claude-todo init' to initialize." "$EXIT_NOT_FOUND" true "Run: claude-todo init"
+  exit "$EXIT_NOT_FOUND"
 fi
 
 # PERFORMANCE OPTIMIZATION: Build filter expression early to reduce task loading
@@ -288,7 +288,15 @@ if [[ -n "$LABEL_FILTER" ]]; then
 fi
 
 # Apply hierarchy filters (v0.17.0)
+# Validate --type filter value (T646 finding: missing validation)
 if [[ -n "$TASK_TYPE_FILTER" ]]; then
+  case "$TASK_TYPE_FILTER" in
+    epic|task|subtask) ;;
+    *)
+      output_error "$E_INPUT_INVALID" "Invalid task type: $TASK_TYPE_FILTER" "$EXIT_INVALID_INPUT" true "Valid types: epic, task, subtask"
+      exit "$EXIT_INVALID_INPUT"
+      ;;
+  esac
   PRE_FILTER="$PRE_FILTER | select(.type == \"$TASK_TYPE_FILTER\")"
 fi
 
