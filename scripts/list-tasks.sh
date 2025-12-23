@@ -880,11 +880,11 @@ case "$FORMAT" in
       echo ""
 
       # Calculate title width for tree rendering (T675, T676)
-      # --human format or --wide flag shows full titles without truncation
-      if [[ "$WIDE_MODE" == true ]] || [[ "$FORMAT" == "text" ]]; then
-        title_width=999  # Effectively unlimited for human-readable output
+      # --wide flag shows full titles without truncation
+      if [[ "$WIDE_MODE" == true ]]; then
+        title_width=999  # Effectively unlimited when --wide specified
       else
-        title_width=$TREE_TITLE_WIDTH
+        title_width=$TREE_TITLE_WIDTH  # Use terminal-width-based truncation
       fi
 
       # Render tree using jq with proper connectors (T673, T674)

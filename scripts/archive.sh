@@ -77,7 +77,14 @@ ARCHIVE_ALL=false
 MAX_OVERRIDE=""
 FORMAT=""
 QUIET=false
+SHOW_WARNINGS=""  # Empty means use config, explicit true/false from --no-warnings
 COMMAND_NAME="archive"
+ONLY_LABELS=""
+EXCLUDE_LABELS=""
+
+# Warning collection (populated before archive operation)
+declare -a ARCHIVE_WARNINGS=()
+WARNINGS_JSON='[]'
 
 usage() {
   cat << EOF
@@ -92,6 +99,14 @@ Options:
   --all               Archive ALL completed tasks immediately
                       Bypasses BOTH age retention AND preserveRecentCount
   --count N           Override maxCompletedTasks setting
+  --only-labels LABELS  Archive ONLY tasks with these labels (comma-separated)
+                        Cannot be used with --exclude-labels
+                        Example: --only-labels "cleanup,temp"
+  --exclude-labels LABELS  Additional labels to exclude (comma-separated)
+                           Merges with config exemptLabels
+                           Cannot be used with --only-labels
+                           Example: --exclude-labels "important,keep"
+  --no-warnings       Suppress relationship warnings
   -f, --format FMT    Output format: text, json (default: auto-detect)
   --human             Force human-readable text output
   --json              Force JSON output (shorthand for --format json)
@@ -112,6 +127,17 @@ Config (from todo-config.json):
   - daysUntilArchive: Days after completion before archiving (default: 7)
   - maxCompletedTasks: Threshold triggering archive prompt (default: 15)
   - preserveRecentCount: Recent completions to keep (default: 3)
+  - labelPolicies: Per-label retention rules (see below)
+
+Label Policies (optional):
+  Configure per-label retention in todo-config.json:
+    "archive": {
+      "labelPolicies": {
+        "security": { "daysUntilArchive": 30 },
+        "temp": { "daysUntilArchive": 1 },
+        "important": { "neverArchive": true }
+      }
+    }
 
 JSON Output (--format json):
   Returns structured JSON with archived task IDs, counts, and remaining
@@ -150,6 +176,11 @@ while [[ $# -gt 0 ]]; do
     --force) FORCE=true; shift ;;
     --all) ARCHIVE_ALL=true; shift ;;
     --count) MAX_OVERRIDE="$2"; shift 2 ;;
+    --only-labels) ONLY_LABELS="$2"; shift 2 ;;
+    --exclude-labels) EXCLUDE_LABELS="$2"; shift 2 ;;
+    --exclude-labels=*) EXCLUDE_LABELS="${1#*=}"; shift ;;
+    --only-labels=*) ONLY_LABELS="${1#*=}"; shift ;;
+    --no-warnings) SHOW_WARNINGS=false; shift ;;
     -f|--format) FORMAT="$2"; shift 2 ;;
     --human) FORMAT="text"; shift ;;
     --json) FORMAT="json"; shift ;;
@@ -168,6 +199,16 @@ else
 fi
 
 check_deps
+
+# Mutual exclusion check for --only-labels and --exclude-labels
+if [[ -n "$ONLY_LABELS" && -n "$EXCLUDE_LABELS" ]]; then
+  if [[ "$FORMAT" == "json" ]] && declare -f output_error >/dev/null 2>&1; then
+    output_error "E_INVALID_INPUT" "--only-labels and --exclude-labels cannot be used together" "${EXIT_INVALID_INPUT:-1}" true
+  else
+    log_error "--only-labels and --exclude-labels cannot be used together"
+  fi
+  exit "${EXIT_INVALID_INPUT:-1}"
+fi
 
 # Check files exist
 for f in "$TODO_FILE" "$CONFIG_FILE"; do
@@ -224,6 +265,55 @@ if ! echo "$EXEMPT_LABELS" | jq -e 'type == "array"' >/dev/null 2>&1; then
   EXEMPT_LABELS='["epic-type", "pinned"]'
 fi
 
+
+# Track if --exclude-labels was applied for output
+EXCLUDE_LABELS_APPLIED=false
+
+# Merge CLI --exclude-labels with config exemptLabels
+if [[ -n "$EXCLUDE_LABELS" ]]; then
+  EXCLUDE_LABELS_APPLIED=true
+  # Parse comma-separated labels into JSON array (trim whitespace)
+  CLI_LABELS=$(echo "$EXCLUDE_LABELS" | jq -R 'split(",") | map(gsub("^\\s+|\\s+$"; ""))')
+  # Merge with config exemptLabels (deduplicate)
+  EXEMPT_LABELS=$(echo "$EXEMPT_LABELS" "$CLI_LABELS" | jq -s 'add | unique')
+
+  # Log the merge if not quiet and not JSON
+  if [[ "$QUIET" != true && "$FORMAT" != "json" ]]; then
+    CLI_LABELS_DISPLAY=$(echo "$CLI_LABELS" | jq -r 'join(", ")')
+    log_info "Including additional exempt labels from CLI: $CLI_LABELS_DISPLAY"
+    EFFECTIVE_LABELS_DISPLAY=$(echo "$EXEMPT_LABELS" | jq -r 'join(", ")')
+    log_info "Effective exempt labels: [$EFFECTIVE_LABELS_DISPLAY]"
+  fi
+fi
+# Load labelPolicies from config (v0.31.0+)
+# Allows per-label retention rules:
+#   {"security": {"daysUntilArchive": 30}, "temp": {"daysUntilArchive": 1}, "important": {"neverArchive": true}}
+if declare -f get_config_value >/dev/null 2>&1; then
+  LABEL_POLICIES=$(get_config_value "archive.labelPolicies" '{}')
+else
+  LABEL_POLICIES=$(jq -r '.archive.labelPolicies // {}' "$CONFIG_FILE")
+fi
+
+# Validate LABEL_POLICIES is valid JSON object, fallback to empty if not
+if ! echo "$LABEL_POLICIES" | jq -e 'type == "object"' >/dev/null 2>&1; then
+  [[ "$QUIET" != true && "$FORMAT" != "json" ]] && log_warn "Invalid labelPolicies config, using empty"
+  LABEL_POLICIES='{}'
+fi
+
+# Check if we have any label policies configured
+if [[ "$LABEL_POLICIES" != "{}" ]]; then
+  [[ "$QUIET" != true && "$FORMAT" != "json" ]] && log_info "Label policies active: $(echo "$LABEL_POLICIES" | jq -r 'keys | join(", ")')"
+fi
+
+# Apply SHOW_WARNINGS: CLI override > config default
+if [[ -z "$SHOW_WARNINGS" ]]; then
+  if declare -f get_config_value >/dev/null 2>&1; then
+    SHOW_WARNINGS=$(get_config_value "archive.interactive.showWarnings" "true")
+  else
+    SHOW_WARNINGS=$(jq -r '.archive.interactive.showWarnings // true' "$CONFIG_FILE")
+  fi
+fi
+
 [[ -n "$MAX_OVERRIDE" ]] && MAX_COMPLETED="$MAX_OVERRIDE"
 
 if [[ "$QUIET" != true && "$FORMAT" != "json" ]]; then
@@ -251,6 +341,10 @@ if [[ "$COMPLETED_COUNT" -eq 0 ]]; then
     REMAINING_BLOCKED=$(jq '[.tasks[] | select(.status == "blocked")] | length' "$TODO_FILE")
     TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
+    # Build onlyLabelsFilter JSON (null if not specified)
+    ONLY_LABELS_OUTPUT="null"
+    [[ -n "$ONLY_LABELS" ]] && ONLY_LABELS_OUTPUT=$(echo "$ONLY_LABELS" | jq -R 'split(",") | map(gsub("^\\s+|\\s+$"; ""))')
+
     jq -n \
       --arg ts "$TIMESTAMP" \
       --arg ver "${CLAUDE_TODO_VERSION:-$(get_version)}" \
@@ -258,12 +352,16 @@ if [[ "$COMPLETED_COUNT" -eq 0 ]]; then
       --argjson pending "$REMAINING_PENDING" \
       --argjson active "$REMAINING_ACTIVE" \
       --argjson blocked "$REMAINING_BLOCKED" \
+      --argjson excludeLabelsApplied "$EXCLUDE_LABELS_APPLIED" \
+      --argjson effectiveExemptLabels "$EXEMPT_LABELS" \
+      --argjson onlyLabelsFilter "$ONLY_LABELS_OUTPUT" \
       '{
         "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
         "_meta": {"format": "json", "command": "archive", "timestamp": $ts, "version": $ver},
         "success": true,
         "archived": {"count": 0, "taskIds": []},
         "exempted": {"count": 0, "taskIds": []},
+        "filters": {"onlyLabels": $onlyLabelsFilter, "excludeLabels": (if $excludeLabelsApplied then $effectiveExemptLabels else null end)},
         "remaining": {"total": $total, "pending": $pending, "active": $active, "blocked": $blocked}
       }'
   else
@@ -300,34 +398,125 @@ if [[ "$EXEMPTED_COUNT" -gt 0 && "$QUIET" != true && "$FORMAT" != "json" ]]; the
   done
 fi
 
+# Apply --only-labels filter: ONLY archive tasks with specified labels
+if [[ -n "$ONLY_LABELS" ]]; then
+  ONLY_LABELS_JSON=$(echo "$ONLY_LABELS" | jq -R 'split(",") | map(gsub("^\\s+|\\s+$"; ""))')
+
+  COMPLETED_TASKS=$(echo "$COMPLETED_TASKS" | jq --argjson onlyLabels "$ONLY_LABELS_JSON" '
+    [.[] | select(
+      (.labels // []) as $taskLabels |
+      ($onlyLabels | any(. as $only | $taskLabels | index($only) | type == "number"))
+    )]
+  ')
+
+  [[ "$QUIET" != true && "$FORMAT" != "json" ]] && \
+    log_info "Filtered to tasks with labels: $(echo "$ONLY_LABELS_JSON" | jq -r 'join(", ")')"
+fi
+
 # Sort by completedAt (newest first) and determine which to archive
-# Excludes tasks with exempt labels
-TASKS_TO_ARCHIVE=$(echo "$COMPLETED_TASKS" | jq --argjson threshold "$ARCHIVE_THRESHOLD" --argjson preserve "$PRESERVE_COUNT" --argjson force "$FORCE" --argjson all "$ARCHIVE_ALL" --argjson exemptLabels "$EXEMPT_LABELS" '
+# Excludes tasks with exempt labels and applies per-label retention policies
+TASKS_TO_ARCHIVE=$(echo "$COMPLETED_TASKS" | jq \
+  --argjson threshold "$ARCHIVE_THRESHOLD" \
+  --argjson preserve "$PRESERVE_COUNT" \
+  --argjson force "$FORCE" \
+  --argjson all "$ARCHIVE_ALL" \
+  --argjson exemptLabels "$EXEMPT_LABELS" \
+  --argjson labelPolicies "$LABEL_POLICIES" \
+  --argjson defaultDays "$DAYS_UNTIL_ARCHIVE" \
+  --argjson now "$NOW" \
+  '
+  # Helper function to check if a task passes label policy retention check
+  def check_label_policy($labels; $policies; $defaultDays; $completedAt; $now):
+    # Check if any label has neverArchive: true
+    if ($labels | any(. as $l | $policies[$l].neverArchive == true)) then
+      false  # Never archive this task
+    else
+      # Find the longest retention period from all task labels
+      ([$labels[] | $policies[.].daysUntilArchive // null] | map(select(. != null)) | max // $defaultDays) as $effectiveDays |
+      # Check if task is old enough based on effective retention
+      (($completedAt | fromdateiso8601) + ($effectiveDays * 86400)) < $now
+    end;
+
   # First filter out exempt tasks (tasks with any label in exemptLabels)
   [.[] |
     (.labels // []) as $taskLabels |
     if ($taskLabels | any(. as $label | $exemptLabels | index($label) | type == "number"))
     then empty
+    # Also filter out tasks with neverArchive labels (from labelPolicies)
+    elif ($taskLabels | any(. as $l | $labelPolicies[$l].neverArchive == true))
+    then empty
     else .
     end
   ] |
-  # Then apply normal archive logic
+  # Then apply normal archive logic with per-label retention
   sort_by(.completedAt) | reverse |
   to_entries |
   map(select(
     if $all then
-      true  # Archive ALL completed tasks (except exempt)
+      true  # Archive ALL completed tasks (except exempt and neverArchive)
     elif $force then
       .key >= $preserve  # Bypass retention, respect preserve count
     else
+      # Apply per-label retention policy or default threshold
+      (.value.labels // []) as $taskLabels |
       .key >= $preserve and
-      ((.value.completedAt | fromdateiso8601) < $threshold)
+      check_label_policy($taskLabels; $labelPolicies; $defaultDays; .value.completedAt; $now)
     end
   )) |
   map(.value)
 ')
 
 ARCHIVE_COUNT=$(echo "$TASKS_TO_ARCHIVE" | jq 'length')
+
+# Collect warnings about relationship impacts (before archive operation)
+# These warnings inform the user even when not blocking the operation
+if [[ "$ARCHIVE_COUNT" -gt 0 ]]; then
+  ARCHIVE_IDS_JSON=$(echo "$TASKS_TO_ARCHIVE" | jq '[.[].id]')
+
+  # Check for tasks with active children (would orphan them)
+  ORPHAN_CHILDREN=$(jq --argjson archiveIds "$ARCHIVE_IDS_JSON" '
+    [.tasks[] | select(.status != "done" and .parentId != null) |
+     select(.parentId as $p | $archiveIds | index($p))]
+  ' "$TODO_FILE")
+
+  if [[ $(echo "$ORPHAN_CHILDREN" | jq 'length') -gt 0 ]]; then
+    while IFS= read -r child; do
+      parentId=$(echo "$child" | jq -r '.parentId')
+      childId=$(echo "$child" | jq -r '.id')
+      ARCHIVE_WARNINGS+=("Task $childId will lose parent $parentId (active child)")
+    done < <(echo "$ORPHAN_CHILDREN" | jq -c '.[]')
+  fi
+
+  # Check for broken dependencies (tasks depending on archiving tasks)
+  BROKEN_DEPS=$(jq --argjson archiveIds "$ARCHIVE_IDS_JSON" '
+    [.tasks[] | select(.status != "done" and .depends != null) |
+     {id: .id, brokenDeps: [.depends[] | select(. as $d | $archiveIds | index($d))]}
+     | select(.brokenDeps | length > 0)]
+  ' "$TODO_FILE")
+
+  if [[ $(echo "$BROKEN_DEPS" | jq 'length') -gt 0 ]]; then
+    while IFS= read -r dep; do
+      taskId=$(echo "$dep" | jq -r '.id')
+      broken=$(echo "$dep" | jq -r '.brokenDeps | join(", ")')
+      ARCHIVE_WARNINGS+=("Task $taskId depends on archiving tasks: $broken")
+    done < <(echo "$BROKEN_DEPS" | jq -c '.[]')
+  fi
+
+  # Build JSON array of warnings for output
+  if [[ ${#ARCHIVE_WARNINGS[@]} -gt 0 ]]; then
+    WARNINGS_JSON=$(printf '%s\n' "${ARCHIVE_WARNINGS[@]}" | jq -R . | jq -s .)
+  fi
+
+  # Display warnings if enabled and not in quiet mode
+  if [[ "$SHOW_WARNINGS" == "true" && ${#ARCHIVE_WARNINGS[@]} -gt 0 && "$QUIET" != true && "$FORMAT" != "json" ]]; then
+    echo ""
+    log_warn "Archive will affect task relationships:"
+    for warning in "${ARCHIVE_WARNINGS[@]}"; do
+      echo "  - $warning"
+    done
+    echo ""
+  fi
+fi
 
 if [[ "$ARCHIVE_COUNT" -eq 0 ]]; then
   if [[ "$FORMAT" == "json" ]]; then
@@ -338,6 +527,10 @@ if [[ "$ARCHIVE_COUNT" -eq 0 ]]; then
     REMAINING_BLOCKED=$(jq '[.tasks[] | select(.status == "blocked")] | length' "$TODO_FILE")
     TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
+    # Build onlyLabelsFilter JSON (null if not specified)
+    ONLY_LABELS_OUTPUT="null"
+    [[ -n "$ONLY_LABELS" ]] && ONLY_LABELS_OUTPUT="$ONLY_LABELS_JSON"
+
     jq -n \
       --arg ts "$TIMESTAMP" \
       --arg ver "${CLAUDE_TODO_VERSION:-$(get_version)}" \
@@ -345,14 +538,23 @@ if [[ "$ARCHIVE_COUNT" -eq 0 ]]; then
       --argjson pending "$REMAINING_PENDING" \
       --argjson active "$REMAINING_ACTIVE" \
       --argjson blocked "$REMAINING_BLOCKED" \
+      --argjson excludeLabelsApplied "$EXCLUDE_LABELS_APPLIED" \
+      --argjson effectiveExemptLabels "$EXEMPT_LABELS" \
       --argjson exemptedCount "$EXEMPTED_COUNT" \
       --argjson exemptedIds "$EXEMPTED_IDS" \
+      --argjson warnings "$WARNINGS_JSON" \
+      --argjson onlyLabelsFilter "$ONLY_LABELS_OUTPUT" \
       '{
         "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
         "_meta": {"format": "json", "command": "archive", "timestamp": $ts, "version": $ver},
         "success": true,
         "archived": {"count": 0, "taskIds": []},
         "exempted": {"count": $exemptedCount, "taskIds": $exemptedIds},
+        "excludeLabelsApplied": $excludeLabelsApplied,
+        "effectiveExemptLabels": $effectiveExemptLabels,
+        "filters": {"onlyLabels": $onlyLabelsFilter, "excludeLabels": (if $excludeLabelsApplied then $effectiveExemptLabels else null end)},
+        "warnings": $warnings,
+        "warningCount": ($warnings | length),
         "remaining": {"total": $total, "pending": $pending, "active": $active, "blocked": $blocked}
       }'
   elif [[ "$QUIET" != true ]]; then
@@ -374,6 +576,10 @@ if [[ "$DRY_RUN" == true ]]; then
     ARCHIVE_IDS_JSON=$(echo "$TASKS_TO_ARCHIVE" | jq '[.[].id]')
     TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
+    # Build onlyLabelsFilter JSON (null if not specified)
+    ONLY_LABELS_OUTPUT="null"
+    [[ -n "$ONLY_LABELS" ]] && ONLY_LABELS_OUTPUT="$ONLY_LABELS_JSON"
+
     jq -n \
       --arg ts "$TIMESTAMP" \
       --arg ver "${CLAUDE_TODO_VERSION:-$(get_version)}" \
@@ -383,8 +589,12 @@ if [[ "$DRY_RUN" == true ]]; then
       --argjson pending "$REMAINING_PENDING" \
       --argjson active "$REMAINING_ACTIVE" \
       --argjson blocked "$REMAINING_BLOCKED" \
+      --argjson excludeLabelsApplied "$EXCLUDE_LABELS_APPLIED" \
+      --argjson effectiveExemptLabels "$EXEMPT_LABELS" \
       --argjson exemptedCount "$EXEMPTED_COUNT" \
       --argjson exemptedIds "$EXEMPTED_IDS" \
+      --argjson warnings "$WARNINGS_JSON" \
+      --argjson onlyLabelsFilter "$ONLY_LABELS_OUTPUT" \
       '{
         "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
         "_meta": {"format": "json", "command": "archive", "timestamp": $ts, "version": $ver},
@@ -392,6 +602,9 @@ if [[ "$DRY_RUN" == true ]]; then
         "dryRun": true,
         "archived": {"count": $count, "taskIds": $ids},
         "exempted": {"count": $exemptedCount, "taskIds": $exemptedIds},
+        "filters": {"onlyLabels": $onlyLabelsFilter, "excludeLabels": (if $excludeLabelsApplied then $effectiveExemptLabels else null end)},
+        "warnings": $warnings,
+        "warningCount": ($warnings | length),
         "remaining": {"total": $total, "pending": $pending, "active": $active, "blocked": $blocked}
       }'
   else
@@ -679,14 +892,21 @@ if [[ "$FORMAT" == "json" ]]; then
     --argjson pending "$REMAINING_PENDING" \
     --argjson active "$REMAINING_ACTIVE" \
     --argjson blocked "$REMAINING_BLOCKED" \
+      --argjson excludeLabelsApplied "$EXCLUDE_LABELS_APPLIED" \
+      --argjson effectiveExemptLabels "$EXEMPT_LABELS" \
     --argjson exemptedCount "$EXEMPTED_COUNT" \
     --argjson exemptedIds "$EXEMPTED_IDS" \
+      --argjson warnings "$WARNINGS_JSON" \
     '{
       "$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
       "_meta": {"format": "json", "command": "archive", "timestamp": $ts, "version": $ver},
       "success": true,
       "archived": {"count": $count, "taskIds": $ids},
       "exempted": {"count": $exemptedCount, "taskIds": $exemptedIds},
+        "excludeLabelsApplied": $excludeLabelsApplied,
+        "effectiveExemptLabels": $effectiveExemptLabels,
+        "warnings": $warnings,
+        "warningCount": ($warnings | length),
       "remaining": {"total": $total, "pending": $pending, "active": $active, "blocked": $blocked}
     }'
 else

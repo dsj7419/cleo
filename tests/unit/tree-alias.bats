@@ -309,18 +309,18 @@ setup() {
 
 @test "tree rendering: --wide flag shows full titles (T676)" {
     create_empty_todo
-    # Title that's 80 chars - long enough to be truncated at default width
-    local long_title="This is a long task title that should be truncated without wide flag enabled"
+    # Title under 120 char limit but long enough to truncate at COLUMNS=50
+    local long_title="This is a moderately long task title that will be truncated in narrow terminals"
     bash "$ADD_SCRIPT" "$long_title" --type epic > /dev/null
 
-    # Without --wide, title should be truncated (default ~55 chars)
-    run $CLAUDE_TODO_CMD tree --human
+    # Without --wide, title should be truncated at very narrow terminal
+    run env COLUMNS=50 bash "$LIST_SCRIPT" --tree --human
     assert_success
     # Should show truncation indicator (ellipsis)
     [[ "$output" == *"…"* ]] || [[ "$output" == *"..."* ]]
 
     # With --wide, full title should be shown
-    run $CLAUDE_TODO_CMD tree --human --wide
+    run bash "$LIST_SCRIPT" --tree --human --wide
     assert_success
     assert_output --partial "$long_title"
 }
@@ -419,15 +419,16 @@ setup() {
 
 @test "tree truncates long titles with ellipsis" {
     create_empty_todo
-    local long_title="This is a very long task title that should definitely be truncated when displayed in tree view mode"
+    # Title under 120 char limit but long enough to truncate at COLUMNS=50
+    local long_title="This is a moderately long title that exceeds narrow terminal width limits"
     bash "$ADD_SCRIPT" "$long_title" --type epic > /dev/null
 
-    # Force narrow terminal
-    COLUMNS=60 run $CLAUDE_TODO_CMD tree --human
+    # Force narrow terminal - use env to properly pass COLUMNS to subprocess
+    run env COLUMNS=50 bash "$LIST_SCRIPT" --tree --human
     assert_success
     # Should contain ellipsis character (Unicode: …)
     assert_output --partial "…"
-    # Should NOT contain the full title
+    # Should NOT contain the full title (it's truncated)
     [[ "$output" != *"$long_title"* ]]
 }
 
