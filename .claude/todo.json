@@ -121,21 +121,21 @@
       }
     ]
   },
-  "lastUpdated": "2025-12-23T07:33:59Z",
+  "lastUpdated": "2025-12-23T07:55:50Z",
   "_meta": {
-    "checksum": "1c08ccd0ec777df2",
+    "checksum": "b03eb409638258d2",
     "configVersion": "2.1.0",
     "lastSessionId": null,
-    "activeSession": null,
-    "lastModified": "2025-12-23T07:11:49Z",
+    "activeSession": "session_20251223_092105_7e08d7",
+    "lastModified": "2025-12-23T17:21:05Z",
     "version": "2.3.0",
     "schemaVersion": "2.3.0"
   },
   "focus": {
-    "currentTask": null,
+    "currentTask": "T495",
     "blockedUntil": null,
-    "sessionNote": "Created archive-stats.sh command for T443",
-    "nextAction": "NEXT SESSION: Implement T452 (archive.sh - HIGH priority) first. Pattern: source lib/file-ops.sh, replace all raw writes with save_json(). Then T453, T454. T350/T530/T531 can follow. See FILE-LOCKING-IMPLEMENTATION-REPORT.md for fix patterns.",
+    "sessionNote": "T481 EPIC v3.0 Compliance - SESSION END. COMPLETED: Batches 1-3 (16/23 tasks). Schema specVersion 3.0 added. 3 new compliance check modules created (input-validation.sh, idempotency.sh, dry-run-semantics.sh). Command idempotency implemented (EXIT_NO_CHANGE 102, noChange JSON). Duplicate detection in add-task.sh. All unit tests pass. v0.31.0 installed. NEXT SESSION: Focus T495, complete Batch 4 (T495-T496), then Batch 5 (T497-T501 docs/tests). Final version bump + commit. Reference: docs/specs/LLM-AGENT-FIRST-SPEC.md Parts 5.3, 5.4, 5.6, 5.7.",
+    "nextAction": "T481 EPIC Batch 4: Start with T495 (verify add-task.sh dry-run format), then T496 (input validation). After Batch 4, do Batch 5 (T497-T501 docs/tests). Final: version bump patch, full test suite, commit. Spec: docs/specs/LLM-AGENT-FIRST-SPEC.md",
     "currentPhase": "core"
   },
   "tasks": [
@@ -3996,12 +3996,15 @@
         "compliance",
         "spec",
         "v3.0"
+      ],
+      "notes": [
+        "2025-12-23 07:43:48 UTC: SESSION 2025-12-23: Batches 1-3 COMPLETE (16/23 tasks). IMPLEMENTED: specVersion 3.0 schema, 3 new compliance check modules (input-validation.sh, idempotency.sh, dry-run-semantics.sh), command idempotency (EXIT_NO_CHANGE 102), duplicate detection in add. REMAINING: T495 (dry-run add), T496 (input validation verify), T497-T501 (docs/tests). All unit tests pass. v0.31.0 installed."
       ]
     },
     {
       "id": "T482",
       "title": "T481.1: Update schema.json to specVersion 3.0",
-      "status": "pending",
+      "status": "done",
       "priority": "critical",
       "type": "task",
       "parentId": "T481",
@@ -4012,12 +4015,16 @@
         "compliance",
         "schema",
         "spec"
-      ]
+      ],
+      "notes": [
+        "2025-12-23 07:39:17 UTC: COMPLETED: Updated schemas/todo.schema.json - Added specVersion field to _meta with pattern, default 3.0.0. Updated $id to v3. Backward compatible. Files: schemas/todo.schema.json"
+      ],
+      "completedAt": "2025-12-23T07:39:17Z"
     },
     {
       "id": "T483",
       "title": "T481.3: Create input-validation.sh check module (Part 5.3)",
-      "status": "pending",
+      "status": "done",
       "priority": "high",
       "type": "task",
       "parentId": "T481",
@@ -4028,7 +4035,11 @@
         "check-module",
         "compliance",
         "spec"
-      ]
+      ],
+      "notes": [
+        "2025-12-23 07:39:44 UTC: COMPLETED: Created dev/compliance/checks/input-validation.sh - 7 checks for Part 5.3 compliance: validation_functions, length_limits_match_spec, validation_order, input_error_codes, error_message_quality, validation_lib_sourced, label_phase_validation. Files: dev/compliance/checks/input-validation.sh"
+      ],
+      "completedAt": "2025-12-23T07:39:45Z"
     },
     {
       "id": "T484",
@@ -4053,7 +4064,7 @@
     {
       "id": "T485",
       "title": "T481.6: Update exit-codes.sh check for EXIT_NO_CHANGE (102)",
-      "status": "pending",
+      "status": "done",
       "priority": "high",
       "type": "task",
       "parentId": "T481",
@@ -4064,12 +4075,16 @@
         "check-module",
         "compliance",
         "spec"
-      ]
+      ],
+      "notes": [
+        "2025-12-23 07:39:23 UTC: COMPLETED: Added Check 5-7 to exit-codes.sh compliance checker for EXIT_NO_CHANGE usage, noChange JSON field, and special codes validation. Files: dev/compliance/checks/exit-codes.sh"
+      ],
+      "completedAt": "2025-12-23T07:39:23Z"
     },
     {
       "id": "T486",
       "title": "T481.7: Update errors.sh check for E_INPUT_* validation codes",
-      "status": "pending",
+      "status": "done",
       "priority": "high",
       "type": "task",
       "parentId": "T481",
@@ -4080,7 +4095,11 @@
         "check-module",
         "compliance",
         "spec"
-      ]
+      ],
+      "notes": [
+        "2025-12-23 07:39:25 UTC: COMPLETED: Added Check 7-9 to errors.sh for E_INPUT_* codes per Part 5.3. Validates input_error_codes, input_validation_order, input_exit_code. Files: dev/compliance/checks/errors.sh"
+      ],
+      "completedAt": "2025-12-23T07:39:26Z"
     },
     {
       "id": "T487",
@@ -4105,7 +4124,7 @@
     {
       "id": "T488",
       "title": "T481.5: Create dry-run-semantics.sh check module (Part 5.4)",
-      "status": "pending",
+      "status": "done",
       "priority": "high",
       "type": "task",
       "parentId": "T481",
@@ -4116,12 +4135,16 @@
         "check-module",
         "compliance",
         "spec"
-      ]
+      ],
+      "notes": [
+        "2025-12-23 07:39:48 UTC: COMPLETED: Created dev/compliance/checks/dry-run-semantics.sh - 6 checks for Part 5.4 compliance: dry_run_flag, dry_run_json_field, no_state_modification, would_fields, exit_codes_match, validation_runs. Files: dev/compliance/checks/dry-run-semantics.sh"
+      ],
+      "completedAt": "2025-12-23T07:39:49Z"
     },
     {
       "id": "T489",
       "title": "T481.A: Command Implementation for v3.0 Spec",
-      "status": "pending",
+      "status": "done",
       "priority": "high",
       "type": "task",
       "parentId": "T481",
@@ -4131,7 +4154,11 @@
       "labels": [
         "implementation",
         "v3.0"
-      ]
+      ],
+      "notes": [
+        "2025-12-23 07:42:38 UTC: T481.A parent task: Children T490-T494 completed. Idempotency implemented in update, complete, archive, unarchive. Duplicate detection in add. Dry-run output format standardized. EXIT_NO_CHANGE (102) used correctly."
+      ],
+      "completedAt": "2025-12-23T07:42:39Z"
     },
     {
       "id": "T490",
@@ -4180,7 +4207,7 @@
     {
       "id": "T492",
       "title": "T481.A.3: Implement idempotency in archive and restore",
-      "status": "pending",
+      "status": "done",
       "priority": "high",
       "type": "task",
       "parentId": "T481",
@@ -4193,7 +4220,11 @@
       ],
       "depends": [
         "T489"
-      ]
+      ],
+      "notes": [
+        "2025-12-23 07:40:08 UTC: COMPLETED: Added idempotency to archive.sh and unarchive.sh. Archive skips already-archived tasks. Unarchive returns noChange:true for already-active tasks. Both use EXIT_NO_CHANGE (102). Files: scripts/archive.sh, scripts/unarchive.sh"
+      ],
+      "completedAt": "2025-12-23T07:40:08Z"
     },
     {
       "id": "T493",
@@ -4242,7 +4273,7 @@
     {
       "id": "T495",
       "title": "T481.A.6: Add --dry-run flag to add-task.sh",
-      "status": "pending",
+      "status": "active",
       "priority": "high",
       "type": "task",
       "parentId": "T481",
@@ -4255,6 +4286,13 @@
       ],
       "depends": [
         "T489"
+      ],
+      "notes": [
+        "2025-12-23 07:44:05 UTC: CONTEXT: Part of T481 Batch 4. add-task.sh already has dry-run flag but needs verification. Check: 1) dryRun:true in JSON output, 2) wouldCreate field naming, 3) No state modification. See Part 5.4 in docs/specs/LLM-AGENT-FIRST-SPEC.md. Related: T494 (completed - dry-run format standard)."
+      ],
+      "files": [
+        "docs/specs/LLM-AGENT-FIRST-SPEC.md",
+        "scripts/add-task.sh"
       ]
     },
     {
@@ -4273,6 +4311,16 @@
       ],
       "depends": [
         "T489"
+      ],
+      "notes": [
+        "2025-12-23 07:44:07 UTC: CONTEXT: Part of T481 Batch 4. Verify all write commands use E_INPUT_* error codes per Part 5.3. Check: add-task.sh, update-task.sh, complete-task.sh. Use compliance checker: ./dev/compliance/checks/input-validation.sh scripts/add-task.sh dev/compliance/schema.json. Field limits: title 120, description 2000, notes 500, label 50, phase 30."
+      ],
+      "files": [
+        "dev/compliance/checks/input-validation.sh",
+        "lib/validation.sh",
+        "scripts/add-task.sh",
+        "scripts/complete-task.sh",
+        "scripts/update-task.sh"
       ]
     },
     {
@@ -4289,6 +4337,9 @@
         "documentation",
         "testing",
         "v3.0"
+      ],
+      "notes": [
+        "2025-12-23 07:44:09 UTC: CONTEXT: Parent task for T498-T501 documentation batch. Children implement: Implementation Report update (T498), retry protocol help text (T499), compliance check module tests (T500), idempotency behavior tests (T501). Can complete when all children done."
       ]
     },
     {
@@ -4306,6 +4357,13 @@
       ],
       "depends": [
         "T497"
+      ],
+      "notes": [
+        "2025-12-23 07:44:10 UTC: CONTEXT: Update docs/specs/LLM-AGENT-FIRST-SPEC-IMPLEMENTATION-REPORT.md to track v3.0 implementation. Add sections for: Part 5.3 (input validation), Part 5.4 (dry-run), Part 5.6 (idempotency), Part 5.7 (retry protocol). Mark completed items from Batches 1-3."
+      ],
+      "files": [
+        "docs/specs/LLM-AGENT-FIRST-SPEC-IMPLEMENTATION-REPORT.md",
+        "docs/specs/LLM-AGENT-FIRST-SPEC.md"
       ]
     },
     {
@@ -4323,6 +4381,9 @@
       ],
       "depends": [
         "T497"
+      ],
+      "notes": [
+        "2025-12-23 07:44:26 UTC: CONTEXT: Add Part 5.7 retry protocol to command help text. Recoverable errors (7,20,21,22) with backoff. Document EXIT_NO_CHANGE (102) semantics - agents should NOT retry. Add to: claude-todo help, scripts/update-task.sh --help, scripts/complete-task.sh --help."
       ]
     },
     {
@@ -4340,6 +4401,15 @@
       ],
       "depends": [
         "T497"
+      ],
+      "notes": [
+        "2025-12-23 07:44:28 UTC: CONTEXT: Create BATS tests for new compliance check modules. Files to test: dev/compliance/checks/input-validation.sh, dev/compliance/checks/idempotency.sh, dev/compliance/checks/dry-run-semantics.sh. Test: JSON output format, check pass/fail logic, skip behavior for non-applicable commands."
+      ],
+      "files": [
+        "dev/compliance/checks/dry-run-semantics.sh",
+        "dev/compliance/checks/idempotency.sh",
+        "dev/compliance/checks/input-validation.sh",
+        "tests/unit/"
       ]
     },
     {
@@ -4357,12 +4427,15 @@
       ],
       "depends": [
         "T497"
+      ],
+      "notes": [
+        "2025-12-23 07:44:30 UTC: CONTEXT: Create BATS tests for idempotency behavior. Test: update same values returns 102, complete already-done returns 102, archive already-archived skips, add duplicate returns existing task. Use tests/unit/update-task.bats as reference (has 14 idempotency tests already)."
       ]
     },
     {
       "id": "T502",
       "title": "T481.C: Update flags.sh for dry-run output validation",
-      "status": "pending",
+      "status": "done",
       "priority": "high",
       "type": "task",
       "parentId": "T481",
@@ -4375,12 +4448,16 @@
       ],
       "depends": [
         "T488"
-      ]
+      ],
+      "notes": [
+        "2025-12-23 07:39:51 UTC: COMPLETED: Updated dev/compliance/checks/flags.sh - Added Check 6-9 for dry-run validation: dry_run_flag, dry_run_variable, dry_run_json_field, dry_run_would_naming. Updated schema.json with write_commands patterns. Files: dev/compliance/checks/flags.sh, dev/compliance/schema.json"
+      ],
+      "completedAt": "2025-12-23T07:39:52Z"
     },
     {
       "id": "T503",
       "title": "T481.D: Add lib/exit-codes.sh EXIT_NO_CHANGE documentation",
-      "status": "pending",
+      "status": "done",
       "priority": "medium",
       "type": "task",
       "parentId": "T481",
@@ -4390,7 +4467,11 @@
       "labels": [
         "exit-codes",
         "implementation"
-      ]
+      ],
+      "notes": [
+        "2025-12-23 07:39:19 UTC: COMPLETED: Enhanced lib/exit-codes.sh EXIT_NO_CHANGE documentation. Added Part 5.6 ref, agent retry guidance. Added is_no_change_code() and is_success_code() functions. Files: lib/exit-codes.sh"
+      ],
+      "completedAt": "2025-12-23T07:39:20Z"
     },
     {
       "id": "T504",
@@ -7553,7 +7634,7 @@
     {
       "id": "T693",
       "title": "Fix archive-stats date filter tests (--since/--until combined)",
-      "status": "pending",
+      "status": "done",
       "priority": "medium",
       "type": "task",
       "parentId": null,
@@ -7564,6 +7645,11 @@
         "archive-enhancement",
         "issue",
         "test"
+      ],
+      "completedAt": "2025-12-23T07:55:50Z",
+      "notes": [
+        "[COMPLETED 2025-12-23T07:41:37Z] Added normalize_date_for_compare() function to handle date-only inputs (YYYY-MM-DD) by appending T00:00:00Z for --since and T23:59:59Z for --until. Fixes string comparison issue where '2025-12-05' was incorrectly compared against '2025-12-05T10:00:00Z'. All 42 archive-stats tests pass.",
+        "[COMPLETED 2025-12-23T07:55:50Z] Patch workflow complete: v0.31.1 released with fix committed, CHANGELOG updated, installed and verified."
       ]
     }
   ],
