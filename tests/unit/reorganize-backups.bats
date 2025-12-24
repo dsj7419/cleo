@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-# Tests for migrate-backups.sh
+# Tests for reorganize-backups.sh
 # Validates legacy backup migration to new taxonomy
 
 setup() {
@@ -9,14 +9,14 @@ setup() {
     common_setup
 
     # Set script path
-    export MIGRATE_BACKUPS_SCRIPT="${SCRIPTS_DIR}/migrate-backups.sh"
+    export MIGRATE_BACKUPS_SCRIPT="${SCRIPTS_DIR}/reorganize-backups.sh"
 }
 
 teardown() {
     common_teardown
 }
 
-@test "migrate-backups: shows help" {
+@test "reorganize-backups: shows help" {
     run bash "$MIGRATE_BACKUPS_SCRIPT" --help
     assert_success
     assert_output --partial "Migrate legacy backups to new unified taxonomy"
@@ -26,13 +26,13 @@ teardown() {
     assert_output --partial "--cleanup"
 }
 
-@test "migrate-backups: detects no backups in empty directory" {
+@test "reorganize-backups: detects no backups in empty directory" {
     run bash "$MIGRATE_BACKUPS_SCRIPT" --detect
     assert_success
     assert_output --partial "No legacy backups found"
 }
 
-@test "migrate-backups: classifies safety backup (YYYYMMDD_HHMMSS)" {
+@test "reorganize-backups: classifies safety backup (YYYYMMDD_HHMMSS)" {
     mkdir -p .claude/.backups
 
     # Create safety backup
@@ -45,7 +45,7 @@ teardown() {
     assert_output --partial "2024-12-01T12:00:00Z"
 }
 
-@test "migrate-backups: classifies archive backup (.backup.TIMESTAMP)" {
+@test "reorganize-backups: classifies archive backup (.backup.TIMESTAMP)" {
     mkdir -p .claude/.backups
 
     # Create archive backup
@@ -57,7 +57,7 @@ teardown() {
     assert_output --partial "todo.json.backup.1234567890"
 }
 
-@test "migrate-backups: classifies snapshot backup (backup_TIMESTAMP)" {
+@test "reorganize-backups: classifies snapshot backup (backup_TIMESTAMP)" {
     mkdir -p .claude/.backups/backup_1234567890
 
     # Create snapshot backup directory
@@ -69,7 +69,7 @@ teardown() {
     assert_output --partial "backup_1234567890"
 }
 
-@test "migrate-backups: classifies migration backup (pre-migration-*)" {
+@test "reorganize-backups: classifies migration backup (pre-migration-*)" {
     mkdir -p .claude/.backups/pre-migration-v0.8.0
 
     # Create migration backup directory
@@ -81,7 +81,7 @@ teardown() {
     assert_output --partial "pre-migration-v0.8.0"
 }
 
-@test "migrate-backups: classifies numbered safety backups" {
+@test "reorganize-backups: classifies numbered safety backups" {
     mkdir -p .claude/.backups
 
     # Create numbered backups (from file-ops.sh)
@@ -95,7 +95,7 @@ teardown() {
     assert_output --partial "todo.json.2"
 }
 
-@test "migrate-backups: dry-run shows migration plan without changes" {
+@test "reorganize-backups: dry-run shows migration plan without changes" {
     mkdir -p .claude/.backups
 
     # Create test backup
@@ -111,7 +111,7 @@ teardown() {
     [ ! -d ".claude/backups/safety" ]
 }
 
-@test "migrate-backups: actual migration creates new backup structure" {
+@test "reorganize-backups: actual migration creates new backup structure" {
     mkdir -p .claude/.backups
 
     # Create test backup
@@ -134,7 +134,7 @@ teardown() {
     assert_output "true"
 }
 
-@test "migrate-backups: preserves file integrity during migration" {
+@test "reorganize-backups: preserves file integrity during migration" {
     mkdir -p .claude/.backups
 
     # Create test backup with known content
@@ -155,7 +155,7 @@ teardown() {
     [ "$original_checksum" = "$migrated_checksum" ]
 }
 
-@test "migrate-backups: cleanup requires confirmation when backups remain" {
+@test "reorganize-backups: cleanup requires confirmation when backups remain" {
     mkdir -p .claude/.backups
 
     # Create test backup but don't migrate
@@ -170,7 +170,7 @@ teardown() {
     [ -d ".claude/.backups" ]
 }
 
-@test "migrate-backups: metadata includes original timestamp and path" {
+@test "reorganize-backups: metadata includes original timestamp and path" {
     mkdir -p .claude/.backups
 
     # Create test backup
@@ -194,7 +194,7 @@ teardown() {
     assert_output "migrate_legacy"
 }
 
-@test "migrate-backups: migration backups get neverDelete flag" {
+@test "reorganize-backups: migration backups get neverDelete flag" {
     mkdir -p .claude/.backups/pre-migration-v0.8.0
 
     # Create migration backup
@@ -212,7 +212,7 @@ teardown() {
     assert_output "true"
 }
 
-@test "migrate-backups: skips unknown backup types" {
+@test "reorganize-backups: skips unknown backup types" {
     mkdir -p .claude/.backups
 
     # Create unrecognized backup
@@ -223,7 +223,7 @@ teardown() {
     assert_output --partial "Skipped (unknown): 1"
 }
 
-@test "migrate-backups: handles multiple backup types in single run" {
+@test "reorganize-backups: handles multiple backup types in single run" {
     mkdir -p .claude/.backups/backup_1234567890
     mkdir -p .claude/.backups/pre-migration-v0.8.0
 

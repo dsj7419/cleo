@@ -497,4 +497,4 @@ claude-todo migrate rollback --backup-id migration_v2.1.0_20251215_100000
 - [validate](validate.md) - Check file integrity
 - [backup](backup.md) - Create manual backups
 - [restore](restore.md) - Restore from backups
-- [migrate-backups](migrate-backups.md) - Migrate legacy backup structure
+- [reorganize-backups](reorganize-backups.md) - Migrate legacy backup structure

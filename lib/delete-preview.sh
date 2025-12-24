@@ -8,23 +8,18 @@
 
 #=== SOURCE GUARD ================================================
 [[ -n "${_DELETE_PREVIEW_SH_LOADED:-}" ]] && return 0
+declare -r _DELETE_PREVIEW_SH_LOADED=1
 
+#=== DEPENDENCIES ================================================
 # Resolve lib directory for sourcing dependencies
 _DELETE_PREVIEW_LIB_DIR="${_DELETE_PREVIEW_LIB_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
 
-# Source dependencies if not already loaded
-if [[ -z "${_EXIT_CODES_SH_LOADED:-}" ]] && [[ -f "${_DELETE_PREVIEW_LIB_DIR}/exit-codes.sh" ]]; then
-    # shellcheck source=exit-codes.sh
-    source "${_DELETE_PREVIEW_LIB_DIR}/exit-codes.sh"
-fi
+# Source dependencies (each has its own source guard)
+# shellcheck source=exit-codes.sh
+source "${_DELETE_PREVIEW_LIB_DIR}/exit-codes.sh"
 
-if [[ -z "${_HIERARCHY_LOADED:-}" ]] && [[ -f "${_DELETE_PREVIEW_LIB_DIR}/hierarchy.sh" ]]; then
-    # shellcheck source=hierarchy.sh
-    source "${_DELETE_PREVIEW_LIB_DIR}/hierarchy.sh"
-fi
-
-# Mark as loaded AFTER all dependencies are sourced
-declare -r _DELETE_PREVIEW_SH_LOADED=1
+# shellcheck source=hierarchy.sh
+source "${_DELETE_PREVIEW_LIB_DIR}/hierarchy.sh"
 
 # ============================================================================
 # IMPACT SEVERITY LEVELS

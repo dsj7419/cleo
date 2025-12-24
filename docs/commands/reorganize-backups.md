@@ -1,16 +1,16 @@
-# migrate-backups Command
+# reorganize-backups Command
 
 Migrate legacy backups to new unified taxonomy.
 
 ## Usage
 
 ```bash
-claude-todo migrate-backups <option>
+claude-todo reorganize-backups <option>
 ```
 
 ## Description
 
-The `migrate-backups` command migrates backups from the old `.claude/.backups/` location to the new unified taxonomy at `.claude/backups/`. This is a one-time migration for projects that were using claude-todo before the backup taxonomy was standardized.
+The `reorganize-backups` command migrates backups from the old `.claude/.backups/` location to the new unified taxonomy at `.claude/backups/`. This is a one-time migration for projects that were using claude-todo before the backup taxonomy was standardized.
 
 ## Options
 
@@ -28,7 +28,7 @@ The `migrate-backups` command migrates backups from the old `.claude/.backups/` 
 
 ```bash
 # List detected legacy backups
-claude-todo migrate-backups --detect
+claude-todo reorganize-backups --detect
 ```
 
 Output:
@@ -62,7 +62,7 @@ Classification:
 
 ```bash
 # See what would happen without making changes
-claude-todo migrate-backups --dry-run
+claude-todo reorganize-backups --dry-run
 ```
 
 Output:
@@ -85,7 +85,7 @@ Migration summary:
 
 ```bash
 # Actually migrate the backups
-claude-todo migrate-backups --run
+claude-todo reorganize-backups --run
 ```
 
 Output:
@@ -107,7 +107,7 @@ Migration summary:
 
 ```bash
 # Remove legacy backup directory after successful migration
-claude-todo migrate-backups --cleanup
+claude-todo reorganize-backups --cleanup
 ```
 
 Output:

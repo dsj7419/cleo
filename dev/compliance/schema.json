@@ -40,7 +40,7 @@
       },
       "write_commands": {
         "required": ["--dry-run"],
-        "commands": ["add", "archive", "complete", "extract", "focus", "inject", "migrate", "migrate-backups", "phase", "restore", "session", "sync", "update"],
+        "commands": ["add", "archive", "complete", "extract", "focus", "inject", "migrate", "reorganize-backups", "phase", "restore", "session", "sync", "update"],
         "patterns": {
           "dry_run_flag": "--dry-run\\)",
           "dry_run_variable": "^DRY_RUN=false",
@@ -116,7 +116,7 @@
     "write": ["add", "archive", "complete", "focus", "phase", "session", "update"],
     "read": ["analyze", "blockers", "dash", "deps", "exists", "export", "find", "history", "labels", "list", "log", "next", "phases", "show", "stats"],
     "sync": ["extract", "inject", "sync"],
-    "maintenance": ["backup", "config", "init", "migrate", "migrate-backups", "restore", "validate"]
+    "maintenance": ["backup", "config", "init", "migrate", "reorganize-backups", "restore", "validate"]
   },
 
   "commandScripts": {
@@ -141,7 +141,7 @@
     "list": "list-tasks.sh",
     "log": "log.sh",
     "migrate": "migrate.sh",
-    "migrate-backups": "migrate-backups.sh",
+    "reorganize-backups": "reorganize-backups.sh",
     "next": "next.sh",
     "phase": "phase.sh",
     "phases": "phases.sh",

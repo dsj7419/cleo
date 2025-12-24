@@ -121,18 +121,18 @@
       }
     ]
   },
-  "lastUpdated": "2025-12-24T06:52:51Z",
+  "lastUpdated": "2025-12-24T07:38:10Z",
   "_meta": {
-    "checksum": "3ee47bbf78c8c493",
+    "checksum": "43842aaf6f05e1ae",
     "configVersion": "2.1.0",
     "lastSessionId": null,
     "activeSession": "session_20251223_203915_5fb3b1",
-    "lastModified": "2025-12-24T04:39:15Z",
+    "lastModified": "2025-12-24T07:36:39Z",
     "version": "2.3.0",
     "schemaVersion": "2.4.0"
   },
   "focus": {
-    "currentTask": null,
+    "currentTask": "T809",
     "blockedUntil": null,
     "sessionNote": "Epic T700 Complete: Task Deletion System v0.32.0 - 18 subtasks, 161+ tests, full documentation. delete/uncancel commands working.",
     "nextAction": "T481 EPIC Batch 4: Start with T495 (verify add-task.sh dry-run format), then T496 (input validation). After Batch 4, do Batch 5 (T497-T501 docs/tests). Final: version bump patch, full test suite, commit. Spec: docs/specs/LLM-AGENT-FIRST-SPEC.md",
@@ -10042,24 +10042,32 @@
     {
       "id": "T798",
       "title": "Add source guards to all 21 libraries",
-      "status": "pending",
+      "status": "done",
       "priority": "high",
       "type": "task",
       "parentId": "T797",
       "createdAt": "2025-12-24T06:42:13Z",
       "phase": "core",
-      "description": "Add _SOURCED guard pattern to prevent double-sourcing. Currently 0/21 libraries have guards. Pattern: [[ -n \"${_LIB_NAME_SOURCED:-}\" ]] && return; _LIB_NAME_SOURCED=1"
+      "description": "Add _SOURCED guard pattern to prevent double-sourcing. Currently 0/21 libraries have guards. Pattern: [[ -n \"${_LIB_NAME_SOURCED:-}\" ]] && return; _LIB_NAME_SOURCED=1",
+      "completedAt": "2025-12-24T07:22:47Z",
+      "notes": [
+        "[COMPLETED 2025-12-24T07:22:47Z] Source guards already committed in v0.32.4 (commit 3ab82d2)"
+      ]
     },
     {
       "id": "T799",
       "title": "Add layer headers to all libraries",
-      "status": "pending",
+      "status": "done",
       "priority": "high",
       "type": "task",
       "parentId": "T797",
       "createdAt": "2025-12-24T06:42:15Z",
       "phase": "core",
-      "description": "Add LAYER/DEPENDENCIES/PROVIDES headers to all 21 libraries per LIBRARY-ARCHITECTURE-SPEC. Headers document layer (L0-L3), dependencies, and public functions provided."
+      "description": "Add LAYER/DEPENDENCIES/PROVIDES headers to all 21 libraries per LIBRARY-ARCHITECTURE-SPEC. Headers document layer (L0-L3), dependencies, and public functions provided.",
+      "completedAt": "2025-12-24T07:22:55Z",
+      "notes": [
+        "[COMPLETED 2025-12-24T07:22:55Z] Layer headers already committed in v0.32.4 (commit 3ab82d2)"
+      ]
     },
     {
       "id": "T800",
@@ -10133,7 +10141,641 @@
         "research-needed"
       ],
       "notes": [
-        "2025-12-24 06:52:51 UTC: USER REQS: (1) ID-independent ordering - T004→pos1, T002→pos2 (2) Hierarchical scope - epics, tasks, subtasks each orderable (3) Mandatory - position MUST be defined (4) Dependency-aware display - show blocks/depends (5) Shuffleable - reorder without changing other props"
+        "2025-12-24 06:52:51 UTC: USER REQS: (1) ID-independent ordering - T004→pos1, T002→pos2 (2) Hierarchical scope - epics, tasks, subtasks each orderable (3) Mandatory - position MUST be defined (4) Dependency-aware display - show blocks/depends (5) Shuffleable - reorder without changing other props",
+        "2025-12-24 07:05:22 UTC: ## USER REQUIREMENTS\n\n1. **ID-Independent Ordering** - Position completely separate from task ID\n   - Example: Epic T004 → position 1, Epic T002 → position 2, Epic T001 → position 3\n\n2. **Hierarchical Scope** - Ordering at multiple levels:\n   - Epic ordering (which epic to work on first)\n   - Task ordering within epics (which task within an epic)\n   - Subtask ordering within tasks\n\n3. **Mandatory/Forced** - Position MUST be defined, not optional\n   - Every task has an explicit position\n   - No ambiguity about order\n\n4. **Dependency-Aware Display** - When viewing ordered tasks, show:\n   - What blocks each task\n   - What each task depends on\n   - Clear visual of execution sequence\n\n5. **Shuffleable** - Easily reorder without changing other task properties",
+        "2025-12-24 07:05:37 UTC: ## CURRENT SYSTEM ANALYSIS\n\n### What EXISTS:\n- `priority` field: Categorical only (critical/high/medium/low), not positional\n- Phase `order` field: Phases have explicit integer ordering - proven pattern to follow\n- `depends` field: Enforces execution order via blocking\n- Leverage scoring in `analyze`: Temporary runtime calculation, not persisted\n- `next` command: Calculates optimal next task based on scoring, not persisted\n- Sort options: --sort by status|priority|createdAt|title\n- Default sort: priority DESC then createdAt ASC (oldest first within priority)\n\n### What's MISSING:\n- No `position`, `rank`, or `order` field in task schema\n- No `reorder`, `move`, or `swap` commands\n- No positional ordering within sibling groups\n- No persisted ordering state\n- No forced requirement for position definition\n- Children ordered only by creation date (implicit, not controllable)\n\n### Relevant Code Locations:\n- schemas/todo.schema.json: Task definition (no position field)\n- scripts/list-tasks.sh:430-454: Sort logic\n- scripts/analyze.sh:195-230: Leverage scoring\n- scripts/next.sh:228-270: Next task ranking\n- Phase ordering model: schemas/todo.schema.json:170-178",
+        "2025-12-24 07:06:06 UTC: ## IMPLEMENTATION APPROACHES (For Debate)\n\n### Approach A: Per-Parent Position Scope\nExample: id=T005, parentId=T001, position=2\n- Pros: Natural hierarchy, smaller position numbers, intuitive sibling ordering\n- Cons: Position only meaningful within parent context, need separate epic ordering\n\n### Approach B: Global Position  \nExample: id=T005, globalPosition=47\n- Pros: Single ordering across everything, simple mental model\n- Cons: Large numbers, complex reordering, hierarchy ignored\n\n### Approach C: Composite Ordering\nExample: id=T005, parentId=T001, siblingPosition=2, workOrder=15\n- Pros: Both local hierarchy order AND global execution order\n- Cons: Two fields to maintain, potential for conflicts\n\n### Approach D: Scope-Based with Inheritance\n- Root-level tasks (epics) have epicOrder\n- Children inherit context, have childOrder within parent\n- Display combines: epicOrder.childOrder.subchildOrder (e.g., 2.3.1)\n\n### Command Interface Ideas\n- ct reorder T037 --position 1 (Move to position 1)\n- ct reorder T037 --before T002 (Place before T002)\n- ct reorder T037 --after T005 (Place after T005)\n- ct swap T037 T002 (Swap positions)\n- ct reorder --parent T001 --compact (Compact gaps)\n- ct list --sort position (Display in position order)\n- ct tree --ordered (Hierarchical view by position)",
+        "2025-12-24 07:06:31 UTC: ## OPEN QUESTIONS FOR RESEARCH\n\n1. Should position be per-parent (sibling scope) or global?\n2. How to handle position gaps after deletions? (compact vs sparse)\n3. Should position be required or auto-assigned?\n4. How does position interact with priority field? (replace, complement, or override?)\n5. What happens to positions when reparenting tasks?\n6. Should there be a separate execution order vs display order?\n7. How to visualize combined position + dependency information?\n8. Should completed/cancelled tasks retain position or be excluded from ordering?\n9. How to handle bulk imports or task creation without explicit positions?\n10. What is the migration path for existing tasks without positions?\n\n## ENFORCEMENT OPTIONS\n\n1. Auto-assign on creation - New tasks get position = max + 1\n   Pros: No friction, backwards compatible | Cons: Not truly forced\n\n2. Require explicit position - Fail if not specified\n   Pros: Truly mandatory | Cons: Friction on creation, breaks existing workflows\n\n3. Hybrid - Auto-assign but allow override, warn if gaps\n   Pros: Balance of enforcement and usability | Cons: More complex logic\n\n4. Phase-gated - Required only for active phase tasks\n   Pros: Focus enforcement where it matters | Cons: Inconsistent rules",
+        "2025-12-24 07:06:44 UTC: ## DISPLAY VISUALIZATION CONCEPT\n\nExample of desired output when LLM agent views work order:\n\nWORK ORDER - Epics by Priority Position\n═══════════════════════════════════════\n[1] T004: Auth System (pos: 1)          ← FORCED first\n    ├─[1] T010: Design schema           depends: none\n    ├─[2] T011: Implement JWT           depends: T010\n    └─[3] T012: Add tests               depends: T011\n    \n[2] T002: API Layer (pos: 2)            blocked by: T004\n    ├─[1] T020: Route handlers\n    └─[2] T021: Middleware\n    \n[3] T001: Database (pos: 3)             depends: T002\n    ...\n\nKey features:\n- Position numbers [1], [2], [3] are explicit and shuffleable\n- Hierarchy shows children in their own position order\n- Dependencies and blockers visible inline\n- Clear visual of what to work on in what sequence\n- LLM agent sees unambiguous execution order",
+        "2025-12-24 07:06:58 UTC: ## RELATED PATTERNS TO RESEARCH\n\n- Phase ordering: Already uses order field (integer) - proven internal pattern\n- Kanban boards: Drag-drop reordering within columns (Trello, Jira)\n- Linear.app: Manual priority ordering separate from IDs\n- Notion databases: Sort property with manual reordering\n- GitHub Projects: Column position + manual card ordering\n- Topological sort: For dependency-based execution order\n\n## PRELIMINARY ACCEPTANCE CRITERIA (TBD after research)\n\n- [ ] Schema supports explicit positional ordering field(s)\n- [ ] Commands exist to reorder tasks (reorder, swap, move)\n- [ ] Position is enforced (not optional) - mechanism TBD\n- [ ] List/tree displays respect position order\n- [ ] Dependencies shown alongside position in display\n- [ ] Works at epic, task, and subtask levels independently\n- [ ] LLM agents see clear, unambiguous work order\n- [ ] Migration path for existing tasks documented\n- [ ] Integration with existing priority field defined\n- [ ] Performance acceptable with large task counts"
+      ]
+    },
+    {
+      "id": "T806",
+      "title": "EPIC: Library Architecture Refactoring (LIBRARY-ARCHITECTURE-SPEC)",
+      "status": "pending",
+      "priority": "high",
+      "type": "epic",
+      "parentId": null,
+      "createdAt": "2025-12-24T07:18:25Z",
+      "phase": "core",
+      "description": "Implement LIBRARY-ARCHITECTURE-SPEC.md: 4-layer architecture, source guards, break circular deps, reduce inter-library dependencies from 44 to ≤25. See docs/specs/LIBRARY-ARCHITECTURE-SPEC.md and IMPLEMENTATION-REPORT.md",
+      "labels": [
+        "architecture",
+        "refactor",
+        "spec-driven"
+      ]
+    },
+    {
+      "id": "T807",
+      "title": "Phase 1: Add Source Guards to All Libraries",
+      "status": "done",
+      "priority": "critical",
+      "type": "task",
+      "parentId": "T806",
+      "createdAt": "2025-12-24T07:18:43Z",
+      "size": "medium",
+      "phase": "core",
+      "description": "Add source guard pattern to all 21 lib/*.sh files. Pattern: [[ -n \"${_LIBNAME_LOADED:-}\" ]] && return 0; declare -r _LIBNAME_LOADED=1. Prevents double-loading issues.",
+      "labels": [
+        "source-guards"
+      ],
+      "completedAt": "2025-12-24T07:22:47Z",
+      "notes": [
+        "[COMPLETED 2025-12-24T07:22:47Z] All 21 lib files have source guards. Verified 2025-12-24. 136 unit tests passing."
+      ]
+    },
+    {
+      "id": "T808",
+      "title": "Phase 2: Add Layer Headers to All Libraries",
+      "status": "done",
+      "priority": "high",
+      "type": "task",
+      "parentId": "T806",
+      "createdAt": "2025-12-24T07:18:45Z",
+      "size": "medium",
+      "phase": "core",
+      "description": "Add LAYER/DEPENDENCIES/PROVIDES header comments to all 21 lib/*.sh files following the spec template. Documents layer assignment and public API.",
+      "labels": [
+        "documentation"
+      ],
+      "completedAt": "2025-12-24T07:22:49Z",
+      "notes": [
+        "[COMPLETED 2025-12-24T07:22:49Z] All 21 lib files have LAYER/DEPENDENCIES/PROVIDES headers. Layer distribution documented."
+      ]
+    },
+    {
+      "id": "T809",
+      "title": "Phase 3: Break Circular Dependency Chain",
+      "status": "active",
+      "priority": "critical",
+      "type": "task",
+      "parentId": "T806",
+      "createdAt": "2025-12-24T07:18:47Z",
+      "size": "medium",
+      "phase": "core",
+      "description": "Break the circular dependency: file-ops.sh → validation.sh → migrate.sh → file-ops.sh. Create lib/atomic-write.sh (Layer 1) with primitive file operations that don't require validation.",
+      "labels": [
+        "blocking",
+        "circular-deps"
+      ]
+    },
+    {
+      "id": "T810",
+      "title": "Phase 4: Reduce High-Dependency Libraries",
+      "status": "pending",
+      "priority": "high",
+      "type": "task",
+      "parentId": "T806",
+      "createdAt": "2025-12-24T07:18:48Z",
+      "size": "large",
+      "phase": "core",
+      "description": "Reduce dependencies in 5 libraries exceeding the 3-dep limit: deletion-strategy.sh (6→3), cancel-ops.sh (5→3), validation.sh (5→3), backup.sh (4→3), archive-cancel.sh (4→3).",
+      "labels": [
+        "dependencies",
+        "refactor"
+      ]
+    },
+    {
+      "id": "T811",
+      "title": "Phase 5: Create Compliance Validation Script",
+      "status": "pending",
+      "priority": "high",
+      "type": "task",
+      "parentId": "T806",
+      "createdAt": "2025-12-24T07:18:50Z",
+      "size": "small",
+      "phase": "core",
+      "description": "Create dev/check-lib-compliance.sh to validate: source guards present, layer headers present, no circular dependencies, local variables used (shellcheck), exit code constants used.",
+      "labels": [
+        "ci",
+        "tooling"
+      ]
+    },
+    {
+      "id": "T812",
+      "title": "Phase 6: Library Testing Infrastructure",
+      "status": "pending",
+      "priority": "medium",
+      "type": "task",
+      "parentId": "T806",
+      "createdAt": "2025-12-24T07:18:52Z",
+      "size": "medium",
+      "phase": "testing",
+      "description": "Create tests/unit/lib/ directory with BATS tests for pure functions in each library. Add mock helpers for dependency injection. Verify all libraries sourceable in isolation.",
+      "labels": [
+        "bats",
+        "testing"
+      ]
+    },
+    {
+      "id": "T813",
+      "title": "Add source guards to Layer 0 libs (exit-codes, platform-compat, version)",
+      "status": "done",
+      "priority": "medium",
+      "type": "subtask",
+      "parentId": "T807",
+      "createdAt": "2025-12-24T07:19:08Z",
+      "size": "small",
+      "phase": "core",
+      "description": "Add _EXIT_CODES_LOADED, _PLATFORM_COMPAT_LOADED, _VERSION_LOADED guards to Layer 0 foundation libraries.",
+      "completedAt": "2025-12-24T07:23:01Z",
+      "notes": [
+        "[COMPLETED 2025-12-24T07:23:01Z] Layer 0 guards done: exit-codes, platform-compat, version"
+      ]
+    },
+    {
+      "id": "T814",
+      "title": "Add source guards to Layer 1 libs (config, error-json, output-format, grammar, dependency-check)",
+      "status": "done",
+      "priority": "medium",
+      "type": "subtask",
+      "parentId": "T807",
+      "createdAt": "2025-12-24T07:19:10Z",
+      "size": "small",
+      "phase": "core",
+      "description": "Add guards to Layer 1 utility libraries: _CONFIG_LOADED, _ERROR_JSON_LOADED, _OUTPUT_FORMAT_LOADED, _GRAMMAR_LOADED, _DEPENDENCY_CHECK_LOADED.",
+      "completedAt": "2025-12-24T07:23:02Z",
+      "notes": [
+        "[COMPLETED 2025-12-24T07:23:02Z] Layer 1 guards done: config, error-json, output-format, grammar, dependency-check"
+      ]
+    },
+    {
+      "id": "T815",
+      "title": "Add source guards to Layer 2 libs (file-ops, validation, logging, backup, hierarchy, migrate)",
+      "status": "done",
+      "priority": "medium",
+      "type": "subtask",
+      "parentId": "T807",
+      "createdAt": "2025-12-24T07:19:11Z",
+      "size": "small",
+      "phase": "core",
+      "description": "Add guards to Layer 2 operation libraries: _FILE_OPS_LOADED, _VALIDATION_LOADED, _LOGGING_LOADED, _BACKUP_LOADED, _HIERARCHY_LOADED, _MIGRATE_LOADED.",
+      "completedAt": "2025-12-24T07:23:02Z",
+      "notes": [
+        "[COMPLETED 2025-12-24T07:23:02Z] Layer 2 guards done: file-ops, validation, logging, backup, hierarchy, migrate"
+      ]
+    },
+    {
+      "id": "T816",
+      "title": "Add source guards to Layer 3 domain libs",
+      "status": "done",
+      "priority": "medium",
+      "type": "subtask",
+      "parentId": "T807",
+      "createdAt": "2025-12-24T07:19:21Z",
+      "size": "small",
+      "phase": "core",
+      "description": "Add guards to Layer 3 domain libraries: _ANALYSIS_LOADED, _CANCEL_OPS_LOADED, _DELETION_STRATEGY_LOADED, _PHASE_TRACKING_LOADED, _ARCHIVE_CANCEL_LOADED, _DELETE_PREVIEW_LOADED.",
+      "completedAt": "2025-12-24T07:23:03Z",
+      "notes": [
+        "[COMPLETED 2025-12-24T07:23:03Z] Layer 3 guards done: analysis, cancel-ops, deletion-strategy, phase-tracking, archive-cancel, delete-preview"
+      ]
+    },
+    {
+      "id": "T817",
+      "title": "Add LAYER/DEPS/PROVIDES headers to all 21 lib files",
+      "status": "done",
+      "priority": "medium",
+      "type": "subtask",
+      "parentId": "T808",
+      "createdAt": "2025-12-24T07:19:38Z",
+      "size": "medium",
+      "phase": "core",
+      "description": "Add standardized header comments to each lib file documenting: LAYER (0-3), DEPENDENCIES (comma-separated), PROVIDES (public functions). Follow spec template.",
+      "completedAt": "2025-12-24T07:23:04Z",
+      "notes": [
+        "[COMPLETED 2025-12-24T07:23:04Z] All 21 lib files have LAYER/DEPENDENCIES/PROVIDES header comments"
+      ]
+    },
+    {
+      "id": "T818",
+      "title": "Create lib/atomic-write.sh (Layer 1)",
+      "status": "pending",
+      "priority": "medium",
+      "type": "subtask",
+      "parentId": "T809",
+      "createdAt": "2025-12-24T07:19:40Z",
+      "size": "medium",
+      "phase": "core",
+      "description": "Extract atomic write primitives from file-ops.sh into new Layer 1 library. Functions: atomic_write_raw(), backup_file_raw(). No validation dependency."
+    },
+    {
+      "id": "T819",
+      "title": "Update file-ops.sh to use atomic-write.sh",
+      "status": "pending",
+      "priority": "medium",
+      "type": "subtask",
+      "parentId": "T809",
+      "createdAt": "2025-12-24T07:19:41Z",
+      "size": "small",
+      "phase": "core",
+      "description": "Modify file-ops.sh to source atomic-write.sh instead of implementing primitives directly. Keep high-level functions that add validation.",
+      "depends": [
+        "T817"
+      ]
+    },
+    {
+      "id": "T820",
+      "title": "Update validation.sh to use atomic-write.sh",
+      "status": "pending",
+      "priority": "medium",
+      "type": "subtask",
+      "parentId": "T809",
+      "createdAt": "2025-12-24T07:19:44Z",
+      "size": "small",
+      "phase": "core",
+      "description": "Replace file-ops.sh dependency with atomic-write.sh where only primitive writes needed. Breaks the circular chain.",
+      "depends": [
+        "T817"
+      ]
+    },
+    {
+      "id": "T821",
+      "title": "Update migrate.sh to use atomic-write.sh",
+      "status": "pending",
+      "priority": "medium",
+      "type": "subtask",
+      "parentId": "T809",
+      "createdAt": "2025-12-24T07:19:46Z",
+      "size": "small",
+      "phase": "core",
+      "description": "Replace file-ops.sh dependency with atomic-write.sh. Completes circular dependency elimination.",
+      "depends": [
+        "T817"
+      ]
+    },
+    {
+      "id": "T822",
+      "title": "Verify no circular dependencies remain",
+      "status": "pending",
+      "priority": "medium",
+      "type": "subtask",
+      "parentId": "T809",
+      "createdAt": "2025-12-24T07:19:47Z",
+      "size": "small",
+      "phase": "core",
+      "description": "Run dependency analysis to confirm file-ops → validation → migrate chain is broken. Update compliance script.",
+      "depends": [
+        "T818",
+        "T819",
+        "T820"
+      ]
+    },
+    {
+      "id": "T823",
+      "title": "Refactor deletion-strategy.sh (6 deps → 3)",
+      "status": "pending",
+      "priority": "medium",
+      "type": "subtask",
+      "parentId": "T810",
+      "createdAt": "2025-12-24T07:20:03Z",
+      "size": "medium",
+      "phase": "core",
+      "description": "Current deps: cancel-ops, config, exit-codes, file-ops, hierarchy, logging. Target: Pass logger as param, consolidate through cancel-ops path, keep only exit-codes direct."
+    },
+    {
+      "id": "T824",
+      "title": "Refactor cancel-ops.sh (5 deps → 3)",
+      "status": "pending",
+      "priority": "medium",
+      "type": "subtask",
+      "parentId": "T810",
+      "createdAt": "2025-12-24T07:20:04Z",
+      "size": "medium",
+      "phase": "core",
+      "description": "Current deps: backup, config, exit-codes, hierarchy, validation. Target: Consolidate through validation path which already has hierarchy/config."
+    },
+    {
+      "id": "T825",
+      "title": "Refactor validation.sh (5 deps → 3)",
+      "status": "pending",
+      "priority": "medium",
+      "type": "subtask",
+      "parentId": "T810",
+      "createdAt": "2025-12-24T07:20:06Z",
+      "size": "medium",
+      "phase": "core",
+      "description": "Current deps: config, exit-codes, hierarchy, migrate, platform-compat. Target: Remove migrate dep (source at call site), get platform-compat through config."
+    },
+    {
+      "id": "T826",
+      "title": "Refactor backup.sh (4 deps → 3)",
+      "status": "pending",
+      "priority": "medium",
+      "type": "subtask",
+      "parentId": "T810",
+      "createdAt": "2025-12-24T07:20:08Z",
+      "size": "small",
+      "phase": "core",
+      "description": "Current deps: file-ops, logging, platform-compat, validation. Target: Get platform-compat through file-ops path instead of direct."
+    },
+    {
+      "id": "T827",
+      "title": "Refactor archive-cancel.sh (4 deps → 3)",
+      "status": "pending",
+      "priority": "medium",
+      "type": "subtask",
+      "parentId": "T810",
+      "createdAt": "2025-12-24T07:20:10Z",
+      "size": "small",
+      "phase": "core",
+      "description": "Current deps: config, exit-codes, file-ops, version. Evaluate if one can be consolidated or removed."
+    },
+    {
+      "id": "T828",
+      "title": "Implement source guard checker in dev/check-lib-compliance.sh",
+      "status": "pending",
+      "priority": "medium",
+      "type": "subtask",
+      "parentId": "T811",
+      "createdAt": "2025-12-24T07:20:32Z",
+      "size": "small",
+      "phase": "core",
+      "description": "Check all lib/*.sh files have [[ -n \"${_*_LOADED:-}\" ]] && return 0 pattern at top of file."
+    },
+    {
+      "id": "T829",
+      "title": "Implement layer header checker",
+      "status": "pending",
+      "priority": "medium",
+      "type": "subtask",
+      "parentId": "T811",
+      "createdAt": "2025-12-24T07:20:33Z",
+      "size": "small",
+      "phase": "core",
+      "description": "Verify all lib files have LAYER/DEPENDENCIES/PROVIDES header comments. Report missing or malformed headers."
+    },
+    {
+      "id": "T830",
+      "title": "Implement circular dependency detector",
+      "status": "pending",
+      "priority": "medium",
+      "type": "subtask",
+      "parentId": "T811",
+      "createdAt": "2025-12-24T07:20:35Z",
+      "size": "medium",
+      "phase": "core",
+      "description": "Parse source statements from lib files, build dependency graph, detect cycles using DFS. Report any circular chains found."
+    },
+    {
+      "id": "T831",
+      "title": "Implement dependency count validator",
+      "status": "pending",
+      "priority": "medium",
+      "type": "subtask",
+      "parentId": "T811",
+      "createdAt": "2025-12-24T07:20:36Z",
+      "size": "small",
+      "phase": "core",
+      "description": "Count source statements per lib file. Flag files exceeding 3-dependency limit. Output summary with current vs target."
+    },
+    {
+      "id": "T832",
+      "title": "Create tests/unit/lib/ directory structure",
+      "status": "pending",
+      "priority": "medium",
+      "type": "subtask",
+      "parentId": "T812",
+      "createdAt": "2025-12-24T07:20:38Z",
+      "size": "small",
+      "phase": "core",
+      "description": "Create test directory for library unit tests: tests/unit/lib/. Add common test helper for loading libs in isolation."
+    },
+    {
+      "id": "T833",
+      "title": "Add BATS tests for pure validation functions",
+      "status": "pending",
+      "priority": "medium",
+      "type": "subtask",
+      "parentId": "T812",
+      "createdAt": "2025-12-24T07:20:39Z",
+      "size": "medium",
+      "phase": "core",
+      "description": "Create tests/unit/lib/validation.bats with tests for validate_task_id(), validate_json_syntax(), and other pure functions."
+    },
+    {
+      "id": "T834",
+      "title": "Add mock helpers for dependency injection",
+      "status": "pending",
+      "priority": "medium",
+      "type": "subtask",
+      "parentId": "T812",
+      "createdAt": "2025-12-24T07:20:41Z",
+      "size": "small",
+      "phase": "core",
+      "description": "Create tests/test_helper/mock-helpers.bash with patterns for ENV injection, function override mocks, and PATH manipulation."
+    },
+    {
+      "id": "T835",
+      "title": "Verify all libs sourceable in isolation",
+      "status": "pending",
+      "priority": "medium",
+      "type": "subtask",
+      "parentId": "T812",
+      "createdAt": "2025-12-24T07:20:42Z",
+      "size": "small",
+      "phase": "core",
+      "description": "Add test that sources each lib file individually in clean environment. Verifies no missing dependencies or global state requirements."
+    },
+    {
+      "id": "T836",
+      "title": "jq Wrapper Functions Refactoring",
+      "status": "pending",
+      "priority": "high",
+      "type": "epic",
+      "parentId": null,
+      "createdAt": "2025-12-24T07:28:17Z",
+      "phase": "core",
+      "description": "Create reusable jq wrapper functions to reduce 2,183 jq invocations across 61 files. Top 9 wrappers save ~26,010 chars. Improves maintainability, testability, token efficiency."
+    },
+    {
+      "id": "T837",
+      "title": "Create get_task_field wrapper (522 uses)",
+      "status": "done",
+      "priority": "critical",
+      "type": "task",
+      "parentId": "T836",
+      "createdAt": "2025-12-24T07:28:30Z",
+      "phase": "core",
+      "description": "Wrapper for extracting task fields. Pattern: jq -r '.tasks[] | select(.id==\"$id\") | .$field'. Most used pattern with 522 occurrences.",
+      "completedAt": "2025-12-24T07:37:45Z",
+      "notes": [
+        "[COMPLETED 2025-12-24T07:37:45Z] Implemented get_task_field() function with full validation and error handling"
+      ]
+    },
+    {
+      "id": "T838",
+      "title": "Create get_tasks_by_status wrapper (80 uses)",
+      "status": "done",
+      "priority": "critical",
+      "type": "task",
+      "parentId": "T836",
+      "createdAt": "2025-12-24T07:28:33Z",
+      "phase": "core",
+      "description": "Wrapper for filtering tasks by status. Pattern: jq '[.tasks[] | select(.status==\"$status\")]'. 80 occurrences across codebase.",
+      "completedAt": "2025-12-24T07:37:45Z",
+      "notes": [
+        "[COMPLETED 2025-12-24T07:37:45Z] Implemented get_tasks_by_status() function with file validation"
+      ]
+    },
+    {
+      "id": "T839",
+      "title": "Create get_task_by_id wrapper (68 uses)",
+      "status": "done",
+      "priority": "critical",
+      "type": "task",
+      "parentId": "T836",
+      "createdAt": "2025-12-24T07:28:34Z",
+      "phase": "core",
+      "description": "Wrapper for retrieving full task object by ID. Pattern: jq '.tasks[] | select(.id==\"$id\")'. 68 occurrences across codebase.",
+      "completedAt": "2025-12-24T07:37:46Z",
+      "notes": [
+        "[COMPLETED 2025-12-24T07:37:46Z] Implemented get_task_by_id() function with file validation"
+      ]
+    },
+    {
+      "id": "T840",
+      "title": "Create array_to_json wrapper (48 uses)",
+      "status": "done",
+      "priority": "high",
+      "type": "task",
+      "parentId": "T836",
+      "createdAt": "2025-12-24T07:28:44Z",
+      "phase": "core",
+      "description": "Wrapper for converting arrays to JSON format. Pattern: jq -R -s 'split(\"\\n\") | map(select(length > 0))'. 48 occurrences.",
+      "completedAt": "2025-12-24T07:37:47Z",
+      "notes": [
+        "[COMPLETED 2025-12-24T07:37:47Z] Implemented array_to_json() function with whitespace trimming"
+      ]
+    },
+    {
+      "id": "T841",
+      "title": "Create count_tasks_by_status wrapper (46 uses)",
+      "status": "done",
+      "priority": "high",
+      "type": "task",
+      "parentId": "T836",
+      "createdAt": "2025-12-24T07:28:46Z",
+      "phase": "core",
+      "description": "Wrapper for counting tasks with specific status. Pattern: jq '[.tasks[] | select(.status==\"$status\")] | length'. 46 occurrences.",
+      "completedAt": "2025-12-24T07:37:59Z",
+      "notes": [
+        "[COMPLETED 2025-12-24T07:37:59Z] Implemented count_tasks_by_status() function with file validation"
+      ]
+    },
+    {
+      "id": "T842",
+      "title": "Create has_children wrapper (33 uses)",
+      "status": "done",
+      "priority": "high",
+      "type": "task",
+      "parentId": "T836",
+      "createdAt": "2025-12-24T07:28:48Z",
+      "phase": "core",
+      "description": "Wrapper for checking if task has children. Pattern: jq '[.tasks[] | select(.parentId==\"$id\")] | length > 0'. 33 occurrences.",
+      "completedAt": "2025-12-24T07:38:00Z",
+      "notes": [
+        "[COMPLETED 2025-12-24T07:38:00Z] Implemented has_children() function checking parentId references"
+      ]
+    },
+    {
+      "id": "T843",
+      "title": "Create get_focus_task wrapper (26 uses)",
+      "status": "done",
+      "priority": "medium",
+      "type": "task",
+      "parentId": "T836",
+      "createdAt": "2025-12-24T07:28:58Z",
+      "phase": "core",
+      "description": "Wrapper for retrieving current focus task. Pattern: jq -r '.focus.taskId'. 26 occurrences across codebase.",
+      "completedAt": "2025-12-24T07:38:01Z",
+      "notes": [
+        "[COMPLETED 2025-12-24T07:38:01Z] Implemented get_focus_task() function reading focus.currentTask"
+      ]
+    },
+    {
+      "id": "T844",
+      "title": "Create get_task_count wrapper (19 uses)",
+      "status": "done",
+      "priority": "medium",
+      "type": "task",
+      "parentId": "T836",
+      "createdAt": "2025-12-24T07:29:00Z",
+      "phase": "core",
+      "description": "Wrapper for counting total tasks. Pattern: jq '.tasks | length'. 19 occurrences across codebase.",
+      "completedAt": "2025-12-24T07:38:01Z",
+      "notes": [
+        "[COMPLETED 2025-12-24T07:38:01Z] Implemented get_task_count() function using .tasks | length"
+      ]
+    },
+    {
+      "id": "T845",
+      "title": "Create get_current_phase wrapper (19 uses)",
+      "status": "done",
+      "priority": "medium",
+      "type": "task",
+      "parentId": "T836",
+      "createdAt": "2025-12-24T07:29:02Z",
+      "phase": "core",
+      "description": "Wrapper for retrieving current project phase. Pattern: jq -r '.currentPhase'. 19 occurrences across codebase.",
+      "completedAt": "2025-12-24T07:38:10Z",
+      "notes": [
+        "[COMPLETED 2025-12-24T07:38:10Z] Implemented get_current_phase() function reading project.currentPhase"
+      ]
+    },
+    {
+      "id": "T846",
+      "title": "Create lib/jq-helpers.sh with all wrapper functions",
+      "status": "done",
+      "priority": "critical",
+      "type": "task",
+      "parentId": "T836",
+      "createdAt": "2025-12-24T07:29:14Z",
+      "phase": "core",
+      "description": "Create new library file containing all 9 jq wrapper functions. Must follow existing lib/ conventions: source guards, error handling, consistent naming. Depends on all wrapper function tasks being defined.",
+      "depends": [
+        "T837",
+        "T838",
+        "T839",
+        "T840",
+        "T841",
+        "T842",
+        "T843",
+        "T844",
+        "T845"
+      ],
+      "completedAt": "2025-12-24T07:38:10Z",
+      "notes": [
+        "[COMPLETED 2025-12-24T07:38:10Z] Created lib/jq-helpers.sh with 9 wrapper functions. All tests passing, LIBRARY-ARCHITECTURE-SPEC compliant."
+      ]
+    },
+    {
+      "id": "T847",
+      "title": "Refactor archive.sh (169 jq invocations)",
+      "status": "pending",
+      "priority": "high",
+      "type": "task",
+      "parentId": "T836",
+      "createdAt": "2025-12-24T07:29:15Z",
+      "phase": "core",
+      "description": "Refactor scripts/archive.sh to use jq wrapper functions. File has 169 jq invocations - highest in codebase. Major token savings opportunity.",
+      "depends": [
+        "T846"
+      ]
+    },
+    {
+      "id": "T848",
+      "title": "Refactor update-task.sh (108 jq invocations)",
+      "status": "pending",
+      "priority": "high",
+      "type": "task",
+      "parentId": "T836",
+      "createdAt": "2025-12-24T07:29:17Z",
+      "phase": "core",
+      "description": "Refactor scripts/update-task.sh to use jq wrapper functions. File has 108 jq invocations - second highest in codebase.",
+      "depends": [
+        "T846"
       ]
     }
   ],

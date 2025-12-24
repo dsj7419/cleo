@@ -1,16 +1,20 @@
 #!/usr/bin/env bash
-# migrate-backups.sh - Migrate legacy backups to new taxonomy
+# reorganize-backups.sh - Reorganize legacy backups to new taxonomy
 # Part of claude-todo system
 #
-# Migrates backups from old locations to new unified taxonomy:
+# Reorganizes backups from old locations to new unified taxonomy:
 #   Old: .claude/.backups/ (various naming patterns)
 #   New: .claude/backups/{snapshot,safety,incremental,archive,migration}/
 #
+# NOTE: This is a one-time backup DIRECTORY reorganization, separate from
+#       schema migration (claude-todo migrate). Use this when upgrading
+#       from older claude-todo versions with legacy backup locations.
+#
 # Usage:
-#   migrate-backups.sh --detect        # List detected legacy backups
-#   migrate-backups.sh --dry-run       # Preview migration without changes
-#   migrate-backups.sh --run           # Perform actual migration
-#   migrate-backups.sh --cleanup       # Remove old .backups directory after migration
+#   reorganize-backups.sh --detect     # List detected legacy backups
+#   reorganize-backups.sh --dry-run    # Preview reorganization without changes
+#   reorganize-backups.sh --run        # Perform actual reorganization
+#   reorganize-backups.sh --cleanup    # Remove old .backups directory after reorganization
 
 set -euo pipefail
 IFS=$'\n\t'
@@ -54,7 +58,7 @@ fi
 readonly LEGACY_BACKUP_DIR=".claude/.backups"
 readonly NEW_BACKUP_DIR=".claude/backups"
 readonly MIGRATION_LOG=".claude/backup-migration.log"
-COMMAND_NAME="migrate-backups"
+COMMAND_NAME="reorganize-backups"
 FORMAT=""
 QUIET=false
 

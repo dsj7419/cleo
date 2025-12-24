@@ -77,7 +77,7 @@
 | **[commands/list.md](commands/list.md)** | List tasks command documentation | Viewing and filtering tasks |
 | **[commands/log.md](commands/log.md)** | Log command documentation | Viewing and managing audit logs |
 | **[commands/migrate.md](commands/migrate.md)** | Schema migration command documentation | Upgrading schema versions |
-| **[commands/migrate-backups.md](commands/migrate-backups.md)** | Backup migration documentation | Migrating legacy backup structure |
+| **[commands/reorganize-backups.md](commands/reorganize-backups.md)** | Backup migration documentation | Migrating legacy backup structure |
 | **[commands/next.md](commands/next.md)** | Next command documentation | Using intelligent task suggestions |
 | **[commands/phase.md](commands/phase.md)** | Phase lifecycle command documentation | Managing project-level phase transitions (pending → active → completed) |
 | **[commands/phases.md](commands/phases.md)** | Phase management command documentation | Managing project phases and phase-based workflows |

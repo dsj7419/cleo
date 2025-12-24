@@ -5,6 +5,47 @@ All notable changes to the claude-todo system will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.34.0] - 2025-12-24
+
+### Added
+- **Smart Semver-Based Migration System**: Complete overhaul of migration detection
+  - PATCH changes (constraint relaxation, optional fields) now require NO migration function
+  - System auto-detects change type and applies version bump only when appropriate
+  - New `compare_schema_versions()` function returns: equal, patch_only, minor_diff, major_diff, data_newer
+  - New `bump_version_only()` function for PATCH-level updates
+  - New `get_schema_version_from_file()` reads version from schema files (single source of truth)
+
+- **Schema Version in Schema Files**: Added `schemaVersion` field to all JSON schemas
+  - `schemas/todo.schema.json`: schemaVersion "2.4.0"
+  - `schemas/config.schema.json`: schemaVersion "2.2.0"
+  - `schemas/archive.schema.json`: schemaVersion "2.1.0"
+  - `schemas/log.schema.json`: schemaVersion "2.1.0"
+
+- **Migration System Specification**: New comprehensive spec at `docs/specs/MIGRATION-SYSTEM-SPEC.md`
+  - Documents change type classification (PATCH/MINOR/MAJOR)
+  - Defines when migrations are and aren't needed
+  - Provides implementation guidelines
+
+### Changed
+- **Renamed `migrate-backups` to `reorganize-backups`**: Clarifies this is backup DIRECTORY reorganization, not schema migration
+  - Script renamed: `scripts/reorganize-backups.sh`
+  - Docs renamed: `docs/commands/reorganize-backups.md`
+  - Command: `claude-todo reorganize-backups`
+
+- **Updated Templates**: All template versions now match current schema versions
+  - `templates/todo.template.json`: 2.2.0 → 2.4.0
+  - `templates/config.template.json`: 2.1.0 → 2.2.0
+
+- **Migration Documentation**: Updated `docs/reference/migration-guide.md`
+  - Added change type classification section
+  - Clarified when migration functions are needed vs not needed
+  - Updated all version references
+
+### Fixed
+- **Unnecessary Migration Functions**: PATCH-level changes no longer require manual migration functions
+  - Example: Increasing maxLength from 500 to 5000 now just bumps version automatically
+  - Reduces developer burden for backwards-compatible schema changes
+
 ## [0.32.4] - 2025-12-24
 
 ### Changed

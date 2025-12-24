@@ -10,20 +10,19 @@
 
 #=== SOURCE GUARD ================================================
 [[ -n "${_DELETION_STRATEGY_SH_LOADED:-}" ]] && return 0
+declare -r _DELETION_STRATEGY_SH_LOADED=1
 
+#=== DEPENDENCIES ================================================
 # Get lib directory for sourcing dependencies
 _DELETION_STRATEGY_LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Source dependencies
+# Source dependencies (each has its own source guard)
 source "$_DELETION_STRATEGY_LIB_DIR/exit-codes.sh"
 source "$_DELETION_STRATEGY_LIB_DIR/hierarchy.sh"
 source "$_DELETION_STRATEGY_LIB_DIR/config.sh"
 source "$_DELETION_STRATEGY_LIB_DIR/logging.sh"
 source "$_DELETION_STRATEGY_LIB_DIR/file-ops.sh"
 source "$_DELETION_STRATEGY_LIB_DIR/cancel-ops.sh"
-
-# Mark as loaded AFTER all dependencies are sourced
-declare -r _DELETION_STRATEGY_SH_LOADED=1
 
 # =============================================================================
 # Strategy Registry (Open/Closed Principle)

@@ -8,8 +8,8 @@
 #           validate_checksum, validate_task_hierarchy
 
 #=== SOURCE GUARD ================================================
-[[ -n "${_VALIDATION_SH_INCLUDED:-}" ]] && return 0
-declare -r _VALIDATION_SH_INCLUDED=1
+[[ -n "${_VALIDATION_SH_LOADED:-}" ]] && return 0
+declare -r _VALIDATION_SH_LOADED=1
 
 set -euo pipefail
 

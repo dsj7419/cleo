@@ -3,9 +3,9 @@
   "version": "2.1.0",
   "project": "claude-todo",
   "_meta": {
-    "totalEntries": 1865,
+    "totalEntries": 1894,
     "firstEntry": "2025-12-13T07:14:38Z",
-    "lastEntry": "2025-12-24T06:52:52Z",
+    "lastEntry": "2025-12-24T07:38:11Z",
     "entriesPruned": 0
   },
   "entries": [
@@ -45800,6 +45800,1550 @@
       },
       "details": {
         "operation": "update"
+      }
+    },
+    {
+      "id": "log_7a9aa281aa28",
+      "timestamp": "2025-12-24T07:05:22Z",
+      "sessionId": "session_20251223_203915_5fb3b1",
+      "action": "task_updated",
+      "actor": "system",
+      "taskId": "T805",
+      "before": {
+        "title": "Explicit Positional Ordering System",
+        "status": "pending",
+        "priority": "high",
+        "description": "Enable explicit, ID-independent task ordering where position/rank is separate from task ID. Epics, tasks, and subtasks each have shuffleable positions. LLM agents see FORCED priority order with dependency/blocking info. Currently: only categorical priority + creation date ordering exists. Need: position field, reorder commands, mandatory position assignment, dependency-aware display. Requires research on scope (per-parent vs global), enforcement strategy, and integration with existing priority field.",
+        "phase": "core",
+        "labels": [
+          "architecture",
+          "feature",
+          "research-needed"
+        ],
+        "files": null,
+        "acceptance": null,
+        "depends": null,
+        "blockedBy": null
+      },
+      "after": {
+        "title": "Explicit Positional Ordering System",
+        "status": "pending",
+        "priority": "high",
+        "description": "Enable explicit, ID-independent task ordering where position/rank is separate from task ID. Epics, tasks, and subtasks each have shuffleable positions. LLM agents see FORCED priority order with dependency/blocking info. Currently: only categorical priority + creation date ordering exists. Need: position field, reorder commands, mandatory position assignment, dependency-aware display. Requires research on scope (per-parent vs global), enforcement strategy, and integration with existing priority field.",
+        "phase": "core",
+        "labels": [
+          "architecture",
+          "feature",
+          "research-needed"
+        ],
+        "files": null,
+        "acceptance": null,
+        "depends": null,
+        "blockedBy": null
+      },
+      "details": {
+        "operation": "update"
+      }
+    },
+    {
+      "id": "log_3aeb9db4f0b7",
+      "timestamp": "2025-12-24T07:05:37Z",
+      "sessionId": "session_20251223_203915_5fb3b1",
+      "action": "task_updated",
+      "actor": "system",
+      "taskId": "T805",
+      "before": {
+        "title": "Explicit Positional Ordering System",
+        "status": "pending",
+        "priority": "high",
+        "description": "Enable explicit, ID-independent task ordering where position/rank is separate from task ID. Epics, tasks, and subtasks each have shuffleable positions. LLM agents see FORCED priority order with dependency/blocking info. Currently: only categorical priority + creation date ordering exists. Need: position field, reorder commands, mandatory position assignment, dependency-aware display. Requires research on scope (per-parent vs global), enforcement strategy, and integration with existing priority field.",
+        "phase": "core",
+        "labels": [
+          "architecture",
+          "feature",
+          "research-needed"
+        ],
+        "files": null,
+        "acceptance": null,
+        "depends": null,
+        "blockedBy": null
+      },
+      "after": {
+        "title": "Explicit Positional Ordering System",
+        "status": "pending",
+        "priority": "high",
+        "description": "Enable explicit, ID-independent task ordering where position/rank is separate from task ID. Epics, tasks, and subtasks each have shuffleable positions. LLM agents see FORCED priority order with dependency/blocking info. Currently: only categorical priority + creation date ordering exists. Need: position field, reorder commands, mandatory position assignment, dependency-aware display. Requires research on scope (per-parent vs global), enforcement strategy, and integration with existing priority field.",
+        "phase": "core",
+        "labels": [
+          "architecture",
+          "feature",
+          "research-needed"
+        ],
+        "files": null,
+        "acceptance": null,
+        "depends": null,
+        "blockedBy": null
+      },
+      "details": {
+        "operation": "update"
+      }
+    },
+    {
+      "id": "log_411bb9c22c2f",
+      "timestamp": "2025-12-24T07:06:06Z",
+      "sessionId": "session_20251223_203915_5fb3b1",
+      "action": "task_updated",
+      "actor": "system",
+      "taskId": "T805",
+      "before": {
+        "title": "Explicit Positional Ordering System",
+        "status": "pending",
+        "priority": "high",
+        "description": "Enable explicit, ID-independent task ordering where position/rank is separate from task ID. Epics, tasks, and subtasks each have shuffleable positions. LLM agents see FORCED priority order with dependency/blocking info. Currently: only categorical priority + creation date ordering exists. Need: position field, reorder commands, mandatory position assignment, dependency-aware display. Requires research on scope (per-parent vs global), enforcement strategy, and integration with existing priority field.",
+        "phase": "core",
+        "labels": [
+          "architecture",
+          "feature",
+          "research-needed"
+        ],
+        "files": null,
+        "acceptance": null,
+        "depends": null,
+        "blockedBy": null
+      },
+      "after": {
+        "title": "Explicit Positional Ordering System",
+        "status": "pending",
+        "priority": "high",
+        "description": "Enable explicit, ID-independent task ordering where position/rank is separate from task ID. Epics, tasks, and subtasks each have shuffleable positions. LLM agents see FORCED priority order with dependency/blocking info. Currently: only categorical priority + creation date ordering exists. Need: position field, reorder commands, mandatory position assignment, dependency-aware display. Requires research on scope (per-parent vs global), enforcement strategy, and integration with existing priority field.",
+        "phase": "core",
+        "labels": [
+          "architecture",
+          "feature",
+          "research-needed"
+        ],
+        "files": null,
+        "acceptance": null,
+        "depends": null,
+        "blockedBy": null
+      },
+      "details": {
+        "operation": "update"
+      }
+    },
+    {
+      "id": "log_14438dd95364",
+      "timestamp": "2025-12-24T07:06:32Z",
+      "sessionId": "session_20251223_203915_5fb3b1",
+      "action": "task_updated",
+      "actor": "system",
+      "taskId": "T805",
+      "before": {
+        "title": "Explicit Positional Ordering System",
+        "status": "pending",
+        "priority": "high",
+        "description": "Enable explicit, ID-independent task ordering where position/rank is separate from task ID. Epics, tasks, and subtasks each have shuffleable positions. LLM agents see FORCED priority order with dependency/blocking info. Currently: only categorical priority + creation date ordering exists. Need: position field, reorder commands, mandatory position assignment, dependency-aware display. Requires research on scope (per-parent vs global), enforcement strategy, and integration with existing priority field.",
+        "phase": "core",
+        "labels": [
+          "architecture",
+          "feature",
+          "research-needed"
+        ],
+        "files": null,
+        "acceptance": null,
+        "depends": null,
+        "blockedBy": null
+      },
+      "after": {
+        "title": "Explicit Positional Ordering System",
+        "status": "pending",
+        "priority": "high",
+        "description": "Enable explicit, ID-independent task ordering where position/rank is separate from task ID. Epics, tasks, and subtasks each have shuffleable positions. LLM agents see FORCED priority order with dependency/blocking info. Currently: only categorical priority + creation date ordering exists. Need: position field, reorder commands, mandatory position assignment, dependency-aware display. Requires research on scope (per-parent vs global), enforcement strategy, and integration with existing priority field.",
+        "phase": "core",
+        "labels": [
+          "architecture",
+          "feature",
+          "research-needed"
+        ],
+        "files": null,
+        "acceptance": null,
+        "depends": null,
+        "blockedBy": null
+      },
+      "details": {
+        "operation": "update"
+      }
+    },
+    {
+      "id": "log_c0fb41027cf7",
+      "timestamp": "2025-12-24T07:06:44Z",
+      "sessionId": "session_20251223_203915_5fb3b1",
+      "action": "task_updated",
+      "actor": "system",
+      "taskId": "T805",
+      "before": {
+        "title": "Explicit Positional Ordering System",
+        "status": "pending",
+        "priority": "high",
+        "description": "Enable explicit, ID-independent task ordering where position/rank is separate from task ID. Epics, tasks, and subtasks each have shuffleable positions. LLM agents see FORCED priority order with dependency/blocking info. Currently: only categorical priority + creation date ordering exists. Need: position field, reorder commands, mandatory position assignment, dependency-aware display. Requires research on scope (per-parent vs global), enforcement strategy, and integration with existing priority field.",
+        "phase": "core",
+        "labels": [
+          "architecture",
+          "feature",
+          "research-needed"
+        ],
+        "files": null,
+        "acceptance": null,
+        "depends": null,
+        "blockedBy": null
+      },
+      "after": {
+        "title": "Explicit Positional Ordering System",
+        "status": "pending",
+        "priority": "high",
+        "description": "Enable explicit, ID-independent task ordering where position/rank is separate from task ID. Epics, tasks, and subtasks each have shuffleable positions. LLM agents see FORCED priority order with dependency/blocking info. Currently: only categorical priority + creation date ordering exists. Need: position field, reorder commands, mandatory position assignment, dependency-aware display. Requires research on scope (per-parent vs global), enforcement strategy, and integration with existing priority field.",
+        "phase": "core",
+        "labels": [
+          "architecture",
+          "feature",
+          "research-needed"
+        ],
+        "files": null,
+        "acceptance": null,
+        "depends": null,
+        "blockedBy": null
+      },
+      "details": {
+        "operation": "update"
+      }
+    },
+    {
+      "id": "log_4d641aa178b6",
+      "timestamp": "2025-12-24T07:06:58Z",
+      "sessionId": "session_20251223_203915_5fb3b1",
+      "action": "task_updated",
+      "actor": "system",
+      "taskId": "T805",
+      "before": {
+        "title": "Explicit Positional Ordering System",
+        "status": "pending",
+        "priority": "high",
+        "description": "Enable explicit, ID-independent task ordering where position/rank is separate from task ID. Epics, tasks, and subtasks each have shuffleable positions. LLM agents see FORCED priority order with dependency/blocking info. Currently: only categorical priority + creation date ordering exists. Need: position field, reorder commands, mandatory position assignment, dependency-aware display. Requires research on scope (per-parent vs global), enforcement strategy, and integration with existing priority field.",
+        "phase": "core",
+        "labels": [
+          "architecture",
+          "feature",
+          "research-needed"
+        ],
+        "files": null,
+        "acceptance": null,
+        "depends": null,
+        "blockedBy": null
+      },
+      "after": {
+        "title": "Explicit Positional Ordering System",
+        "status": "pending",
+        "priority": "high",
+        "description": "Enable explicit, ID-independent task ordering where position/rank is separate from task ID. Epics, tasks, and subtasks each have shuffleable positions. LLM agents see FORCED priority order with dependency/blocking info. Currently: only categorical priority + creation date ordering exists. Need: position field, reorder commands, mandatory position assignment, dependency-aware display. Requires research on scope (per-parent vs global), enforcement strategy, and integration with existing priority field.",
+        "phase": "core",
+        "labels": [
+          "architecture",
+          "feature",
+          "research-needed"
+        ],
+        "files": null,
+        "acceptance": null,
+        "depends": null,
+        "blockedBy": null
+      },
+      "details": {
+        "operation": "update"
+      }
+    },
+    {
+      "id": "log-1766560706-619005",
+      "timestamp": "2025-12-24T07:18:26Z",
+      "action": "task_created",
+      "taskId": "T806",
+      "actor": "system",
+      "details": {
+        "title": "EPIC: Library Architecture Refactoring (LIBRARY-ARCHITECTURE-SPEC)",
+        "status": "pending",
+        "priority": "high"
+      },
+      "before": null,
+      "after": {
+        "title": "EPIC: Library Architecture Refactoring (LIBRARY-ARCHITECTURE-SPEC)",
+        "status": "pending",
+        "priority": "high"
+      }
+    },
+    {
+      "id": "log-1766560723-7cac26",
+      "timestamp": "2025-12-24T07:18:43Z",
+      "action": "task_created",
+      "taskId": "T807",
+      "actor": "system",
+      "details": {
+        "title": "Phase 1: Add Source Guards to All Libraries",
+        "status": "pending",
+        "priority": "critical"
+      },
+      "before": null,
+      "after": {
+        "title": "Phase 1: Add Source Guards to All Libraries",
+        "status": "pending",
+        "priority": "critical"
+      }
+    },
+    {
+      "id": "log-1766560725-4364d5",
+      "timestamp": "2025-12-24T07:18:45Z",
+      "action": "task_created",
+      "taskId": "T808",
+      "actor": "system",
+      "details": {
+        "title": "Phase 2: Add Layer Headers to All Libraries",
+        "status": "pending",
+        "priority": "high"
+      },
+      "before": null,
+      "after": {
+        "title": "Phase 2: Add Layer Headers to All Libraries",
+        "status": "pending",
+        "priority": "high"
+      }
+    },
+    {
+      "id": "log-1766560727-12373f",
+      "timestamp": "2025-12-24T07:18:47Z",
+      "action": "task_created",
+      "taskId": "T809",
+      "actor": "system",
+      "details": {
+        "title": "Phase 3: Break Circular Dependency Chain",
+        "status": "pending",
+        "priority": "critical"
+      },
+      "before": null,
+      "after": {
+        "title": "Phase 3: Break Circular Dependency Chain",
+        "status": "pending",
+        "priority": "critical"
+      }
+    },
+    {
+      "id": "log-1766560728-2c4adb",
+      "timestamp": "2025-12-24T07:18:48Z",
+      "action": "task_created",
+      "taskId": "T810",
+      "actor": "system",
+      "details": {
+        "title": "Phase 4: Reduce High-Dependency Libraries",
+        "status": "pending",
+        "priority": "high"
+      },
+      "before": null,
+      "after": {
+        "title": "Phase 4: Reduce High-Dependency Libraries",
+        "status": "pending",
+        "priority": "high"
+      }
+    },
+    {
+      "id": "log-1766560731-d8141c",
+      "timestamp": "2025-12-24T07:18:51Z",
+      "action": "task_created",
+      "taskId": "T811",
+      "actor": "system",
+      "details": {
+        "title": "Phase 5: Create Compliance Validation Script",
+        "status": "pending",
+        "priority": "high"
+      },
+      "before": null,
+      "after": {
+        "title": "Phase 5: Create Compliance Validation Script",
+        "status": "pending",
+        "priority": "high"
+      }
+    },
+    {
+      "id": "log-1766560732-aed41d",
+      "timestamp": "2025-12-24T07:18:52Z",
+      "action": "task_created",
+      "taskId": "T812",
+      "actor": "system",
+      "details": {
+        "title": "Phase 6: Library Testing Infrastructure",
+        "status": "pending",
+        "priority": "medium"
+      },
+      "before": null,
+      "after": {
+        "title": "Phase 6: Library Testing Infrastructure",
+        "status": "pending",
+        "priority": "medium"
+      }
+    },
+    {
+      "id": "log-1766560748-0b658e",
+      "timestamp": "2025-12-24T07:19:08Z",
+      "action": "task_created",
+      "taskId": "T813",
+      "actor": "system",
+      "details": {
+        "title": "Add source guards to Layer 0 libs (exit-codes, platform-compat, version)",
+        "status": "pending",
+        "priority": "medium"
+      },
+      "before": null,
+      "after": {
+        "title": "Add source guards to Layer 0 libs (exit-codes, platform-compat, version)",
+        "status": "pending",
+        "priority": "medium"
+      }
+    },
+    {
+      "id": "log-1766560750-674e80",
+      "timestamp": "2025-12-24T07:19:10Z",
+      "action": "task_created",
+      "taskId": "T814",
+      "actor": "system",
+      "details": {
+        "title": "Add source guards to Layer 1 libs (config, error-json, output-format, grammar, dependency-check)",
+        "status": "pending",
+        "priority": "medium"
+      },
+      "before": null,
+      "after": {
+        "title": "Add source guards to Layer 1 libs (config, error-json, output-format, grammar, dependency-check)",
+        "status": "pending",
+        "priority": "medium"
+      }
+    },
+    {
+      "id": "log-1766560751-5a327b",
+      "timestamp": "2025-12-24T07:19:11Z",
+      "action": "task_created",
+      "taskId": "T815",
+      "actor": "system",
+      "details": {
+        "title": "Add source guards to Layer 2 libs (file-ops, validation, logging, backup, hierarchy, migrate)",
+        "status": "pending",
+        "priority": "medium"
+      },
+      "before": null,
+      "after": {
+        "title": "Add source guards to Layer 2 libs (file-ops, validation, logging, backup, hierarchy, migrate)",
+        "status": "pending",
+        "priority": "medium"
+      }
+    },
+    {
+      "id": "log-1766560761-9c25eb",
+      "timestamp": "2025-12-24T07:19:21Z",
+      "action": "task_created",
+      "taskId": "T816",
+      "actor": "system",
+      "details": {
+        "title": "Add source guards to Layer 3 domain libs",
+        "status": "pending",
+        "priority": "medium"
+      },
+      "before": null,
+      "after": {
+        "title": "Add source guards to Layer 3 domain libs",
+        "status": "pending",
+        "priority": "medium"
+      }
+    },
+    {
+      "id": "log-1766560778-fde002",
+      "timestamp": "2025-12-24T07:19:38Z",
+      "action": "task_created",
+      "taskId": "T817",
+      "actor": "system",
+      "details": {
+        "title": "Add LAYER/DEPS/PROVIDES headers to all 21 lib files",
+        "status": "pending",
+        "priority": "medium"
+      },
+      "before": null,
+      "after": {
+        "title": "Add LAYER/DEPS/PROVIDES headers to all 21 lib files",
+        "status": "pending",
+        "priority": "medium"
+      }
+    },
+    {
+      "id": "log-1766560780-3eaf4f",
+      "timestamp": "2025-12-24T07:19:40Z",
+      "action": "task_created",
+      "taskId": "T818",
+      "actor": "system",
+      "details": {
+        "title": "Create lib/atomic-write.sh (Layer 1)",
+        "status": "pending",
+        "priority": "medium"
+      },
+      "before": null,
+      "after": {
+        "title": "Create lib/atomic-write.sh (Layer 1)",
+        "status": "pending",
+        "priority": "medium"
+      }
+    },
+    {
+      "id": "log-1766560781-8668fa",
+      "timestamp": "2025-12-24T07:19:41Z",
+      "action": "task_created",
+      "taskId": "T819",
+      "actor": "system",
+      "details": {
+        "title": "Update file-ops.sh to use atomic-write.sh",
+        "status": "pending",
+        "priority": "medium"
+      },
+      "before": null,
+      "after": {
+        "title": "Update file-ops.sh to use atomic-write.sh",
+        "status": "pending",
+        "priority": "medium"
+      }
+    },
+    {
+      "id": "log-1766560785-b1e080",
+      "timestamp": "2025-12-24T07:19:45Z",
+      "action": "task_created",
+      "taskId": "T820",
+      "actor": "system",
+      "details": {
+        "title": "Update validation.sh to use atomic-write.sh",
+        "status": "pending",
+        "priority": "medium"
+      },
+      "before": null,
+      "after": {
+        "title": "Update validation.sh to use atomic-write.sh",
+        "status": "pending",
+        "priority": "medium"
+      }
+    },
+    {
+      "id": "log-1766560786-514e5e",
+      "timestamp": "2025-12-24T07:19:46Z",
+      "action": "task_created",
+      "taskId": "T821",
+      "actor": "system",
+      "details": {
+        "title": "Update migrate.sh to use atomic-write.sh",
+        "status": "pending",
+        "priority": "medium"
+      },
+      "before": null,
+      "after": {
+        "title": "Update migrate.sh to use atomic-write.sh",
+        "status": "pending",
+        "priority": "medium"
+      }
+    },
+    {
+      "id": "log-1766560787-034640",
+      "timestamp": "2025-12-24T07:19:47Z",
+      "action": "task_created",
+      "taskId": "T822",
+      "actor": "system",
+      "details": {
+        "title": "Verify no circular dependencies remain",
+        "status": "pending",
+        "priority": "medium"
+      },
+      "before": null,
+      "after": {
+        "title": "Verify no circular dependencies remain",
+        "status": "pending",
+        "priority": "medium"
+      }
+    },
+    {
+      "id": "log-1766560803-541160",
+      "timestamp": "2025-12-24T07:20:03Z",
+      "action": "task_created",
+      "taskId": "T823",
+      "actor": "system",
+      "details": {
+        "title": "Refactor deletion-strategy.sh (6 deps → 3)",
+        "status": "pending",
+        "priority": "medium"
+      },
+      "before": null,
+      "after": {
+        "title": "Refactor deletion-strategy.sh (6 deps → 3)",
+        "status": "pending",
+        "priority": "medium"
+      }
+    },
+    {
+      "id": "log-1766560805-ffbff1",
+      "timestamp": "2025-12-24T07:20:05Z",
+      "action": "task_created",
+      "taskId": "T824",
+      "actor": "system",
+      "details": {
+        "title": "Refactor cancel-ops.sh (5 deps → 3)",
+        "status": "pending",
+        "priority": "medium"
+      },
+      "before": null,
+      "after": {
+        "title": "Refactor cancel-ops.sh (5 deps → 3)",
+        "status": "pending",
+        "priority": "medium"
+      }
+    },
+    {
+      "id": "log-1766560806-9d4995",
+      "timestamp": "2025-12-24T07:20:06Z",
+      "action": "task_created",
+      "taskId": "T825",
+      "actor": "system",
+      "details": {
+        "title": "Refactor validation.sh (5 deps → 3)",
+        "status": "pending",
+        "priority": "medium"
+      },
+      "before": null,
+      "after": {
+        "title": "Refactor validation.sh (5 deps → 3)",
+        "status": "pending",
+        "priority": "medium"
+      }
+    },
+    {
+      "id": "log-1766560808-eccd50",
+      "timestamp": "2025-12-24T07:20:08Z",
+      "action": "task_created",
+      "taskId": "T826",
+      "actor": "system",
+      "details": {
+        "title": "Refactor backup.sh (4 deps → 3)",
+        "status": "pending",
+        "priority": "medium"
+      },
+      "before": null,
+      "after": {
+        "title": "Refactor backup.sh (4 deps → 3)",
+        "status": "pending",
+        "priority": "medium"
+      }
+    },
+    {
+      "id": "log-1766560810-5110b8",
+      "timestamp": "2025-12-24T07:20:10Z",
+      "action": "task_created",
+      "taskId": "T827",
+      "actor": "system",
+      "details": {
+        "title": "Refactor archive-cancel.sh (4 deps → 3)",
+        "status": "pending",
+        "priority": "medium"
+      },
+      "before": null,
+      "after": {
+        "title": "Refactor archive-cancel.sh (4 deps → 3)",
+        "status": "pending",
+        "priority": "medium"
+      }
+    },
+    {
+      "id": "log-1766560832-002daf",
+      "timestamp": "2025-12-24T07:20:32Z",
+      "action": "task_created",
+      "taskId": "T828",
+      "actor": "system",
+      "details": {
+        "title": "Implement source guard checker in dev/check-lib-compliance.sh",
+        "status": "pending",
+        "priority": "medium"
+      },
+      "before": null,
+      "after": {
+        "title": "Implement source guard checker in dev/check-lib-compliance.sh",
+        "status": "pending",
+        "priority": "medium"
+      }
+    },
+    {
+      "id": "log-1766560833-849e8d",
+      "timestamp": "2025-12-24T07:20:33Z",
+      "action": "task_created",
+      "taskId": "T829",
+      "actor": "system",
+      "details": {
+        "title": "Implement layer header checker",
+        "status": "pending",
+        "priority": "medium"
+      },
+      "before": null,
+      "after": {
+        "title": "Implement layer header checker",
+        "status": "pending",
+        "priority": "medium"
+      }
+    },
+    {
+      "id": "log-1766560835-f31a02",
+      "timestamp": "2025-12-24T07:20:35Z",
+      "action": "task_created",
+      "taskId": "T830",
+      "actor": "system",
+      "details": {
+        "title": "Implement circular dependency detector",
+        "status": "pending",
+        "priority": "medium"
+      },
+      "before": null,
+      "after": {
+        "title": "Implement circular dependency detector",
+        "status": "pending",
+        "priority": "medium"
+      }
+    },
+    {
+      "id": "log-1766560836-4c6b39",
+      "timestamp": "2025-12-24T07:20:36Z",
+      "action": "task_created",
+      "taskId": "T831",
+      "actor": "system",
+      "details": {
+        "title": "Implement dependency count validator",
+        "status": "pending",
+        "priority": "medium"
+      },
+      "before": null,
+      "after": {
+        "title": "Implement dependency count validator",
+        "status": "pending",
+        "priority": "medium"
+      }
+    },
+    {
+      "id": "log-1766560838-36acbd",
+      "timestamp": "2025-12-24T07:20:38Z",
+      "action": "task_created",
+      "taskId": "T832",
+      "actor": "system",
+      "details": {
+        "title": "Create tests/unit/lib/ directory structure",
+        "status": "pending",
+        "priority": "medium"
+      },
+      "before": null,
+      "after": {
+        "title": "Create tests/unit/lib/ directory structure",
+        "status": "pending",
+        "priority": "medium"
+      }
+    },
+    {
+      "id": "log-1766560839-338ecf",
+      "timestamp": "2025-12-24T07:20:39Z",
+      "action": "task_created",
+      "taskId": "T833",
+      "actor": "system",
+      "details": {
+        "title": "Add BATS tests for pure validation functions",
+        "status": "pending",
+        "priority": "medium"
+      },
+      "before": null,
+      "after": {
+        "title": "Add BATS tests for pure validation functions",
+        "status": "pending",
+        "priority": "medium"
+      }
+    },
+    {
+      "id": "log-1766560841-7628b4",
+      "timestamp": "2025-12-24T07:20:41Z",
+      "action": "task_created",
+      "taskId": "T834",
+      "actor": "system",
+      "details": {
+        "title": "Add mock helpers for dependency injection",
+        "status": "pending",
+        "priority": "medium"
+      },
+      "before": null,
+      "after": {
+        "title": "Add mock helpers for dependency injection",
+        "status": "pending",
+        "priority": "medium"
+      }
+    },
+    {
+      "id": "log-1766560842-51bf5e",
+      "timestamp": "2025-12-24T07:20:42Z",
+      "action": "task_created",
+      "taskId": "T835",
+      "actor": "system",
+      "details": {
+        "title": "Verify all libs sourceable in isolation",
+        "status": "pending",
+        "priority": "medium"
+      },
+      "before": null,
+      "after": {
+        "title": "Verify all libs sourceable in isolation",
+        "status": "pending",
+        "priority": "medium"
+      }
+    },
+    {
+      "id": "log_2eefaa591f6c",
+      "timestamp": "2025-12-24T07:22:47Z",
+      "sessionId": "session_20251223_203915_5fb3b1",
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T798",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-24T07:22:47Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_70e2977b16d2",
+      "timestamp": "2025-12-24T07:22:47Z",
+      "sessionId": "session_20251223_203915_5fb3b1",
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T807",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-24T07:22:47Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_5d61404a3943",
+      "timestamp": "2025-12-24T07:22:49Z",
+      "sessionId": "session_20251223_203915_5fb3b1",
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T808",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-24T07:22:49Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_dfcb7d045677",
+      "timestamp": "2025-12-24T07:22:55Z",
+      "sessionId": "session_20251223_203915_5fb3b1",
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T799",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-24T07:22:55Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_e0b0bb22509d",
+      "timestamp": "2025-12-24T07:23:01Z",
+      "sessionId": "session_20251223_203915_5fb3b1",
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T813",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-24T07:23:01Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_068f7ccf04f8",
+      "timestamp": "2025-12-24T07:23:02Z",
+      "sessionId": "session_20251223_203915_5fb3b1",
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T814",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-24T07:23:02Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_60fb2c7fdb3b",
+      "timestamp": "2025-12-24T07:23:03Z",
+      "sessionId": "session_20251223_203915_5fb3b1",
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T815",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-24T07:23:02Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_f701393d9e56",
+      "timestamp": "2025-12-24T07:23:03Z",
+      "sessionId": "session_20251223_203915_5fb3b1",
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T816",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-24T07:23:03Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_eddd404fe2e9",
+      "timestamp": "2025-12-24T07:23:04Z",
+      "sessionId": "session_20251223_203915_5fb3b1",
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T817",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-24T07:23:04Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log-1766561297-c47d2e",
+      "timestamp": "2025-12-24T07:28:17Z",
+      "action": "task_created",
+      "taskId": "T836",
+      "actor": "system",
+      "details": {
+        "title": "jq Wrapper Functions Refactoring",
+        "status": "pending",
+        "priority": "high"
+      },
+      "before": null,
+      "after": {
+        "title": "jq Wrapper Functions Refactoring",
+        "status": "pending",
+        "priority": "high"
+      }
+    },
+    {
+      "id": "log-1766561310-0d9b11",
+      "timestamp": "2025-12-24T07:28:30Z",
+      "action": "task_created",
+      "taskId": "T837",
+      "actor": "system",
+      "details": {
+        "title": "Create get_task_field wrapper (522 uses)",
+        "status": "pending",
+        "priority": "critical"
+      },
+      "before": null,
+      "after": {
+        "title": "Create get_task_field wrapper (522 uses)",
+        "status": "pending",
+        "priority": "critical"
+      }
+    },
+    {
+      "id": "log-1766561313-9fa831",
+      "timestamp": "2025-12-24T07:28:33Z",
+      "action": "task_created",
+      "taskId": "T838",
+      "actor": "system",
+      "details": {
+        "title": "Create get_tasks_by_status wrapper (80 uses)",
+        "status": "pending",
+        "priority": "critical"
+      },
+      "before": null,
+      "after": {
+        "title": "Create get_tasks_by_status wrapper (80 uses)",
+        "status": "pending",
+        "priority": "critical"
+      }
+    },
+    {
+      "id": "log-1766561314-d26811",
+      "timestamp": "2025-12-24T07:28:35Z",
+      "action": "task_created",
+      "taskId": "T839",
+      "actor": "system",
+      "details": {
+        "title": "Create get_task_by_id wrapper (68 uses)",
+        "status": "pending",
+        "priority": "critical"
+      },
+      "before": null,
+      "after": {
+        "title": "Create get_task_by_id wrapper (68 uses)",
+        "status": "pending",
+        "priority": "critical"
+      }
+    },
+    {
+      "id": "log-1766561324-ac4fa5",
+      "timestamp": "2025-12-24T07:28:44Z",
+      "action": "task_created",
+      "taskId": "T840",
+      "actor": "system",
+      "details": {
+        "title": "Create array_to_json wrapper (48 uses)",
+        "status": "pending",
+        "priority": "high"
+      },
+      "before": null,
+      "after": {
+        "title": "Create array_to_json wrapper (48 uses)",
+        "status": "pending",
+        "priority": "high"
+      }
+    },
+    {
+      "id": "log-1766561326-487e1d",
+      "timestamp": "2025-12-24T07:28:46Z",
+      "action": "task_created",
+      "taskId": "T841",
+      "actor": "system",
+      "details": {
+        "title": "Create count_tasks_by_status wrapper (46 uses)",
+        "status": "pending",
+        "priority": "high"
+      },
+      "before": null,
+      "after": {
+        "title": "Create count_tasks_by_status wrapper (46 uses)",
+        "status": "pending",
+        "priority": "high"
+      }
+    },
+    {
+      "id": "log-1766561328-46979e",
+      "timestamp": "2025-12-24T07:28:48Z",
+      "action": "task_created",
+      "taskId": "T842",
+      "actor": "system",
+      "details": {
+        "title": "Create has_children wrapper (33 uses)",
+        "status": "pending",
+        "priority": "high"
+      },
+      "before": null,
+      "after": {
+        "title": "Create has_children wrapper (33 uses)",
+        "status": "pending",
+        "priority": "high"
+      }
+    },
+    {
+      "id": "log-1766561338-302a04",
+      "timestamp": "2025-12-24T07:28:58Z",
+      "action": "task_created",
+      "taskId": "T843",
+      "actor": "system",
+      "details": {
+        "title": "Create get_focus_task wrapper (26 uses)",
+        "status": "pending",
+        "priority": "medium"
+      },
+      "before": null,
+      "after": {
+        "title": "Create get_focus_task wrapper (26 uses)",
+        "status": "pending",
+        "priority": "medium"
+      }
+    },
+    {
+      "id": "log-1766561340-0e3c4f",
+      "timestamp": "2025-12-24T07:29:00Z",
+      "action": "task_created",
+      "taskId": "T844",
+      "actor": "system",
+      "details": {
+        "title": "Create get_task_count wrapper (19 uses)",
+        "status": "pending",
+        "priority": "medium"
+      },
+      "before": null,
+      "after": {
+        "title": "Create get_task_count wrapper (19 uses)",
+        "status": "pending",
+        "priority": "medium"
+      }
+    },
+    {
+      "id": "log-1766561342-fa5c07",
+      "timestamp": "2025-12-24T07:29:02Z",
+      "action": "task_created",
+      "taskId": "T845",
+      "actor": "system",
+      "details": {
+        "title": "Create get_current_phase wrapper (19 uses)",
+        "status": "pending",
+        "priority": "medium"
+      },
+      "before": null,
+      "after": {
+        "title": "Create get_current_phase wrapper (19 uses)",
+        "status": "pending",
+        "priority": "medium"
+      }
+    },
+    {
+      "id": "log-1766561354-a6e712",
+      "timestamp": "2025-12-24T07:29:14Z",
+      "action": "task_created",
+      "taskId": "T846",
+      "actor": "system",
+      "details": {
+        "title": "Create lib/jq-helpers.sh with all wrapper functions",
+        "status": "pending",
+        "priority": "critical"
+      },
+      "before": null,
+      "after": {
+        "title": "Create lib/jq-helpers.sh with all wrapper functions",
+        "status": "pending",
+        "priority": "critical"
+      }
+    },
+    {
+      "id": "log-1766561355-d3dd59",
+      "timestamp": "2025-12-24T07:29:15Z",
+      "action": "task_created",
+      "taskId": "T847",
+      "actor": "system",
+      "details": {
+        "title": "Refactor archive.sh (169 jq invocations)",
+        "status": "pending",
+        "priority": "high"
+      },
+      "before": null,
+      "after": {
+        "title": "Refactor archive.sh (169 jq invocations)",
+        "status": "pending",
+        "priority": "high"
+      }
+    },
+    {
+      "id": "log-1766561357-6d9884",
+      "timestamp": "2025-12-24T07:29:17Z",
+      "action": "task_created",
+      "taskId": "T848",
+      "actor": "system",
+      "details": {
+        "title": "Refactor update-task.sh (108 jq invocations)",
+        "status": "pending",
+        "priority": "high"
+      },
+      "before": null,
+      "after": {
+        "title": "Refactor update-task.sh (108 jq invocations)",
+        "status": "pending",
+        "priority": "high"
+      }
+    },
+    {
+      "id": "log_4da2966a4726",
+      "timestamp": "2025-12-24T07:29:26Z",
+      "sessionId": "session_20251223_203915_5fb3b1",
+      "action": "task_updated",
+      "actor": "system",
+      "taskId": "T846",
+      "before": {
+        "title": "Create lib/jq-helpers.sh with all wrapper functions",
+        "status": "pending",
+        "priority": "critical",
+        "description": "Create new library file containing all 9 jq wrapper functions. Must follow existing lib/ conventions: source guards, error handling, consistent naming. Depends on all wrapper function tasks being defined.",
+        "phase": "core",
+        "labels": null,
+        "files": null,
+        "acceptance": null,
+        "depends": null,
+        "blockedBy": null
+      },
+      "after": {
+        "title": "Create lib/jq-helpers.sh with all wrapper functions",
+        "status": "pending",
+        "priority": "critical",
+        "description": "Create new library file containing all 9 jq wrapper functions. Must follow existing lib/ conventions: source guards, error handling, consistent naming. Depends on all wrapper function tasks being defined.",
+        "phase": "core",
+        "labels": null,
+        "files": null,
+        "acceptance": null,
+        "depends": [
+          "T837",
+          "T838",
+          "T839",
+          "T840",
+          "T841",
+          "T842",
+          "T843",
+          "T844",
+          "T845"
+        ],
+        "blockedBy": null
+      },
+      "details": {
+        "operation": "update"
+      }
+    },
+    {
+      "id": "log_e09ac0fce27f",
+      "timestamp": "2025-12-24T07:29:28Z",
+      "sessionId": "session_20251223_203915_5fb3b1",
+      "action": "task_updated",
+      "actor": "system",
+      "taskId": "T847",
+      "before": {
+        "title": "Refactor archive.sh (169 jq invocations)",
+        "status": "pending",
+        "priority": "high",
+        "description": "Refactor scripts/archive.sh to use jq wrapper functions. File has 169 jq invocations - highest in codebase. Major token savings opportunity.",
+        "phase": "core",
+        "labels": null,
+        "files": null,
+        "acceptance": null,
+        "depends": null,
+        "blockedBy": null
+      },
+      "after": {
+        "title": "Refactor archive.sh (169 jq invocations)",
+        "status": "pending",
+        "priority": "high",
+        "description": "Refactor scripts/archive.sh to use jq wrapper functions. File has 169 jq invocations - highest in codebase. Major token savings opportunity.",
+        "phase": "core",
+        "labels": null,
+        "files": null,
+        "acceptance": null,
+        "depends": [
+          "T846"
+        ],
+        "blockedBy": null
+      },
+      "details": {
+        "operation": "update"
+      }
+    },
+    {
+      "id": "log_7cd5e4e09486",
+      "timestamp": "2025-12-24T07:29:30Z",
+      "sessionId": "session_20251223_203915_5fb3b1",
+      "action": "task_updated",
+      "actor": "system",
+      "taskId": "T848",
+      "before": {
+        "title": "Refactor update-task.sh (108 jq invocations)",
+        "status": "pending",
+        "priority": "high",
+        "description": "Refactor scripts/update-task.sh to use jq wrapper functions. File has 108 jq invocations - second highest in codebase.",
+        "phase": "core",
+        "labels": null,
+        "files": null,
+        "acceptance": null,
+        "depends": null,
+        "blockedBy": null
+      },
+      "after": {
+        "title": "Refactor update-task.sh (108 jq invocations)",
+        "status": "pending",
+        "priority": "high",
+        "description": "Refactor scripts/update-task.sh to use jq wrapper functions. File has 108 jq invocations - second highest in codebase.",
+        "phase": "core",
+        "labels": null,
+        "files": null,
+        "acceptance": null,
+        "depends": [
+          "T846"
+        ],
+        "blockedBy": null
+      },
+      "details": {
+        "operation": "update"
+      }
+    },
+    {
+      "id": "log_00de1f00682b",
+      "timestamp": "2025-12-24T07:36:40Z",
+      "sessionId": "session_20251223_203915_5fb3b1",
+      "action": "focus_changed",
+      "actor": "claude",
+      "taskId": null,
+      "before": null,
+      "after": {
+        "currentTask": "T809"
+      },
+      "details": null
+    },
+    {
+      "id": "log_d2add1cc1d8a",
+      "timestamp": "2025-12-24T07:37:45Z",
+      "sessionId": "session_20251223_203915_5fb3b1",
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T837",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-24T07:37:45Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_4e7225f32629",
+      "timestamp": "2025-12-24T07:37:45Z",
+      "sessionId": "session_20251223_203915_5fb3b1",
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T838",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-24T07:37:45Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_d4a065d56f83",
+      "timestamp": "2025-12-24T07:37:46Z",
+      "sessionId": "session_20251223_203915_5fb3b1",
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T839",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-24T07:37:46Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_d8a6bcb7110d",
+      "timestamp": "2025-12-24T07:37:47Z",
+      "sessionId": "session_20251223_203915_5fb3b1",
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T840",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-24T07:37:47Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_7ad4293e03c6",
+      "timestamp": "2025-12-24T07:38:00Z",
+      "sessionId": "session_20251223_203915_5fb3b1",
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T841",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-24T07:37:59Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_667b3d210421",
+      "timestamp": "2025-12-24T07:38:00Z",
+      "sessionId": "session_20251223_203915_5fb3b1",
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T842",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-24T07:38:00Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_90944e4e0e6d",
+      "timestamp": "2025-12-24T07:38:01Z",
+      "sessionId": "session_20251223_203915_5fb3b1",
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T843",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-24T07:38:01Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_e2487fdc6516",
+      "timestamp": "2025-12-24T07:38:02Z",
+      "sessionId": "session_20251223_203915_5fb3b1",
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T844",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-24T07:38:01Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_23c57d9ea95f",
+      "timestamp": "2025-12-24T07:38:10Z",
+      "sessionId": "session_20251223_203915_5fb3b1",
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T845",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-24T07:38:10Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_707a8f59b939",
+      "timestamp": "2025-12-24T07:38:11Z",
+      "sessionId": "session_20251223_203915_5fb3b1",
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T846",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-24T07:38:10Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
       }
     }
   ]
