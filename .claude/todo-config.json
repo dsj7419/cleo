@@ -80,6 +80,13 @@
     "autoCompleteParent": true,
     "autoCompleteMode": "auto"
   },
+  "cancellation": {
+    "cascadeConfirmThreshold": 10,
+    "requireReason": true,
+    "daysUntilArchive": 3,
+    "allowCascade": true,
+    "defaultChildStrategy": "block"
+  },
   "backup": {
     "enabled": true
   }

@@ -41,7 +41,7 @@ All tasks logged in claude-todo with label `consensus-framework`.
 | T187 | Bug reproduction tests | phase-1,testing | COMPLETE |
 | T188 | Baseline metrics extraction | phase-1,metrics | COMPLETE |
 
-**Phase 1 Output**: `docs/specs/research/standards-research-findings.md`, `docs/specs/research/documentation-audit-findings.md`
+**Phase 1 Output**: `docs/specs/research/consensus-framework/standards-research-findings.md`, `docs/specs/research/consensus-framework/documentation-audit-findings.md`
 
 ### Phase 2 Subtasks (Specialist Agents)
 
@@ -244,7 +244,7 @@ claude-todo deps T184
 # Work on subtasks
 claude-todo update T185 --status active
 # ... do work ...
-claude-todo update T185 --notes "DOC: docs/specs/research/phase1-evidence.md"
+claude-todo update T185 --notes "DOC: docs/specs/research/consensus-framework/standards-research-findings.md"
 claude-todo complete T185
 
 # Repeat for T186, T187, T188
@@ -369,7 +369,7 @@ claude-todo show T200 --history
 Current investigation outputs located at:
 
 ```
-docs/specs/research/
+docs/specs/research/consensus-framework/
 ├── standards-research-findings.md          (386 lines, Wave 1)
 ├── documentation-audit-findings.md         (329 lines, Wave 1)
 ├── agent-technical-findings.md             (223 lines, Wave 2)
@@ -381,11 +381,10 @@ docs/specs/research/
 ├── agent-rfc2119-findings.md               (280 lines, Wave 3)
 ├── agent-crossref-findings.md              (266 lines, Wave 3)
 ├── synthesis-voting-matrix.md              (Wave 4)
-├── CONSENSUS-REPORT.md                     (Wave 4)
-└── (this implementation report)             (Wave 4)
+└── CONSENSUS-REPORT.md                     (Wave 4)
 ```
 
-**Total Evidence Files**: 13 documents
+**Total Evidence Files**: 12 documents
 **Total Lines of Analysis**: ~3,600+ lines
 **Agent Deployments**: 10 specialist agents + 1 synthesis
 
@@ -422,7 +421,7 @@ claude-todo list --label consensus-framework --status pending
 
 | Phase | Parent Task | Subtasks | Primary Output |
 |-------|-------------|----------|----------------|
-| **1** | T184 | T185-T188 | phase1-evidence.md |
+| **1** | T184 | T185-T188 | standards-research-findings.md, documentation-audit-findings.md |
 | **2** | T189 | T190-T194 | agent-*-findings.md (5 files) |
 | **3** | T195 | T196-T198 | synthesis-*.md (voting, conflicts) |
 | **4** | T199 | T200-T203 | CONSENSUS-REPORT.md |

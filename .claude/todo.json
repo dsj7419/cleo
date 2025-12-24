@@ -121,20 +121,20 @@
       }
     ]
   },
-  "lastUpdated": "2025-12-24T01:23:49Z",
+  "lastUpdated": "2025-12-24T03:28:57Z",
   "_meta": {
-    "checksum": "6f1bbd922854ffba",
+    "checksum": "12a699d356bc6f33",
     "configVersion": "2.1.0",
     "lastSessionId": null,
-    "activeSession": "session_20251223_161403_c59c69",
-    "lastModified": "2025-12-24T01:01:18Z",
+    "activeSession": null,
+    "lastModified": "2025-12-24T01:44:56Z",
     "version": "2.3.0",
     "schemaVersion": "2.3.0"
   },
   "focus": {
     "currentTask": null,
     "blockedUntil": null,
-    "sessionNote": "Completed 7-agent consensus framework review of EPIC T700. Final design: delete as primary cmd, exit codes 16-18, transactional delete pattern, 18 subtasks validated.",
+    "sessionNote": "Epic T700 Complete: Task Deletion System v0.32.0 - 18 subtasks, 161+ tests, full documentation. delete/uncancel commands working.",
     "nextAction": "T481 EPIC Batch 4: Start with T495 (verify add-task.sh dry-run format), then T496 (input validation). After Batch 4, do Batch 5 (T497-T501 docs/tests). Final: version bump patch, full test suite, commit. Spec: docs/specs/LLM-AGENT-FIRST-SPEC.md",
     "currentPhase": "core"
   },
@@ -1424,7 +1424,7 @@
     {
       "id": "T351",
       "title": "Test JSON output feature",
-      "status": "pending",
+      "status": "cancelled",
       "priority": "low",
       "createdAt": "2025-12-17T21:09:42Z",
       "phase": "core",
@@ -1434,7 +1434,12 @@
       ],
       "type": "task",
       "parentId": null,
-      "size": null
+      "size": null,
+      "cancelledAt": "2025-12-24T03:25:31Z",
+      "cancelReason": "Obsolete debug task - JSON output feature fully implemented and tested in output-format.bats",
+      "notes": [
+        "[CANCELLED 2025-12-24T03:25:31Z] Obsolete debug task - JSON output feature fully implemented and tested in output-format.bats"
+      ]
     },
     {
       "id": "T352",
@@ -1467,7 +1472,7 @@
     {
       "id": "T354",
       "title": "Test JSON output clean",
-      "status": "pending",
+      "status": "cancelled",
       "priority": "low",
       "createdAt": "2025-12-17T21:10:13Z",
       "phase": "core",
@@ -1477,7 +1482,12 @@
       ],
       "type": "task",
       "parentId": null,
-      "size": null
+      "size": null,
+      "cancelledAt": "2025-12-24T03:25:32Z",
+      "cancelReason": "Obsolete debug task - JSON output clean feature implemented and tested",
+      "notes": [
+        "[CANCELLED 2025-12-24T03:25:32Z] Obsolete debug task - JSON output clean feature implemented and tested"
+      ]
     },
     {
       "id": "T355",
@@ -1496,7 +1506,7 @@
     {
       "id": "T356",
       "title": "Test text output",
-      "status": "pending",
+      "status": "cancelled",
       "priority": "medium",
       "createdAt": "2025-12-17T21:10:18Z",
       "phase": "core",
@@ -1506,24 +1516,34 @@
       ],
       "type": "task",
       "parentId": null,
-      "size": null
+      "size": null,
+      "cancelledAt": "2025-12-24T03:28:57Z",
+      "cancelReason": "Test scaffolding - obsolete Test text output",
+      "notes": [
+        "[CANCELLED 2025-12-24T03:28:57Z] Test scaffolding - obsolete Test text output"
+      ]
     },
     {
       "id": "T357",
       "title": "Test quiet mode",
-      "status": "pending",
+      "status": "cancelled",
       "priority": "low",
       "createdAt": "2025-12-17T21:10:26Z",
       "phase": "core",
       "type": "task",
       "parentId": null,
       "size": null,
-      "labels": []
+      "labels": [],
+      "cancelledAt": "2025-12-24T03:25:34Z",
+      "cancelReason": "Obsolete debug task - quiet mode implemented in 38+ scripts with -q flag",
+      "notes": [
+        "[CANCELLED 2025-12-24T03:25:34Z] Obsolete debug task - quiet mode implemented in 38+ scripts with -q flag"
+      ]
     },
     {
       "id": "T358",
       "title": "Test TTY auto-detect",
-      "status": "pending",
+      "status": "cancelled",
       "priority": "low",
       "createdAt": "2025-12-17T21:10:45Z",
       "phase": "core",
@@ -1533,7 +1553,12 @@
       ],
       "type": "task",
       "parentId": null,
-      "size": null
+      "size": null,
+      "cancelledAt": "2025-12-24T03:25:36Z",
+      "cancelReason": "Obsolete debug task - TTY auto-detect implemented and tested in resolve_format()",
+      "notes": [
+        "[CANCELLED 2025-12-24T03:25:36Z] Obsolete debug task - TTY auto-detect implemented and tested in resolve_format()"
+      ]
     },
     {
       "id": "T359",
@@ -1552,14 +1577,19 @@
     {
       "id": "T360",
       "title": "Test pipe",
-      "status": "pending",
+      "status": "cancelled",
       "priority": "low",
       "createdAt": "2025-12-17T21:10:54Z",
       "phase": "core",
       "type": "task",
       "parentId": null,
       "size": null,
-      "labels": []
+      "labels": [],
+      "cancelledAt": "2025-12-24T03:25:38Z",
+      "cancelReason": "Obsolete debug task - pipe detection for JSON auto-output implemented and tested",
+      "notes": [
+        "[CANCELLED 2025-12-24T03:25:38Z] Obsolete debug task - pipe detection for JSON auto-output implemented and tested"
+      ]
     },
     {
       "id": "T361",
@@ -1578,26 +1608,36 @@
     {
       "id": "T362",
       "title": "Test pipe JSON",
-      "status": "pending",
+      "status": "cancelled",
       "priority": "low",
       "createdAt": "2025-12-17T21:11:28Z",
       "phase": "core",
       "type": "task",
       "parentId": null,
       "size": null,
-      "labels": []
+      "labels": [],
+      "cancelledAt": "2025-12-24T03:25:40Z",
+      "cancelReason": "Obsolete debug task - pipe JSON output implemented and tested",
+      "notes": [
+        "[CANCELLED 2025-12-24T03:25:40Z] Obsolete debug task - pipe JSON output implemented and tested"
+      ]
     },
     {
       "id": "T363",
       "title": "Test direct pipe",
-      "status": "pending",
+      "status": "cancelled",
       "priority": "low",
       "createdAt": "2025-12-17T21:11:35Z",
       "phase": "core",
       "type": "task",
       "parentId": null,
       "size": null,
-      "labels": []
+      "labels": [],
+      "cancelledAt": "2025-12-24T03:25:42Z",
+      "cancelReason": "Obsolete debug task - direct pipe output implemented and tested",
+      "notes": [
+        "[CANCELLED 2025-12-24T03:25:42Z] Obsolete debug task - direct pipe output implemented and tested"
+      ]
     },
     {
       "id": "T364",
@@ -1616,14 +1656,19 @@
     {
       "id": "T365",
       "title": "Debug TTY",
-      "status": "pending",
+      "status": "cancelled",
       "priority": "low",
       "createdAt": "2025-12-17T21:11:42Z",
       "phase": "core",
       "type": "task",
       "parentId": null,
       "size": null,
-      "labels": []
+      "labels": [],
+      "cancelledAt": "2025-12-24T03:25:44Z",
+      "cancelReason": "Obsolete debug artifact - TTY debugging session completed, feature released",
+      "notes": [
+        "[CANCELLED 2025-12-24T03:25:44Z] Obsolete debug artifact - TTY debugging session completed, feature released"
+      ]
     },
     {
       "id": "T366",
@@ -1642,19 +1687,24 @@
     {
       "id": "T367",
       "title": "Test env format",
-      "status": "pending",
+      "status": "cancelled",
       "priority": "low",
       "createdAt": "2025-12-17T21:12:14Z",
       "phase": "core",
       "type": "task",
       "parentId": null,
       "size": null,
-      "labels": []
+      "labels": [],
+      "cancelledAt": "2025-12-24T03:25:46Z",
+      "cancelReason": "Obsolete debug task - CLAUDE_TODO_FORMAT env var implemented and tested",
+      "notes": [
+        "[CANCELLED 2025-12-24T03:25:46Z] Obsolete debug task - CLAUDE_TODO_FORMAT env var implemented and tested"
+      ]
     },
     {
       "id": "T368",
       "title": "New test task without prefix",
-      "status": "pending",
+      "status": "cancelled",
       "priority": "medium",
       "createdAt": "2025-12-17T22:42:11Z",
       "phase": "setup",
@@ -1664,7 +1714,12 @@
       ],
       "type": "task",
       "parentId": null,
-      "size": null
+      "size": null,
+      "cancelledAt": "2025-12-24T03:28:26Z",
+      "cancelReason": "Test scaffolding - New test task without prefix",
+      "notes": [
+        "[CANCELLED 2025-12-24T03:28:26Z] Test scaffolding - New test task without prefix"
+      ]
     },
     {
       "id": "T369",
@@ -2151,7 +2206,7 @@
       "status": "pending",
       "priority": "medium",
       "type": "task",
-      "parentId": "T382",
+      "parentId": "T752",
       "createdAt": "2025-12-18T00:44:07Z",
       "phase": "core",
       "description": "Review the interactive config editor for completeness and usability:\n\nCurrent implementation: scripts/config.sh cmd_edit() function\n\nItems to review:\n1. Menu categories - do they cover all config sections?\n   - Currently shows: Output, Archive, Logging, Validation, Defaults, Session, Display, Backup, CLI\n   - Verify all match actual schema sections\n   \n2. Value editing - does it handle all types correctly?\n   - Booleans (true/false toggle)\n   - Enums (selection from valid values)\n   - Integers (with min/max validation)\n   - Strings (free-form input)\n   - Arrays (for labels, directories)\n   \n3. Scope handling\n   - Project config vs global config editing\n   - --global flag should work with edit subcommand\n   \n4. Validation\n   - Schema validation before save\n   - Type checking on input\n   - Range validation for integers\n   \n5. UX improvements\n   - Clear current value display\n   - Help text for each setting\n   - Undo/cancel support\n   - Confirmation before save\n   \n6. Edge cases\n   - Missing config file (create new?)\n   - Invalid existing config\n   - Permission errors\n\nTest scenarios:\n- Edit project config values\n- Edit global config values  \n- Cancel without saving\n- Invalid input handling\n- Nested settings (validation.phaseValidation.*)",
@@ -2216,7 +2271,7 @@
       "status": "pending",
       "priority": "medium",
       "type": "task",
-      "parentId": "T382",
+      "parentId": "T752",
       "createdAt": "2025-12-18T00:44:49Z",
       "phase": "polish",
       "description": "Config system needs comprehensive test coverage:\n\nTest categories:\n\n1. Unit tests for lib/config.sh\n   - get_config_value() priority resolution\n   - set_config_value() writes correctly\n   - get_effective_config() merges properly\n   - Environment variable detection\n   - Path parsing (dotted paths like output.defaultFormat)\n   \n2. Integration tests for config command\n   - ct config show (all, section, specific value)\n   - ct config get (single value retrieval)\n   - ct config set (update and validate)\n   - ct config list (all keys with values)\n   - ct config reset (restore defaults)\n   - ct config validate (schema validation)\n   - --global flag works for all subcommands\n   - --format json produces valid JSON\n   - --dry-run doesn't modify files\n\n3. Priority resolution tests\n   - CLI flag overrides everything\n   - Env var overrides config files\n   - Project config overrides global\n   - Global config overrides defaults\n   - Test each priority level\n   \n4. Settings implementation tests\n   - Each implemented setting actually affects behavior\n   - archive.* settings control archiving\n   - output.* settings control display\n   - logging.* settings control logging\n   \n5. Error handling tests\n   - Missing config file\n   - Invalid JSON\n   - Schema validation failures\n   - Permission errors\n   - Invalid config paths\n\nLocation: tests/unit/config.bats, tests/integration/config.bats",
@@ -2234,7 +2289,7 @@
       "status": "pending",
       "priority": "medium",
       "type": "task",
-      "parentId": "T382",
+      "parentId": "T752",
       "createdAt": "2025-12-18T00:45:02Z",
       "phase": "core",
       "description": "Project and global config schemas need synchronization:\n\nCurrent schemas:\n- schemas/config.schema.json (project config - full schema)\n- schemas/global-config.schema.json (global config - subset)\n\nIssues to address:\n1. Ensure global schema is proper subset of project schema\n2. Settings in global should also be in project\n3. Document which settings are global-only vs project-only\n4. Validate both schemas are valid JSON Schema draft-07\n\nSchema sections:\n- output.* - Should be in BOTH (user preferences)\n- display.* - Should be in BOTH (user preferences)\n- cli.* - Should be in BOTH (user preferences)\n- defaults.* - Should be in BOTH (user preferences)\n- archive.* - PROJECT ONLY (project-specific behavior)\n- logging.* - Could be BOTH (but project may override)\n- validation.* - PROJECT ONLY (project-specific rules)\n- session.* - PROJECT ONLY (project-specific behavior)\n- backup.* - PROJECT ONLY (project-specific paths)\n\nDecisions needed:\n- Which settings belong in global config?\n- Which are project-specific only?\n- How to handle conflicts?",
@@ -2253,7 +2308,7 @@
       "status": "pending",
       "priority": "medium",
       "type": "task",
-      "parentId": "T382",
+      "parentId": "T752",
       "createdAt": "2025-12-18T00:45:21Z",
       "phase": "core",
       "description": "Config reset and init behaviors need review:\n\nCurrent issues:\n1. ct config reset - Does it work correctly?\n   - Should reset to schema defaults\n   - Should support resetting single section\n   - Should support --global flag\n   - Need confirmation prompt for destructive action\n   \n2. ct init - Config initialization\n   - Creates .claude/todo-config.json from template\n   - Should NOT overwrite existing config\n   - --force should allow overwrite\n   - Should validate created config\n   \n3. install.sh - Global config initialization\n   - Creates ~/.claude-todo/config.json\n   - Currently copies from template\n   - Should NOT overwrite on reinstall\n   - Should offer to merge with existing\n   \n4. Config migration\n   - When schema version changes\n   - Old config files need migration\n   - Add config version field?\n   - Auto-migrate on read?\n\n5. Config validation on load\n   - Should scripts validate config on startup?\n   - What to do with invalid config?\n   - Fallback to defaults? Error out? Warn?\n\nTest scenarios:\n- Fresh install (no config exists)\n- Reinstall (config exists)\n- Upgrade (old schema version)\n- Corrupted config file\n- Missing required fields",
@@ -5604,17 +5659,22 @@
     {
       "id": "T565",
       "title": "Parent Task for Testing",
-      "status": "pending",
+      "status": "cancelled",
       "priority": "medium",
       "type": "task",
       "parentId": null,
       "createdAt": "2025-12-22T16:52:51Z",
-      "phase": "core"
+      "phase": "core",
+      "cancelledAt": "2025-12-24T03:28:05Z",
+      "cancelReason": "Test scaffolding - Parent Task for Testing",
+      "notes": [
+        "[CANCELLED 2025-12-24T03:28:05Z] Test scaffolding - Parent Task for Testing"
+      ]
     },
     {
       "id": "T566",
       "title": "Child Task 1",
-      "status": "done",
+      "status": "cancelled",
       "priority": "medium",
       "type": "subtask",
       "parentId": "T565",
@@ -5622,13 +5682,16 @@
       "phase": "core",
       "completedAt": "2025-12-22T16:53:10Z",
       "notes": [
-        "[COMPLETED 2025-12-22T16:53:10Z] Completed first child task"
-      ]
+        "[COMPLETED 2025-12-22T16:53:10Z] Completed first child task",
+        "[CANCELLED 2025-12-24T03:28:05Z] Test scaffolding - Parent Task for Testing"
+      ],
+      "cancelledAt": "2025-12-24T03:28:05Z",
+      "cancelReason": "Test scaffolding - Parent Task for Testing"
     },
     {
       "id": "T567",
       "title": "Child Task 2",
-      "status": "done",
+      "status": "cancelled",
       "priority": "medium",
       "type": "subtask",
       "parentId": "T565",
@@ -5636,23 +5699,31 @@
       "phase": "core",
       "completedAt": "2025-12-22T16:53:16Z",
       "notes": [
-        "[COMPLETED 2025-12-22T16:53:16Z] Completed second child task"
-      ]
+        "[COMPLETED 2025-12-22T16:53:16Z] Completed second child task",
+        "[CANCELLED 2025-12-24T03:28:05Z] Test scaffolding - Parent Task for Testing"
+      ],
+      "cancelledAt": "2025-12-24T03:28:05Z",
+      "cancelReason": "Test scaffolding - Parent Task for Testing"
     },
     {
       "id": "T568",
       "title": "New Parent",
-      "status": "pending",
+      "status": "cancelled",
       "priority": "medium",
       "type": "task",
       "parentId": null,
       "createdAt": "2025-12-22T16:54:01Z",
-      "phase": "core"
+      "phase": "core",
+      "cancelledAt": "2025-12-24T03:28:07Z",
+      "cancelReason": "Test scaffolding - New Parent hierarchy",
+      "notes": [
+        "[CANCELLED 2025-12-24T03:28:07Z] Test scaffolding - New Parent hierarchy"
+      ]
     },
     {
       "id": "T569",
       "title": "New Child",
-      "status": "done",
+      "status": "cancelled",
       "priority": "medium",
       "type": "subtask",
       "parentId": "T568",
@@ -5660,13 +5731,16 @@
       "phase": "core",
       "completedAt": "2025-12-22T16:54:11Z",
       "notes": [
-        "[COMPLETED 2025-12-22T16:54:11Z] Testing parent auto-complete"
-      ]
+        "[COMPLETED 2025-12-22T16:54:11Z] Testing parent auto-complete",
+        "[CANCELLED 2025-12-24T03:28:07Z] Test scaffolding - New Parent hierarchy"
+      ],
+      "cancelledAt": "2025-12-24T03:28:07Z",
+      "cancelReason": "Test scaffolding - New Parent hierarchy"
     },
     {
       "id": "T570",
       "title": "Another Child",
-      "status": "done",
+      "status": "cancelled",
       "priority": "medium",
       "type": "subtask",
       "parentId": "T568",
@@ -5674,13 +5748,16 @@
       "phase": "core",
       "completedAt": "2025-12-22T16:56:41Z",
       "notes": [
-        "[COMPLETED 2025-12-22T16:56:41Z] Testing debug output"
-      ]
+        "[COMPLETED 2025-12-22T16:56:41Z] Testing debug output",
+        "[CANCELLED 2025-12-24T03:28:07Z] Test scaffolding - New Parent hierarchy"
+      ],
+      "cancelledAt": "2025-12-24T03:28:07Z",
+      "cancelReason": "Test scaffolding - New Parent hierarchy"
     },
     {
       "id": "T571",
       "title": "Test Child 3",
-      "status": "done",
+      "status": "cancelled",
       "priority": "medium",
       "type": "subtask",
       "parentId": "T568",
@@ -5688,13 +5765,16 @@
       "phase": "core",
       "completedAt": "2025-12-22T16:57:21Z",
       "notes": [
-        "[COMPLETED 2025-12-22T16:57:21Z] Testing with forced auto-complete"
-      ]
+        "[COMPLETED 2025-12-22T16:57:21Z] Testing with forced auto-complete",
+        "[CANCELLED 2025-12-24T03:28:07Z] Test scaffolding - New Parent hierarchy"
+      ],
+      "cancelledAt": "2025-12-24T03:28:07Z",
+      "cancelReason": "Test scaffolding - New Parent hierarchy"
     },
     {
       "id": "T572",
       "title": "Test Child 4",
-      "status": "done",
+      "status": "cancelled",
       "priority": "medium",
       "type": "subtask",
       "parentId": "T568",
@@ -5702,13 +5782,16 @@
       "phase": "core",
       "completedAt": "2025-12-22T16:57:38Z",
       "notes": [
-        "[COMPLETED 2025-12-22T16:57:38Z] Testing text format with debug"
-      ]
+        "[COMPLETED 2025-12-22T16:57:38Z] Testing text format with debug",
+        "[CANCELLED 2025-12-24T03:28:07Z] Test scaffolding - New Parent hierarchy"
+      ],
+      "cancelledAt": "2025-12-24T03:28:07Z",
+      "cancelReason": "Test scaffolding - New Parent hierarchy"
     },
     {
       "id": "T573",
       "title": "Test Child 5",
-      "status": "done",
+      "status": "cancelled",
       "priority": "medium",
       "type": "subtask",
       "parentId": "T568",
@@ -5716,13 +5799,16 @@
       "phase": "core",
       "completedAt": "2025-12-22T16:58:18Z",
       "notes": [
-        "[COMPLETED 2025-12-22T16:58:18Z] Testing forced debug"
-      ]
+        "[COMPLETED 2025-12-22T16:58:18Z] Testing forced debug",
+        "[CANCELLED 2025-12-24T03:28:07Z] Test scaffolding - New Parent hierarchy"
+      ],
+      "cancelledAt": "2025-12-24T03:28:07Z",
+      "cancelReason": "Test scaffolding - New Parent hierarchy"
     },
     {
       "id": "T574",
       "title": "Test Child 6",
-      "status": "done",
+      "status": "cancelled",
       "priority": "medium",
       "type": "subtask",
       "parentId": "T568",
@@ -5730,13 +5816,16 @@
       "phase": "core",
       "completedAt": "2025-12-22T16:59:41Z",
       "notes": [
-        "[COMPLETED 2025-12-22T16:59:41Z] Testing with debug in right place"
-      ]
+        "[COMPLETED 2025-12-22T16:59:41Z] Testing with debug in right place",
+        "[CANCELLED 2025-12-24T03:28:07Z] Test scaffolding - New Parent hierarchy"
+      ],
+      "cancelledAt": "2025-12-24T03:28:07Z",
+      "cancelReason": "Test scaffolding - New Parent hierarchy"
     },
     {
       "id": "T575",
       "title": "Test Child 7",
-      "status": "done",
+      "status": "cancelled",
       "priority": "medium",
       "type": "subtask",
       "parentId": "T568",
@@ -5744,68 +5833,101 @@
       "phase": "core",
       "completedAt": "2025-12-22T17:00:58Z",
       "notes": [
-        "[COMPLETED 2025-12-22T17:00:58Z] Testing debug in JSON"
-      ]
+        "[COMPLETED 2025-12-22T17:00:58Z] Testing debug in JSON",
+        "[CANCELLED 2025-12-24T03:28:07Z] Test scaffolding - New Parent hierarchy"
+      ],
+      "cancelledAt": "2025-12-24T03:28:07Z",
+      "cancelReason": "Test scaffolding - New Parent hierarchy"
     },
     {
       "id": "T576",
       "title": "Test Epic",
-      "status": "pending",
+      "status": "cancelled",
       "priority": "medium",
       "type": "epic",
       "parentId": null,
       "createdAt": "2025-12-22T17:56:06Z",
-      "phase": "polish"
+      "phase": "polish",
+      "cancelledAt": "2025-12-24T03:27:34Z",
+      "cancelReason": "Test scaffolding - Test Epic",
+      "notes": [
+        "[CANCELLED 2025-12-24T03:27:34Z] Test scaffolding - Test Epic"
+      ]
     },
     {
       "id": "T577",
       "title": "Test Task",
-      "status": "pending",
+      "status": "cancelled",
       "priority": "medium",
       "type": "task",
       "parentId": "T576",
       "createdAt": "2025-12-22T17:56:10Z",
-      "phase": "polish"
+      "phase": "polish",
+      "cancelledAt": "2025-12-24T03:27:34Z",
+      "cancelReason": "Test scaffolding - Test Epic",
+      "notes": [
+        "[CANCELLED 2025-12-24T03:27:34Z] Test scaffolding - Test Epic"
+      ]
     },
     {
       "id": "T578",
       "title": "Epic 1",
-      "status": "pending",
+      "status": "cancelled",
       "priority": "medium",
       "type": "epic",
       "parentId": null,
       "createdAt": "2025-12-22T17:58:20Z",
-      "phase": "polish"
+      "phase": "polish",
+      "cancelledAt": "2025-12-24T03:27:36Z",
+      "cancelReason": "Test scaffolding - Epic 1",
+      "notes": [
+        "[CANCELLED 2025-12-24T03:27:36Z] Test scaffolding - Epic 1"
+      ]
     },
     {
       "id": "T579",
       "title": "Epic 2",
-      "status": "pending",
+      "status": "cancelled",
       "priority": "medium",
       "type": "epic",
       "parentId": null,
       "createdAt": "2025-12-22T17:58:25Z",
-      "phase": "polish"
+      "phase": "polish",
+      "cancelledAt": "2025-12-24T03:27:37Z",
+      "cancelReason": "Test scaffolding - Epic 2",
+      "notes": [
+        "[CANCELLED 2025-12-24T03:27:37Z] Test scaffolding - Epic 2"
+      ]
     },
     {
       "id": "T580",
       "title": "Task in E1",
-      "status": "pending",
+      "status": "cancelled",
       "priority": "medium",
       "type": "task",
       "parentId": "T578",
       "createdAt": "2025-12-22T17:58:30Z",
-      "phase": "polish"
+      "phase": "polish",
+      "cancelledAt": "2025-12-24T03:27:36Z",
+      "cancelReason": "Test scaffolding - Epic 1",
+      "notes": [
+        "[CANCELLED 2025-12-24T03:27:36Z] Test scaffolding - Epic 1"
+      ]
     },
     {
       "id": "T581",
       "title": "Task in E2",
-      "status": "pending",
+      "status": "cancelled",
       "priority": "medium",
       "type": "task",
       "parentId": "T579",
       "createdAt": "2025-12-22T17:58:35Z",
-      "phase": "polish"
+      "phase": "polish",
+      "cancelledAt": "2025-12-24T03:27:37Z",
+      "cancelReason": "Test scaffolding - Epic 2",
+      "notes": [
+        "[CANCELLED 2025-12-24T03:27:37Z] Test scaffolding - Epic 2"
+      ]
     },
     {
       "id": "T582",
@@ -6030,52 +6152,77 @@
     {
       "id": "T596",
       "title": "Test Epic for Cascade",
-      "status": "pending",
+      "status": "cancelled",
       "priority": "medium",
       "type": "epic",
       "parentId": null,
       "createdAt": "2025-12-22T23:18:14Z",
-      "phase": "core"
+      "phase": "core",
+      "cancelledAt": "2025-12-24T03:27:32Z",
+      "cancelReason": "Test scaffolding - Test Epic for Cascade",
+      "notes": [
+        "[CANCELLED 2025-12-24T03:27:32Z] Test scaffolding - Test Epic for Cascade"
+      ]
     },
     {
       "id": "T597",
       "title": "Test Task for Cascade",
-      "status": "pending",
+      "status": "cancelled",
       "priority": "medium",
       "type": "task",
       "parentId": "T596",
       "createdAt": "2025-12-22T23:18:19Z",
-      "phase": "core"
+      "phase": "core",
+      "cancelledAt": "2025-12-24T03:27:32Z",
+      "cancelReason": "Test scaffolding - Test Epic for Cascade",
+      "notes": [
+        "[CANCELLED 2025-12-24T03:27:32Z] Test scaffolding - Test Epic for Cascade"
+      ]
     },
     {
       "id": "T598",
       "title": "Test Subtask for Cascade",
-      "status": "pending",
+      "status": "cancelled",
       "priority": "medium",
       "type": "subtask",
       "parentId": "T597",
       "createdAt": "2025-12-22T23:18:26Z",
-      "phase": "core"
+      "phase": "core",
+      "cancelledAt": "2025-12-24T03:27:32Z",
+      "cancelReason": "Test scaffolding - Test Epic for Cascade",
+      "notes": [
+        "[CANCELLED 2025-12-24T03:27:32Z] Test scaffolding - Test Epic for Cascade"
+      ]
     },
     {
       "id": "T599",
       "title": "Test version fix",
-      "status": "pending",
+      "status": "cancelled",
       "priority": "medium",
       "type": "task",
       "parentId": null,
       "createdAt": "2025-12-23T00:27:04Z",
-      "phase": "core"
+      "phase": "core",
+      "cancelledAt": "2025-12-24T03:27:20Z",
+      "cancelReason": "Duplicate test artifact - Test version fix",
+      "notes": [
+        "[CANCELLED 2025-12-24T03:27:20Z] Duplicate test artifact - Test version fix"
+      ]
     },
     {
       "id": "T600",
       "title": "Test version fix",
-      "status": "pending",
+      "status": "cancelled",
       "priority": "medium",
       "type": "task",
       "parentId": null,
       "createdAt": "2025-12-23T00:27:29Z",
-      "phase": "core"
+      "phase": "core",
+      "cancelledAt": "2025-12-24T03:27:22Z",
+      "cancelReason": "Duplicate test artifact - Test version fix",
+      "notes": [
+        "[CANCELLED 2025-12-24T03:27:22Z] Duplicate test artifact - Test version fix"
+      ]
     },
     {
       "id": "T601",
@@ -6091,20 +6238,30 @@
     {
       "id": "T602",
       "title": "Test child task",
-      "status": "pending",
+      "status": "cancelled",
       "priority": "medium",
       "type": "task",
       "createdAt": "2025-12-23T00:33:58Z",
-      "phase": "core"
+      "phase": "core",
+      "cancelledAt": "2025-12-24T03:27:51Z",
+      "cancelReason": "Test scaffolding - Test child task",
+      "notes": [
+        "[CANCELLED 2025-12-24T03:27:51Z] Test scaffolding - Test child task"
+      ]
     },
     {
       "id": "T603",
       "title": "Test subtask",
-      "status": "pending",
+      "status": "cancelled",
       "priority": "medium",
       "type": "task",
       "createdAt": "2025-12-23T00:38:06Z",
-      "phase": "core"
+      "phase": "core",
+      "cancelledAt": "2025-12-24T03:27:53Z",
+      "cancelReason": "Test scaffolding - Test subtask",
+      "notes": [
+        "[CANCELLED 2025-12-24T03:27:53Z] Test scaffolding - Test subtask"
+      ]
     },
     {
       "id": "T604",
@@ -6326,12 +6483,17 @@
     {
       "id": "T617",
       "title": "Version test",
-      "status": "pending",
+      "status": "cancelled",
       "priority": "medium",
       "type": "task",
       "parentId": null,
       "createdAt": "2025-12-23T00:59:08Z",
-      "phase": "core"
+      "phase": "core",
+      "cancelledAt": "2025-12-24T03:27:54Z",
+      "cancelReason": "Test scaffolding - Version test",
+      "notes": [
+        "[CANCELLED 2025-12-24T03:27:54Z] Test scaffolding - Version test"
+      ]
     },
     {
       "id": "T618",
@@ -6686,22 +6848,32 @@
     {
       "id": "T635",
       "title": "Version compliance test",
-      "status": "pending",
+      "status": "cancelled",
       "priority": "medium",
       "type": "task",
       "parentId": null,
       "createdAt": "2025-12-23T01:10:19Z",
-      "phase": "core"
+      "phase": "core",
+      "cancelledAt": "2025-12-24T03:28:09Z",
+      "cancelReason": "Test scaffolding - Version compliance test",
+      "notes": [
+        "[CANCELLED 2025-12-24T03:28:09Z] Test scaffolding - Version compliance test"
+      ]
     },
     {
       "id": "T636",
       "title": "Final version test",
-      "status": "pending",
+      "status": "cancelled",
       "priority": "medium",
       "type": "task",
       "parentId": null,
       "createdAt": "2025-12-23T01:11:14Z",
-      "phase": "core"
+      "phase": "core",
+      "cancelledAt": "2025-12-24T03:28:12Z",
+      "cancelReason": "Test scaffolding - Final version test",
+      "notes": [
+        "[CANCELLED 2025-12-24T03:28:12Z] Test scaffolding - Final version test"
+      ]
     },
     {
       "id": "T637",
@@ -7503,22 +7675,32 @@
     {
       "id": "T678",
       "title": "Test task for backup verification",
-      "status": "pending",
+      "status": "cancelled",
       "priority": "low",
       "type": "task",
       "parentId": null,
       "createdAt": "2025-12-23T06:22:23Z",
-      "phase": "core"
+      "phase": "core",
+      "cancelledAt": "2025-12-24T03:28:13Z",
+      "cancelReason": "Test scaffolding - Test task for backup verification",
+      "notes": [
+        "[CANCELLED 2025-12-24T03:28:13Z] Test scaffolding - Test task for backup verification"
+      ]
     },
     {
       "id": "T679",
       "title": "Second test for backup path",
-      "status": "pending",
+      "status": "cancelled",
       "priority": "low",
       "type": "task",
       "parentId": null,
       "createdAt": "2025-12-23T06:22:41Z",
-      "phase": "core"
+      "phase": "core",
+      "cancelledAt": "2025-12-24T03:28:24Z",
+      "cancelReason": "Test scaffolding - Second test for backup path",
+      "notes": [
+        "[CANCELLED 2025-12-24T03:28:24Z] Test scaffolding - Second test for backup path"
+      ]
     },
     {
       "id": "T680",
@@ -7537,122 +7719,182 @@
     {
       "id": "T681",
       "title": "Duplicate Test Task",
-      "status": "pending",
+      "status": "cancelled",
       "priority": "medium",
       "type": "task",
       "parentId": null,
       "createdAt": "2025-12-23T07:25:52Z",
-      "phase": "core"
+      "phase": "core",
+      "cancelledAt": "2025-12-24T03:27:01Z",
+      "cancelReason": "Duplicate test artifact - Duplicate Test Task",
+      "notes": [
+        "[CANCELLED 2025-12-24T03:27:01Z] Duplicate test artifact - Duplicate Test Task"
+      ]
     },
     {
       "id": "T682",
       "title": "Duplicate Test Task",
-      "status": "pending",
+      "status": "cancelled",
       "priority": "medium",
       "type": "task",
       "parentId": null,
       "createdAt": "2025-12-23T07:25:58Z",
-      "phase": "core"
+      "phase": "core",
+      "cancelledAt": "2025-12-24T03:27:02Z",
+      "cancelReason": "Duplicate test artifact - Duplicate Test Task",
+      "notes": [
+        "[CANCELLED 2025-12-24T03:27:02Z] Duplicate test artifact - Duplicate Test Task"
+      ]
     },
     {
       "id": "T683",
       "title": "Duplicate Test Task",
-      "status": "pending",
+      "status": "cancelled",
       "priority": "medium",
       "type": "task",
       "parentId": null,
       "createdAt": "2025-12-23T07:26:14Z",
-      "phase": "core"
+      "phase": "core",
+      "cancelledAt": "2025-12-24T03:27:04Z",
+      "cancelReason": "Duplicate test artifact - Duplicate Test Task",
+      "notes": [
+        "[CANCELLED 2025-12-24T03:27:04Z] Duplicate test artifact - Duplicate Test Task"
+      ]
     },
     {
       "id": "T684",
       "title": "Fresh Duplicate Test 1766474810",
-      "status": "pending",
+      "status": "cancelled",
       "priority": "medium",
       "type": "task",
       "parentId": null,
       "createdAt": "2025-12-23T07:26:51Z",
-      "phase": "testing"
+      "phase": "testing",
+      "cancelledAt": "2025-12-24T03:26:40Z",
+      "cancelReason": "Duplicate test artifact - Fresh Duplicate Test 1766474810",
+      "notes": [
+        "[CANCELLED 2025-12-24T03:26:40Z] Duplicate test artifact - Fresh Duplicate Test 1766474810"
+      ]
     },
     {
       "id": "T685",
       "title": "Fresh Duplicate Test 1766474810",
-      "status": "pending",
+      "status": "cancelled",
       "priority": "medium",
       "type": "task",
       "parentId": null,
       "createdAt": "2025-12-23T07:26:51Z",
-      "phase": "testing"
+      "phase": "testing",
+      "cancelledAt": "2025-12-24T03:26:42Z",
+      "cancelReason": "Duplicate test artifact - Fresh Duplicate Test 1766474810",
+      "notes": [
+        "[CANCELLED 2025-12-24T03:26:42Z] Duplicate test artifact - Fresh Duplicate Test 1766474810"
+      ]
     },
     {
       "id": "T686",
       "title": "Fresh Duplicate Test 1766474810",
-      "status": "pending",
+      "status": "cancelled",
       "priority": "medium",
       "type": "task",
       "parentId": null,
       "createdAt": "2025-12-23T07:26:58Z",
-      "phase": "testing"
+      "phase": "testing",
+      "cancelledAt": "2025-12-24T03:26:44Z",
+      "cancelReason": "Duplicate test artifact - Fresh Duplicate Test 1766474810",
+      "notes": [
+        "[CANCELLED 2025-12-24T03:26:44Z] Duplicate test artifact - Fresh Duplicate Test 1766474810"
+      ]
     },
     {
       "id": "T687",
       "title": "Fresh Duplicate Test 1766474810",
-      "status": "pending",
+      "status": "cancelled",
       "priority": "medium",
       "type": "task",
       "parentId": null,
       "createdAt": "2025-12-23T07:27:06Z",
-      "phase": "testing"
+      "phase": "testing",
+      "cancelledAt": "2025-12-24T03:26:46Z",
+      "cancelReason": "Duplicate test artifact - Fresh Duplicate Test 1766474810",
+      "notes": [
+        "[CANCELLED 2025-12-24T03:26:46Z] Duplicate test artifact - Fresh Duplicate Test 1766474810"
+      ]
     },
     {
       "id": "T688",
       "title": "Fresh Duplicate Test 1766474810",
-      "status": "pending",
+      "status": "cancelled",
       "priority": "medium",
       "type": "task",
       "parentId": null,
       "createdAt": "2025-12-23T07:28:51Z",
-      "phase": "testing"
+      "phase": "testing",
+      "cancelledAt": "2025-12-24T03:26:48Z",
+      "cancelReason": "Duplicate test artifact - Fresh Duplicate Test 1766474810",
+      "notes": [
+        "[CANCELLED 2025-12-24T03:26:48Z] Duplicate test artifact - Fresh Duplicate Test 1766474810"
+      ]
     },
     {
       "id": "T689",
       "title": "Fresh Duplicate Test 1766474810",
-      "status": "pending",
+      "status": "cancelled",
       "priority": "medium",
       "type": "task",
       "parentId": null,
       "createdAt": "2025-12-23T07:28:57Z",
-      "phase": "testing"
+      "phase": "testing",
+      "cancelledAt": "2025-12-24T03:26:58Z",
+      "cancelReason": "Duplicate test artifact - Fresh Duplicate Test 1766474810",
+      "notes": [
+        "[CANCELLED 2025-12-24T03:26:58Z] Duplicate test artifact - Fresh Duplicate Test 1766474810"
+      ]
     },
     {
       "id": "T690",
       "title": "Duplicate Debug 1766475064",
-      "status": "pending",
+      "status": "cancelled",
       "priority": "medium",
       "type": "task",
       "parentId": null,
       "createdAt": "2025-12-23T07:31:05Z",
-      "phase": "core"
+      "phase": "core",
+      "cancelledAt": "2025-12-24T03:27:07Z",
+      "cancelReason": "Duplicate test artifact - Duplicate Debug 1766475064",
+      "notes": [
+        "[CANCELLED 2025-12-24T03:27:07Z] Duplicate test artifact - Duplicate Debug 1766475064"
+      ]
     },
     {
       "id": "T691",
       "title": "Duplicate Debug 1766475064",
-      "status": "pending",
+      "status": "cancelled",
       "priority": "medium",
       "type": "task",
       "parentId": null,
       "createdAt": "2025-12-23T07:31:11Z",
-      "phase": "core"
+      "phase": "core",
+      "cancelledAt": "2025-12-24T03:27:16Z",
+      "cancelReason": "Duplicate test artifact - Duplicate Debug 1766475064",
+      "notes": [
+        "[CANCELLED 2025-12-24T03:27:16Z] Duplicate test artifact - Duplicate Debug 1766475064"
+      ]
     },
     {
       "id": "T692",
       "title": "Duplicate Debug 1766475064",
-      "status": "pending",
+      "status": "cancelled",
       "priority": "medium",
       "type": "task",
       "parentId": null,
       "createdAt": "2025-12-23T07:31:33Z",
-      "phase": "core"
+      "phase": "core",
+      "cancelledAt": "2025-12-24T03:27:18Z",
+      "cancelReason": "Duplicate test artifact - Duplicate Debug 1766475064",
+      "notes": [
+        "[CANCELLED 2025-12-24T03:27:18Z] Duplicate test artifact - Duplicate Debug 1766475064"
+      ]
     },
     {
       "id": "T693",
@@ -7769,7 +8011,7 @@
     {
       "id": "T700",
       "title": "Task Deletion System with Cancelled Status (Soft-Delete)",
-      "status": "pending",
+      "status": "done",
       "priority": "high",
       "type": "epic",
       "parentId": null,
@@ -7784,8 +8026,10 @@
       ],
       "notes": [
         "2025-12-23 23:03:51 UTC: AGENT CONSENSUS: 6 specialists (architect, security, QA, backend, root-cause, UX) designed: delete command with cancel alias, cancelled status (schema v3.1.0), --children cascade|orphan|block (default block), --reason required, EXIT codes 16-18, 24 safety safeguards, 23 edge cases, FMEA 23 failure modes, 40+ BATS tests planned. See subtask descriptions for implementation details.",
-        "2025-12-24 00:10:48 UTC: FINAL CONSENSUS (7 agents): delete as primary cmd, cancel as alias. Exit codes 16-18 in hierarchy range. Default --children=block with TTY interactive. Cascade limit 10 (configurable). Transactional delete (not full 2PC). Pre-flight with fast-path for leaves. Defer cascadeGroupId to v3.2.0."
-      ]
+        "2025-12-24 00:10:48 UTC: FINAL CONSENSUS (7 agents): delete as primary cmd, cancel as alias. Exit codes 16-18 in hierarchy range. Default --children=block with TTY interactive. Cascade limit 10 (configurable). Transactional delete (not full 2PC). Pre-flight with fast-path for leaves. Defer cascadeGroupId to v3.2.0.",
+        "[AUTO-COMPLETED 2025-12-24T01:37:17Z] All child tasks completed"
+      ],
+      "completedAt": "2025-12-24T01:37:17Z"
     },
     {
       "id": "T701",
@@ -7986,7 +8230,7 @@
     {
       "id": "T711",
       "title": "Command documentation: docs/commands/delete.md",
-      "status": "pending",
+      "status": "done",
       "priority": "medium",
       "type": "task",
       "parentId": "T700",
@@ -7995,12 +8239,16 @@
       "description": "Create comprehensive delete.md: usage examples, all flags documented, child handling explained with examples, exit codes table, JSON output examples, agent workflow examples, related commands (archive, restore, complete). Follow existing docs/commands/*.md format.",
       "labels": [
         "documentation"
+      ],
+      "completedAt": "2025-12-24T01:37:17Z",
+      "notes": [
+        "[COMPLETED 2025-12-24T01:37:17Z] Created docs/commands/delete.md with usage, options, strategies, exit codes, JSON examples, agent workflows, related commands."
       ]
     },
     {
       "id": "T712",
       "title": "Unit tests: tests/unit/delete.bats",
-      "status": "pending",
+      "status": "done",
       "priority": "high",
       "type": "task",
       "parentId": "T700",
@@ -8012,13 +8260,15 @@
         "unit"
       ],
       "notes": [
-        "2025-12-24 00:11:16 UTC: CONSENSUS: 48+ test cases identified. P0 critical: done→cancelled blocked, cascade atomicity, checksum integrity. Include state matrix tests, boundary tests, concurrency tests."
-      ]
+        "2025-12-24 00:11:16 UTC: CONSENSUS: 48+ test cases identified. P0 critical: done→cancelled blocked, cascade atomicity, checksum integrity. Include state matrix tests, boundary tests, concurrency tests.",
+        "[COMPLETED 2025-12-24T01:37:16Z] Created tests/unit/delete.bats with 41 unit tests covering argument validation, status checks, child handling strategies, JSON output, edge cases."
+      ],
+      "completedAt": "2025-12-24T01:37:16Z"
     },
     {
       "id": "T713",
       "title": "Integration tests: tests/integration/delete-workflow.bats",
-      "status": "pending",
+      "status": "done",
       "priority": "high",
       "type": "task",
       "parentId": "T700",
@@ -8028,6 +8278,10 @@
       "labels": [
         "integration",
         "testing"
+      ],
+      "completedAt": "2025-12-24T01:37:17Z",
+      "notes": [
+        "[COMPLETED 2025-12-24T01:37:17Z] Created tests/integration/delete-workflow.bats with 30 integration tests covering lifecycle, focus, cascade+restore, dependencies, atomic ops, error recovery."
       ]
     },
     {
@@ -8830,6 +9084,21 @@
         "lib/migration.sh",
         "schemas/todo.schema.json",
         "scripts/migrate.sh"
+      ]
+    },
+    {
+      "id": "T752",
+      "title": "EPIC: Config System Polish",
+      "status": "pending",
+      "priority": "medium",
+      "type": "epic",
+      "parentId": null,
+      "createdAt": "2025-12-24T01:27:48Z",
+      "phase": "polish",
+      "description": "Follow-up work for config system after core integration (T382) was completed. Includes interactive editor fixes, comprehensive testing, schema synchronization, and reset/init behavior improvements.",
+      "labels": [
+        "config",
+        "epic"
       ]
     }
   ],
