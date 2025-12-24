@@ -172,6 +172,15 @@ All errors return structured JSON with the following envelope:
 | `E_PHASE_*` | Phase operations | `E_PHASE_NOT_FOUND`, `E_PHASE_INVALID` |
 | `E_SESSION_*` | Session operations | `E_SESSION_ACTIVE`, `E_SESSION_NOT_ACTIVE` |
 | `E_CHECKSUM_*` | Concurrency | `E_CHECKSUM_MISMATCH` |
+| `E_ALREADY_*` | Already exists | `E_ALREADY_INITIALIZED` |
+| `E_CONFIRMATION_*` | Confirmation required | `E_CONFIRMATION_REQUIRED` |
+
+### Init Command Error Codes
+
+| Code | Exit Code | Description |
+|------|-----------|-------------|
+| `E_ALREADY_INITIALIZED` | 101 | Project already initialized (use `--force --confirm-wipe`) |
+| `E_CONFIRMATION_REQUIRED` | 2 | `--force` requires `--confirm-wipe` for destructive operations |
 
 ---
 

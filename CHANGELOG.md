@@ -5,6 +5,26 @@ All notable changes to the claude-todo system will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.32.1] - 2025-12-24
+
+### Fixed
+- **Init Command Safety Safeguards**: Prevent accidental data wipe on reinitialize
+  - `--force` alone no longer wipes existing data (was incorrectly wiping all data files)
+  - Now requires double confirmation: `--force --confirm-wipe` for destructive reinit
+  - Creates safety backup of ALL data files before wipe (todo.json, todo-archive.json, todo-config.json, todo-log.json)
+  - Clear warnings listing exactly which files would be wiped
+  - Proper exit codes: 101 (already initialized), 2 (missing --confirm-wipe)
+  - LLM-agent-first JSON error output with full context
+
+### Added
+- New error codes: `E_ALREADY_INITIALIZED`, `E_CONFIRMATION_REQUIRED`
+- Source guard in `lib/error-json.sh` to prevent double-sourcing conflicts
+- Safety backup metadata with `init_reinitialize` trigger type
+
+### Documentation
+- Updated `docs/commands/init.md` with new safeguard behavior and JSON examples
+- Updated `docs/reference/exit-codes.md` with new error codes
+
 ## [0.32.0] - 2025-12-24
 
 ### Added

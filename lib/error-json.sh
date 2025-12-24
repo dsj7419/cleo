@@ -24,6 +24,12 @@
 set -euo pipefail
 
 # ============================================================================
+# SOURCE GUARD - Prevent double-sourcing which causes readonly variable errors
+# ============================================================================
+[[ -n "${_ERROR_JSON_SH_LOADED:-}" ]] && return 0
+_ERROR_JSON_SH_LOADED=1
+
+# ============================================================================
 # LIBRARY DEPENDENCIES
 # ============================================================================
 
@@ -312,6 +318,8 @@ readonly E_SESSION_NOT_ACTIVE="E_SESSION_NOT_ACTIVE"
 # General errors
 readonly E_UNKNOWN="E_UNKNOWN"
 readonly E_NOT_INITIALIZED="E_NOT_INITIALIZED"
+readonly E_ALREADY_INITIALIZED="E_ALREADY_INITIALIZED"
+readonly E_CONFIRMATION_REQUIRED="E_CONFIRMATION_REQUIRED"
 
 # Hierarchy errors (see LLM-TASK-ID-SYSTEM-DESIGN-SPEC.md Part 12)
 readonly E_PARENT_NOT_FOUND="E_PARENT_NOT_FOUND"
@@ -349,7 +357,7 @@ export E_INPUT_MISSING E_INPUT_INVALID E_INPUT_FORMAT
 export E_DEPENDENCY_MISSING E_DEPENDENCY_VERSION
 export E_PHASE_NOT_FOUND E_PHASE_INVALID
 export E_SESSION_ACTIVE E_SESSION_NOT_ACTIVE
-export E_UNKNOWN E_NOT_INITIALIZED
+export E_UNKNOWN E_NOT_INITIALIZED E_ALREADY_INITIALIZED E_CONFIRMATION_REQUIRED
 # Hierarchy error codes
 export E_PARENT_NOT_FOUND E_DEPTH_EXCEEDED E_SIBLING_LIMIT
 export E_INVALID_PARENT_TYPE E_CIRCULAR_REFERENCE E_ORPHAN_DETECTED

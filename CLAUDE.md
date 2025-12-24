@@ -1,4 +1,4 @@
-<!-- CLAUDE-TODO:START v0.32.0 -->
+<!-- CLAUDE-TODO:START v0.32.1 -->
 ## Task Management (claude-todo)
 
 Use `ct` (alias for `claude-todo`) for all task operations. Full docs: `~/.claude-todo/docs/TODO_Task_Management.md`
@@ -283,7 +283,7 @@ Before any task operation, validate:
 - Don't skip validation steps - they're critical for data integrity
 - Don't add time estimates - they're explicitly prohibited
 - Don't forget atomic operations - all writes must be atomic
-<!-- CLAUDE-TODO:START v0.32.0 -->
+<!-- CLAUDE-TODO:START v0.32.1 -->
 ## Task Management (claude-todo)
 
 Use `ct` (alias for `claude-todo`) for all task operations. Full docs: `~/.claude-todo/docs/TODO_Task_Management.md`
@@ -614,7 +614,7 @@ Before any task operation, validate:
 - Don't skip validation steps - they're critical for data integrity
 - Don't add time estimates - they're explicitly prohibited
 - Don't forget atomic operations - all writes must be atomic
-<!-- CLAUDE-TODO:START v0.32.0 -->
+<!-- CLAUDE-TODO:START v0.32.1 -->
 ## Task Management (claude-todo)
 
 Use `ct` (alias for `claude-todo`) for all task operations. Full docs: `~/.claude-todo/docs/TODO_Task_Management.md`
@@ -942,7 +942,7 @@ Before any task operation, validate:
 - Don't skip validation steps - they're critical for data integrity
 - Don't add time estimates - they're explicitly prohibited
 - Don't forget atomic operations - all writes must be atomic
-<!-- CLAUDE-TODO:START v0.32.0 -->
+<!-- CLAUDE-TODO:START v0.32.1 -->
 ## Task Management (claude-todo)
 
 Use `ct` (alias for `claude-todo`) for all task operations. Full docs: `~/.claude-todo/docs/TODO_Task_Management.md`
