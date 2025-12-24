@@ -5,6 +5,56 @@ All notable changes to the claude-todo system will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.35.0] - 2025-12-24
+
+### Added
+- **`atomic-write.sh` Layer 1 Library** (T809 Phase 3: Break Circular Dependencies)
+  - New primitive atomic file operations library at Layer 1
+  - Functions: `aw_ensure_dir()`, `aw_write_temp()`, `aw_atomic_move()`, `aw_create_backup()`, `aw_atomic_write()`
+  - No validation dependencies - designed to be sourced by Layer 2+ files without creating cycles
+
+- **`LAYER-MAP.md` Documentation** - Definitive reference for library layer assignments
+- **`LAYER-REORGANIZATION-PLAN.md`** - Architecture plan for layer restructuring
+
+### Changed
+- **Library Layer Promotions** (T850)
+  - `file-ops.sh`: Layer 2 → Layer 1 (now sources atomic-write.sh)
+  - `logging.sh`: Layer 2 → Layer 1 (now sources atomic-write.sh instead of file-ops.sh)
+  - `hierarchy.sh`: Layer 2 → Layer 1 (only depends on L0 exit-codes + L1 config)
+
+- **Circular Dependency Chain Eliminated**
+  - Old: `file-ops.sh → validation.sh → migrate.sh → file-ops.sh`
+  - New: All files load without circular dependencies via atomic-write.sh + lazy loading
+
+- **Dependency Reductions**
+  - `backup.sh`: Removed validation.sh dependency (now 2 deps: file-ops, logging)
+  - `migrate.sh`: Uses atomic-write.sh instead of file-ops.sh
+  - `validation.sh`: Lazy-loads migrate.sh and hierarchy.sh (3 direct deps)
+
+### Fixed
+- All Layer 2 same-layer dependency violations resolved
+- Magic numbers in `file-ops.sh` `_fo_sanitize_file_path()` replaced with `FO_*` constants
+
+## [0.34.6] - 2025-12-24
+
+### Changed
+- **Library Architecture Phase 4 Complete** (T810: Reduce High-Dependency Libraries)
+  - `deletion-strategy.sh`: 6 → 3 deps (removed cancel-ops, logging, config via transitive/callback)
+  - `cancel-ops.sh`: 5 → 3 deps (removed hierarchy, config via transitive validation.sh)
+  - `validation.sh`: 4 → 3 deps (hierarchy now lazy-loaded via `_ensure_hierarchy_loaded()`)
+  - `backup.sh`: 4 → 3 deps (removed platform-compat via transitive file-ops.sh)
+  - `archive-cancel.sh`: 5 → 3 deps (fixed incorrect header, removed version.sh)
+
+### Added
+- **Dependency Injection Pattern**: `deletion-strategy.sh` uses `_ds_log_operation()` callback for logging
+- **Lazy Loading Pattern**: `validation.sh` now lazy-loads hierarchy.sh (matches migrate.sh pattern)
+
+### Technical
+- Inter-library dependencies reduced: 38 → 33 (5 removed)
+- All 5 refactored libraries pass syntax check (`bash -n`)
+- All unit tests pass (validation: 28, delete: 41, cancel-ops: 39, hierarchy: 82)
+- Updated `LIBRARY-ARCHITECTURE-IMPLEMENTATION-REPORT.md` with Phase 4 completion details
+
 ## [0.34.5] - 2025-12-24
 
 ### Fixed
