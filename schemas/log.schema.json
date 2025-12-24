@@ -1,6 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://claude-todo.dev/schemas/v1/log.schema.json",
+  "schemaVersion": "2.1.0",
   "title": "CLAUDE-TODO Change Log Schema",
   "description": "Immutable audit trail of all task operations. Used for debugging, history, and anti-hallucination verification.",
   "type": "object",

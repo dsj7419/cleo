@@ -16,10 +16,33 @@ Schema versions follow semantic versioning (MAJOR.MINOR.PATCH):
 
 ### Current Schema Versions
 
-- **todo.json**: 2.3.0 (hierarchy fields: type, parentId, size)
+- **todo.json**: 2.4.0 (hierarchy fields: type, parentId, size)
 - **todo-config.json**: 2.1.0
 - **todo-archive.json**: 2.1.0
 - **todo-log.json**: 2.1.0
+
+### Change Type Classification
+
+Not all schema changes require migration functions:
+
+| Change Type | Version Bump | Migration Required? |
+|-------------|--------------|---------------------|
+| Constraint relaxation (maxLength increase) | PATCH | NO - version bump only |
+| Optional field addition | PATCH | NO - version bump only |
+| Required field addition | MINOR | YES - add defaults |
+| Field rename | MINOR | YES - rename in data |
+| Structural change | MAJOR | YES - transform data |
+
+**Example:** Increasing notes maxLength from 500 to 5000 is a PATCH change.
+No migration function needed - the system just bumps the version field.
+
+The migration system automatically detects when only a version bump is needed
+versus when data transformation is required. For PATCH-level changes:
+
+1. Schema version is updated in the schema file
+2. `SCHEMA_VERSION_TODO` constant is updated in `lib/migrate.sh`
+3. No migration function is written
+4. The system bumps the version field in user data files automatically
 
 ### Compatibility Rules
 
@@ -40,7 +63,7 @@ Output:
 Schema Version Status
 ====================
 
-✓ todo: v2.2.0 (compatible)
+✓ todo: v2.4.0 (compatible)
 ✓ config: v2.1.0 (compatible)
 ✓ archive: v2.1.0 (compatible)
 ✓ log: v2.1.0 (compatible)
@@ -196,7 +219,7 @@ claude-todo validate
 Output includes version check:
 ```
 [0/7] Checking schema version...
-✓ PASSED: Version 2.1.0 compatible
+✓ PASSED: Version 2.4.0 compatible
 
 [1/7] Checking JSON syntax...
 ✓ PASSED: JSON syntax valid
@@ -209,8 +232,8 @@ If version mismatch detected:
 ```
 ⚠ Schema version mismatch detected
   File: .claude/todo.json
-  Current: v2.0.0
-  Expected: v2.1.0
+  Current: v2.3.0
+  Expected: v2.4.0
 
 Automatic migration available.
 Run: claude-todo migrate
@@ -221,7 +244,7 @@ Run: claude-todo migrate
 ### Reading Older Versions
 
 The system can **read** files from older minor versions:
-- v2.0.x files work with v2.1.x system
+- v2.3.x files work with v2.4.x system
 - Missing fields use default values
 - No migration required for read-only operations
 
@@ -240,7 +263,7 @@ The system can **read** files from older minor versions:
 ERROR: Incompatible schema version
   File: .claude/todo.json
   Current: v1.0.0
-  Expected: v2.1.0
+  Expected: v2.4.0
   Major version mismatch - manual intervention required
 ```
 
@@ -397,40 +420,79 @@ claude-todo validate
 
 ### Adding New Migration
 
-When adding new schema fields:
+Not all schema changes require migration functions. First, determine the change type:
+
+#### PATCH Changes (No Migration Function Needed)
+
+For constraint relaxation or optional field additions:
+
+1. **Update Schema Version** in `schemas/todo.schema.json`:
+   ```json
+   {
+     "$id": "claude-todo-schema-v2.4.1"
+   }
+   ```
+
+2. **Update Constants** in `lib/migrate.sh`:
+   ```bash
+   readonly SCHEMA_VERSION_TODO="2.4.1"
+   ```
+
+3. **Done** - The migration system automatically bumps version fields in user
+   data files without requiring data transformation.
+
+**Examples of PATCH changes:**
+- Increasing `maxLength` from 500 to 5000
+- Adding a new optional field with no default needed
+- Relaxing a pattern constraint
+
+#### MINOR/MAJOR Changes (Migration Function Required)
+
+For required field additions, renames, or structural changes:
 
 1. **Update Schema Version**:
    ```json
    {
-     "$id": "claude-todo-schema-v2.2.0"
+     "$id": "claude-todo-schema-v2.5.0"
    }
    ```
 
 2. **Add Migration Function** in `lib/migrate.sh`:
    ```bash
-   migrate_todo_to_2_2_0() {
+   migrate_todo_to_2_5_0() {
        local file="$1"
 
-       # Add new field with default
-       add_field_if_missing "$file" ".newField" "null"
+       # Add new required field with default
+       add_field_if_missing "$file" ".newField" '"default_value"'
 
        # Update version
-       update_version_field "$file" "2.2.0"
+       update_version_field "$file" "2.5.0"
    }
    ```
 
 3. **Update Constants**:
    ```bash
    # In lib/migrate.sh
-   readonly SCHEMA_VERSION_TODO="2.2.0"
+   readonly SCHEMA_VERSION_TODO="2.5.0"
    ```
 
-4. **Test Migration**:
+4. **Register Migration** in the migration chain:
+   ```bash
+   # Add to get_migration_path function
+   "2.4.0") echo "2.5.0" ;;
+   ```
+
+5. **Test Migration**:
    ```bash
    # Create test file with old version
    # Run migration
    # Validate results
    ```
+
+**Examples of changes requiring migration functions:**
+- Adding a required field (needs default value injection)
+- Renaming a field (needs data transformation)
+- Changing data structure (needs complex transformation)
 
 ### Migration Function Helpers
 

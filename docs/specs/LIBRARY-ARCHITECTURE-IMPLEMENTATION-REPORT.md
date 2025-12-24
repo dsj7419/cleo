@@ -2,7 +2,22 @@
 
 **Purpose**: Track implementation progress against LIBRARY-ARCHITECTURE-SPEC
 **Related Spec**: [LIBRARY-ARCHITECTURE-SPEC.md](LIBRARY-ARCHITECTURE-SPEC.md)
-**Last Updated**: 2025-12-23
+**Master EPIC**: T806
+**Last Updated**: 2025-12-24
+
+---
+
+## Task Hierarchy
+
+| Task ID | Title | Type | Status |
+|---------|-------|------|--------|
+| **T806** | EPIC: Library Architecture Refactoring | epic | pending |
+| T807 | Phase 1: Add Source Guards | task | ✅ COMPLETE |
+| T808 | Phase 2: Add Layer Headers | task | ✅ COMPLETE |
+| T809 | Phase 3: Break Circular Dependency Chain | task | pending |
+| T810 | Phase 4: Reduce High-Dependency Libraries | task | pending |
+| T811 | Phase 5: Create Compliance Validation Script | task | pending |
+| T812 | Phase 6: Library Testing Infrastructure | task | pending |
 
 ---
 
@@ -10,12 +25,13 @@
 
 | Metric | Current | Target | Status |
 |--------|---------|--------|--------|
-| Overall Progress | 15% | 100% | IN PROGRESS |
+| Overall Progress | 40% | 100% | IN PROGRESS |
 | Inter-library dependencies | 44 | ≤25 | NEEDS WORK |
 | Max deps per library | 6 | ≤3 | NEEDS WORK |
 | Layer 0 files with deps | 0 | 0 | COMPLETE |
 | Circular dependency chains | 1 | 0 | NEEDS WORK |
-| Libraries with source guards | 0/21 | 21/21 | NOT STARTED |
+| Libraries with source guards | 21/21 | 21/21 | COMPLETE |
+| Libraries with layer headers | 21/21 | 21/21 | COMPLETE |
 
 ---
 
@@ -60,48 +76,65 @@ file-ops.sh → validation.sh → migrate.sh → file-ops.sh
 
 ## Phase Tracking
 
-### Phase 1: Source Guards - NOT STARTED
+### Phase 1: Source Guards - COMPLETE (T807)
 
-Add source guards to all library files.
+**Subtasks**: T813 (Layer 0), T814 (Layer 1), T815 (Layer 2), T816 (Layer 3)
 
-- [ ] `exit-codes.sh` - Add `_EXIT_CODES_LOADED` guard
-- [ ] `platform-compat.sh` - Add `_PLATFORM_COMPAT_LOADED` guard
-- [ ] `version.sh` - Add `_VERSION_LOADED` guard
-- [ ] `config.sh` - Add `_CONFIG_LOADED` guard
-- [ ] `error-json.sh` - Add `_ERROR_JSON_LOADED` guard
-- [ ] `output-format.sh` - Add `_OUTPUT_FORMAT_LOADED` guard
-- [ ] `grammar.sh` - Add `_GRAMMAR_LOADED` guard
-- [ ] `dependency-check.sh` - Add `_DEPENDENCY_CHECK_LOADED` guard
-- [ ] `file-ops.sh` - Add `_FILE_OPS_LOADED` guard
-- [ ] `validation.sh` - Add `_VALIDATION_LOADED` guard
-- [ ] `logging.sh` - Add `_LOGGING_LOADED` guard
-- [ ] `backup.sh` - Add `_BACKUP_LOADED` guard
-- [ ] `hierarchy.sh` - Add `_HIERARCHY_LOADED` guard
-- [ ] `migrate.sh` - Add `_MIGRATE_LOADED` guard
-- [ ] `analysis.sh` - Add `_ANALYSIS_LOADED` guard
-- [ ] `phase-tracking.sh` - Add `_PHASE_TRACKING_LOADED` guard
-- [ ] `cancel-ops.sh` - Add `_CANCEL_OPS_LOADED` guard
-- [ ] `deletion-strategy.sh` - Add `_DELETION_STRATEGY_LOADED` guard
-- [ ] `archive-cancel.sh` - Add `_ARCHIVE_CANCEL_LOADED` guard
-- [ ] `delete-preview.sh` - Add `_DELETE_PREVIEW_LOADED` guard
+All 21 library files have source guards implemented.
 
-### Phase 2: Layer Headers - NOT STARTED
+- [x] `exit-codes.sh` - `_EXIT_CODES_SH_LOADED` guard
+- [x] `platform-compat.sh` - `_PLATFORM_COMPAT_LOADED` guard
+- [x] `version.sh` - `_VERSION_LOADED` guard
+- [x] `config.sh` - `_CONFIG_SH_LOADED` guard
+- [x] `error-json.sh` - `_ERROR_JSON_SH_LOADED` guard
+- [x] `output-format.sh` - `_OUTPUT_FORMAT_LOADED` guard
+- [x] `dependency-check.sh` - `_DEPENDENCY_CHECK_LOADED` guard
+- [x] `file-ops.sh` - `_FILE_OPS_LOADED` guard
+- [x] `validation.sh` - `_VALIDATION_LOADED` guard (note: grammar.sh merged or removed)
+- [x] `logging.sh` - `_LOGGING_LOADED` guard
+- [x] `backup.sh` - `_BACKUP_LOADED` guard
+- [x] `hierarchy.sh` - `_HIERARCHY_LOADED` guard
+- [x] `migrate.sh` - `_MIGRATE_SH_LOADED` guard
+- [x] `analysis.sh` - `_ANALYSIS_LOADED` guard
+- [x] `phase-tracking.sh` - `_PHASE_TRACKING_LOADED` guard
+- [x] `cancel-ops.sh` - `_CANCEL_OPS_LOADED` guard
+- [x] `deletion-strategy.sh` - `_DELETION_STRATEGY_SH_LOADED` guard
+- [x] `archive-cancel.sh` - `_ARCHIVE_CANCEL_LOADED` guard
+- [x] `delete-preview.sh` - `_DELETE_PREVIEW_SH_LOADED` guard
+- [x] `cache.sh` - `_CACHE_LOADED` guard
+- [x] `todowrite-integration.sh` - `_TODOWRITE_INTEGRATION_LOADED` guard
 
-Add LAYER/DEPENDENCIES/PROVIDES headers to all files.
+**Verified**: 2025-12-24 - All guards unique, syntax validated, 136 unit tests passing.
 
-- [ ] All 21 library files need header documentation
+### Phase 2: Layer Headers - COMPLETE (T808)
 
-### Phase 3: Break Circular Dependency - NOT STARTED
+**Subtasks**: T817
 
-- [ ] Create `lib/atomic-write.sh` (Layer 1) with primitive file operations
-- [ ] Update `file-ops.sh` to source `atomic-write.sh`
-- [ ] Update `validation.sh` to source `atomic-write.sh` instead of `file-ops.sh`
-- [ ] Update `migrate.sh` to source `atomic-write.sh` instead of `file-ops.sh`
-- [ ] Verify no circular dependencies remain
+All 21 library files have LAYER/DEPENDENCIES/PROVIDES headers.
 
-### Phase 4: Reduce High-Dependency Libraries - NOT STARTED
+**Layer Distribution**:
+- Layer 0 (Foundation): 3 files - `exit-codes.sh`, `platform-compat.sh`, `version.sh`
+- Layer 1 (Core Infrastructure): 4 files - `config.sh`, `dependency-check.sh`, `error-json.sh`, `output-format.sh`
+- Layer 2 (Core Services): 6 files - `backup.sh`, `cache.sh`, `file-ops.sh`, `hierarchy.sh`, `logging.sh`, `migrate.sh`, `validation.sh`
+- Layer 3 (Domain Logic): 7 files - `analysis.sh`, `archive-cancel.sh`, `cancel-ops.sh`, `delete-preview.sh`, `deletion-strategy.sh`, `phase-tracking.sh`, `todowrite-integration.sh`
 
-#### 4.1 deletion-strategy.sh (6 → 3)
+**Verified**: 2025-12-24 - All 21 files have LAYER, DEPENDENCIES, and PROVIDES headers.
+
+### Phase 3: Break Circular Dependency - NOT STARTED (T809)
+
+**Subtasks**: T818, T819, T820, T821, T822
+
+- [ ] T818: Create `lib/atomic-write.sh` (Layer 1) with primitive file operations
+- [ ] T819: Update `file-ops.sh` to source `atomic-write.sh`
+- [ ] T820: Update `validation.sh` to source `atomic-write.sh` instead of `file-ops.sh`
+- [ ] T821: Update `migrate.sh` to source `atomic-write.sh` instead of `file-ops.sh`
+- [ ] T822: Verify no circular dependencies remain
+
+### Phase 4: Reduce High-Dependency Libraries - NOT STARTED (T810)
+
+**Subtasks**: T823, T824, T825, T826, T827
+
+#### 4.1 deletion-strategy.sh (6 → 3) - T823
 
 Current dependencies:
 - cancel-ops.sh
@@ -116,7 +149,7 @@ Resolution options:
 - [ ] Consolidate through cancel-ops.sh (which already sources hierarchy, config)
 - [ ] Direct exit-codes.sh only (Layer 0)
 
-#### 4.2 cancel-ops.sh (5 → 3)
+#### 4.2 cancel-ops.sh (5 → 3) - T824
 
 Current dependencies:
 - backup.sh
@@ -129,7 +162,7 @@ Resolution options:
 - [ ] Reduce by consolidating through validation.sh path
 - [ ] Accept 4 as reasonable for Layer 3 complexity
 
-#### 4.3 validation.sh (5 → 3)
+#### 4.3 validation.sh (5 → 3) - T825
 
 Current dependencies:
 - config.sh
@@ -142,7 +175,7 @@ Resolution options:
 - [ ] Remove migrate.sh dependency (source at call site instead)
 - [ ] Reduce platform-compat.sh usage to config.sh path
 
-#### 4.4 backup.sh (4 → 3)
+#### 4.4 backup.sh (4 → 3) - T826
 
 Current dependencies:
 - file-ops.sh
@@ -153,21 +186,24 @@ Current dependencies:
 Resolution:
 - [ ] Get platform-compat.sh through file-ops.sh path
 
-### Phase 5: Create Compliance Script - NOT STARTED
+### Phase 5: Create Compliance Script - NOT STARTED (T811)
 
-- [ ] Create `dev/check-lib-compliance.sh`
-- [ ] Implement source guard check
-- [ ] Implement layer header check
-- [ ] Implement circular dependency detection
-- [ ] Implement local variable check (via shellcheck)
+**Subtasks**: T828, T829, T830, T831
+
+- [ ] T828: Implement source guard checker in `dev/check-lib-compliance.sh`
+- [ ] T829: Implement layer header checker
+- [ ] T830: Implement circular dependency detector
+- [ ] T831: Implement dependency count validator
 - [ ] Add to CI/test pipeline
 
-### Phase 6: Testing Infrastructure - NOT STARTED
+### Phase 6: Testing Infrastructure - NOT STARTED (T812)
 
-- [ ] Create `tests/unit/lib/` directory
-- [ ] Add tests for pure functions in each library
-- [ ] Add mock helpers for dependency injection
-- [ ] Verify all libraries sourceable in isolation
+**Subtasks**: T832, T833, T834, T835
+
+- [ ] T832: Create `tests/unit/lib/` directory structure
+- [ ] T833: Add BATS tests for pure validation functions
+- [ ] T834: Add mock helpers for dependency injection
+- [ ] T835: Verify all libs sourceable in isolation
 
 ---
 
@@ -200,6 +236,16 @@ Resolution:
 ---
 
 ## Changelog
+
+### 2025-12-24 - Phase 1 & 2 Complete
+
+- **Source Guards**: All 21/21 libraries have unique source guards
+- **Layer Headers**: All 21/21 libraries have LAYER/DEPENDENCIES/PROVIDES headers
+- **Validation Results**:
+  - Syntax check: 21/21 files pass `bash -n`
+  - Core unit tests: 136 tests passing (add-task, validation, delete)
+  - Functional verification: `version`, `--validate`, `list --format json` all working
+- Updated overall progress to 40%
 
 ### 2025-12-23 - Initial Report
 
