@@ -95,6 +95,17 @@ declare -gA LAYER_LIMITS=(
 )
 
 # ============================================================================
+# FOUNDATION UTILITIES (exempt from same-layer sourcing rule)
+# ============================================================================
+# These L2 files provide essential infrastructure and MAY be sourced by
+# other L2 files. This is an intentional exception to the same-layer rule
+# documented in LIBRARY-ARCHITECTURE-SPEC.md Section 5.1.
+declare -gA FOUNDATION_UTILITIES=(
+    ["file-ops.sh"]=1
+    ["logging.sh"]=1
+)
+
+# ============================================================================
 # USAGE
 # ============================================================================
 
@@ -417,12 +428,51 @@ _extract_layer() {
     [[ "$layer_num" =~ ^[0-3]$ ]] && echo "$layer_num" || echo "-1"
 }
 
+# Extract eager (top-level) dependencies only
+# Lazy-loaded dependencies (inside functions) are excluded from layer violation checks
+# because they don't create load-time circular dependencies
 _extract_dependencies() {
     local file="$1"
     local deps=()
+    local in_function=0
+    local brace_depth=0
+
     while IFS= read -r line; do
+        # Skip comments
         [[ "$line" =~ ^[[:space:]]*# ]] && continue
+
+        # Track function entry (function name() { or function name {)
+        if [[ "$line" =~ ^[[:space:]]*(function[[:space:]]+)?[a-zA-Z_][a-zA-Z0-9_]*[[:space:]]*\(\)[[:space:]]*\{? ]] || \
+           [[ "$line" =~ ^[[:space:]]*function[[:space:]]+[a-zA-Z_][a-zA-Z0-9_]*[[:space:]]*\{ ]]; then
+            in_function=1
+            # Check if opening brace is on same line
+            if [[ "$line" =~ \{ ]]; then
+                brace_depth=1
+            fi
+            continue
+        fi
+
+        # Track brace depth when inside function
+        if [[ "$in_function" -eq 1 ]]; then
+            # Count opening braces (excluding those in strings/comments)
+            local open_braces
+            open_braces=$(echo "$line" | grep -o '{' | wc -l)
+            local close_braces
+            close_braces=$(echo "$line" | grep -o '}' | wc -l)
+            brace_depth=$((brace_depth + open_braces - close_braces))
+
+            # Exit function when brace depth returns to 0
+            if [[ "$brace_depth" -le 0 ]]; then
+                in_function=0
+                brace_depth=0
+            fi
+            # Skip source statements inside functions (lazy-loaded)
+            continue
+        fi
+
+        # Only process source statements at top level (eager loading)
         [[ ! "$line" =~ source ]] && continue
+
         local sourced_file=""
         if [[ "$line" =~ source[[:space:]]+[\"\']?\$\{?[A-Za-z_]+\}?/([a-zA-Z0-9_-]+\.sh) ]]; then
             sourced_file="${BASH_REMATCH[1]}"
@@ -476,6 +526,11 @@ _check_layer_violations() {
             local dep_layer="${file_layers[$dep]:-}"
             [[ -z "$dep_layer" || "$dep_layer" == "-1" ]] && continue
             if [[ "$dep_layer" -ge "$file_layer" ]]; then
+                # Allow Foundation Utilities to be sourced by same-layer files
+                if [[ "$dep_layer" -eq "$file_layer" && -n "${FOUNDATION_UTILITIES[$dep]:-}" ]]; then
+                    [[ "$VERBOSE" == true ]] && log_info "Allowed Foundation Utility: $basename → $dep" >&2
+                    continue
+                fi
                 violations+=("{\"type\":\"layer_violation\",\"file\":\"$basename\",\"sources\":\"$dep\",\"file_layer\":$file_layer,\"dep_layer\":$dep_layer,\"message\":\"Layer $file_layer cannot source Layer $dep_layer\"}")
             fi
         done
@@ -577,11 +632,26 @@ _get_layer_limit() {
 
 _count_source_statements() {
     local file_path="$1"
-    local source_lines
-    source_lines=$(grep -E '^[[:space:]]*source[[:space:]]' "$file_path" 2>/dev/null | grep -vE '^[[:space:]]*#' || true)
-    [[ -z "$source_lines" ]] && echo "0" && return 0
+    # Count only EAGER (top-level) source statements, not LAZY (inside functions)
+    # EAGER: sourced at file load time (depth 0)
+    # LAZY: sourced inside functions like _ensure_migrate_loaded() (depth > 0)
     local count
-    count=$(echo "$source_lines" | grep -cE '\$[{_A-Z]*[A-Z_]+[^/]*/[a-z0-9_-]+\.sh' 2>/dev/null || echo "0")
+    count=$(awk '
+        # Track function depth
+        /^[a-zA-Z_][a-zA-Z0-9_]*[[:space:]]*\(\)[[:space:]]*\{/ { in_func++ }
+        /^function[[:space:]]+[a-zA-Z_][a-zA-Z0-9_]*/ { in_func++ }
+        /^\}[[:space:]]*$/ { if (in_func > 0) in_func-- }
+
+        # Count source statements only at top-level (depth 0)
+        # Skip comment lines and only match lib source patterns
+        /^[[:space:]]*source[[:space:]]/ && !/^[[:space:]]*#/ && in_func == 0 {
+            if ($0 ~ /\$[{_A-Za-z]*[A-Za-z_]+[^\/]*\/[a-z0-9_-]+\.sh/) {
+                eager_count++
+            }
+        }
+
+        END { print eager_count + 0 }
+    ' "$file_path" 2>/dev/null)
     echo "${count:-0}"
 }
 
