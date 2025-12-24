@@ -11,13 +11,16 @@
 
 | Task ID | Title | Type | Status |
 |---------|-------|------|--------|
-| **T806** | EPIC: Library Architecture Refactoring | epic | in progress |
+| **T806** | EPIC: Library Architecture Refactoring | epic | ✅ COMPLETE |
 | T807 | Phase 1: Add Source Guards | task | ✅ COMPLETE |
 | T808 | Phase 2: Add Layer Headers | task | ✅ COMPLETE |
 | T809 | Phase 3: Break Circular Dependency Chain | task | ✅ COMPLETE |
 | T810 | Phase 4: Reduce High-Dependency Libraries | task | ✅ COMPLETE |
-| T811 | Phase 5: Create Compliance Validation Script | task | pending |
-| T812 | Phase 6: Library Testing Infrastructure | task | pending |
+| T811 | Phase 5: Create Compliance Validation Script | task | ✅ COMPLETE |
+| T812 | Phase 6: Library Testing Infrastructure | task | ✅ COMPLETE |
+| T860 | Fix Layer Header Misassignments | task | ⏳ PENDING |
+| T864 | Reduce validation.sh dependencies from 4 to 3 | task | ⏳ PENDING |
+| T865 | Reduce total inter-library deps from 27 to 25 | task | ⏳ PENDING |
 
 ---
 
@@ -25,14 +28,25 @@
 
 | Metric | Current | Target | Status |
 |--------|---------|--------|--------|
-| Overall Progress | 67% | 100% | IN PROGRESS |
-| Inter-library dependencies | 33 | ≤25 | IMPROVED (was 44→38→33) |
-| Max deps per library | 3 | ≤3 | ✅ COMPLETE |
+| Overall Progress | 80% | 100% | IN PROGRESS |
+| Inter-library dependencies | 27 | ≤25 | ⚠️ OVER BY 2 (T865) |
+| Max deps per library | 4 | ≤3 | ⚠️ validation.sh=4 (T864) |
 | Layer 0 files with deps | 0 | 0 | ✅ COMPLETE |
 | Circular dependency chains | 0 | 0 | ✅ COMPLETE |
+| Same-layer sourcing violations | 5 | 0 | ⚠️ LAYER MISMATCH (T860) |
 | Libraries with source guards | 23/23 | 23/23 | ✅ COMPLETE |
 | Libraries with layer headers | 23/23 | 23/23 | ✅ COMPLETE |
 | Phase 4 libraries refactored | 5/5 | 5/5 | ✅ COMPLETE |
+| Compliance script | exists | exists | ✅ COMPLETE (T811) |
+| Testing infrastructure | exists | exists | ✅ COMPLETE (T812) |
+
+### Remaining Non-Compliant Issues
+
+| Task | Issue | Resolution |
+|------|-------|------------|
+| T860 | Layer header/spec mismatch: file-ops.sh, hierarchy.sh, logging.sh have L1 headers but spec says L2 | Update headers OR spec OR compliance checker mapping |
+| T864 | validation.sh has 4 deps, max is 3 | Reduce 1 dep via lazy loading or transitive consolidation |
+| T865 | Total deps 27, target ≤25 | Reduce 2 more deps system-wide |
 
 ---
 
