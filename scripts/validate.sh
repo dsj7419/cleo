@@ -11,6 +11,9 @@ CONFIG_FILE="${CONFIG_FILE:-.claude/todo-config.json}"
 CLAUDE_TODO_HOME="${CLAUDE_TODO_HOME:-$HOME/.claude-todo}"
 LOG_FILE="${LOG_FILE:-.claude/todo-log.json}"
 
+# Command name for error-json library
+COMMAND_NAME="validate"
+
 # Source logging library for should_use_color function
 LIB_DIR="${SCRIPT_DIR}/../lib"
 if [[ -f "$LIB_DIR/logging.sh" ]]; then

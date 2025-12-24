@@ -39,6 +39,9 @@ TODO_FILE="${TODO_FILE:-$CLAUDE_TODO_DIR/todo.json}"
 CONFIG_FILE="${CONFIG_FILE:-$CLAUDE_TODO_DIR/config.json}"
 LOG_SCRIPT="${SCRIPT_DIR}/log.sh"
 
+# Command name for error-json library
+COMMAND_NAME="reparent"
+
 # Arguments
 TASK_ID=""
 NEW_PARENT=""

@@ -27,6 +27,9 @@ CLAUDE_TODO_DIR="${CLAUDE_TODO_DIR:-$(pwd)/.claude}"
 TODO_FILE="${TODO_FILE:-$CLAUDE_TODO_DIR/todo.json}"
 LOG_SCRIPT="${SCRIPT_DIR}/log.sh"
 
+# Command name for error-json library
+COMMAND_NAME="promote"
+
 TASK_ID=""
 FORMAT=$(resolve_format "")
 QUIET=false
