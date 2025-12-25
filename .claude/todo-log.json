@@ -3,9 +3,9 @@
   "version": "2.1.0",
   "project": "claude-todo",
   "_meta": {
-    "totalEntries": 1906,
+    "totalEntries": 2029,
     "firstEntry": "2025-12-13T07:14:38Z",
-    "lastEntry": "2025-12-24T08:35:55Z",
+    "lastEntry": "2025-12-24T19:38:45Z",
     "entriesPruned": 0
   },
   "entries": [
@@ -47890,6 +47890,178 @@
         "title": "Reduce total inter-library dependencies from 27 to target 25",
         "status": "pending",
         "priority": "medium"
+      }
+    },
+    {
+      "id": "log_542f1b5526c5",
+      "timestamp": "2025-12-24T17:34:20Z",
+      "sessionId": "session_20251223_203915_5fb3b1",
+      "action": "task_restored_from_cancelled",
+      "actor": "system",
+      "taskId": "T860",
+      "before": {
+        "status": "cancelled"
+      },
+      "after": {
+        "status": "pending"
+      },
+      "details": {
+        "restoredFrom": "cancelled",
+        "originalCancellationReason": "Overlaps with T858 (Fix L1 violations). Layer header misassignments are part of same-layer sourcing fixes.",
+        "restoredToStatus": "pending"
+      }
+    },
+    {
+      "id": "log_f90f19229017",
+      "timestamp": "2025-12-24T17:34:23Z",
+      "sessionId": "session_20251223_203915_5fb3b1",
+      "action": "task_restored_from_cancelled",
+      "actor": "system",
+      "taskId": "T864",
+      "before": {
+        "status": "cancelled"
+      },
+      "after": {
+        "status": "pending"
+      },
+      "details": {
+        "restoredFrom": "cancelled",
+        "originalCancellationReason": "Duplicate of T857 (Reduce validation.sh deps). Consolidating under T856.",
+        "restoredToStatus": "pending"
+      }
+    },
+    {
+      "id": "log_29a0fe7fddfe",
+      "timestamp": "2025-12-24T17:34:26Z",
+      "sessionId": "session_20251223_203915_5fb3b1",
+      "action": "task_restored_from_cancelled",
+      "actor": "system",
+      "taskId": "T865",
+      "before": {
+        "status": "cancelled"
+      },
+      "after": {
+        "status": "pending"
+      },
+      "details": {
+        "restoredFrom": "cancelled",
+        "originalCancellationReason": "Total deps 27→25 is a TARGET not MUST per SPEC. Fixing validation.sh (T857) gets us to 26 which is acceptable.",
+        "restoredToStatus": "pending"
+      }
+    },
+    {
+      "id": "log_b2b577b2d7ee",
+      "timestamp": "2025-12-24T17:34:27Z",
+      "sessionId": "session_20251223_203915_5fb3b1",
+      "action": "task_restored_from_cancelled",
+      "actor": "system",
+      "taskId": "T800",
+      "before": {
+        "status": "cancelled"
+      },
+      "after": {
+        "status": "pending"
+      },
+      "details": {
+        "restoredFrom": "cancelled",
+        "originalCancellationReason": "Overlaps with T858/T861 (Fix layer violations). Circular deps are fixed by same-layer sourcing fixes.",
+        "restoredToStatus": "pending"
+      }
+    },
+    {
+      "id": "log-1766599022-69f571",
+      "timestamp": "2025-12-24T17:57:02Z",
+      "action": "task_created",
+      "taskId": "T866",
+      "actor": "system",
+      "details": {
+        "title": "Phase 1: Fix Layer Header Misclassifications",
+        "status": "pending",
+        "priority": "critical"
+      },
+      "before": null,
+      "after": {
+        "title": "Phase 1: Fix Layer Header Misclassifications",
+        "status": "pending",
+        "priority": "critical"
+      }
+    },
+    {
+      "id": "log-1766599081-88be0e",
+      "timestamp": "2025-12-24T17:58:01Z",
+      "action": "task_created",
+      "taskId": "T867",
+      "actor": "system",
+      "details": {
+        "title": "Phase 3: Update LIBRARY-ARCHITECTURE-SPEC",
+        "status": "pending",
+        "priority": "high"
+      },
+      "before": null,
+      "after": {
+        "title": "Phase 3: Update LIBRARY-ARCHITECTURE-SPEC",
+        "status": "pending",
+        "priority": "high"
+      }
+    },
+    {
+      "id": "log-1766599083-731243",
+      "timestamp": "2025-12-24T17:58:03Z",
+      "action": "task_created",
+      "taskId": "T868",
+      "actor": "system",
+      "details": {
+        "title": "Phase 4: Final Validation and Release",
+        "status": "pending",
+        "priority": "medium"
+      },
+      "before": null,
+      "after": {
+        "title": "Phase 4: Final Validation and Release",
+        "status": "pending",
+        "priority": "medium"
+      }
+    },
+    {
+      "id": "log_b11cac5d2e7b",
+      "timestamp": "2025-12-24T17:58:33Z",
+      "sessionId": null,
+      "action": "dependency_removed",
+      "actor": "system",
+      "taskId": "T857",
+      "before": null,
+      "after": null,
+      "details": {
+        "removedDependencyId": "T861",
+        "removalReason": "task_cancelled"
+      }
+    },
+    {
+      "id": "log_19d86545f264",
+      "timestamp": "2025-12-24T19:06:39Z",
+      "sessionId": "session_20251223_203915_5fb3b1",
+      "action": "focus_changed",
+      "actor": "claude",
+      "taskId": null,
+      "before": {
+        "currentTask": "T809"
+      },
+      "after": {
+        "currentTask": "T866"
+      },
+      "details": null
+    },
+    {
+      "id": "log_183394f3b2c3",
+      "timestamp": "2025-12-24T19:38:45Z",
+      "sessionId": "session_20251223_203915_5fb3b1",
+      "action": "session_end",
+      "actor": "system",
+      "taskId": null,
+      "before": null,
+      "after": null,
+      "details": {
+        "note": "T866 Phase 1 completed: Layer header fixes for file-ops.sh, hierarchy.sh, logging.sh. Bumped to v0.36.1. Install verified."
       }
     }
   ]

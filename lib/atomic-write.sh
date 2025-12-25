@@ -58,13 +58,14 @@ fi
 #=== CONFIGURATION ================================================
 
 # Default backup directory (relative to file location)
-readonly _AW_DEFAULT_BACKUP_SUBDIR="backups/operational"
+# Guard pattern prevents readonly errors when sourced multiple times
+[[ -z "${_AW_DEFAULT_BACKUP_SUBDIR:-}" ]] && readonly _AW_DEFAULT_BACKUP_SUBDIR="backups/operational"
 
 # Default maximum number of backups to retain
-readonly _AW_DEFAULT_MAX_BACKUPS=5
+[[ -z "${_AW_DEFAULT_MAX_BACKUPS:-}" ]] && readonly _AW_DEFAULT_MAX_BACKUPS=5
 
 # Temp file suffix
-readonly _AW_TEMP_SUFFIX=".tmp"
+[[ -z "${_AW_TEMP_SUFFIX:-}" ]] && readonly _AW_TEMP_SUFFIX=".tmp"
 
 #=== FUNCTIONS ====================================================
 

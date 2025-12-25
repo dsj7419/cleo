@@ -95,7 +95,7 @@ teardown() {
     cd "$TEST_TEMP_DIR"
     bash "$INIT_SCRIPT" --no-claude-md test-project
 
-    run bash "$INIT_SCRIPT" --force --no-claude-md test-project-2
+    run bash "$INIT_SCRIPT" --force --confirm-wipe --no-claude-md test-project-2
     assert_success
 
     run bash "$VALIDATE_SCRIPT"

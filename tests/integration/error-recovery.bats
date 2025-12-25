@@ -233,8 +233,9 @@ EOF
     assert_task_depends_on "T002" "T001"
 
     # Complete and archive T001
+    # Use --no-safe to allow archiving tasks with active dependents (testing cleanup logic)
     bash "$COMPLETE_SCRIPT" T001 --skip-notes
-    bash "$SCRIPTS_DIR/archive.sh" --all
+    bash "$SCRIPTS_DIR/archive.sh" --all --no-safe
 
     # Verify T002 no longer depends on archived T001
     local deps_count
@@ -257,7 +258,8 @@ EOF
 EOF
 
     # Archive T001 only
-    bash "$SCRIPTS_DIR/archive.sh" --all
+    # Use --no-safe to allow archiving tasks with active dependents (testing cleanup logic)
+    bash "$SCRIPTS_DIR/archive.sh" --all --no-safe
 
     # T003 should still depend on T002
     assert_task_depends_on "T003" "T002"

@@ -32,13 +32,20 @@ _setup_paths() {
 _create_test_project() {
     local base_dir="${1:-$TEST_TEMP_DIR}"
 
+    # Create both old and new backup directory structures for test compatibility
     mkdir -p "${base_dir}/.claude/.backups"
+    mkdir -p "${base_dir}/.claude/backups/operational"
+    mkdir -p "${base_dir}/.claude/backups/safety"
+    mkdir -p "${base_dir}/.claude/backups/snapshot"
+    mkdir -p "${base_dir}/.claude/backups/archive"
 
     export TODO_FILE="${base_dir}/.claude/todo.json"
     export CONFIG_FILE="${base_dir}/.claude/todo-config.json"
     export LOG_FILE="${base_dir}/.claude/todo-log.json"
     export ARCHIVE_FILE="${base_dir}/.claude/todo-archive.json"
-    export BACKUPS_DIR="${base_dir}/.claude/.backups"
+    # Use new backup path (Tier 1 operational backups)
+    export BACKUPS_DIR="${base_dir}/.claude/backups/operational"
+    export SAFETY_BACKUPS_DIR="${base_dir}/.claude/backups/safety"
 
     # Create minimal config (version must match SCHEMA_VERSION_CONFIG in lib/migrate.sh)
     cat > "$CONFIG_FILE" << 'EOF'

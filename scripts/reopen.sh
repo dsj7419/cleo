@@ -606,7 +606,7 @@ if [[ -f "$LOG_SCRIPT" ]]; then
         --before "$BEFORE_STATE" \
         --after "$AFTER_STATE" \
         --details "{\"reason\":\"$REASON\",\"wasAutoCompleted\":$WAS_AUTO_COMPLETED,\"previousCompletedAt\":\"$COMPLETED_AT\"}" \
-        --actor "system" 2>/dev/null || { [[ "$FORMAT" != "json" ]] && log_warn "Failed to write log entry"; }
+        --actor "system" >/dev/null 2>&1 || { [[ "$FORMAT" != "json" ]] && log_warn "Failed to write log entry"; }
 fi
 
 # Get updated task for output

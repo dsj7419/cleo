@@ -34,6 +34,12 @@ if [[ -f "$LIB_DIR/error-json.sh" ]]; then
   source "$LIB_DIR/error-json.sh"
 fi
 
+# Source file-ops library for save_json function
+if [[ -f "$LIB_DIR/file-ops.sh" ]]; then
+  # shellcheck source=../lib/file-ops.sh
+  source "$LIB_DIR/file-ops.sh"
+fi
+
 # Set TODO_FILE after sourcing logging.sh (LOG_FILE is set by logging.sh)
 TODO_FILE="${TODO_FILE:-.claude/todo.json}"
 

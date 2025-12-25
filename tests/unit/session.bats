@@ -107,8 +107,8 @@ teardown() {
 @test "session end is safe without active session" {
     create_independent_tasks
     run bash "$SESSION_SCRIPT" end
-    # Should handle gracefully
-    [[ "$status" -eq 0 ]] || [[ "$status" -eq 1 ]]
+    # Should handle gracefully - returns EXIT_NO_CHANGE (102) when no active session
+    [[ "$status" -eq 0 ]] || [[ "$status" -eq 1 ]] || [[ "$status" -eq 102 ]]
 }
 
 @test "session end logs session completion" {

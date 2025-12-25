@@ -188,7 +188,8 @@ EOF
 
 @test "archive --all cleans up all orphaned dependencies" {
     create_archive_atomic_fixture
-    bash "$ARCHIVE_SCRIPT" --all
+    # Use --no-safe to allow archiving tasks with active dependents (testing cleanup logic)
+    bash "$ARCHIVE_SCRIPT" --all --no-safe
 
     # After --all, T006's depends on T002 should be cleaned (T002 archived)
     local t006_has_depends
