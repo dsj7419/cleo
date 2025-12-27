@@ -1,5 +1,5 @@
 {
-  "$schema": "https://claude-todo.dev/schemas/v1/commands-index.schema.json",
+  "$schema": "https://cleo-dev.com/schemas/v1/commands-index.schema.json",
   "_meta": {
     "version": "1.0.0",
     "lastUpdated": "2025-12-22",
@@ -154,7 +154,7 @@
       "script": "extract-todowrite.sh",
       "category": "sync",
       "doc": "sync.md",
-      "synopsis": "Extract/merge TodoWrite state back to claude-todo (session end)",
+      "synopsis": "Extract/merge TodoWrite state back to cleo (session end)",
       "flags": ["--format", "--quiet", "--dry-run"],
       "exitCodes": [0, 2, 3, 6],
       "jsonOutput": true,
