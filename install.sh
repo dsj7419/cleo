@@ -487,6 +487,7 @@ declare -A CMD_MAP=(
   [delete]="delete.sh"
   [uncancel]="uncancel.sh"
   [reopen]="reopen.sh"
+  [claude-migrate]="claude-migrate.sh"
 )
 
 # Brief descriptions for main help
@@ -530,6 +531,7 @@ declare -A CMD_DESC=(
   [delete]="Cancel/delete a task with child handling strategies"
   [uncancel]="Restore cancelled tasks back to pending status"
   [reopen]="Restore completed tasks back to pending status"
+  [claude-migrate]="Migrate legacy .claude/ and ~/.claude-todo to CLEO"
 )
 
 # ============================================

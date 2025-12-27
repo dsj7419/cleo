@@ -250,7 +250,7 @@ emit_migration_warning() {
             echo "            This will not be used. CLEO uses: ~/.cleo" >&2
             ;;
         project)
-            echo "[MIGRATION] Legacy project directory detected: .cleo/" >&2
+            echo "[MIGRATION] Legacy project directory detected: .claude/" >&2
             echo "            This will not be used. CLEO uses: .cleo/" >&2
             ;;
         env)

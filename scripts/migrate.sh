@@ -160,14 +160,14 @@ cmd_repair() {
     local project_dir="${1:-.}"
     local mode="${2:-interactive}"  # interactive, auto, dry-run
 
-    local claude_dir="$project_dir/.claude"
-    local todo_file="$claude_dir/todo.json"
+    local cleo_dir="$project_dir/.cleo"
+    local todo_file="$cleo_dir/todo.json"
 
-    if [[ ! -d "$claude_dir" ]]; then
+    if [[ ! -d "$cleo_dir" ]]; then
         if [[ "$FORMAT" == "json" ]] && declare -f output_error &>/dev/null; then
-            output_error "$E_NOT_INITIALIZED" "No .claude directory found in $project_dir" "${EXIT_NOT_FOUND:-4}" true "Run 'cleo init' to initialize the project"
+            output_error "$E_NOT_INITIALIZED" "No .cleo directory found in $project_dir" "${EXIT_NOT_FOUND:-4}" true "Run 'cleo init' to initialize the project"
         else
-            output_error "$E_NOT_INITIALIZED" "No .claude directory found in $project_dir"
+            output_error "$E_NOT_INITIALIZED" "No .cleo directory found in $project_dir"
             echo "Run 'cleo init' to initialize the project" >&2
         fi
         exit "${EXIT_NOT_FOUND:-1}"
@@ -175,9 +175,9 @@ cmd_repair() {
 
     if [[ ! -f "$todo_file" ]]; then
         if [[ "$FORMAT" == "json" ]] && declare -f output_error &>/dev/null; then
-            output_error "$E_FILE_NOT_FOUND" "No todo.json found in $claude_dir" "${EXIT_FILE_ERROR:-4}" false ""
+            output_error "$E_FILE_NOT_FOUND" "No todo.json found in $cleo_dir" "${EXIT_FILE_ERROR:-4}" false ""
         else
-            output_error "$E_FILE_NOT_FOUND" "No todo.json found in $claude_dir"
+            output_error "$E_FILE_NOT_FOUND" "No todo.json found in $cleo_dir"
         fi
         exit "${EXIT_FILE_ERROR:-1}"
     fi
@@ -235,13 +235,13 @@ cmd_repair() {
 # Show migration status for all files
 cmd_status() {
     local project_dir="${1:-.}"
-    local claude_dir="$project_dir/.claude"
+    local cleo_dir="$project_dir/.cleo"
 
-    if [[ ! -d "$claude_dir" ]]; then
+    if [[ ! -d "$cleo_dir" ]]; then
         if [[ "$FORMAT" == "json" ]] && declare -f output_error &>/dev/null; then
-            output_error "$E_NOT_INITIALIZED" "No .claude directory found in $project_dir" "${EXIT_NOT_FOUND:-4}" true "Run 'cleo init' to initialize the project"
+            output_error "$E_NOT_INITIALIZED" "No .cleo directory found in $project_dir" "${EXIT_NOT_FOUND:-4}" true "Run 'cleo init' to initialize the project"
         else
-            output_error "$E_NOT_INITIALIZED" "No .claude directory found in $project_dir"
+            output_error "$E_NOT_INITIALIZED" "No .cleo directory found in $project_dir"
             echo "Run 'cleo init' to initialize the project" >&2
         fi
         exit "${EXIT_NOT_FOUND:-1}"
@@ -251,10 +251,10 @@ cmd_status() {
         # JSON output
         local files_json="[]"
         local files=(
-            "$claude_dir/todo.json:todo"
-            "$claude_dir/config.json:config"
-            "$claude_dir/todo-archive.json:archive"
-            "$claude_dir/todo-log.json:log"
+            "$cleo_dir/todo.json:todo"
+            "$cleo_dir/config.json:config"
+            "$cleo_dir/todo-archive.json:archive"
+            "$cleo_dir/todo-log.json:log"
         )
 
         for file_spec in "${files[@]}"; do
@@ -319,30 +319,30 @@ cmd_status() {
             }' | jq --arg todo "$SCHEMA_VERSION_TODO" --arg config "$SCHEMA_VERSION_CONFIG" --arg archive "$SCHEMA_VERSION_ARCHIVE" --arg log "$SCHEMA_VERSION_LOG" \
             '.targetVersions = {"todo": $todo, "config": $config, "archive": $archive, "log": $log}'
     else
-        show_migration_status "$claude_dir"
+        show_migration_status "$cleo_dir"
     fi
 }
 
 # Check if migration is needed
 cmd_check() {
     local project_dir="${1:-.}"
-    local claude_dir="$project_dir/.claude"
+    local cleo_dir="$project_dir/.cleo"
 
-    if [[ ! -d "$claude_dir" ]]; then
+    if [[ ! -d "$cleo_dir" ]]; then
         if [[ "$FORMAT" == "json" ]] && declare -f output_error &>/dev/null; then
-            output_error "$E_NOT_INITIALIZED" "No .claude directory found" "${EXIT_NOT_FOUND:-4}" true "Run 'cleo init' to initialize the project"
+            output_error "$E_NOT_INITIALIZED" "No .cleo directory found" "${EXIT_NOT_FOUND:-4}" true "Run 'cleo init' to initialize the project"
         else
-            output_error "$E_NOT_INITIALIZED" "No .claude directory found"
+            output_error "$E_NOT_INITIALIZED" "No .cleo directory found"
         fi
         exit "${EXIT_NOT_FOUND:-1}"
     fi
 
     local needs_migration=false
     local files=(
-        "$claude_dir/todo.json:todo"
-        "$claude_dir/config.json:config"
-        "$claude_dir/todo-archive.json:archive"
-        "$claude_dir/todo-log.json:log"
+        "$cleo_dir/todo.json:todo"
+        "$cleo_dir/config.json:config"
+        "$cleo_dir/todo-archive.json:archive"
+        "$cleo_dir/todo-log.json:log"
     )
 
     for file_spec in "${files[@]}"; do
@@ -413,13 +413,13 @@ cmd_run() {
     local create_backup="${3:-true}"
     local force_migration="${4:-false}"
 
-    local claude_dir="$project_dir/.claude"
+    local cleo_dir="$project_dir/.cleo"
 
-    if [[ ! -d "$claude_dir" ]]; then
+    if [[ ! -d "$cleo_dir" ]]; then
         if [[ "$FORMAT" == "json" ]] && declare -f output_error &>/dev/null; then
-            output_error "$E_NOT_INITIALIZED" "No .claude directory found" "${EXIT_NOT_FOUND:-4}" true "Run 'cleo init' to initialize the project"
+            output_error "$E_NOT_INITIALIZED" "No .cleo directory found" "${EXIT_NOT_FOUND:-4}" true "Run 'cleo init' to initialize the project"
         else
-            output_error "$E_NOT_INITIALIZED" "No .claude directory found"
+            output_error "$E_NOT_INITIALIZED" "No .cleo directory found"
         fi
         exit "${EXIT_NOT_FOUND:-1}"
     fi
@@ -437,10 +437,10 @@ cmd_run() {
 
     # Check status first
     local files=(
-        "$claude_dir/todo.json:todo"
-        "$claude_dir/config.json:config"
-        "$claude_dir/todo-archive.json:archive"
-        "$claude_dir/todo-log.json:log"
+        "$cleo_dir/todo.json:todo"
+        "$cleo_dir/config.json:config"
+        "$cleo_dir/todo-archive.json:archive"
+        "$cleo_dir/todo-log.json:log"
     )
 
     local migration_needed=false
@@ -644,14 +644,14 @@ cmd_rollback() {
     local backup_id="${2:-}"
     local force="${3:-false}"
 
-    local claude_dir="$project_dir/.claude"
-    local backups_dir="$claude_dir/backups/migration"
+    local cleo_dir="$project_dir/.cleo"
+    local backups_dir="$cleo_dir/backups/migration"
 
-    if [[ ! -d "$claude_dir" ]]; then
+    if [[ ! -d "$cleo_dir" ]]; then
         if [[ "$FORMAT" == "json" ]] && declare -f output_error &>/dev/null; then
-            output_error "$E_NOT_INITIALIZED" "No .claude directory found in $project_dir" "${EXIT_NOT_FOUND:-4}" true "Run 'cleo init' to initialize the project"
+            output_error "$E_NOT_INITIALIZED" "No .cleo directory found in $project_dir" "${EXIT_NOT_FOUND:-4}" true "Run 'cleo init' to initialize the project"
         else
-            output_error "$E_NOT_INITIALIZED" "No .claude directory found in $project_dir"
+            output_error "$E_NOT_INITIALIZED" "No .cleo directory found in $project_dir"
             echo "Run 'cleo init' to initialize the project" >&2
         fi
         exit "${EXIT_NOT_FOUND:-1}"
@@ -751,14 +751,14 @@ cmd_rollback() {
 
     # Create pre-rollback safety backup
     echo "Creating safety backup before rollback..."
-    local safety_backup="$claude_dir/backups/safety/safety_$(date +"%Y%m%d_%H%M%S")_pre_rollback"
+    local safety_backup="$cleo_dir/backups/safety/safety_$(date +"%Y%m%d_%H%M%S")_pre_rollback"
     mkdir -p "$safety_backup"
 
     local files=(
-        "$claude_dir/todo.json"
-        "$claude_dir/config.json"
-        "$claude_dir/todo-archive.json"
-        "$claude_dir/todo-log.json"
+        "$cleo_dir/todo.json"
+        "$cleo_dir/config.json"
+        "$cleo_dir/todo-archive.json"
+        "$cleo_dir/todo-log.json"
     )
 
     for file in "${files[@]}"; do
@@ -823,7 +823,7 @@ cmd_rollback() {
     local validation_errors=0
 
     for filename in "${restored_files[@]}"; do
-        local target_file="$claude_dir/$filename"
+        local target_file="$cleo_dir/$filename"
 
         if [[ -f "$target_file" ]]; then
             if ! jq empty "$target_file" 2>/dev/null; then
