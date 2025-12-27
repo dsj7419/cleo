@@ -12,7 +12,7 @@ set -euo pipefail
 
 TODO_FILE="${TODO_FILE:-.cleo/todo.json}"
 ARCHIVE_FILE="${ARCHIVE_FILE:-.cleo/todo-archive.json}"
-CONFIG_FILE="${CONFIG_FILE:-.cleo/todo-config.json}"
+CONFIG_FILE="${CONFIG_FILE:-.cleo/config.json}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LOG_SCRIPT="${SCRIPT_DIR}/log.sh"
 CLEO_HOME="${CLEO_HOME:-$HOME/.cleo}"
@@ -178,7 +178,7 @@ Flags:
   -q, --quiet           Suppress non-essential output
   -h, --help            Show this help
 
-Configuration (from todo-config.json):
+Configuration (from config.json):
   - cancellation.requireReason: Require reason (default: true)
   - cancellation.defaultChildStrategy: Default strategy (default: "block")
   - cancellation.cascadeConfirmThreshold: Confirm above N tasks (default: 10)

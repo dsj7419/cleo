@@ -108,7 +108,7 @@ Subcommands:
 
 Options:
   --global         Target global config (~/.cleo/config.json)
-                   instead of project config (.cleo/todo-config.json)
+                   instead of project config (.cleo/config.json)
   -f, --format FMT Output format: text (default in TTY) or json
   --json           Shorthand for --format json
   --human          Shorthand for --format text

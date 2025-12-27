@@ -14,7 +14,7 @@ if [[ -f "$LIB_DIR/paths.sh" ]]; then
 fi
 
 TODO_FILE="${TODO_FILE:-.cleo/todo.json}"
-CONFIG_FILE="${CONFIG_FILE:-.cleo/todo-config.json}"
+CONFIG_FILE="${CONFIG_FILE:-.cleo/config.json}"
 
 # Command name for error-json library
 COMMAND_NAME="complete"

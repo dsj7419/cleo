@@ -128,7 +128,7 @@ teardown_file() {
     run jq empty .claude/todo-archive.json
     assert_success
 
-    run jq empty .claude/todo-config.json
+    run jq empty .claude/config.json
     assert_success
 
     run jq empty .claude/todo-log.json

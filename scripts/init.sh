@@ -107,7 +107,7 @@ DESTRUCTIVE REINITIALIZE:
   Both --force AND --confirm-wipe are required to reinitialize an existing
   project. This will:
   1. Create a safety backup of ALL existing data files
-  2. PERMANENTLY WIPE: todo.json, todo-archive.json, todo-config.json, todo-log.json
+  2. PERMANENTLY WIPE: todo.json, todo-archive.json, config.json, todo-log.json
   3. Initialize fresh data files
 
   Example: cleo init --force --confirm-wipe
@@ -120,7 +120,7 @@ Exit Codes:
 Creates:
   .cleo/todo.json         Active tasks
   .cleo/todo-archive.json Completed tasks
-  .cleo/todo-config.json  Configuration
+  .cleo/config.json  Configuration
   .cleo/todo-log.json     Change history
   .cleo/schemas/          JSON Schema files
   .cleo/.backups/         Backup directory
@@ -278,7 +278,7 @@ PROJECT_NAME=$(echo "$PROJECT_NAME" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0
 # ============================================================================
 
 # List of data files that would be wiped during reinitialize
-DATA_FILES=("todo.json" "todo-archive.json" "todo-config.json" "todo-log.json")
+DATA_FILES=("todo.json" "todo-archive.json" "config.json" "todo-log.json")
 TODO_DIR=".cleo"
 
 # Check if project is already initialized
@@ -386,7 +386,7 @@ if _project_initialized; then
                         "context": {
                             "existingFiles": $existingFiles,
                             "dataDirectory": ".cleo",
-                            "affectedFiles": ["todo.json", "todo-archive.json", "todo-config.json", "todo-log.json"]
+                            "affectedFiles": ["todo.json", "todo-archive.json", "config.json", "todo-log.json"]
                         }
                     }
                 }'
@@ -429,7 +429,7 @@ if _project_initialized; then
                         "context": {
                             "existingFiles": $existingFiles,
                             "dataDirectory": ".cleo",
-                            "affectedFiles": ["todo.json", "todo-archive.json", "todo-config.json", "todo-log.json"],
+                            "affectedFiles": ["todo.json", "todo-archive.json", "config.json", "todo-log.json"],
                             "safetyBackupLocation": ".cleo/backups/safety/"
                         }
                     }
@@ -584,18 +584,18 @@ else
   exit 1
 fi
 
-# Create todo-config.json from template
-log_info "Creating todo-config.json from template..."
+# Create config.json from template
+log_info "Creating config.json from template..."
 if [[ -f "$TEMPLATES_DIR/config.template.json" ]]; then
-  cp "$TEMPLATES_DIR/config.template.json" "$TODO_DIR/todo-config.json"
+  cp "$TEMPLATES_DIR/config.template.json" "$TODO_DIR/config.json"
 
   # Substitute placeholders
-  sed -i "s/{{VERSION}}/$VERSION/g" "$TODO_DIR/todo-config.json"
+  sed -i "s/{{VERSION}}/$VERSION/g" "$TODO_DIR/config.json"
 
   # Fix schema path from relative to local
-  sed -i 's|"\$schema": "../schemas/config.schema.json"|"$schema": "./schemas/config.schema.json"|' "$TODO_DIR/todo-config.json"
+  sed -i 's|"\$schema": "../schemas/config.schema.json"|"$schema": "./schemas/config.schema.json"|' "$TODO_DIR/config.json"
 
-  log_info "Created $TODO_DIR/todo-config.json"
+  log_info "Created $TODO_DIR/config.json"
 else
   log_error "Template not found: $TEMPLATES_DIR/config.template.json"
   exit 1
@@ -666,7 +666,7 @@ fi
 log_info "Validating created files..."
 if command -v jq &> /dev/null; then
   # Validate JSON syntax
-  for file in "$TODO_DIR/todo.json" "$TODO_DIR/todo-archive.json" "$TODO_DIR/todo-config.json" "$TODO_DIR/todo-log.json"; do
+  for file in "$TODO_DIR/todo.json" "$TODO_DIR/todo-archive.json" "$TODO_DIR/config.json" "$TODO_DIR/todo-log.json"; do
     if jq empty "$file" 2>/dev/null; then
       log_info "✓ Valid JSON: $(basename "$file")"
     else
@@ -735,7 +735,7 @@ fi
 CREATED_FILES=(
   "todo.json"
   "todo-archive.json"
-  "todo-config.json"
+  "config.json"
   "todo-log.json"
 )
 
@@ -773,7 +773,7 @@ else
   echo "Files created in .cleo/:"
   echo "  - .cleo/todo.json         (active tasks)"
   echo "  - .cleo/todo-archive.json (completed tasks)"
-  echo "  - .cleo/todo-config.json  (settings)"
+  echo "  - .cleo/config.json  (settings)"
   echo "  - .cleo/todo-log.json     (change history)"
   echo "  - .cleo/schemas/          (JSON schemas for validation)"
   echo "  - .cleo/backups/          (automatic backups)"

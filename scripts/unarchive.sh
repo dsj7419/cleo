@@ -15,7 +15,7 @@ fi
 
 TODO_FILE="${TODO_FILE:-.cleo/todo.json}"
 ARCHIVE_FILE="${ARCHIVE_FILE:-.cleo/todo-archive.json}"
-CONFIG_FILE="${CONFIG_FILE:-.cleo/todo-config.json}"
+CONFIG_FILE="${CONFIG_FILE:-.cleo/config.json}"
 LOG_FILE="${LOG_FILE:-.cleo/todo-log.json}"
 
 # Source logging library for should_use_color function

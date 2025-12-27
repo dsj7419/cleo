@@ -252,7 +252,7 @@ cmd_status() {
         local files_json="[]"
         local files=(
             "$claude_dir/todo.json:todo"
-            "$claude_dir/todo-config.json:config"
+            "$claude_dir/config.json:config"
             "$claude_dir/todo-archive.json:archive"
             "$claude_dir/todo-log.json:log"
         )
@@ -340,7 +340,7 @@ cmd_check() {
     local needs_migration=false
     local files=(
         "$claude_dir/todo.json:todo"
-        "$claude_dir/todo-config.json:config"
+        "$claude_dir/config.json:config"
         "$claude_dir/todo-archive.json:archive"
         "$claude_dir/todo-log.json:log"
     )
@@ -438,7 +438,7 @@ cmd_run() {
     # Check status first
     local files=(
         "$claude_dir/todo.json:todo"
-        "$claude_dir/todo-config.json:config"
+        "$claude_dir/config.json:config"
         "$claude_dir/todo-archive.json:archive"
         "$claude_dir/todo-log.json:log"
     )
@@ -756,7 +756,7 @@ cmd_rollback() {
 
     local files=(
         "$claude_dir/todo.json"
-        "$claude_dir/todo-config.json"
+        "$claude_dir/config.json"
         "$claude_dir/todo-archive.json"
         "$claude_dir/todo-log.json"
     )
@@ -858,7 +858,7 @@ cmd_rollback() {
             todo.json)
                 file_type="todo"
                 ;;
-            todo-config.json)
+            config.json)
                 file_type="config"
                 ;;
             todo-archive.json)

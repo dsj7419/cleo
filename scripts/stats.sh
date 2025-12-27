@@ -60,7 +60,7 @@ CLAUDE_DIR=".claude"
 TODO_FILE="${CLAUDE_DIR}/todo.json"
 ARCHIVE_FILE="${CLAUDE_DIR}/todo-archive.json"
 STATS_LOG_FILE="${CLAUDE_DIR}/todo-log.json"
-CONFIG_FILE="${CLAUDE_DIR}/todo-config.json"
+CONFIG_FILE="${CLAUDE_DIR}/config.json"
 
 #####################################################################
 # Helper Functions

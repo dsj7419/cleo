@@ -374,7 +374,7 @@ mock_todo_with_tasks() {
 # Usage: mock_config_file '{"validation": {"strictMode": true}}'
 mock_config_file() {
     local content="$1"
-    local dest="${BATS_TEST_TMPDIR}/.claude/todo-config.json"
+    local dest="${BATS_TEST_TMPDIR}/.claude/config.json"
 
     mkdir -p "$(dirname "$dest")"
     echo "$content" > "$dest"

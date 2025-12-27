@@ -1426,7 +1426,7 @@ show_migration_status() {
 
     local files=(
         "$claude_dir/todo.json:todo"
-        "$claude_dir/todo-config.json:config"
+        "$claude_dir/config.json:config"
         "$claude_dir/todo-archive.json:archive"
         "$claude_dir/todo-log.json:log"
     )

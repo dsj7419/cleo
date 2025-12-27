@@ -32,7 +32,7 @@ setup() {
     cp "$GOLDEN_TODO_FILE" "$TEST_DIR/.claude/todo.json"
 
     # Create minimal config
-    cat > "$TEST_DIR/.claude/todo-config.json" << 'EOF'
+    cat > "$TEST_DIR/.claude/config.json" << 'EOF'
 {"version": "0.8.2", "output": {"showColor": false, "showUnicode": true}}
 EOF
 
@@ -42,7 +42,7 @@ EOF
 
     # Set environment
     export TODO_FILE="$TEST_DIR/.claude/todo.json"
-    export CONFIG_FILE="$TEST_DIR/.claude/todo-config.json"
+    export CONFIG_FILE="$TEST_DIR/.claude/config.json"
     export LOG_FILE="$TEST_DIR/.claude/todo-log.json"
     export ARCHIVE_FILE="$TEST_DIR/.claude/todo-archive.json"
     export NO_COLOR=1  # Disable colors for consistent output

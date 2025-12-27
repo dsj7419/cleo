@@ -14,7 +14,7 @@ if [[ -f "$LIB_DIR/paths.sh" ]]; then
 fi
 
 TODO_FILE="${TODO_FILE:-.cleo/todo.json}"
-CONFIG_FILE="${CONFIG_FILE:-.cleo/todo-config.json}"
+CONFIG_FILE="${CONFIG_FILE:-.cleo/config.json}"
 
 # Source version library for proper version management
 if [[ -f "$CLEO_HOME/lib/version.sh" ]]; then

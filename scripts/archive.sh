@@ -24,7 +24,7 @@ fi
 
 TODO_FILE="${TODO_FILE:-.cleo/todo.json}"
 ARCHIVE_FILE="${ARCHIVE_FILE:-.cleo/todo-archive.json}"
-CONFIG_FILE="${CONFIG_FILE:-.cleo/todo-config.json}"
+CONFIG_FILE="${CONFIG_FILE:-.cleo/config.json}"
 LOG_FILE="${LOG_FILE:-.cleo/todo-log.json}"
 
 # Source logging library for should_use_color function
@@ -183,7 +183,7 @@ Archive Behavior:
              completed, archives the entire family together. Incomplete
              families (parent done, some children not done) are skipped.
 
-Config (from todo-config.json):
+Config (from config.json):
   - daysUntilArchive: Days after completion before archiving (default: 7)
   - maxCompletedTasks: Threshold triggering archive prompt (default: 15)
   - preserveRecentCount: Recent completions to keep (default: 3)
@@ -192,7 +192,7 @@ Config (from todo-config.json):
   - relationshipSafety.preventBrokenDependencies: Block broken deps (default: true)
 
 Label Policies (optional):
-  Configure per-label retention in todo-config.json:
+  Configure per-label retention in config.json:
     "archive": {
       "labelPolicies": {
         "security": { "daysUntilArchive": 30 },

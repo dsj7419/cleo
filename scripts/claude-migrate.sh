@@ -428,7 +428,7 @@ run_global_migration() {
         echo "Source: $legacy_path"
         echo "Target: $target_path"
         echo ""
-        echo "Step 1/3: Creating backup..."
+        echo "Step 1/4: Creating backup..."
     fi
 
     backup_path=$(create_global_backup "$legacy_path")
@@ -444,7 +444,7 @@ run_global_migration() {
     if ! is_json_output "$FORMAT"; then
         echo "  ✓ Backup created: $backup_path"
         echo ""
-        echo "Step 2/3: Moving files..."
+        echo "Step 2/4: Moving files..."
     fi
 
     # Move the directory
@@ -462,7 +462,17 @@ run_global_migration() {
     if ! is_json_output "$FORMAT"; then
         echo "  ✓ Moved: $legacy_path → $target_path"
         echo ""
-        echo "Step 3/3: Verifying and finalizing..."
+        echo "Step 3/4: Renaming config files..."
+    fi
+
+    # Rename config files (todo-config.json → config.json, etc.)
+    local configs_renamed
+    configs_renamed=$(rename_project_configs "$target_path")
+
+    if ! is_json_output "$FORMAT"; then
+        echo "  ✓ Renamed $configs_renamed config files"
+        echo ""
+        echo "Step 4/4: Verifying and finalizing..."
     fi
 
     # Verify the move
@@ -560,15 +570,15 @@ rename_project_configs() {
     local target_dir="$1"
     local renamed=0
 
-    # Rename todo-config.json → cleo-config.json
+    # Rename todo-config.json → config.json (cleaner naming)
     if [[ -f "$target_dir/todo-config.json" ]]; then
-        mv "$target_dir/todo-config.json" "$target_dir/cleo-config.json"
+        mv "$target_dir/todo-config.json" "$target_dir/config.json"
         ((renamed++))
     fi
 
-    # Rename todo-log.json → cleo-log.json
+    # Rename todo-log.json → log.json (cleaner naming)
     if [[ -f "$target_dir/todo-log.json" ]]; then
-        mv "$target_dir/todo-log.json" "$target_dir/cleo-log.json"
+        mv "$target_dir/todo-log.json" "$target_dir/log.json"
         ((renamed++))
     fi
 
@@ -589,7 +599,7 @@ update_gitignore() {
         cp "$gitignore_file" "${gitignore_file}.bak"
 
         # Update entries
-        sed -i.tmp 's/\.cleo/\.cleo/g' "$gitignore_file"
+        sed -i.tmp 's/\.claude/\.cleo/g' "$gitignore_file"
         rm -f "${gitignore_file}.tmp"
 
         return 0

@@ -403,7 +403,7 @@ case "$SUBCOMMAND" in
     current_size=$(stat -c%s "$LOG_FILE" 2>/dev/null || stat -f%z "$LOG_FILE" 2>/dev/null || echo "0")
     size_kb=$((current_size / 1024))
 
-    CONFIG_FILE="${CONFIG_FILE:-.cleo/todo-config.json}"
+    CONFIG_FILE="${CONFIG_FILE:-.cleo/config.json}"
 
     if [[ "$FORCE" == "true" ]]; then
       log_info "Forcing log rotation..."

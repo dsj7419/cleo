@@ -293,7 +293,7 @@ teardown_file() {
     # Verify migration
     [[ -d "$HOME/.cleo" ]]
     [[ -f "$HOME/.cleo/todo.json" ]]
-    [[ -f "$HOME/.cleo/todo-config.json" ]]
+    [[ -f "$HOME/.cleo/config.json" ]]
     [[ ! -d "$HOME/.claude-todo" ]]
 }
 
@@ -354,8 +354,8 @@ teardown_file() {
 
     # Verify all files present
     [[ -f "$HOME/.cleo/todo.json" ]]
-    [[ -f "$HOME/.cleo/todo-config.json" ]]
-    [[ -f "$HOME/.cleo/todo-log.json" ]]
+    [[ -f "$HOME/.cleo/config.json" ]]
+    [[ -f "$HOME/.cleo/log.json" ]]
     [[ -f "$HOME/.cleo/subdir/file.txt" ]]
 
     # Verify content preserved
@@ -402,8 +402,8 @@ teardown_file() {
     assert_success
 
     # Verify renamed files
-    [[ -f ".cleo/cleo-config.json" ]]
-    [[ -f ".cleo/cleo-log.json" ]]
+    [[ -f ".cleo/config.json" ]]
+    [[ -f ".cleo/log.json" ]]
     [[ ! -f ".cleo/todo-config.json" ]]
     [[ ! -f ".cleo/todo-log.json" ]]
 }

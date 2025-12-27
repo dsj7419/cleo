@@ -7,7 +7,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 TODO_FILE="${TODO_FILE:-.cleo/todo.json}"
 ARCHIVE_FILE="${ARCHIVE_FILE:-.cleo/todo-archive.json}"
-CONFIG_FILE="${CONFIG_FILE:-.cleo/todo-config.json}"
+CONFIG_FILE="${CONFIG_FILE:-.cleo/config.json}"
 LOG_FILE="${LOG_FILE:-.cleo/todo-log.json}"
 BACKUP_DIR="${BACKUP_DIR:-.cleo/backups}"
 
@@ -115,7 +115,7 @@ Search Options (use with 'find' or 'search' subcommand):
 Backs up:
   - todo.json
   - todo-archive.json
-  - todo-config.json
+  - config.json
   - todo-log.json
 
 Output:
@@ -1819,7 +1819,7 @@ backup_file() {
 log_info "Backing up files..."
 backup_file "$TODO_FILE" "todo.json"
 backup_file "$ARCHIVE_FILE" "todo-archive.json"
-backup_file "$CONFIG_FILE" "todo-config.json"
+backup_file "$CONFIG_FILE" "config.json"
 backup_file "$LOG_FILE" "todo-log.json"
 
 # Check if any files were backed up

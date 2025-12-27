@@ -80,7 +80,7 @@ _create_test_project() {
     mkdir -p "${base_dir}/.claude/backups/archive"
 
     export TODO_FILE="${base_dir}/.claude/todo.json"
-    export CONFIG_FILE="${base_dir}/.claude/todo-config.json"
+    export CONFIG_FILE="${base_dir}/.claude/config.json"
     export LOG_FILE="${base_dir}/.claude/todo-log.json"
     export ARCHIVE_FILE="${base_dir}/.claude/todo-archive.json"
     # Use new backup path (Tier 1 operational backups)

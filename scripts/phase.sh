@@ -797,7 +797,7 @@ cmd_advance() {
             phase_threshold=$(get_config_value "validation.phaseValidation.phaseAdvanceThreshold" "90")
         else
             # Fallback to direct jq if config.sh not available
-            local config_file="${CLAUDE_TODO_DIR:-.claude}/todo-config.json"
+            local config_file="${CLAUDE_TODO_DIR:-.claude}/config.json"
             if [[ -f "$config_file" ]]; then
                 block_on_critical=$(jq -r '.validation.phaseValidation.blockOnCriticalTasks // true' "$config_file")
                 phase_threshold=$(jq -r '.validation.phaseValidation.phaseAdvanceThreshold // 90' "$config_file")

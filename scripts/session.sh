@@ -79,7 +79,7 @@ elif [[ -f "$LIB_DIR/validation.sh" ]]; then
 fi
 
 TODO_FILE="${TODO_FILE:-.cleo/todo.json}"
-CONFIG_FILE="${CONFIG_FILE:-.cleo/todo-config.json}"
+CONFIG_FILE="${CONFIG_FILE:-.cleo/config.json}"
 # Note: LOG_FILE is set by lib/logging.sh (readonly) - don't reassign here
 # If library wasn't sourced, set a fallback
 if [[ -z "${LOG_FILE:-}" ]]; then
@@ -152,7 +152,7 @@ Format Auto-Detection:
   - Interactive terminal (TTY): human-readable text format
   - Pipe/redirect/agent context: machine-readable JSON format
 
-Config Settings (in .cleo/todo-config.json):
+Config Settings (in .cleo/config.json):
   session.requireSessionNote   If true, require --note when ending session (default: false)
   session.warnOnNoFocus        If true, warn when starting without focus (default: true)
   session.sessionTimeoutHours  Warn if session exceeds this duration (default: 8)
@@ -579,7 +579,7 @@ cmd_end() {
 
   # Check and rotate log if needed (T214)
   if declare -f check_and_rotate_log >/dev/null 2>&1; then
-    local config_file="${CONFIG_FILE:-.cleo/todo-config.json}"
+    local config_file="${CONFIG_FILE:-.cleo/config.json}"
     [[ -f "$config_file" ]] && check_and_rotate_log "$config_file" "$LOG_FILE" 2>/dev/null || true
   fi
 }
