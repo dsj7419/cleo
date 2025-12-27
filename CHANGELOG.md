@@ -20,6 +20,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - JSON output includes `claudeDirPreserved: true` and `remainingInClaude` count
   - Detects if `.claude/` contains no CLEO files and reports "nothing to migrate"
 
+- **v2.2.0 migration preserves existing phases** - `migrate_todo_to_2_2_0()` properly merges phases
+  - Existing top-level `.phases` are moved into `.project.phases` (not replaced with defaults)
+  - User's custom phases take precedence over template defaults
+  - Removes top-level `.phases` after migration
+
+- **Structural version detection** - `detect_file_version()` checks structure, not just version field
+  - Catches cases where `.version` claims "2.4.0" but data is still pre-v2.2.0 format
+  - Detects string `.project` field and top-level `.phases` as needing migration
+  - Returns "2.1.0" for files needing v2.2.0 migration regardless of claimed version
+
+- **Migration path execution** - `find_migration_path()` runs all intermediate migrations
+  - For 0.2.1 → 2.4.0: runs v2.2.0, v2.3.0, v2.4.0 migrations in sequence
+  - Previously jumped directly to target, skipping crucial transformations
+
+- **phases.sh legacy format support** - Fixed jq errors when `.project` is a string
+  - Added type checks before accessing `.project.phases` and `.project.currentPhase`
+  - Falls back to top-level `.phases` for legacy data
+
 ### Changed
 - **Migration status codes** - Improved semantic clarity in `lib/migrate.sh`
   - `check_compatibility()` now returns: 0=current, 1=patch, 2=minor, 3=major, 4=data_newer

@@ -306,13 +306,25 @@ detect_file_version() {
     fi
 
     # Special case: Check if file has string project field (pre-v2.2.0 format)
-    # This overrides the version field if detected
-    if [[ "$version" == "2.1.0" ]] || [[ "$version" == "2.0.0" ]]; then
+    # This overrides the version field if detected - catches incorrectly marked versions
+    # Check ANY 2.x version for structural inconsistency
+    if [[ "$version" =~ ^2\. ]]; then
         local project_type
         project_type=$(jq -r 'if has("project") then (.project | type) else "null" end' "$file" 2>/dev/null)
 
         if [[ "$project_type" == "string" ]]; then
             # Old format with string project -> needs v2.2.0 migration
+            # The version field is lying - data structure is pre-v2.2.0
+            echo "2.1.0"
+            return 0
+        fi
+
+        # Also check if .phases exists at top level (should be in .project.phases)
+        local has_top_level_phases
+        has_top_level_phases=$(jq -r 'if has("phases") then "yes" else "no" end' "$file" 2>/dev/null)
+
+        if [[ "$has_top_level_phases" == "yes" ]]; then
+            # Old format with top-level .phases -> needs v2.2.0 migration
             echo "2.1.0"
             return 0
         fi
@@ -415,14 +427,53 @@ migrate_file() {
 
 # Find migration path between versions
 # Args: $1 = from version, $2 = to version
-# Returns: newline-separated list of intermediate versions
+# Returns: newline-separated list of intermediate versions to migrate through
 find_migration_path() {
     local from="$1"
     local to="$2"
 
-    # For now, simple linear path (can be enhanced for complex scenarios)
-    # Direct migration to target version
-    echo "$to"
+    # Define known migration steps (must be in ascending order)
+    # Each version listed here has a corresponding migrate_*_to_X_Y_Z function
+    local -a known_versions=("2.2.0" "2.3.0" "2.4.0")
+
+    # Parse versions
+    local from_parts to_parts
+    from_parts=$(parse_version "$from" 2>/dev/null) || from_parts="0 0 0"
+    to_parts=$(parse_version "$to" 2>/dev/null) || to_parts="2 4 0"
+
+    read -r from_major from_minor from_patch <<< "$from_parts"
+    read -r to_major to_minor to_patch <<< "$to_parts"
+
+    # Build migration path: include all known versions > from and <= to
+    local result=()
+    for version in "${known_versions[@]}"; do
+        local v_parts
+        v_parts=$(parse_version "$version")
+        read -r v_major v_minor v_patch <<< "$v_parts"
+
+        # Skip if version <= from
+        if [[ $v_major -lt $from_major ]] || \
+           [[ $v_major -eq $from_major && $v_minor -lt $from_minor ]] || \
+           [[ $v_major -eq $from_major && $v_minor -eq $from_minor && $v_patch -le $from_patch ]]; then
+            continue
+        fi
+
+        # Skip if version > to
+        if [[ $v_major -gt $to_major ]] || \
+           [[ $v_major -eq $to_major && $v_minor -gt $to_minor ]] || \
+           [[ $v_major -eq $to_major && $v_minor -eq $to_minor && $v_patch -gt $to_patch ]]; then
+            continue
+        fi
+
+        result+=("$version")
+    done
+
+    # If no known versions in range, just return target
+    if [[ ${#result[@]} -eq 0 ]]; then
+        echo "$to"
+    else
+        printf '%s\n' "${result[@]}"
+    fi
 }
 
 # Execute a single migration step
@@ -603,6 +654,7 @@ migrate_config_to_2_2_0() {
 
 # Migration from 2.1.0 to 2.2.0 for todo.json
 # Converts project field from string to object with phases
+# IMPORTANT: Preserves existing top-level .phases and moves them into .project.phases
 migrate_todo_to_2_2_0() {
     local file="$1"
 
@@ -633,15 +685,26 @@ migrate_todo_to_2_2_0() {
         local default_phases
         default_phases=$(get_default_phases)
 
-        updated_content=$(jq --argjson phases "$default_phases" '
-            # Convert project string to object with phases from template
-            if (.project | type) == "string" then
+        # CRITICAL: Preserve existing top-level .phases if present
+        # They take precedence over template defaults
+        updated_content=$(jq --argjson default_phases "$default_phases" '
+            # Get existing phases (from top-level .phases or empty)
+            (.phases // {}) as $existing_phases |
+
+            # Merge: existing phases override defaults
+            ($default_phases + $existing_phases) as $merged_phases |
+
+            # Convert project string to object with merged phases
+            (if (.project | type) == "string" then
                 .project = {
                     "name": .project,
-                    "currentPhase": null,
-                    "phases": $phases
+                    "currentPhase": (.focus.currentPhase // null),
+                    "phases": $merged_phases
                 }
-            else . end
+            else . end) |
+
+            # Remove top-level .phases (now in .project.phases)
+            del(.phases)
         ' "$file") || {
             echo "ERROR: Failed to migrate project field" >&2
             return 1

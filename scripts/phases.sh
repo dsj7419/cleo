@@ -258,7 +258,8 @@ get_phase_status() {
 get_phase_stats() {
   jq -r '
     # Get phase definitions from project.phases (v2.2.0+) or .phases (legacy)
-    (.project.phases // .phases // {}) as $phase_defs |
+    # Handle case where .project is still a string (pre-v2.2.0 format)
+    (if (.project | type) == "object" then .project.phases else null end // .phases // {}) as $phase_defs |
 
     # Get all tasks
     .tasks as $tasks |
@@ -316,9 +317,9 @@ list_phases() {
   fi
 
   if [[ "$FORMAT" == "json" ]]; then
-    # Get currentPhase from todo.json
+    # Get currentPhase from todo.json (handle legacy string .project format)
     local current_phase
-    current_phase=$(jq -r '.focus.currentPhase // .project.currentPhase // null' "$TODO_FILE")
+    current_phase=$(jq -r '.focus.currentPhase // (if (.project | type) == "object" then .project.currentPhase else null end) // null' "$TODO_FILE")
 
     echo "$phase_stats" | jq --arg cp "$current_phase" --arg version "$VERSION" '{
       "$schema": "https://cleo-dev.com/schemas/v1/output.schema.json",
@@ -426,9 +427,11 @@ show_phase() {
   local phase_slug="$1"
 
   # Check if phase exists (support v2.2.0 project.phases and legacy .phases)
+  # Handle case where .project is still a string (pre-v2.2.0 format)
   local phase_exists
   phase_exists=$(jq --arg p "$phase_slug" '
-    ((.project.phases // .phases)[$p] != null) or ([.tasks[].phase] | index($p) != null)
+    (if (.project | type) == "object" then .project.phases else null end // .phases // {}) as $phases |
+    ($phases[$p] != null) or ([.tasks[].phase] | index($p) != null)
   ' "$TODO_FILE")
 
   if [[ "$phase_exists" != "true" ]]; then
@@ -437,9 +440,10 @@ show_phase() {
   fi
 
   # Get phase info (support v2.2.0 project.phases and legacy .phases)
+  # Handle case where .project is still a string (pre-v2.2.0 format)
   local phase_info
   phase_info=$(jq --arg p "$phase_slug" '
-    (.project.phases // .phases // {}) as $phases |
+    (if (.project | type) == "object" then .project.phases else null end // .phases // {}) as $phases |
     {
       slug: $p,
       name: ($phases[$p].name // $p),
