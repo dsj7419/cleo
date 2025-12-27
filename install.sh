@@ -488,6 +488,7 @@ declare -A CMD_MAP=(
   [uncancel]="uncancel.sh"
   [reopen]="reopen.sh"
   [claude-migrate]="claude-migrate.sh"
+  [populate-hierarchy]="populate-hierarchy.sh"
 )
 
 # Brief descriptions for main help
@@ -532,6 +533,7 @@ declare -A CMD_DESC=(
   [uncancel]="Restore cancelled tasks back to pending status"
   [reopen]="Restore completed tasks back to pending status"
   [claude-migrate]="Migrate legacy .claude/ and ~/.claude-todo to CLEO"
+  [populate-hierarchy]="Populate hierarchy fields (type, parentId) for migrated tasks"
 )
 
 # ============================================

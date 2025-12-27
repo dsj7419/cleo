@@ -26,6 +26,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Major version migrations (e.g., 0.2.1 → 2.4.0) are now allowed with `--force`
   - Data newer than schema is now clearly separated as an upgrade-cleo scenario
 
+- **Documentation updates** - Updated AGENT-INJECTION.md and TODO_Task_Management.md
+  - Added `populate-hierarchy` command to hierarchy section
+  - Updated version marker to v0.38.0
+
 ## [0.38.0] - 2025-12-27
 
 ### Added

@@ -173,6 +173,7 @@ cleo add "Subtask" --parent T002 --type subtask --size small
 cleo reparent T003 --to T001        # Move task to different parent
 cleo reparent T003 --to ""          # Remove parent (make root)
 cleo promote T003                   # Promote to root (same as reparent --to "")
+cleo populate-hierarchy             # Infer parentId from naming conventions (T001.1 → parentId: T001)
 
 # List with hierarchy filters
 cleo list --type epic               # Filter by type (epic|task|subtask)
