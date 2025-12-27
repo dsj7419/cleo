@@ -121,13 +121,13 @@
       }
     ]
   },
-  "lastUpdated": "2025-12-27T07:56:50Z",
+  "lastUpdated": "2025-12-27T07:59:15Z",
   "_meta": {
-    "checksum": "0d62d8812a31e912",
+    "checksum": "047c79360261429f",
     "configVersion": "2.1.0",
     "lastSessionId": null,
     "activeSession": "session_20251226_234029_22628e",
-    "lastModified": "2025-12-27T07:54:18Z",
+    "lastModified": "2025-12-27T07:57:44Z",
     "version": "2.3.0",
     "schemaVersion": "2.4.0"
   },
@@ -4036,7 +4036,7 @@
     {
       "id": "T909",
       "title": "Add path resolution functions to paths.sh",
-      "status": "pending",
+      "status": "done",
       "priority": "high",
       "type": "subtask",
       "parentId": "T651",
@@ -4049,12 +4049,16 @@
       ],
       "depends": [
         "T908"
+      ],
+      "completedAt": "2025-12-27T07:57:36Z",
+      "notes": [
+        "[COMPLETED 2025-12-27T07:57:36Z] Functions already implemented in T908 (get_cleo_home, get_cleo_dir, has_legacy_installation). All 40 tests passing. Naming uses cleo_ prefix for consistency."
       ]
     },
     {
       "id": "T910",
       "title": "Add migration warning system to paths.sh",
-      "status": "pending",
+      "status": "done",
       "priority": "high",
       "type": "subtask",
       "parentId": "T651",
@@ -4067,6 +4071,10 @@
       ],
       "depends": [
         "T909"
+      ],
+      "completedAt": "2025-12-27T07:59:15Z",
+      "notes": [
+        "[COMPLETED 2025-12-27T07:59:15Z] Added once-per-session migration warning system. 24 warning tests + 40 path tests = 64 total passing. Supports global/project/env warning types."
       ]
     },
     {

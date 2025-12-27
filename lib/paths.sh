@@ -219,15 +219,93 @@ is_project_initialized() {
 }
 
 # =============================================================================
-# MIGRATION WARNING HELPER
+# MIGRATION WARNING SYSTEM
 # =============================================================================
 
-# Print migration warning if legacy installation detected
-# Outputs warning to stderr
-warn_if_legacy() {
-    if has_legacy_installation; then
-        echo "[WARNING] Legacy claude-todo installation detected." >&2
-        echo "          Run 'cleo claude-migrate' to migrate to CLEO." >&2
-        echo "" >&2
+# Environment variable to track if warning was already shown this session
+# This prevents spamming warnings on every command
+_CLEO_MIGRATION_WARNING_SHOWN="${_CLEO_MIGRATION_WARNING_SHOWN:-}"
+
+# Emit migration warning (once per session)
+# Args:
+#   $1 - warning type: "global" | "project" | "env"
+#   $2 - optional: specific item (e.g., variable name)
+# Outputs: Warning to stderr (only first call per session)
+emit_migration_warning() {
+    local warning_type="${1:-general}"
+    local specific_item="${2:-}"
+
+    # Skip if warning already shown this session
+    if [[ -n "$_CLEO_MIGRATION_WARNING_SHOWN" ]]; then
+        return 0
     fi
+
+    # Mark warning as shown for this session
+    export _CLEO_MIGRATION_WARNING_SHOWN=1
+
+    # Build warning message based on type
+    case "$warning_type" in
+        global)
+            echo "[MIGRATION] Legacy global installation detected: ~/.claude-todo" >&2
+            echo "            This will not be used. CLEO uses: ~/.cleo" >&2
+            ;;
+        project)
+            echo "[MIGRATION] Legacy project directory detected: .claude/" >&2
+            echo "            This will not be used. CLEO uses: .cleo/" >&2
+            ;;
+        env)
+            echo "[MIGRATION] Legacy environment variable detected: ${specific_item}" >&2
+            echo "            This will be ignored. CLEO uses: CLEO_* variables" >&2
+            ;;
+        *)
+            echo "[MIGRATION] Legacy claude-todo installation detected." >&2
+            ;;
+    esac
+
+    # Always show migration command
+    echo "" >&2
+    echo "            Run 'cleo claude-migrate' to migrate your data." >&2
+    echo "            See 'cleo claude-migrate --help' for options." >&2
+    echo "" >&2
+}
+
+# Check for legacy env vars and warn (call at script startup)
+# This warns about CLAUDE_TODO_* variables that are set but ignored
+check_legacy_env_vars() {
+    if [[ -n "${CLAUDE_TODO_HOME:-}" ]]; then
+        emit_migration_warning "env" "CLAUDE_TODO_HOME"
+    elif [[ -n "${CLAUDE_TODO_DIR:-}" ]]; then
+        emit_migration_warning "env" "CLAUDE_TODO_DIR"
+    elif [[ -n "${CLAUDE_TODO_FORMAT:-}" ]]; then
+        emit_migration_warning "env" "CLAUDE_TODO_FORMAT"
+    elif [[ -n "${CLAUDE_TODO_DEBUG:-}" ]]; then
+        emit_migration_warning "env" "CLAUDE_TODO_DEBUG"
+    fi
+}
+
+# Print migration warning if legacy installation detected
+# Outputs warning to stderr (once per session)
+warn_if_legacy() {
+    # Check for legacy environment variables first
+    check_legacy_env_vars
+
+    # Check for legacy installations if no env var warning shown
+    if [[ -z "$_CLEO_MIGRATION_WARNING_SHOWN" ]]; then
+        if has_legacy_global_installation; then
+            emit_migration_warning "global"
+        elif has_legacy_project_dir; then
+            emit_migration_warning "project"
+        fi
+    fi
+}
+
+# Suppress migration warnings (for testing or automated scripts)
+# Call this before operations that should be silent
+suppress_migration_warnings() {
+    export _CLEO_MIGRATION_WARNING_SHOWN=1
+}
+
+# Reset migration warning state (primarily for testing)
+reset_migration_warnings() {
+    unset _CLEO_MIGRATION_WARNING_SHOWN
 }
