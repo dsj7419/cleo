@@ -23,8 +23,8 @@ if [[ -f "$LIB_DIR/version.sh" ]]; then
   source "$LIB_DIR/version.sh"
 fi
 
-CLAUDE_TODO_DIR="${CLAUDE_TODO_DIR:-$(pwd)/.claude}"
-TODO_FILE="${TODO_FILE:-$CLAUDE_TODO_DIR/todo.json}"
+CLEO_DIR="${CLEO_DIR:-$(pwd)/.cleo}"
+TODO_FILE="${TODO_FILE:-$CLEO_DIR/todo.json}"
 LOG_SCRIPT="${SCRIPT_DIR}/log.sh"
 
 # Command name for error-json library

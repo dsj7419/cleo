@@ -34,9 +34,9 @@ if [[ -f "$LIB_DIR/version.sh" ]]; then
 fi
 
 # Configuration
-CLAUDE_TODO_DIR="${CLAUDE_TODO_DIR:-$(pwd)/.claude}"
-TODO_FILE="${TODO_FILE:-$CLAUDE_TODO_DIR/todo.json}"
-CONFIG_FILE="${CONFIG_FILE:-$CLAUDE_TODO_DIR/config.json}"
+CLEO_DIR="${CLEO_DIR:-$(pwd)/.cleo}"
+TODO_FILE="${TODO_FILE:-$CLEO_DIR/todo.json}"
+CONFIG_FILE="${CONFIG_FILE:-$CLEO_DIR/config.json}"
 LOG_SCRIPT="${SCRIPT_DIR}/log.sh"
 
 # Command name for error-json library

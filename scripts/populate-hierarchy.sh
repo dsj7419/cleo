@@ -14,7 +14,7 @@ COMMAND_NAME="populate-hierarchy"
 FORMAT=""
 QUIET=false
 DRY_RUN=false
-TODO_FILE="${CLAUDE_TODO_DIR:-.claude}/todo.json"
+TODO_FILE="${CLEO_DIR:-.cleo}/todo.json"
 
 show_help() {
     cat << 'EOF'

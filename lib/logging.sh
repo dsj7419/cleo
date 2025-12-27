@@ -46,10 +46,10 @@ fi
 # CONFIGURATION AND GLOBALS
 # ============================================================================
 
-# Default log file location (relative to project .claude directory)
+# Default log file location (relative to project .cleo directory)
 # Only set if not already defined (prevent re-sourcing errors)
 if [[ -z "${LOG_FILE:-}" ]]; then
-    readonly LOG_FILE="${CLAUDE_TODO_DIR:-.claude}/todo-log.json"
+    readonly LOG_FILE="${CLEO_DIR:-.cleo}/todo-log.json"
 fi
 
 # Log entry ID format: log_<12-hex-chars>

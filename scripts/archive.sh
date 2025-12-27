@@ -1518,8 +1518,8 @@ done
 
 # Step 5: Create archive backup before committing changes using unified backup library
 # Uses auto_backup_on_archive() which respects config setting backup.scheduled.onArchive
-# Set CLAUDE_TODO_DIR for backup library to locate source files correctly
-export CLAUDE_TODO_DIR="$(dirname "$TODO_FILE")"
+# Set CLEO_DIR for backup library to locate source files correctly
+export CLEO_DIR="$(dirname "$TODO_FILE")"
 if declare -f auto_backup_on_archive >/dev/null 2>&1; then
   BACKUP_PATH=$(auto_backup_on_archive "$CONFIG_FILE" 2>&1) || {
     [[ "$QUIET" != true && "$FORMAT" != "json" ]] && log_warn "Backup library failed, using fallback backup method"

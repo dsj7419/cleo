@@ -96,8 +96,8 @@ QUIET=false
 COMMAND_NAME="next"
 
 # File paths
-CLAUDE_TODO_DIR="${CLAUDE_TODO_DIR:-$(pwd)/.claude}"
-TODO_FILE="${TODO_FILE:-$CLAUDE_TODO_DIR/todo.json}"
+CLEO_DIR="${CLEO_DIR:-$(pwd)/.cleo}"
+TODO_FILE="${TODO_FILE:-$CLEO_DIR/todo.json}"
 
 #####################################################################
 # Usage
