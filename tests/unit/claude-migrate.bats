@@ -22,6 +22,9 @@ setup() {
     export HOME="${TEST_TEMP_DIR}/home"
     mkdir -p "$HOME"
 
+    # Remove any .cleo created by common_setup - migration tests need clean slate
+    rm -rf "${TEST_TEMP_DIR}/.cleo" 2>/dev/null || true
+
     # Suppress migration warnings
     export _CLEO_MIGRATION_WARNING_SHOWN=1
 

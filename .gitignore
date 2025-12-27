@@ -4,7 +4,7 @@
 # ============================================================
 # Per-Project Task Data
 # ============================================================
-# Task files (.claude/todo*.json) ARE tracked for version control benefits:
+# Task files (.claude/todo*.json, .cleo/todo*.json) ARE tracked for version control benefits:
 # - Task history preserved in git
 # - Team visibility into work
 # - Backup via version control
@@ -16,6 +16,11 @@
 .claude/*.lock
 .claude/.cache/
 .claude/backup-metadata.json
+
+# CLEO migration: .cleo/ is the migrated state directory
+# During development, we keep .claude/ as canonical and ignore .cleo/
+# In production projects, users will have either .claude/ OR .cleo/ (not both)
+.cleo/
 
 # ============================================================
 # Claude Session Working Documents

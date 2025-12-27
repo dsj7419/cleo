@@ -67,7 +67,7 @@ EOF
     run bash "$STATS_SCRIPT" --help
     assert_success
     assert_output --partial "Usage:"
-    assert_output --partial "claude-todo stats"
+    assert_output --partial "cleo stats"
 }
 
 @test "stats -h shows usage" {

@@ -32,7 +32,7 @@ setup() {
 
     # Set BACKUP_DIR that will be used by config (relative to project)
     # The library reads from config.json
-    BACKUP_DIR_REL=".claude/backups"
+    BACKUP_DIR_REL=".cleo/backups"
 
     # Create backup directory structure
     mkdir -p "$TEST_DIR/$BACKUP_DIR_REL"/{snapshot,safety,incremental,archive,migration}

@@ -3,9 +3,9 @@
   "version": "2.1.0",
   "project": "claude-todo",
   "_meta": {
-    "totalEntries": 2232,
+    "totalEntries": 2256,
     "firstEntry": "2025-12-13T07:14:38Z",
-    "lastEntry": "2025-12-27T08:11:30Z",
+    "lastEntry": "2025-12-27T09:18:20Z",
     "entriesPruned": 0
   },
   "entries": [
@@ -53230,6 +53230,471 @@
       "details": {
         "note": "CLEO v1.0.0 migration: T908-T910 complete (paths.sh), T914 complete (install.sh). T911-T913 blocked pending migration command (T915-T918). Next: create claude-migrate command."
       }
+    },
+    {
+      "id": "log_229399a7f0a2",
+      "timestamp": "2025-12-27T08:28:31Z",
+      "sessionId": "session_20251227_002831_9fdcb2",
+      "action": "session_start",
+      "actor": "system",
+      "taskId": null,
+      "before": null,
+      "after": null,
+      "details": "Session started"
+    },
+    {
+      "id": "log_41f02fac3983",
+      "timestamp": "2025-12-27T08:29:00Z",
+      "sessionId": "session_20251227_002831_9fdcb2",
+      "action": "focus_changed",
+      "actor": "claude",
+      "taskId": null,
+      "before": null,
+      "after": {
+        "currentTask": "T915"
+      },
+      "details": null
+    },
+    {
+      "id": "log_b1d5d8704bc8",
+      "timestamp": "2025-12-27T08:34:27Z",
+      "sessionId": "session_20251227_002831_9fdcb2",
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T915",
+      "before": {
+        "status": "active",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-27T08:34:27Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_3e5ee9be9c8a",
+      "timestamp": "2025-12-27T08:34:29Z",
+      "sessionId": "session_20251227_002831_9fdcb2",
+      "action": "focus_changed",
+      "actor": "claude",
+      "taskId": null,
+      "before": null,
+      "after": {
+        "currentTask": "T916"
+      },
+      "details": null
+    },
+    {
+      "id": "log_b0e3ceb0838b",
+      "timestamp": "2025-12-27T08:37:05Z",
+      "sessionId": "session_20251227_002831_9fdcb2",
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T916",
+      "before": {
+        "status": "active",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-27T08:37:05Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_fbb1fadffc58",
+      "timestamp": "2025-12-27T08:37:07Z",
+      "sessionId": "session_20251227_002831_9fdcb2",
+      "action": "focus_changed",
+      "actor": "claude",
+      "taskId": null,
+      "before": null,
+      "after": {
+        "currentTask": "T917"
+      },
+      "details": null
+    },
+    {
+      "id": "log_6f06aba49708",
+      "timestamp": "2025-12-27T08:39:02Z",
+      "sessionId": "session_20251227_002831_9fdcb2",
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T917",
+      "before": {
+        "status": "active",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-27T08:39:02Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_04e0aa794d25",
+      "timestamp": "2025-12-27T08:39:05Z",
+      "sessionId": "session_20251227_002831_9fdcb2",
+      "action": "focus_changed",
+      "actor": "claude",
+      "taskId": null,
+      "before": null,
+      "after": {
+        "currentTask": "T918"
+      },
+      "details": null
+    },
+    {
+      "id": "log_1930523d9f2f",
+      "timestamp": "2025-12-27T08:40:40Z",
+      "sessionId": "session_20251227_002831_9fdcb2",
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T918",
+      "before": {
+        "status": "active",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-27T08:40:40Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_ffc7ee68a437",
+      "timestamp": "2025-12-27T08:40:41Z",
+      "sessionId": "session_20251227_002831_9fdcb2",
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T652",
+      "before": {
+        "status": "pending",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-27T08:40:40Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "auto_complete"
+      }
+    },
+    {
+      "id": "log_ec3efe8b2d03",
+      "timestamp": "2025-12-27T08:40:56Z",
+      "sessionId": "session_20251227_002831_9fdcb2",
+      "action": "session_end",
+      "actor": "system",
+      "taskId": null,
+      "before": null,
+      "after": null,
+      "details": {
+        "note": "Session 1 complete: Migration command (T915-T918). Created scripts/claude-migrate.sh with --check, --global, --project, --all modes. 38 passing tests. All pushed to cleo-migration branch."
+      }
+    },
+    {
+      "id": "log_66bea91ac66d",
+      "timestamp": "2025-12-27T08:42:15Z",
+      "sessionId": "session_20251227_004215_b6e328",
+      "action": "session_start",
+      "actor": "system",
+      "taskId": null,
+      "before": null,
+      "after": null,
+      "details": "Session started"
+    },
+    {
+      "id": "log_a077fffe2701",
+      "timestamp": "2025-12-27T08:42:49Z",
+      "sessionId": "session_20251227_004215_b6e328",
+      "action": "task_updated",
+      "actor": "system",
+      "taskId": "T911",
+      "before": {
+        "title": "Update core scripts to source paths.sh",
+        "status": "blocked",
+        "priority": "high",
+        "description": "Update core scripts to source lib/paths.sh and use path resolution functions.\n\n**Files (3):**\n- scripts/init.sh (25 CLAUDE_* refs)\n- scripts/focus.sh (22 CLAUDE_* refs)\n- scripts/session.sh (19 CLAUDE_* refs)\n\n**Changes:**\n1. Each script sources lib/paths.sh after other libs\n2. Replace $CLAUDE_TODO_* with $(get_global_home), $(get_project_dir)\n3. Replace hardcoded .claude/ paths with path functions\n4. NO legacy fallback (clean break)\n\n**Acceptance:**\n- Zero hardcoded CLAUDE_TODO_* in these 3 files\n- Zero hardcoded .claude/ paths (except CLAUDE.md refs)\n- Existing tests pass\n\n**Size:** medium\n**Atomicity:** 100%",
+        "phase": "core",
+        "labels": [
+          "cleo",
+          "rebrand"
+        ],
+        "files": null,
+        "acceptance": null,
+        "depends": [
+          "T910"
+        ],
+        "blockedBy": "Requires migration infrastructure (T914-T918). Using paths.sh before migration would break tool since data is still at legacy locations."
+      },
+      "after": {
+        "title": "Update core scripts to source paths.sh",
+        "status": "pending",
+        "priority": "high",
+        "description": "Update core scripts to source lib/paths.sh and use path resolution functions.\n\n**Files (3):**\n- scripts/init.sh (25 CLAUDE_* refs)\n- scripts/focus.sh (22 CLAUDE_* refs)\n- scripts/session.sh (19 CLAUDE_* refs)\n\n**Changes:**\n1. Each script sources lib/paths.sh after other libs\n2. Replace $CLAUDE_TODO_* with $(get_global_home), $(get_project_dir)\n3. Replace hardcoded .claude/ paths with path functions\n4. NO legacy fallback (clean break)\n\n**Acceptance:**\n- Zero hardcoded CLAUDE_TODO_* in these 3 files\n- Zero hardcoded .claude/ paths (except CLAUDE.md refs)\n- Existing tests pass\n\n**Size:** medium\n**Atomicity:** 100%",
+        "phase": "core",
+        "labels": [
+          "cleo",
+          "rebrand"
+        ],
+        "files": null,
+        "acceptance": null,
+        "depends": [
+          "T910"
+        ],
+        "blockedBy": "Requires migration infrastructure (T914-T918). Using paths.sh before migration would break tool since data is still at legacy locations."
+      },
+      "details": {
+        "operation": "update"
+      }
+    },
+    {
+      "id": "log_a5814cd1d5d9",
+      "timestamp": "2025-12-27T08:42:51Z",
+      "sessionId": "session_20251227_004215_b6e328",
+      "action": "task_updated",
+      "actor": "system",
+      "taskId": "T912",
+      "before": {
+        "title": "Update command scripts to source paths.sh",
+        "status": "blocked",
+        "priority": "high",
+        "description": "Update command scripts to source lib/paths.sh and use path resolution functions.\n\n**Files (3):**\n- scripts/add-task.sh\n- scripts/update-task.sh\n- scripts/complete-task.sh\n\n**Changes:**\n1. Each script sources lib/paths.sh\n2. Replace hardcoded refs with path resolution functions\n3. NO legacy fallback (clean break)\n\n**Acceptance:**\n- Zero hardcoded CLAUDE_TODO_* in these files\n- Zero hardcoded .claude/ paths\n- Existing tests pass\n\n**Size:** medium\n**Atomicity:** 100%",
+        "phase": "core",
+        "labels": [
+          "cleo",
+          "rebrand"
+        ],
+        "files": null,
+        "acceptance": null,
+        "depends": [
+          "T911"
+        ],
+        "blockedBy": "Blocked by T911"
+      },
+      "after": {
+        "title": "Update command scripts to source paths.sh",
+        "status": "pending",
+        "priority": "high",
+        "description": "Update command scripts to source lib/paths.sh and use path resolution functions.\n\n**Files (3):**\n- scripts/add-task.sh\n- scripts/update-task.sh\n- scripts/complete-task.sh\n\n**Changes:**\n1. Each script sources lib/paths.sh\n2. Replace hardcoded refs with path resolution functions\n3. NO legacy fallback (clean break)\n\n**Acceptance:**\n- Zero hardcoded CLAUDE_TODO_* in these files\n- Zero hardcoded .claude/ paths\n- Existing tests pass\n\n**Size:** medium\n**Atomicity:** 100%",
+        "phase": "core",
+        "labels": [
+          "cleo",
+          "rebrand"
+        ],
+        "files": null,
+        "acceptance": null,
+        "depends": [
+          "T911"
+        ],
+        "blockedBy": "Blocked by T911"
+      },
+      "details": {
+        "operation": "update"
+      }
+    },
+    {
+      "id": "log_47349add05f9",
+      "timestamp": "2025-12-27T08:42:53Z",
+      "sessionId": "session_20251227_004215_b6e328",
+      "action": "task_updated",
+      "actor": "system",
+      "taskId": "T913",
+      "before": {
+        "title": "Update lib files and remaining scripts",
+        "status": "blocked",
+        "priority": "high",
+        "description": "Update all remaining lib files and scripts to use paths.sh.\n\n**Files:**\n- lib/config.sh (30 refs) - source paths.sh, use helpers\n- lib/logging.sh (8 refs)\n- lib/validation.sh\n- lib/output-format.sh\n- Remaining scripts/*.sh (35+ files)\n\n**Changes:**\n1. All lib files source paths.sh where needed\n2. All remaining scripts updated with path resolution\n3. Batch sed replacement for mechanical changes\n\n**Acceptance:**\n- grep -r 'CLAUDE_TODO_HOME' scripts/ lib/ returns 0\n- grep -r '\\.claude/' scripts/ lib/ | grep -v 'CLAUDE.md' returns 0\n- Full test suite passes\n\n**Size:** large\n**Atomicity:** 100% (mechanical replacement, same pattern)",
+        "phase": "core",
+        "labels": [
+          "cleo",
+          "rebrand"
+        ],
+        "files": null,
+        "acceptance": null,
+        "depends": [
+          "T912"
+        ],
+        "blockedBy": "Blocked by T911-T912"
+      },
+      "after": {
+        "title": "Update lib files and remaining scripts",
+        "status": "pending",
+        "priority": "high",
+        "description": "Update all remaining lib files and scripts to use paths.sh.\n\n**Files:**\n- lib/config.sh (30 refs) - source paths.sh, use helpers\n- lib/logging.sh (8 refs)\n- lib/validation.sh\n- lib/output-format.sh\n- Remaining scripts/*.sh (35+ files)\n\n**Changes:**\n1. All lib files source paths.sh where needed\n2. All remaining scripts updated with path resolution\n3. Batch sed replacement for mechanical changes\n\n**Acceptance:**\n- grep -r 'CLAUDE_TODO_HOME' scripts/ lib/ returns 0\n- grep -r '\\.claude/' scripts/ lib/ | grep -v 'CLAUDE.md' returns 0\n- Full test suite passes\n\n**Size:** large\n**Atomicity:** 100% (mechanical replacement, same pattern)",
+        "phase": "core",
+        "labels": [
+          "cleo",
+          "rebrand"
+        ],
+        "files": null,
+        "acceptance": null,
+        "depends": [
+          "T912"
+        ],
+        "blockedBy": "Blocked by T911-T912"
+      },
+      "details": {
+        "operation": "update"
+      }
+    },
+    {
+      "id": "log_a119852673c2",
+      "timestamp": "2025-12-27T08:43:03Z",
+      "sessionId": "session_20251227_004215_b6e328",
+      "action": "focus_changed",
+      "actor": "claude",
+      "taskId": null,
+      "before": null,
+      "after": {
+        "currentTask": "T911"
+      },
+      "details": null
+    },
+    {
+      "id": "log-1766825990-3b4a74",
+      "timestamp": "2025-12-27T08:59:50Z",
+      "action": "task_created",
+      "taskId": "T926",
+      "actor": "system",
+      "details": {
+        "title": "Rename todo-config.json to config.json throughout codebase",
+        "status": "pending",
+        "priority": "high"
+      },
+      "before": null,
+      "after": {
+        "title": "Rename todo-config.json to config.json throughout codebase",
+        "status": "pending",
+        "priority": "high"
+      }
+    },
+    {
+      "id": "log_8820cea945fe",
+      "timestamp": "2025-12-27T09:10:00Z",
+      "sessionId": "session_20251227_004215_b6e328",
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T911",
+      "before": {
+        "status": "active",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-27T09:10:00Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_498b50590e61",
+      "timestamp": "2025-12-27T09:10:02Z",
+      "sessionId": "session_20251227_004215_b6e328",
+      "action": "focus_changed",
+      "actor": "claude",
+      "taskId": null,
+      "before": null,
+      "after": {
+        "currentTask": "T912"
+      },
+      "details": null
+    },
+    {
+      "id": "log_0cd4d6f8e646",
+      "timestamp": "2025-12-27T09:12:54Z",
+      "sessionId": "session_20251227_004215_b6e328",
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T912",
+      "before": {
+        "status": "active",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-27T09:12:54Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_c82d4145ddda",
+      "timestamp": "2025-12-27T09:12:56Z",
+      "sessionId": "session_20251227_004215_b6e328",
+      "action": "focus_changed",
+      "actor": "claude",
+      "taskId": null,
+      "before": null,
+      "after": {
+        "currentTask": "T913"
+      },
+      "details": null
+    },
+    {
+      "id": "log_be93c814d48f",
+      "timestamp": "2025-12-27T09:17:48Z",
+      "sessionId": "session_20251227_004215_b6e328",
+      "action": "status_changed",
+      "actor": "system",
+      "taskId": "T913",
+      "before": {
+        "status": "active",
+        "completedAt": null
+      },
+      "after": {
+        "status": "done",
+        "completedAt": "2025-12-27T09:17:48Z"
+      },
+      "details": {
+        "field": "status",
+        "operation": "complete"
+      }
+    },
+    {
+      "id": "log_fba26bb54334",
+      "timestamp": "2025-12-27T09:18:10Z",
+      "sessionId": "session_20251227_004215_b6e328",
+      "action": "session_end",
+      "actor": "system",
+      "taskId": null,
+      "before": null,
+      "after": null,
+      "details": {
+        "note": "Session 2 complete: T911-T913 done. All scripts/lib updated to CLEO paths. Created T926 for config.json rename (future session). Pushed to cleo-migration."
+      }
+    },
+    {
+      "id": "log_a10fec22d9a7",
+      "timestamp": "2025-12-27T09:18:20Z",
+      "sessionId": null,
+      "action": "focus_changed",
+      "actor": "claude",
+      "taskId": null,
+      "before": null,
+      "after": {
+        "currentTask": "T926"
+      },
+      "details": null
     }
   ]
 }

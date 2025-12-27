@@ -121,20 +121,20 @@
       }
     ]
   },
-  "lastUpdated": "2025-12-27T08:11:07Z",
+  "lastUpdated": "2025-12-27T09:17:48Z",
   "_meta": {
-    "checksum": "9f85e5067b2e8d93",
+    "checksum": "3de9c5b01795807f",
     "configVersion": "2.1.0",
     "lastSessionId": null,
     "activeSession": null,
-    "lastModified": "2025-12-27T08:11:30Z",
+    "lastModified": "2025-12-27T09:18:20Z",
     "version": "2.3.0",
     "schemaVersion": "2.4.0"
   },
   "focus": {
-    "currentTask": null,
+    "currentTask": "T926",
     "blockedUntil": null,
-    "sessionNote": "CLEO v1.0.0 migration: T908-T910 complete (paths.sh), T914 complete (install.sh). T911-T913 blocked pending migration command (T915-T918). Next: create claude-migrate command.",
+    "sessionNote": "Session 2 complete: T911-T913 done. All scripts/lib updated to CLEO paths. Created T926 for config.json rename (future session). Pushed to cleo-migration.",
     "nextAction": "T481 EPIC Batch 4: Start with T495 (verify add-task.sh dry-run format), then T496 (input validation). After Batch 4, do Batch 5 (T497-T501 docs/tests). Final: version bump patch, full test suite, commit. Spec: docs/specs/LLM-AGENT-FIRST-SPEC.md",
     "currentPhase": "core"
   },
@@ -1691,7 +1691,7 @@
     {
       "id": "T652",
       "title": "Phase 2: Path Migration (cleo claude-migrate)",
-      "status": "pending",
+      "status": "done",
       "priority": "medium",
       "type": "task",
       "parentId": "T650",
@@ -1704,6 +1704,10 @@
       ],
       "depends": [
         "T651"
+      ],
+      "completedAt": "2025-12-27T08:40:40Z",
+      "notes": [
+        "[AUTO-COMPLETED 2025-12-27T08:40:40Z] All child tasks completed"
       ]
     },
     {
@@ -4080,7 +4084,7 @@
     {
       "id": "T911",
       "title": "Update core scripts to source paths.sh",
-      "status": "blocked",
+      "status": "done",
       "priority": "high",
       "type": "subtask",
       "parentId": "T651",
@@ -4094,12 +4098,15 @@
       "depends": [
         "T910"
       ],
-      "blockedBy": "Requires migration infrastructure (T914-T918). Using paths.sh before migration would break tool since data is still at legacy locations."
+      "completedAt": "2025-12-27T09:10:00Z",
+      "notes": [
+        "[COMPLETED 2025-12-27T09:10:00Z] Updated init.sh, focus.sh, session.sh to use CLEO paths. Fixed lib/paths.sh file naming (config.json, todo-log.json). All scripts source paths.sh and use CLEO_HOME, .cleo/ paths."
+      ]
     },
     {
       "id": "T912",
       "title": "Update command scripts to source paths.sh",
-      "status": "blocked",
+      "status": "done",
       "priority": "high",
       "type": "subtask",
       "parentId": "T651",
@@ -4114,14 +4121,15 @@
         "T911"
       ],
       "notes": [
-        "2025-12-27 08:01:40 UTC: Blocked by T911 (requires migration infrastructure)"
+        "2025-12-27 08:01:40 UTC: Blocked by T911 (requires migration infrastructure)",
+        "[COMPLETED 2025-12-27T09:12:54Z] Updated add-task.sh, update-task.sh, complete-task.sh. All source paths.sh, use .cleo/ paths, cleo command names."
       ],
-      "blockedBy": "Blocked by T911"
+      "completedAt": "2025-12-27T09:12:54Z"
     },
     {
       "id": "T913",
       "title": "Update lib files and remaining scripts",
-      "status": "blocked",
+      "status": "done",
       "priority": "high",
       "type": "subtask",
       "parentId": "T651",
@@ -4136,9 +4144,10 @@
         "T912"
       ],
       "notes": [
-        "2025-12-27 08:01:42 UTC: Blocked by T911-T912 (requires migration infrastructure)"
+        "2025-12-27 08:01:42 UTC: Blocked by T911-T912 (requires migration infrastructure)",
+        "[COMPLETED 2025-12-27T09:17:48Z] Batch updated all lib/ and scripts/*.sh. Zero CLAUDE_TODO_HOME or .claude/ refs (except migration/legacy detection). ENV_PREFIX=CLEO."
       ],
-      "blockedBy": "Blocked by T911-T912"
+      "completedAt": "2025-12-27T09:17:48Z"
     },
     {
       "id": "T914",
@@ -4165,7 +4174,7 @@
     {
       "id": "T915",
       "title": "Create claude-migrate --check command",
-      "status": "pending",
+      "status": "done",
       "priority": "medium",
       "type": "subtask",
       "parentId": "T652",
@@ -4178,12 +4187,16 @@
       ],
       "depends": [
         "T914"
+      ],
+      "completedAt": "2025-12-27T08:34:27Z",
+      "notes": [
+        "[COMPLETED 2025-12-27T08:34:27Z] Created scripts/claude-migrate.sh with --check mode. Detects legacy global, project, and env vars. JSON/text output. 22 passing tests."
       ]
     },
     {
       "id": "T916",
       "title": "Create claude-migrate --global command",
-      "status": "pending",
+      "status": "done",
       "priority": "medium",
       "type": "subtask",
       "parentId": "T652",
@@ -4196,12 +4209,16 @@
       ],
       "depends": [
         "T915"
+      ],
+      "completedAt": "2025-12-27T08:37:05Z",
+      "notes": [
+        "[COMPLETED 2025-12-27T08:37:05Z] Added --global migration mode. Backup to /tmp first, then finalized to ~/.cleo after move. 6 new tests, 27 total passing."
       ]
     },
     {
       "id": "T917",
       "title": "Create claude-migrate --project command",
-      "status": "pending",
+      "status": "done",
       "priority": "medium",
       "type": "subtask",
       "parentId": "T652",
@@ -4214,12 +4231,16 @@
       ],
       "depends": [
         "T916"
+      ],
+      "completedAt": "2025-12-27T08:39:02Z",
+      "notes": [
+        "[COMPLETED 2025-12-27T08:39:02Z] Added --project migration mode. Renames config files, updates .gitignore, preserves all data. 7 new tests, 33 total passing."
       ]
     },
     {
       "id": "T918",
       "title": "Create migration backup and verification",
-      "status": "pending",
+      "status": "done",
       "priority": "medium",
       "type": "subtask",
       "parentId": "T652",
@@ -4232,6 +4253,10 @@
       ],
       "depends": [
         "T917"
+      ],
+      "completedAt": "2025-12-27T08:40:40Z",
+      "notes": [
+        "[COMPLETED 2025-12-27T08:40:40Z] Added --all migration mode. Runs both global and project, shows combined summary. 6 new tests, 38 total passing."
       ]
     },
     {
@@ -4368,6 +4393,24 @@
         "2025-12-27 07:51:36 UTC: **LLM-AGENT-FIRST-SPEC Compliance:**\n- Part 3.4: JSON envelope MUST include $schema and _meta\n- Format resolution via resolve_format() - JSON is default\n- --human flag for text/visual rendering\n- No --format json needed per spec",
         "2025-12-27 07:51:39 UTC: **Discovered during CLEO migration planning:**\n- T650 epic has T651-T654 as children\n- T651 task has T908-T913 as subtasks\n- show T651 correctly displays hierarchy.children\n- list --tree does NOT build tree structure\n- Bug blocks CLEO progress visibility",
         "2025-12-27 07:51:47 UTC: Test Cases: (1) ct tree --parent T650 | jq .tree[0].children should be >0 (2) ct tree --human should show tree chars (3) ct tree --type epic should only show epics as roots"
+      ]
+    },
+    {
+      "id": "T926",
+      "title": "Rename todo-config.json to config.json throughout codebase",
+      "status": "active",
+      "priority": "high",
+      "type": "subtask",
+      "parentId": "T651",
+      "createdAt": "2025-12-27T08:59:50Z",
+      "phase": "core",
+      "description": "Comprehensive rename of todo-config.json → config.json for cleaner naming.\n\n**Rationale:**\n- Directory .cleo/ already provides namespace isolation\n- 'config.json' is cleaner than 'todo-config.json' or 'cleo-config.json'\n- Global: ~/.cleo/config.json\n- Project: .cleo/config.json\n\n**Files to Update (use grep/glob to find all):**\n- scripts/*.sh (init.sh, config.sh, validate.sh, etc.)\n- lib/config.sh (main config library)\n- templates/config.template.json (rename file itself)\n- schemas/config.schema.json (update $id if needed)\n- Migration script: add rename step for existing projects\n\n**Approach:**\n1. grep -r 'todo-config.json' scripts/ lib/ templates/\n2. Update all references systematically\n3. Rename template file\n4. Update migration script to handle rename\n5. Run full test suite\n\n**Acceptance:**\n- Zero 'todo-config.json' references in codebase\n- Migration handles rename from legacy projects\n- All tests pass",
+      "labels": [
+        "cleo",
+        "rebrand"
+      ],
+      "depends": [
+        "T913"
       ]
     }
   ],
