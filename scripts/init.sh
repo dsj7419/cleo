@@ -199,7 +199,7 @@ if [[ "$UPDATE_CLAUDE_MD" == true ]]; then
     exit "${EXIT_NOT_FOUND:-1}"
   fi
 
-  injection_template="$CLEO_HOME/templates/CLAUDE-INJECTION.md"
+  injection_template="$CLEO_HOME/templates/AGENT-INJECTION.md"
   if [[ ! -f "$injection_template" ]]; then
     if [[ "$FORMAT" == "json" ]] && declare -f output_error &>/dev/null; then
       output_error "$E_FILE_NOT_FOUND" "Injection template not found: $injection_template" "${EXIT_NOT_FOUND:-4}" false "Reinstall cleo to restore templates"
@@ -210,7 +210,7 @@ if [[ "$UPDATE_CLAUDE_MD" == true ]]; then
   fi
 
   action_taken="updated"
-  if grep -q "CLAUDE-TODO:START" CLAUDE.md 2>/dev/null; then
+  if grep -q "CLEO:START" CLAUDE.md 2>/dev/null; then
     # Remove ALL existing injection blocks (handles multiple/duplicates)
     # and place new injection at TOP of file
     temp_file=$(mktemp)
@@ -221,8 +221,8 @@ if [[ "$UPDATE_CLAUDE_MD" == true ]]; then
     # Strip ALL injection blocks using awk (handles multiple START/END pairs)
     # Also removes any leading blank lines from the cleaned content
     awk '
-      /<!-- CLAUDE-TODO:START/ { skip = 1; next }
-      /<!-- CLAUDE-TODO:END -->/ { skip = 0; next }
+      /<!-- CLEO:START/ { skip = 1; next }
+      /<!-- CLEO:END -->/ { skip = 0; next }
       !skip { print }
     ' CLAUDE.md | sed '/./,$!d' >> "$temp_file"
 
@@ -681,12 +681,12 @@ fi
 # Update CLAUDE.md
 if [[ "$NO_CLAUDE_MD" != true ]]; then
   if [[ -f "CLAUDE.md" ]]; then
-    if grep -q "CLAUDE-TODO:START" CLAUDE.md 2>/dev/null; then
+    if grep -q "CLEO:START" CLAUDE.md 2>/dev/null; then
       log_warn "CLAUDE.md already has task integration (skipped)"
     else
       # Inject CLI-based task management instructions from template
       # PREPEND to top of file (injection should be first thing in CLAUDE.md)
-      local injection_template="$CLEO_HOME/templates/CLAUDE-INJECTION.md"
+      local injection_template="$CLEO_HOME/templates/AGENT-INJECTION.md"
       if [[ -f "$injection_template" ]]; then
         local temp_file
         temp_file=$(mktemp)
@@ -700,7 +700,7 @@ if [[ "$NO_CLAUDE_MD" != true ]]; then
         local temp_file
         temp_file=$(mktemp)
         cat > "$temp_file" << 'CLAUDE_EOF'
-<!-- CLAUDE-TODO:START -->
+<!-- CLEO:START -->
 ## Task Management (cleo)
 
 Use `ct` (alias for `cleo`) for all task operations. Full docs: `~/.cleo/docs/TODO_Task_Management.md`
@@ -718,7 +718,7 @@ ct exists <id>             # Verify task exists
 ### Anti-Hallucination
 - **CLI only** - Never edit `.cleo/*.json` directly
 - **Verify state** - Use `ct list` before assuming
-<!-- CLAUDE-TODO:END -->
+<!-- CLEO:END -->
 
 CLAUDE_EOF
         cat CLAUDE.md >> "$temp_file"

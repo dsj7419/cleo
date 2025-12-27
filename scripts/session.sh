@@ -385,10 +385,10 @@ cmd_start() {
   fi
 
   # Check if CLAUDE.md injection is outdated
-  if [[ -f "CLAUDE.md" ]] && [[ -f "$CLEO_HOME/templates/CLAUDE-INJECTION.md" ]]; then
+  if [[ -f "CLAUDE.md" ]] && [[ -f "$CLEO_HOME/templates/AGENT-INJECTION.md" ]]; then
     local current_version installed_version
-    current_version=$(grep -oP 'CLAUDE-TODO:START v\K[0-9.]+' CLAUDE.md 2>/dev/null || echo "")
-    installed_version=$(grep -oP 'CLAUDE-TODO:START v\K[0-9.]+' "$CLEO_HOME/templates/CLAUDE-INJECTION.md" 2>/dev/null || echo "")
+    current_version=$(grep -oP 'CLEO:START v\K[0-9.]+' CLAUDE.md 2>/dev/null || echo "")
+    installed_version=$(grep -oP 'CLEO:START v\K[0-9.]+' "$CLEO_HOME/templates/AGENT-INJECTION.md" 2>/dev/null || echo "")
 
     if [[ -n "$installed_version" ]] && [[ "$current_version" != "$installed_version" ]]; then
       log_warn "CLAUDE.md injection outdated (${current_version:-unknown} → $installed_version)"

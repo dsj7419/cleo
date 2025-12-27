@@ -884,17 +884,17 @@ if [[ "$STALE_COUNT" -gt 0 ]]; then
 fi
 
 # 11. Check CLAUDE.md injection version
-if [[ -f "CLAUDE.md" ]] && [[ -f "$CLEO_HOME/templates/CLAUDE-INJECTION.md" ]]; then
+if [[ -f "CLAUDE.md" ]] && [[ -f "$CLEO_HOME/templates/AGENT-INJECTION.md" ]]; then
   # Check for versioned tag first, then unversioned (legacy)
-  CURRENT_INJECTION_VERSION=$(grep -oP 'CLAUDE-TODO:START v\K[0-9.]+' CLAUDE.md 2>/dev/null || echo "")
-  HAS_LEGACY_INJECTION=$(grep -q 'CLAUDE-TODO:START' CLAUDE.md 2>/dev/null && echo "true" || echo "false")
-  INSTALLED_INJECTION_VERSION=$(grep -oP 'CLAUDE-TODO:START v\K[0-9.]+' "$CLEO_HOME/templates/CLAUDE-INJECTION.md" 2>/dev/null || echo "")
+  CURRENT_INJECTION_VERSION=$(grep -oP 'CLEO:START v\K[0-9.]+' CLAUDE.md 2>/dev/null || echo "")
+  HAS_LEGACY_INJECTION=$(grep -q 'CLEO:START' CLAUDE.md 2>/dev/null && echo "true" || echo "false")
+  INSTALLED_INJECTION_VERSION=$(grep -oP 'CLEO:START v\K[0-9.]+' "$CLEO_HOME/templates/AGENT-INJECTION.md" 2>/dev/null || echo "")
 
   if [[ -z "$CURRENT_INJECTION_VERSION" ]] && [[ "$HAS_LEGACY_INJECTION" == "true" ]]; then
     # Has unversioned legacy injection - needs update
     if [[ "$FIX" == true ]]; then
       "$CLEO_HOME/scripts/init.sh" --update-claude-md 2>/dev/null
-      NEW_VERSION=$(grep -oP 'CLAUDE-TODO:START v\K[0-9.]+' CLAUDE.md 2>/dev/null || echo "")
+      NEW_VERSION=$(grep -oP 'CLEO:START v\K[0-9.]+' CLAUDE.md 2>/dev/null || echo "")
       if [[ "$NEW_VERSION" == "$INSTALLED_INJECTION_VERSION" ]]; then
         echo "  Fixed: Updated legacy CLAUDE.md injection (unversioned → v${INSTALLED_INJECTION_VERSION})"
         log_info "CLAUDE.md injection current (v${INSTALLED_INJECTION_VERSION})" "claude_md"
@@ -908,7 +908,7 @@ if [[ -f "CLAUDE.md" ]] && [[ -f "$CLEO_HOME/templates/CLAUDE-INJECTION.md" ]]; 
     # No injection at all
     if [[ "$FIX" == true ]]; then
       "$CLEO_HOME/scripts/init.sh" --update-claude-md 2>/dev/null
-      if grep -qP 'CLAUDE-TODO:START v[0-9.]+' CLAUDE.md 2>/dev/null; then
+      if grep -qP 'CLEO:START v[0-9.]+' CLAUDE.md 2>/dev/null; then
         echo "  Fixed: Added CLAUDE.md injection (v${INSTALLED_INJECTION_VERSION})"
         log_info "CLAUDE.md injection current (v${INSTALLED_INJECTION_VERSION})" "claude_md"
       else
@@ -921,7 +921,7 @@ if [[ -f "CLAUDE.md" ]] && [[ -f "$CLEO_HOME/templates/CLAUDE-INJECTION.md" ]]; 
     # Has versioned injection but outdated
     if [[ "$FIX" == true ]]; then
       "$CLEO_HOME/scripts/init.sh" --update-claude-md 2>/dev/null
-      NEW_VERSION=$(grep -oP 'CLAUDE-TODO:START v\K[0-9.]+' CLAUDE.md 2>/dev/null || echo "")
+      NEW_VERSION=$(grep -oP 'CLEO:START v\K[0-9.]+' CLAUDE.md 2>/dev/null || echo "")
       if [[ "$NEW_VERSION" == "$INSTALLED_INJECTION_VERSION" ]]; then
         echo "  Fixed: Updated CLAUDE.md injection (${CURRENT_INJECTION_VERSION} → ${INSTALLED_INJECTION_VERSION})"
         log_info "CLAUDE.md injection current (v${INSTALLED_INJECTION_VERSION})" "claude_md"
@@ -936,8 +936,8 @@ if [[ -f "CLAUDE.md" ]] && [[ -f "$CLEO_HOME/templates/CLAUDE-INJECTION.md" ]]; 
   fi
 elif [[ -f "CLAUDE.md" ]]; then
   # CLAUDE.md exists but no injection template to compare against
-  HAS_LEGACY_INJECTION=$(grep -q 'CLAUDE-TODO:START' CLAUDE.md 2>/dev/null && echo "true" || echo "false")
-  CURRENT_INJECTION_VERSION=$(grep -oP 'CLAUDE-TODO:START v\K[0-9.]+' CLAUDE.md 2>/dev/null || echo "")
+  HAS_LEGACY_INJECTION=$(grep -q 'CLEO:START' CLAUDE.md 2>/dev/null && echo "true" || echo "false")
+  CURRENT_INJECTION_VERSION=$(grep -oP 'CLEO:START v\K[0-9.]+' CLAUDE.md 2>/dev/null || echo "")
   if [[ -n "$CURRENT_INJECTION_VERSION" ]]; then
     log_info "CLAUDE.md injection present (v${CURRENT_INJECTION_VERSION})" "claude_md"
   elif [[ "$HAS_LEGACY_INJECTION" == "true" ]]; then
