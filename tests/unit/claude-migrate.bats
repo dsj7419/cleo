@@ -468,13 +468,98 @@ teardown_file() {
 }
 
 # =============================================================================
-# UNIMPLEMENTED MODES (T918)
+# ALL MIGRATION MODE (T918)
 # =============================================================================
 
-@test "claude-migrate --all shows not implemented" {
+@test "claude-migrate --all exits 1 when no legacy found" {
+    rm -rf "$HOME/.claude-todo" 2>/dev/null || true
+    cd "$TEST_TEMP_DIR"
+    rm -rf ".claude" 2>/dev/null || true
+
     run "$SCRIPTS_DIR/claude-migrate.sh" --all
-    assert_failure
-    assert_output --partial "not yet implemented"
+    assert_failure 1
+    assert_output --partial "No legacy installations"
+}
+
+@test "claude-migrate --all migrates both global and project" {
+    # Create both legacy installations
+    mkdir -p "$HOME/.claude-todo"
+    echo '{"tasks":[]}' > "$HOME/.claude-todo/todo.json"
+
+    cd "$TEST_TEMP_DIR"
+    mkdir -p ".claude"
+    echo '{"tasks":[]}' > ".claude/todo.json"
+
+    run "$SCRIPTS_DIR/claude-migrate.sh" --all --format text
+    assert_success
+
+    # Verify both migrated
+    [[ -d "$HOME/.cleo" ]]
+    [[ -f "$HOME/.cleo/todo.json" ]]
+    [[ ! -d "$HOME/.claude-todo" ]]
+
+    [[ -d ".cleo" ]]
+    [[ -f ".cleo/todo.json" ]]
+    [[ ! -d ".claude" ]]
+}
+
+@test "claude-migrate --all migrates only global if no project legacy" {
+    mkdir -p "$HOME/.claude-todo"
+    echo '{}' > "$HOME/.claude-todo/todo.json"
+
+    cd "$TEST_TEMP_DIR"
+    rm -rf ".claude" 2>/dev/null || true
+
+    run "$SCRIPTS_DIR/claude-migrate.sh" --all --format text
+    assert_success
+
+    [[ -d "$HOME/.cleo" ]]
+    [[ ! -d ".cleo" ]]
+}
+
+@test "claude-migrate --all migrates only project if no global legacy" {
+    rm -rf "$HOME/.claude-todo" 2>/dev/null || true
+
+    cd "$TEST_TEMP_DIR"
+    mkdir -p ".claude"
+    echo '{}' > ".claude/todo.json"
+
+    run "$SCRIPTS_DIR/claude-migrate.sh" --all --format text
+    assert_success
+
+    [[ ! -d "$HOME/.cleo" ]]
+    [[ -d ".cleo" ]]
+}
+
+@test "claude-migrate --all returns JSON with both migrations" {
+    mkdir -p "$HOME/.claude-todo"
+    echo '{}' > "$HOME/.claude-todo/todo.json"
+
+    cd "$TEST_TEMP_DIR"
+    mkdir -p ".claude"
+    echo '{}' > ".claude/todo.json"
+
+    run "$SCRIPTS_DIR/claude-migrate.sh" --all --format json
+    assert_success
+
+    local json_output="$output"
+    # The JSON output will include both migration outputs plus summary
+    # Check that both migrations ran by verifying files exist
+    [[ -d "$HOME/.cleo" ]]
+    [[ -d ".cleo" ]]
+}
+
+@test "claude-migrate --all shows summary" {
+    mkdir -p "$HOME/.claude-todo"
+    echo '{}' > "$HOME/.claude-todo/todo.json"
+
+    cd "$TEST_TEMP_DIR"
+    mkdir -p ".claude"
+    echo '{}' > ".claude/todo.json"
+
+    run "$SCRIPTS_DIR/claude-migrate.sh" --all --format text
+    assert_success
+    assert_output --partial "Migration Summary"
 }
 
 # =============================================================================

@@ -809,6 +809,179 @@ EOF
 }
 
 # =============================================================================
+# ALL MIGRATION MODE (T918)
+# =============================================================================
+
+# Run all migrations (global + project)
+run_all_migration() {
+    local global_result=0
+    local project_result=0
+    local global_success=false
+    local project_success=false
+    local global_skipped=false
+    local project_skipped=false
+    local global_output=""
+    local project_output=""
+
+    local timestamp
+    timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+    if ! is_json_output "$FORMAT"; then
+        echo ""
+        echo "CLEO Full Migration"
+        echo "==================="
+        echo ""
+        echo "Running all migrations..."
+        echo ""
+    fi
+
+    # Check what needs migration
+    local has_global_legacy=false
+    local has_project_legacy=false
+
+    if has_legacy_global_installation; then
+        has_global_legacy=true
+    fi
+    if has_legacy_project_dir; then
+        has_project_legacy=true
+    fi
+
+    # If nothing to migrate
+    if [[ "$has_global_legacy" == "false" ]] && [[ "$has_project_legacy" == "false" ]]; then
+        if is_json_output "$FORMAT"; then
+            cat <<EOF
+{
+  "\$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
+  "_meta": {
+    "command": "claude-migrate --all",
+    "timestamp": "${timestamp}",
+    "version": "1.0.0"
+  },
+  "success": false,
+  "error": "No legacy installations found",
+  "code": ${MIGRATE_NO_LEGACY}
+}
+EOF
+        else
+            echo "No legacy installations found."
+            echo "Nothing to migrate."
+        fi
+        return $MIGRATE_NO_LEGACY
+    fi
+
+    # Run global migration if needed
+    if [[ "$has_global_legacy" == "true" ]]; then
+        if ! is_json_output "$FORMAT"; then
+            echo "=== Global Migration ==="
+            echo ""
+        fi
+
+        # Capture result
+        if run_global_migration; then
+            global_success=true
+        else
+            global_result=$?
+            if [[ $global_result -eq $MIGRATE_NO_LEGACY ]]; then
+                global_skipped=true
+            fi
+        fi
+    else
+        global_skipped=true
+        if ! is_json_output "$FORMAT"; then
+            echo "Global: No legacy installation found (skipped)"
+            echo ""
+        fi
+    fi
+
+    # Run project migration if needed
+    if [[ "$has_project_legacy" == "true" ]]; then
+        if ! is_json_output "$FORMAT"; then
+            echo ""
+            echo "=== Project Migration ==="
+            echo ""
+        fi
+
+        if run_project_migration; then
+            project_success=true
+        else
+            project_result=$?
+            if [[ $project_result -eq $MIGRATE_NO_LEGACY ]]; then
+                project_skipped=true
+            fi
+        fi
+    else
+        project_skipped=true
+        if ! is_json_output "$FORMAT"; then
+            echo "Project: No legacy directory found (skipped)"
+            echo ""
+        fi
+    fi
+
+    # Build summary
+    local overall_success=false
+    if [[ "$global_success" == "true" ]] || [[ "$project_success" == "true" ]]; then
+        overall_success=true
+    fi
+    if [[ "$global_skipped" == "true" ]] && [[ "$project_skipped" == "true" ]]; then
+        overall_success=false
+    fi
+
+    if is_json_output "$FORMAT"; then
+        cat <<EOF
+{
+  "\$schema": "https://claude-todo.dev/schemas/v1/output.schema.json",
+  "_meta": {
+    "command": "claude-migrate --all",
+    "timestamp": "${timestamp}",
+    "version": "1.0.0"
+  },
+  "success": ${overall_success},
+  "migrations": {
+    "global": {
+      "success": ${global_success},
+      "skipped": ${global_skipped}
+    },
+    "project": {
+      "success": ${project_success},
+      "skipped": ${project_skipped}
+    }
+  }
+}
+EOF
+    else
+        echo ""
+        echo "=== Migration Summary ==="
+        echo ""
+        if [[ "$global_success" == "true" ]]; then
+            echo "  Global:  ✓ Migrated"
+        elif [[ "$global_skipped" == "true" ]]; then
+            echo "  Global:  - Skipped (no legacy)"
+        else
+            echo "  Global:  ✗ Failed"
+        fi
+
+        if [[ "$project_success" == "true" ]]; then
+            echo "  Project: ✓ Migrated"
+        elif [[ "$project_skipped" == "true" ]]; then
+            echo "  Project: - Skipped (no legacy)"
+        else
+            echo "  Project: ✗ Failed"
+        fi
+        echo ""
+    fi
+
+    if [[ "$overall_success" == "true" ]]; then
+        return $MIGRATE_SUCCESS
+    elif [[ "$global_result" -ne 0 ]] && [[ "$global_result" -ne $MIGRATE_NO_LEGACY ]]; then
+        return $global_result
+    elif [[ "$project_result" -ne 0 ]] && [[ "$project_result" -ne $MIGRATE_NO_LEGACY ]]; then
+        return $project_result
+    else
+        return $MIGRATE_NO_LEGACY
+    fi
+}
+
+# =============================================================================
 # OUTPUT FORMAT DETECTION
 # =============================================================================
 
@@ -905,8 +1078,7 @@ main() {
             run_project_migration
             ;;
         all)
-            echo "Error: --all mode not yet implemented (T918)" >&2
-            exit 2
+            run_all_migration
             ;;
         *)
             echo "Error: Invalid mode: $MODE" >&2
