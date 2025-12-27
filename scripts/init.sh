@@ -110,7 +110,7 @@ DESTRUCTIVE REINITIALIZE:
   2. PERMANENTLY WIPE: todo.json, todo-archive.json, todo-config.json, todo-log.json
   3. Initialize fresh data files
 
-  Example: claude-todo init --force --confirm-wipe
+  Example: cleo init --force --confirm-wipe
 
 Exit Codes:
   0   - Success
@@ -165,7 +165,7 @@ while [[ $# -gt 0 ]]; do
     -h|--help) usage ;;
     -*)
       if [[ "$FORMAT" == "json" ]] && declare -f output_error &>/dev/null; then
-        output_error "$E_INPUT_INVALID" "Unknown option: $1" "${EXIT_INVALID_INPUT:-1}" true "Run 'claude-todo init --help' for usage"
+        output_error "$E_INPUT_INVALID" "Unknown option: $1" "${EXIT_INVALID_INPUT:-1}" true "Run 'cleo init --help' for usage"
       else
         output_error "$E_INPUT_INVALID" "Unknown option: $1"
       fi
@@ -202,7 +202,7 @@ if [[ "$UPDATE_CLAUDE_MD" == true ]]; then
   injection_template="$CLEO_HOME/templates/CLAUDE-INJECTION.md"
   if [[ ! -f "$injection_template" ]]; then
     if [[ "$FORMAT" == "json" ]] && declare -f output_error &>/dev/null; then
-      output_error "$E_FILE_NOT_FOUND" "Injection template not found: $injection_template" "${EXIT_NOT_FOUND:-4}" false "Reinstall claude-todo to restore templates"
+      output_error "$E_FILE_NOT_FOUND" "Injection template not found: $injection_template" "${EXIT_NOT_FOUND:-4}" false "Reinstall cleo to restore templates"
     else
       log_error "Injection template not found: $injection_template"
     fi
@@ -701,9 +701,9 @@ if [[ "$NO_CLAUDE_MD" != true ]]; then
         temp_file=$(mktemp)
         cat > "$temp_file" << 'CLAUDE_EOF'
 <!-- CLAUDE-TODO:START -->
-## Task Management (claude-todo)
+## Task Management (cleo)
 
-Use `ct` (alias for `claude-todo`) for all task operations. Full docs: `~/.claude-todo/docs/TODO_Task_Management.md`
+Use `ct` (alias for `cleo`) for all task operations. Full docs: `~/.cleo/docs/TODO_Task_Management.md`
 
 ### Essential Commands
 ```bash

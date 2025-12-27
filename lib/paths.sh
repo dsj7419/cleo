@@ -152,7 +152,7 @@ get_cleo_version() {
 # LEGACY DETECTION (FOR MIGRATION ONLY)
 # =============================================================================
 
-# Check if legacy claude-todo installation exists
+# Check if legacy cleo installation exists
 # Returns: 0 if legacy found, 1 otherwise
 # Note: This is ONLY for migration warnings, NOT for fallback
 has_legacy_global_installation() {
@@ -250,7 +250,7 @@ emit_migration_warning() {
             echo "            This will not be used. CLEO uses: ~/.cleo" >&2
             ;;
         project)
-            echo "[MIGRATION] Legacy project directory detected: .claude/" >&2
+            echo "[MIGRATION] Legacy project directory detected: .cleo/" >&2
             echo "            This will not be used. CLEO uses: .cleo/" >&2
             ;;
         env)
@@ -258,7 +258,7 @@ emit_migration_warning() {
             echo "            This will be ignored. CLEO uses: CLEO_* variables" >&2
             ;;
         *)
-            echo "[MIGRATION] Legacy claude-todo installation detected." >&2
+            echo "[MIGRATION] Legacy cleo installation detected." >&2
             ;;
     esac
 

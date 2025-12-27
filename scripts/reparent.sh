@@ -2,8 +2,8 @@
 # reparent.sh - Move a task to a different parent
 #
 # Usage:
-#   claude-todo reparent T002 --to T001    # Move T002 under T001
-#   claude-todo reparent T002 --to ""      # Remove parent (make root)
+#   cleo reparent T002 --to T001    # Move T002 under T001
+#   cleo reparent T002 --to ""      # Remove parent (make root)
 #
 # Validates:
 #   - Source task exists
@@ -52,7 +52,7 @@ usage() {
     cat << 'EOF'
 reparent - Move a task to a different parent
 
-Usage: claude-todo reparent TASK_ID --to PARENT_ID [OPTIONS]
+Usage: cleo reparent TASK_ID --to PARENT_ID [OPTIONS]
 
 Arguments:
   TASK_ID               Task to move
@@ -64,9 +64,9 @@ Options:
   -h, --help            Show this help
 
 Examples:
-  claude-todo reparent T002 --to T001    # Move T002 under T001
-  claude-todo reparent T002 --to ""      # Make T002 a root task
-  claude-todo reparent T005 --to T003    # Move subtask to different parent
+  cleo reparent T002 --to T001    # Move T002 under T001
+  cleo reparent T002 --to ""      # Make T002 a root task
+  cleo reparent T005 --to T003    # Move subtask to different parent
 
 Validations performed:
   - Source task must exist
@@ -178,7 +178,7 @@ if save_json "$TODO_FILE" "$UPDATED_JSON"; then
     # Output
     if [[ "$FORMAT" == "json" ]]; then
         jq -n \
-            --arg version "${CLAUDE_TODO_VERSION:-$(get_version)}" \
+            --arg version "${CLEO_VERSION:-$(get_version)}" \
             --arg taskId "$TASK_ID" \
             --arg oldParent "$OLD_PARENT" \
             --arg newParent "$NEW_PARENT" \

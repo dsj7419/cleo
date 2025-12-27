@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # CLEO Migration Command - claude-migrate
-# Detects and migrates legacy claude-todo installations to CLEO format
+# Detects and migrates legacy cleo installations to CLEO format
 #
 # Usage:
 #   cleo claude-migrate --check         # Detect legacy (no changes)
-#   cleo claude-migrate --global        # Migrate ~/.claude-todo → ~/.cleo
+#   cleo claude-migrate --global        # Migrate ~/.cleo → ~/.cleo
 #   cleo claude-migrate --project       # Migrate .claude → .cleo
 #   cleo claude-migrate --all           # Migrate both
 #
@@ -79,11 +79,11 @@ usage() {
     cat << 'EOF'
 Usage: cleo claude-migrate [OPTIONS]
 
-Detect and migrate legacy claude-todo installations to CLEO format.
+Detect and migrate legacy cleo installations to CLEO format.
 
 Modes:
   --check            Detect legacy installations (read-only)
-  --global           Migrate global: ~/.claude-todo → ~/.cleo
+  --global           Migrate global: ~/.cleo → ~/.cleo
   --project          Migrate project: .claude → .cleo
   --all              Migrate both global and project
 
@@ -302,7 +302,7 @@ EOF
         fi
 
         if [[ "$project_found" == "true" ]]; then
-            echo "✗ Project: .claude/ found (legacy)"
+            echo "✗ Project: .cleo/ found (legacy)"
             if [[ "$VERBOSE" == "true" ]]; then
                 echo "  → Run: cleo claude-migrate --project"
             fi
@@ -381,7 +381,7 @@ finalize_backup() {
     fi
 }
 
-# Migrate global installation: ~/.claude-todo → ~/.cleo
+# Migrate global installation: ~/.cleo → ~/.cleo
 run_global_migration() {
     local legacy_path
     local target_path
@@ -589,7 +589,7 @@ update_gitignore() {
         cp "$gitignore_file" "${gitignore_file}.bak"
 
         # Update entries
-        sed -i.tmp 's/\.claude/\.cleo/g' "$gitignore_file"
+        sed -i.tmp 's/\.cleo/\.cleo/g' "$gitignore_file"
         rm -f "${gitignore_file}.tmp"
 
         return 0

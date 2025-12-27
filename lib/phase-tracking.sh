@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# phase-tracking.sh - Project-level phase tracking for claude-todo
+# Project-level phase tracking for cleo
 #
 # LAYER: 3 (Domain Logic)
 # DEPENDENCIES: file-ops.sh (transitive: platform-compat.sh)

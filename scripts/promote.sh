@@ -2,7 +2,7 @@
 # promote.sh - Remove parent from a task (make it root-level)
 #
 # Usage:
-#   claude-todo promote T002    # Remove parent, make T002 root task
+#   cleo promote T002    # Remove parent, make T002 root task
 #
 # Optionally updates type if was subtask -> task
 #
@@ -39,7 +39,7 @@ usage() {
     cat << 'EOF'
 promote - Remove parent from a task (make root-level)
 
-Usage: claude-todo promote TASK_ID [OPTIONS]
+Usage: cleo promote TASK_ID [OPTIONS]
 
 Arguments:
   TASK_ID               Task to promote to root level
@@ -51,13 +51,13 @@ Options:
   -h, --help            Show this help
 
 Examples:
-  claude-todo promote T002       # Make T002 a root task
-  claude-todo promote T005 -q    # Quiet promotion
+  cleo promote T002       # Make T002 a root task
+  cleo promote T005 -q    # Quiet promotion
 
 Notes:
   - If task was a subtask, type is automatically changed to 'task'
   - Use --no-type-update to keep original type
-  - Equivalent to: claude-todo reparent T002 --to ""
+  - Equivalent to: cleo reparent T002 --to ""
 EOF
     exit 0
 }
@@ -131,7 +131,7 @@ if save_json "$TODO_FILE" "$UPDATED_JSON"; then
 
     if [[ "$FORMAT" == "json" ]]; then
         jq -n \
-            --arg version "${CLAUDE_TODO_VERSION:-$(get_version)}" \
+            --arg version "${CLEO_VERSION:-$(get_version)}" \
             --arg taskId "$TASK_ID" \
             --arg oldParent "$OLD_PARENT" \
             --arg oldType "$OLD_TYPE" \

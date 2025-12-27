@@ -6,10 +6,10 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-TODO_FILE="${TODO_FILE:-.claude/todo.json}"
-CONFIG_FILE="${CONFIG_FILE:-.claude/todo-config.json}"
-CLAUDE_TODO_HOME="${CLAUDE_TODO_HOME:-$HOME/.claude-todo}"
-LOG_FILE="${LOG_FILE:-.claude/todo-log.json}"
+TODO_FILE="${TODO_FILE:-.cleo/todo.json}"
+CONFIG_FILE="${CONFIG_FILE:-.cleo/todo-config.json}"
+CLEO_HOME="${CLEO_HOME:-$HOME/.cleo}"
+LOG_FILE="${LOG_FILE:-.cleo/todo-log.json}"
 
 # Command name for error-json library
 COMMAND_NAME="validate"
@@ -83,12 +83,12 @@ if [[ -f "$LIB_DIR/version.sh" ]]; then
   source "$LIB_DIR/version.sh"
 fi
 # VERSION from central location (compliant pattern)
-if [[ -f "$CLAUDE_TODO_HOME/VERSION" ]]; then
-  VERSION="$(cat "$CLAUDE_TODO_HOME/VERSION" 2>/dev/null | tr -d '[:space:]')"
+if [[ -f "$CLEO_HOME/VERSION" ]]; then
+  VERSION="$(cat "$CLEO_HOME/VERSION" 2>/dev/null | tr -d '[:space:]')"
 elif [[ -f "$SCRIPT_DIR/../VERSION" ]]; then
   VERSION="$(cat "$SCRIPT_DIR/../VERSION" 2>/dev/null | tr -d '[:space:]')"
 else
-  VERSION="${CLAUDE_TODO_VERSION:-unknown}"
+  VERSION="${CLEO_VERSION:-unknown}"
 fi
 
 # Defaults
@@ -120,7 +120,7 @@ add_detail() {
 
 usage() {
   cat << EOF
-Usage: claude-todo validate [OPTIONS]
+Usage: cleo validate [OPTIONS]
 
 Validate todo.json against schema and business rules.
 
@@ -884,52 +884,52 @@ if [[ "$STALE_COUNT" -gt 0 ]]; then
 fi
 
 # 11. Check CLAUDE.md injection version
-if [[ -f "CLAUDE.md" ]] && [[ -f "$CLAUDE_TODO_HOME/templates/CLAUDE-INJECTION.md" ]]; then
+if [[ -f "CLAUDE.md" ]] && [[ -f "$CLEO_HOME/templates/CLAUDE-INJECTION.md" ]]; then
   # Check for versioned tag first, then unversioned (legacy)
   CURRENT_INJECTION_VERSION=$(grep -oP 'CLAUDE-TODO:START v\K[0-9.]+' CLAUDE.md 2>/dev/null || echo "")
   HAS_LEGACY_INJECTION=$(grep -q 'CLAUDE-TODO:START' CLAUDE.md 2>/dev/null && echo "true" || echo "false")
-  INSTALLED_INJECTION_VERSION=$(grep -oP 'CLAUDE-TODO:START v\K[0-9.]+' "$CLAUDE_TODO_HOME/templates/CLAUDE-INJECTION.md" 2>/dev/null || echo "")
+  INSTALLED_INJECTION_VERSION=$(grep -oP 'CLAUDE-TODO:START v\K[0-9.]+' "$CLEO_HOME/templates/CLAUDE-INJECTION.md" 2>/dev/null || echo "")
 
   if [[ -z "$CURRENT_INJECTION_VERSION" ]] && [[ "$HAS_LEGACY_INJECTION" == "true" ]]; then
     # Has unversioned legacy injection - needs update
     if [[ "$FIX" == true ]]; then
-      "$CLAUDE_TODO_HOME/scripts/init.sh" --update-claude-md 2>/dev/null
+      "$CLEO_HOME/scripts/init.sh" --update-claude-md 2>/dev/null
       NEW_VERSION=$(grep -oP 'CLAUDE-TODO:START v\K[0-9.]+' CLAUDE.md 2>/dev/null || echo "")
       if [[ "$NEW_VERSION" == "$INSTALLED_INJECTION_VERSION" ]]; then
         echo "  Fixed: Updated legacy CLAUDE.md injection (unversioned → v${INSTALLED_INJECTION_VERSION})"
         log_info "CLAUDE.md injection current (v${INSTALLED_INJECTION_VERSION})" "claude_md"
       else
-        log_warn "CLAUDE.md has legacy (unversioned) injection. Run: claude-todo init --update-claude-md"
+        log_warn "CLAUDE.md has legacy (unversioned) injection. Run: cleo init --update-claude-md"
       fi
     else
-      log_warn "CLAUDE.md has legacy (unversioned) injection. Run with --fix or: claude-todo init --update-claude-md"
+      log_warn "CLAUDE.md has legacy (unversioned) injection. Run with --fix or: cleo init --update-claude-md"
     fi
   elif [[ -z "$CURRENT_INJECTION_VERSION" ]]; then
     # No injection at all
     if [[ "$FIX" == true ]]; then
-      "$CLAUDE_TODO_HOME/scripts/init.sh" --update-claude-md 2>/dev/null
+      "$CLEO_HOME/scripts/init.sh" --update-claude-md 2>/dev/null
       if grep -qP 'CLAUDE-TODO:START v[0-9.]+' CLAUDE.md 2>/dev/null; then
         echo "  Fixed: Added CLAUDE.md injection (v${INSTALLED_INJECTION_VERSION})"
         log_info "CLAUDE.md injection current (v${INSTALLED_INJECTION_VERSION})" "claude_md"
       else
-        log_warn "No CLAUDE-TODO injection found in CLAUDE.md. Run: claude-todo init --update-claude-md"
+        log_warn "No CLAUDE-TODO injection found in CLAUDE.md. Run: cleo init --update-claude-md"
       fi
     else
-      log_warn "No CLAUDE-TODO injection found in CLAUDE.md. Run with --fix or: claude-todo init --update-claude-md"
+      log_warn "No CLAUDE-TODO injection found in CLAUDE.md. Run with --fix or: cleo init --update-claude-md"
     fi
   elif [[ -n "$INSTALLED_INJECTION_VERSION" ]] && [[ "$CURRENT_INJECTION_VERSION" != "$INSTALLED_INJECTION_VERSION" ]]; then
     # Has versioned injection but outdated
     if [[ "$FIX" == true ]]; then
-      "$CLAUDE_TODO_HOME/scripts/init.sh" --update-claude-md 2>/dev/null
+      "$CLEO_HOME/scripts/init.sh" --update-claude-md 2>/dev/null
       NEW_VERSION=$(grep -oP 'CLAUDE-TODO:START v\K[0-9.]+' CLAUDE.md 2>/dev/null || echo "")
       if [[ "$NEW_VERSION" == "$INSTALLED_INJECTION_VERSION" ]]; then
         echo "  Fixed: Updated CLAUDE.md injection (${CURRENT_INJECTION_VERSION} → ${INSTALLED_INJECTION_VERSION})"
         log_info "CLAUDE.md injection current (v${INSTALLED_INJECTION_VERSION})" "claude_md"
       else
-        log_warn "CLAUDE.md injection outdated (${CURRENT_INJECTION_VERSION} → ${INSTALLED_INJECTION_VERSION}). Run: claude-todo init --update-claude-md"
+        log_warn "CLAUDE.md injection outdated (${CURRENT_INJECTION_VERSION} → ${INSTALLED_INJECTION_VERSION}). Run: cleo init --update-claude-md"
       fi
     else
-      log_warn "CLAUDE.md injection outdated (${CURRENT_INJECTION_VERSION} → ${INSTALLED_INJECTION_VERSION}). Run with --fix or: claude-todo init --update-claude-md"
+      log_warn "CLAUDE.md injection outdated (${CURRENT_INJECTION_VERSION} → ${INSTALLED_INJECTION_VERSION}). Run with --fix or: cleo init --update-claude-md"
     fi
   else
     log_info "CLAUDE.md injection current (v${CURRENT_INJECTION_VERSION})" "claude_md"
@@ -941,9 +941,9 @@ elif [[ -f "CLAUDE.md" ]]; then
   if [[ -n "$CURRENT_INJECTION_VERSION" ]]; then
     log_info "CLAUDE.md injection present (v${CURRENT_INJECTION_VERSION})" "claude_md"
   elif [[ "$HAS_LEGACY_INJECTION" == "true" ]]; then
-    log_warn "CLAUDE.md has legacy (unversioned) injection. Run with --fix or: claude-todo init --update-claude-md"
+    log_warn "CLAUDE.md has legacy (unversioned) injection. Run with --fix or: cleo init --update-claude-md"
   else
-    log_warn "CLAUDE.md exists but has no claude-todo injection. Run with --fix or: claude-todo init --update-claude-md"
+    log_warn "CLAUDE.md exists but has no cleo injection. Run with --fix or: cleo init --update-claude-md"
   fi
 fi
 
@@ -951,7 +951,7 @@ fi
 if [[ "$FORMAT" == "json" ]]; then
   # Don't print blank line for JSON output
   # Get app version (not schema version)
-  APP_VERSION="${CLAUDE_TODO_VERSION:-unknown}"
+  APP_VERSION="${CLEO_VERSION:-unknown}"
   SCHEMA_VERSION=$(jq -r '._meta.version // "unknown"' "$TODO_FILE" 2>/dev/null || echo "unknown")
   TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
   VALID=$([[ $ERRORS -eq 0 ]] && echo "true" || echo "false")

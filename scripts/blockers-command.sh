@@ -4,21 +4,21 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CLAUDE_TODO_HOME="${CLAUDE_TODO_HOME:-$HOME/.claude-todo}"
+CLEO_HOME="${CLEO_HOME:-$HOME/.cleo}"
 
 # Capture start time for execution metrics (nanoseconds)
 START_TIME_NS=$(date +%s%N 2>/dev/null || echo "0")
 
 # Source version from central location
-if [[ -f "$CLAUDE_TODO_HOME/VERSION" ]]; then
-  VERSION="$(cat "$CLAUDE_TODO_HOME/VERSION" | tr -d '[:space:]')"
+if [[ -f "$CLEO_HOME/VERSION" ]]; then
+  VERSION="$(cat "$CLEO_HOME/VERSION" | tr -d '[:space:]')"
 elif [[ -f "$SCRIPT_DIR/../VERSION" ]]; then
   VERSION="$(cat "$SCRIPT_DIR/../VERSION" | tr -d '[:space:]')"
 else
   VERSION="unknown"
 fi
 
-TODO_FILE="${TODO_FILE:-.claude/todo.json}"
+TODO_FILE="${TODO_FILE:-.cleo/todo.json}"
 
 # Source logging library for should_use_color function
 LIB_DIR="${SCRIPT_DIR}/../lib"
@@ -133,7 +133,7 @@ while [[ $# -gt 0 ]]; do
     -h|--help) usage ;;
     -*)
       if [[ "${FORMAT:-}" == "json" ]] && declare -f output_error >/dev/null 2>&1; then
-        output_error "E_INPUT_INVALID" "Unknown option: $1" "${EXIT_INVALID_INPUT:-2}" true "Run 'claude-todo blockers --help' for usage"
+        output_error "E_INPUT_INVALID" "Unknown option: $1" "${EXIT_INVALID_INPUT:-2}" true "Run 'cleo blockers --help' for usage"
       else
         log_error "Unknown option: $1"
       fi
@@ -160,9 +160,9 @@ check_deps
 # Check if todo.json exists
 if [[ ! -f "$TODO_FILE" ]]; then
   if [[ "$FORMAT" == "json" ]] && declare -f output_error >/dev/null 2>&1; then
-    output_error "E_NOT_INITIALIZED" "$TODO_FILE not found" "${EXIT_FILE_ERROR:-3}" true "Run 'claude-todo init' to initialize project"
+    output_error "E_NOT_INITIALIZED" "$TODO_FILE not found" "${EXIT_FILE_ERROR:-3}" true "Run 'cleo init' to initialize project"
   else
-    log_error "$TODO_FILE not found. Run claude-todo init first."
+    log_error "$TODO_FILE not found. Run cleo init first."
   fi
   exit "${EXIT_FILE_ERROR:-3}"
 fi

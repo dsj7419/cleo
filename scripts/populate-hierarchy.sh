@@ -9,7 +9,7 @@ source "${LIB_DIR}/exit-codes.sh"
 source "${LIB_DIR}/error-json.sh"
 source "${LIB_DIR}/output-format.sh"
 
-VERSION="${CLAUDE_TODO_VERSION:-0.23.1}"
+VERSION="${CLEO_VERSION:-0.23.1}"
 COMMAND_NAME="populate-hierarchy"
 FORMAT=""
 QUIET=false
@@ -18,7 +18,7 @@ TODO_FILE="${CLAUDE_TODO_DIR:-.claude}/todo.json"
 
 show_help() {
     cat << 'EOF'
-Usage: claude-todo populate-hierarchy [OPTIONS]
+Usage: cleo populate-hierarchy [OPTIONS]
 
 Populate parentId field based on:
 1. Naming convention: "T001.1" in title → parentId: "T001"

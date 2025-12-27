@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# migrate.sh - Schema version migration system for claude-todo
+# Schema version migration system for cleo
 #
 # LAYER: 2 (Core Services)
 # DEPENDENCIES: logging.sh (transitively provides atomic-write.sh)
@@ -31,13 +31,13 @@ SCHEMA_VERSION_ARCHIVE="2.1.0"
 SCHEMA_VERSION_LOG="2.1.0"
 
 # Migration scripts directory
-MIGRATIONS_DIR="${CLAUDE_TODO_HOME:-$HOME/.claude-todo}/migrations"
+MIGRATIONS_DIR="${CLEO_HOME:-$HOME/.cleo}/migrations"
 
 # Templates directory (source of truth for default structures)
-TEMPLATES_DIR="${CLAUDE_TODO_HOME:-$HOME/.claude-todo}/templates"
+TEMPLATES_DIR="${CLEO_HOME:-$HOME/.cleo}/templates"
 
 # Schema directory
-SCHEMA_DIR="${SCHEMA_DIR:-${CLAUDE_TODO_HOME:-$HOME/.claude-todo}/schemas}"
+SCHEMA_DIR="${SCHEMA_DIR:-${CLEO_HOME:-$HOME/.cleo}/schemas}"
 
 # ============================================================================
 # LOCAL HELPER FUNCTIONS (LAYER 2)
@@ -998,7 +998,7 @@ ensure_compatible_version() {
             echo "  Expected version: $expected_version" >&2
 
             if [[ "$comparison" == "data_newer" ]]; then
-                echo "  Data file is newer than schema - upgrade claude-todo" >&2
+                echo "  Data file is newer than schema - upgrade cleo" >&2
             else
                 echo "  Major version mismatch - manual intervention required" >&2
             fi
@@ -1473,7 +1473,7 @@ show_migration_status() {
                 local comparison
                 comparison=$(compare_schema_versions "$current_version" "$expected_version")
                 if [[ "$comparison" == "data_newer" ]]; then
-                    echo "✗ $file_type: v$current_version (newer than schema v$expected_version - upgrade claude-todo)"
+                    echo "✗ $file_type: v$current_version (newer than schema v$expected_version - upgrade cleo)"
                 else
                     echo "✗ $file_type: v$current_version (incompatible with v$expected_version)"
                 fi

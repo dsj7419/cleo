@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# migrate.sh - Schema migration command for claude-todo
+# Schema migration command for cleo
 # Handles version upgrades for todo files
 
 set -euo pipefail
@@ -7,11 +7,11 @@ set -euo pipefail
 # Determine the library directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LIB_DIR="$SCRIPT_DIR/../lib"
-CLAUDE_TODO_HOME="${CLAUDE_TODO_HOME:-$HOME/.claude-todo}"
+CLEO_HOME="${CLEO_HOME:-$HOME/.cleo}"
 
 # Load VERSION from central location
-if [[ -f "$CLAUDE_TODO_HOME/VERSION" ]]; then
-  VERSION="$(cat "$CLAUDE_TODO_HOME/VERSION" | tr -d '[:space:]')"
+if [[ -f "$CLEO_HOME/VERSION" ]]; then
+  VERSION="$(cat "$CLEO_HOME/VERSION" | tr -d '[:space:]')"
 elif [[ -f "$SCRIPT_DIR/../VERSION" ]]; then
   VERSION="$(cat "$SCRIPT_DIR/../VERSION" | tr -d '[:space:]')"
 else
@@ -76,9 +76,9 @@ check_jq_dependency() {
 
 show_usage() {
     cat <<EOF
-Usage: claude-todo migrate [COMMAND] [OPTIONS]
+Usage: cleo migrate [COMMAND] [OPTIONS]
 
-Schema version migration for claude-todo files.
+Schema version migration for cleo files.
 
 Commands:
   status                 Show version status of all files
@@ -117,31 +117,31 @@ JSON Output:
 
 Examples:
   # Check migration status
-  claude-todo migrate status
+  cleo migrate status
 
   # Migrate all files in current project
-  claude-todo migrate run
+  cleo migrate run
 
   # Migrate specific file
-  claude-todo migrate file .claude/todo.json todo
+  cleo migrate file .cleo/todo.json todo
 
   # Auto-migrate without confirmation
-  claude-todo migrate run --auto
+  cleo migrate run --auto
 
   # Rollback from most recent migration backup
-  claude-todo migrate rollback
+  cleo migrate rollback
 
   # Rollback from specific backup
-  claude-todo migrate rollback --backup-id migration_v2.1.0_20251215_120000
+  cleo migrate rollback --backup-id migration_v2.1.0_20251215_120000
 
   # Check what repairs are needed (dry-run)
-  claude-todo migrate repair --dry-run
+  cleo migrate repair --dry-run
 
   # Auto-repair schema issues
-  claude-todo migrate repair --auto
+  cleo migrate repair --auto
 
   # JSON output for scripting
-  claude-todo migrate status --json
+  cleo migrate status --json
 
 Schema Versions:
   todo:    $SCHEMA_VERSION_TODO
@@ -165,10 +165,10 @@ cmd_repair() {
 
     if [[ ! -d "$claude_dir" ]]; then
         if [[ "$FORMAT" == "json" ]] && declare -f output_error &>/dev/null; then
-            output_error "$E_NOT_INITIALIZED" "No .claude directory found in $project_dir" "${EXIT_NOT_FOUND:-4}" true "Run 'claude-todo init' to initialize the project"
+            output_error "$E_NOT_INITIALIZED" "No .claude directory found in $project_dir" "${EXIT_NOT_FOUND:-4}" true "Run 'cleo init' to initialize the project"
         else
             output_error "$E_NOT_INITIALIZED" "No .claude directory found in $project_dir"
-            echo "Run 'claude-todo init' to initialize the project" >&2
+            echo "Run 'cleo init' to initialize the project" >&2
         fi
         exit "${EXIT_NOT_FOUND:-1}"
     fi
@@ -239,10 +239,10 @@ cmd_status() {
 
     if [[ ! -d "$claude_dir" ]]; then
         if [[ "$FORMAT" == "json" ]] && declare -f output_error &>/dev/null; then
-            output_error "$E_NOT_INITIALIZED" "No .claude directory found in $project_dir" "${EXIT_NOT_FOUND:-4}" true "Run 'claude-todo init' to initialize the project"
+            output_error "$E_NOT_INITIALIZED" "No .claude directory found in $project_dir" "${EXIT_NOT_FOUND:-4}" true "Run 'cleo init' to initialize the project"
         else
             output_error "$E_NOT_INITIALIZED" "No .claude directory found in $project_dir"
-            echo "Run 'claude-todo init' to initialize the project" >&2
+            echo "Run 'cleo init' to initialize the project" >&2
         fi
         exit "${EXIT_NOT_FOUND:-1}"
     fi
@@ -330,7 +330,7 @@ cmd_check() {
 
     if [[ ! -d "$claude_dir" ]]; then
         if [[ "$FORMAT" == "json" ]] && declare -f output_error &>/dev/null; then
-            output_error "$E_NOT_INITIALIZED" "No .claude directory found" "${EXIT_NOT_FOUND:-4}" true "Run 'claude-todo init' to initialize the project"
+            output_error "$E_NOT_INITIALIZED" "No .claude directory found" "${EXIT_NOT_FOUND:-4}" true "Run 'cleo init' to initialize the project"
         else
             output_error "$E_NOT_INITIALIZED" "No .claude directory found"
         fi
@@ -417,7 +417,7 @@ cmd_run() {
 
     if [[ ! -d "$claude_dir" ]]; then
         if [[ "$FORMAT" == "json" ]] && declare -f output_error &>/dev/null; then
-            output_error "$E_NOT_INITIALIZED" "No .claude directory found" "${EXIT_NOT_FOUND:-4}" true "Run 'claude-todo init' to initialize the project"
+            output_error "$E_NOT_INITIALIZED" "No .claude directory found" "${EXIT_NOT_FOUND:-4}" true "Run 'cleo init' to initialize the project"
         else
             output_error "$E_NOT_INITIALIZED" "No .claude directory found"
         fi
@@ -649,10 +649,10 @@ cmd_rollback() {
 
     if [[ ! -d "$claude_dir" ]]; then
         if [[ "$FORMAT" == "json" ]] && declare -f output_error &>/dev/null; then
-            output_error "$E_NOT_INITIALIZED" "No .claude directory found in $project_dir" "${EXIT_NOT_FOUND:-4}" true "Run 'claude-todo init' to initialize the project"
+            output_error "$E_NOT_INITIALIZED" "No .claude directory found in $project_dir" "${EXIT_NOT_FOUND:-4}" true "Run 'cleo init' to initialize the project"
         else
             output_error "$E_NOT_INITIALIZED" "No .claude directory found in $project_dir"
-            echo "Run 'claude-todo init' to initialize the project" >&2
+            echo "Run 'cleo init' to initialize the project" >&2
         fi
         exit "${EXIT_NOT_FOUND:-1}"
     fi
@@ -988,10 +988,10 @@ main() {
         "file")
             if [[ $# -lt 2 ]]; then
                 if [[ "$FORMAT" == "json" ]] && declare -f output_error &>/dev/null; then
-                    output_error "$E_INPUT_MISSING" "Missing arguments for 'file' command" "${EXIT_INVALID_INPUT:-1}" true "Usage: claude-todo migrate file <path> <type>"
+                    output_error "$E_INPUT_MISSING" "Missing arguments for 'file' command" "${EXIT_INVALID_INPUT:-1}" true "Usage: cleo migrate file <path> <type>"
                 else
                     output_error "$E_INPUT_MISSING" "Missing arguments for 'file' command"
-                    echo "Usage: claude-todo migrate file <path> <type>" >&2
+                    echo "Usage: cleo migrate file <path> <type>" >&2
                 fi
                 exit "${EXIT_INVALID_INPUT:-1}"
             fi
@@ -1016,7 +1016,7 @@ main() {
             ;;
         *)
             if [[ "$FORMAT" == "json" ]] && declare -f output_error &>/dev/null; then
-                output_error "$E_INPUT_INVALID" "Unknown command: $command" "${EXIT_INVALID_INPUT:-1}" true "Run 'claude-todo migrate --help' for usage"
+                output_error "$E_INPUT_INVALID" "Unknown command: $command" "${EXIT_INVALID_INPUT:-1}" true "Run 'cleo migrate --help' for usage"
             else
                 output_error "$E_INPUT_INVALID" "Unknown command: $command"
                 echo "" >&2

@@ -16,7 +16,7 @@ declare -r _OUTPUT_FORMAT_LOADED=1
 # ============================================================================
 
 # Configuration file path
-OUTPUT_CONFIG_FILE="${OUTPUT_CONFIG_FILE:-.claude/todo-config.json}"
+OUTPUT_CONFIG_FILE="${OUTPUT_CONFIG_FILE:-.cleo/todo-config.json}"
 
 # Cached configuration values (loaded once per script execution)
 declare -g _OUTPUT_CONFIG_LOADED=""
@@ -243,8 +243,8 @@ resolve_format() {
   elif [[ -n "${CLAUDE_TODO_FORMAT:-}" ]]; then
     resolved_format="$CLAUDE_TODO_FORMAT"
   # Config file setting (if jq available and config exists)
-  elif command -v jq &>/dev/null && [[ -f ".claude/todo-config.json" ]]; then
-    resolved_format=$(jq -r '.output.defaultFormat // empty' .claude/todo-config.json 2>/dev/null)
+  elif command -v jq &>/dev/null && [[ -f ".cleo/todo-config.json" ]]; then
+    resolved_format=$(jq -r '.output.defaultFormat // empty' .cleo/todo-config.json 2>/dev/null)
   fi
 
   # Default fallback: JSON (LLM-Agent-First)

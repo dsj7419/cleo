@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# error-json.sh - Standardized error JSON output for claude-todo
+# Standardized error JSON output for cleo
 #
 # LAYER: 1 (Core Infrastructure)
 # DEPENDENCIES: exit-codes.sh, platform-compat.sh
@@ -42,10 +42,10 @@ fi
 # VERSION
 # ============================================================================
 
-_CLAUDE_TODO_HOME="${CLAUDE_TODO_HOME:-$HOME/.claude-todo}"
+_CLEO_HOME="${CLEO_HOME:-$HOME/.cleo}"
 
-if [[ -f "$_CLAUDE_TODO_HOME/VERSION" ]]; then
-    _ERROR_JSON_VERSION="$(cat "$_CLAUDE_TODO_HOME/VERSION" | tr -d '[:space:]')"
+if [[ -f "$_CLEO_HOME/VERSION" ]]; then
+    _ERROR_JSON_VERSION="$(cat "$_CLEO_HOME/VERSION" | tr -d '[:space:]')"
 elif [[ -f "$_ERROR_JSON_LIB_DIR/../VERSION" ]]; then
     _ERROR_JSON_VERSION="$(cat "$_ERROR_JSON_LIB_DIR/../VERSION" | tr -d '[:space:]')"
 else

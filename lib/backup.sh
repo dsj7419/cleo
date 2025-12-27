@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# backup.sh - Unified backup management for claude-todo
+# Unified backup management for cleo
 #
 # LAYER: 2 (Core Services)
 # DEPENDENCIES: file-ops.sh, logging.sh
@@ -19,7 +19,7 @@ declare -r _BACKUP_LOADED=1
 # different backup types with specific purposes and retention policies.
 #
 # Directory Structure:
-#   .claude/backups/
+#   .cleo/backups/
 #   ├── snapshot/      Point-in-time snapshots (frequent, short retention)
 #   ├── safety/        Pre-operation safety backups (auto-created before changes)
 #   ├── incremental/   Delta-based backups (efficient storage, version history)
@@ -30,7 +30,7 @@ declare -r _BACKUP_LOADED=1
 #
 # 1. SNAPSHOT (snapshot/)
 #    - Purpose: Complete system state capture at a point in time
-#    - Trigger: Manual user request via `claude-todo backup`
+#    - Trigger: Manual user request via `cleo backup`
 #    - Contains: All system files (todo.json, todo-archive.json, todo-config.json, todo-log.json)
 #    - Retention: Configurable (default: keep last 10)
 #    - Use Case: Regular backups, before major changes, scheduled snapshots
@@ -82,7 +82,7 @@ declare -r _BACKUP_LOADED=1
 #   {
 #     "backup": {
 #       "enabled": true,
-#       "directory": ".claude/backups",
+#       "directory": ".cleo/backups",
 #       "maxSnapshots": 10,
 #       "maxSafetyBackups": 5,
 #       "maxIncremental": 10,
@@ -133,7 +133,7 @@ readonly BACKUP_TYPE_MIGRATION="migration"
 
 # Default configuration values
 readonly DEFAULT_BACKUP_ENABLED=true
-readonly DEFAULT_BACKUP_DIR=".claude/backups"
+readonly DEFAULT_BACKUP_DIR=".cleo/backups"
 readonly DEFAULT_MAX_SNAPSHOTS=10
 readonly DEFAULT_MAX_SAFETY_BACKUPS=5
 readonly DEFAULT_MAX_INCREMENTAL=10
@@ -669,7 +669,7 @@ _load_backup_config() {
     # Override with config file values if available
     if [[ -f "$config_file" ]]; then
         BACKUP_ENABLED=$(jq -r '.backup.enabled // true' "$config_file" 2>/dev/null || echo "$DEFAULT_BACKUP_ENABLED")
-        BACKUP_DIR=$(jq -r '.backup.directory // ".claude/backups"' "$config_file" 2>/dev/null || echo "$DEFAULT_BACKUP_DIR")
+        BACKUP_DIR=$(jq -r '.backup.directory // ".cleo/backups"' "$config_file" 2>/dev/null || echo "$DEFAULT_BACKUP_DIR")
         MAX_SNAPSHOTS=$(jq -r '.backup.maxSnapshots // 10' "$config_file" 2>/dev/null || echo "$DEFAULT_MAX_SNAPSHOTS")
         MAX_SAFETY_BACKUPS=$(jq -r '.backup.maxSafetyBackups // 5' "$config_file" 2>/dev/null || echo "$DEFAULT_MAX_SAFETY_BACKUPS")
         MAX_INCREMENTAL=$(jq -r '.backup.maxIncremental // 10' "$config_file" 2>/dev/null || echo "$DEFAULT_MAX_INCREMENTAL")
@@ -697,7 +697,7 @@ _create_backup_metadata() {
     local version
 
     timestamp=$(get_iso_timestamp)
-    version="${CLAUDE_TODO_VERSION:-0.9.8}"
+    version="${CLEO_VERSION:-0.9.8}"
 
     jq -n \
         --arg type "$backup_type" \
