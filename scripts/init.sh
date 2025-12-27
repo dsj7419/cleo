@@ -97,6 +97,8 @@ Options:
   --confirm-wipe      Confirm data destruction when used with --force
   --no-claude-md      Skip CLAUDE.md integration
   --update-claude-md  Update existing CLAUDE.md injection (idempotent)
+  --update-docs       Alias for --update-claude-md
+  --target FILE       Target doc file for injection (CLAUDE.md, AGENTS.md, GEMINI.md)
   -f, --format FMT    Output format: text, json (default: auto-detect)
   --human             Force human-readable text output
   --json              Force JSON output
@@ -157,7 +159,8 @@ while [[ $# -gt 0 ]]; do
     --force) FORCE=true; shift ;;
     --confirm-wipe) CONFIRM_WIPE=true; shift ;;
     --no-claude-md) NO_CLAUDE_MD=true; shift ;;
-    --update-claude-md) UPDATE_CLAUDE_MD=true; shift ;;
+    --update-claude-md|--update-docs) UPDATE_CLAUDE_MD=true; shift ;;
+    --target) TARGET_FILE="$2"; UPDATE_CLAUDE_MD=true; shift 2 ;;
     -f|--format) FORMAT="$2"; shift 2 ;;
     --human) FORMAT="text"; shift ;;
     --json) FORMAT="json"; shift ;;
@@ -190,11 +193,27 @@ log_error()   { [[ "$FORMAT" != "json" ]] && echo "[ERROR] $1" >&2 || true; }
 
 # Handle --update-claude-md as standalone operation
 if [[ "$UPDATE_CLAUDE_MD" == true ]]; then
-  if [[ ! -f "CLAUDE.md" ]]; then
+  # Set default target file if not specified
+  TARGET_FILE="${TARGET_FILE:-CLAUDE.md}"
+
+  # Validate target file is one of the supported doc files
+  case "$TARGET_FILE" in
+    CLAUDE.md|AGENTS.md|GEMINI.md) ;;
+    *)
+      if [[ "$FORMAT" == "json" ]] && declare -f output_error &>/dev/null; then
+        output_error "$E_INPUT_INVALID" "Invalid target file: $TARGET_FILE. Must be CLAUDE.md, AGENTS.md, or GEMINI.md" "${EXIT_INVALID_INPUT:-2}" true "Use --target CLAUDE.md, AGENTS.md, or GEMINI.md"
+      else
+        log_error "Invalid target file: $TARGET_FILE. Must be CLAUDE.md, AGENTS.md, or GEMINI.md"
+      fi
+      exit "${EXIT_INVALID_INPUT:-2}"
+      ;;
+  esac
+
+  if [[ ! -f "$TARGET_FILE" ]]; then
     if [[ "$FORMAT" == "json" ]] && declare -f output_error &>/dev/null; then
-      output_error "$E_FILE_NOT_FOUND" "CLAUDE.md not found in current directory" "${EXIT_NOT_FOUND:-4}" true "Create CLAUDE.md first or run from a directory with CLAUDE.md"
+      output_error "$E_FILE_NOT_FOUND" "$TARGET_FILE not found in current directory" "${EXIT_NOT_FOUND:-4}" true "Create $TARGET_FILE first or run from a directory with $TARGET_FILE"
     else
-      log_error "CLAUDE.md not found in current directory"
+      log_error "$TARGET_FILE not found in current directory"
     fi
     exit "${EXIT_NOT_FOUND:-1}"
   fi
@@ -210,7 +229,7 @@ if [[ "$UPDATE_CLAUDE_MD" == true ]]; then
   fi
 
   action_taken="updated"
-  if grep -q "CLEO:START" CLAUDE.md 2>/dev/null; then
+  if grep -q "CLEO:START" "$TARGET_FILE" 2>/dev/null; then
     # Remove ALL existing injection blocks (handles multiple/duplicates)
     # and place new injection at TOP of file
     temp_file=$(mktemp)
@@ -224,18 +243,18 @@ if [[ "$UPDATE_CLAUDE_MD" == true ]]; then
       /<!-- CLEO:START/ { skip = 1; next }
       /<!-- CLEO:END -->/ { skip = 0; next }
       !skip { print }
-    ' CLAUDE.md | sed '/./,$!d' >> "$temp_file"
+    ' "$TARGET_FILE" | sed '/./,$!d' >> "$temp_file"
 
     # Replace original file
-    mv "$temp_file" CLAUDE.md
+    mv "$temp_file" "$TARGET_FILE"
     action_taken="updated"
   else
     # No existing block, prepend new injection at TOP
     temp_file=$(mktemp)
     cat "$injection_template" > "$temp_file"
     echo "" >> "$temp_file"
-    cat CLAUDE.md >> "$temp_file"
-    mv "$temp_file" CLAUDE.md
+    cat "$TARGET_FILE" >> "$temp_file"
+    mv "$temp_file" "$TARGET_FILE"
     action_taken="added"
   fi
 
@@ -244,26 +263,27 @@ if [[ "$UPDATE_CLAUDE_MD" == true ]]; then
       --arg timestamp "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
       --arg action "$action_taken" \
       --arg version "$VERSION" \
+      --arg target "$TARGET_FILE" \
       '{
         "$schema": "https://cleo-dev.com/schemas/v1/output.schema.json",
         "_meta": {
           "command": "init",
-          "subcommand": "update-claude-md",
+          "subcommand": "update-docs",
           "timestamp": $timestamp,
           "format": "json",
           "version": $version
         },
         "success": true,
-        "claudeMd": {
+        "injection": {
           "action": $action,
-          "file": "CLAUDE.md"
+          "file": $target
         }
       }'
   else
     if [[ "$action_taken" == "updated" ]]; then
-      log_success "CLAUDE.md injection updated"
+      log_success "$TARGET_FILE injection updated"
     else
-      log_success "CLAUDE.md injection added"
+      log_success "$TARGET_FILE injection added"
     fi
   fi
   exit 0

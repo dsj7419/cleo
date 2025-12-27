@@ -27,7 +27,9 @@ The `init` command sets up a new project for cleo by creating the `.cleo/` direc
 | `--force` | Signal intent to reinitialize (requires `--confirm-wipe`) | `false` |
 | `--confirm-wipe` | Confirm destructive data wipe (used with `--force`) | `false` |
 | `--no-claude-md` | Skip CLAUDE.md integration | `false` |
-| `--update-claude-md` | Only update CLAUDE.md injection (no other changes) | `false` |
+| `--update-claude-md` | Only update doc file injection (no other changes) | `false` |
+| `--update-docs` | Alias for `--update-claude-md` | `false` |
+| `--target FILE` | Target doc file for injection (CLAUDE.md, AGENTS.md, GEMINI.md) | `CLAUDE.md` |
 | `-f, --format FMT` | Output format: `text`, `json` | auto-detect |
 | `--json` | Force JSON output | |
 | `--human` | Force human-readable text output | |
@@ -74,6 +76,21 @@ cleo initialized successfully!
 ```bash
 # Update CLAUDE.md injection to latest version
 cleo init --update-claude-md
+
+# Or use the alias
+cleo init --update-docs
+```
+
+### Multi-Doc Injection (--target)
+
+```bash
+# Inject into different agent doc files
+cleo init --target CLAUDE.md    # Default for Claude Code
+cleo init --target AGENTS.md    # For multi-agent projects
+cleo init --target GEMINI.md    # For Gemini CLI
+
+# Same CLEO template content is used for all targets
+# Markers: <!-- CLEO:START vX.X.X --> and <!-- CLEO:END -->
 ```
 
 ### Attempt to Reinitialize (Blocked)
