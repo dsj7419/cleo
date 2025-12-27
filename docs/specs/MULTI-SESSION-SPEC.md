@@ -15,7 +15,7 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "S
 
 ## Executive Summary
 
-This specification defines the multi-session architecture for claude-todo, enabling multiple concurrent LLM agents to work on different task groups within the same project. Each session maintains isolated focus state and scope boundaries while sharing the underlying task data.
+This specification defines the multi-session architecture for cleo, enabling multiple concurrent LLM agents to work on different task groups within the same project. Each session maintains isolated focus state and scope boundaries while sharing the underlying task data.
 
 ### Key Capabilities
 
@@ -35,7 +35,7 @@ This specification defines the multi-session architecture for claude-todo, enabl
 ### 1.1 File Structure
 
 ```
-.claude/
+.cleo/
 ├── todo.json              # Tasks (shared across sessions)
 ├── sessions.json          # Session registry (NEW)
 ├── todo-config.json       # Configuration
@@ -219,7 +219,7 @@ When setting focus within a session:
 ### 4.2 Session Start
 
 ```bash
-claude-todo session start --scope epic:T001 --name "Auth impl"
+cleo session start --scope epic:T001 --name "Auth impl"
 ```
 
 Operations:
@@ -237,7 +237,7 @@ Operations:
 ### 4.3 Session Suspend
 
 ```bash
-claude-todo session suspend --note "Waiting for API review"
+cleo session suspend --note "Waiting for API review"
 ```
 
 Operations:
@@ -252,8 +252,8 @@ Operations:
 ### 4.4 Session Resume
 
 ```bash
-claude-todo session resume <session-id>
-claude-todo session resume --last --scope epic:T001
+cleo session resume <session-id>
+cleo session resume --last --scope epic:T001
 ```
 
 Operations:
@@ -270,7 +270,7 @@ Operations:
 ### 4.5 Session End
 
 ```bash
-claude-todo session end --note "Completed auth middleware"
+cleo session end --note "Completed auth middleware"
 ```
 
 Operations:
@@ -313,16 +313,16 @@ Each session maintains independent focus:
 
 ```bash
 # Set focus (uses current session or env var)
-claude-todo focus set T005
+cleo focus set T005
 
 # Explicit session
-claude-todo focus set T005 --session session_20251227_...
+cleo focus set T005 --session session_20251227_...
 
 # Clear focus
-claude-todo focus clear
+cleo focus clear
 
 # Show focus (session-aware)
-claude-todo focus show
+cleo focus show
 ```
 
 ### 5.3 Active Task Constraint
@@ -475,75 +475,75 @@ BACKUP_FILES=(
 
 ```bash
 # Start with scope
-claude-todo session start --scope epic:T001
-claude-todo session start --scope taskGroup:T005
-claude-todo session start --scope phase:testing --root T001
-claude-todo session start --scope custom:T003,T005,T007
-claude-todo session start --name "Auth Implementation"
+cleo session start --scope epic:T001
+cleo session start --scope taskGroup:T005
+cleo session start --scope phase:testing --root T001
+cleo session start --scope custom:T003,T005,T007
+cleo session start --name "Auth Implementation"
 
 # List sessions
-claude-todo session list
-claude-todo session list --status active
-claude-todo session list --status suspended
-claude-todo session list --scope T001
+cleo session list
+cleo session list --status active
+cleo session list --status suspended
+cleo session list --scope T001
 
 # Show session details
-claude-todo session show
-claude-todo session show <session-id>
-claude-todo session show --json
+cleo session show
+cleo session show <session-id>
+cleo session show --json
 
 # Suspend
-claude-todo session suspend
-claude-todo session suspend --note "Waiting for API review"
+cleo session suspend
+cleo session suspend --note "Waiting for API review"
 
 # Resume
-claude-todo session resume <session-id>
-claude-todo session resume --last
-claude-todo session resume --last --scope epic:T001
-claude-todo session resume --pick  # Interactive
+cleo session resume <session-id>
+cleo session resume --last
+cleo session resume --last --scope epic:T001
+cleo session resume --pick  # Interactive
 
 # End
-claude-todo session end
-claude-todo session end --note "Completed auth middleware"
+cleo session end
+cleo session end --note "Completed auth middleware"
 
 # Switch (for single-user multi-scope)
-claude-todo session switch <session-id>
+cleo session switch <session-id>
 
 # Validate
-claude-todo session validate
-claude-todo session validate --fix-orphans
+cleo session validate
+cleo session validate --fix-orphans
 
 # Cleanup
-claude-todo session cleanup --ended-before 30d
+cleo session cleanup --ended-before 30d
 
 # History
-claude-todo session history
-claude-todo session history --scope T001
+cleo session history
+cleo session history --scope T001
 ```
 
 ### 8.2 Focus (Session-Aware)
 
 ```bash
 # Uses current session (from env or .current-session)
-claude-todo focus set T005
-claude-todo focus show
-claude-todo focus clear
-claude-todo focus note "Progress update"
-claude-todo focus next "Add validation"
+cleo focus set T005
+cleo focus show
+cleo focus clear
+cleo focus note "Progress update"
+cleo focus next "Add validation"
 
 # Explicit session
-claude-todo focus set T005 --session <id>
-claude-todo focus show --session <id>
+cleo focus set T005 --session <id>
+cleo focus show --session <id>
 ```
 
 ### 8.3 Environment Variables
 
 ```bash
 # Set current session for CLI commands
-export CLAUDE_TODO_SESSION=session_20251227_143022_abc123
+export CLEO_SESSION=session_20251227_143022_abc123
 
 # Or use .current-session file
-echo "session_20251227_143022_abc123" > .claude/.current-session
+echo "session_20251227_143022_abc123" > .cleo/.current-session
 ```
 
 ---
@@ -553,7 +553,7 @@ echo "session_20251227_143022_abc123" > .claude/.current-session
 ### 9.1 Enable Multi-Session
 
 ```bash
-claude-todo config set multiSession.enabled true
+cleo config set multiSession.enabled true
 ```
 
 ### 9.2 Migration Steps
@@ -636,10 +636,10 @@ claude-todo config set multiSession.enabled true
 
 ```bash
 # Agent 1: Works on authentication epic
-claude-todo session start --scope epic:T001 --name "Auth Work" --agent opus-1
+cleo session start --scope epic:T001 --name "Auth Work" --agent opus-1
 
 # Agent 2: Works on UI epic (different scope, no conflict)
-claude-todo session start --scope epic:T050 --name "UI Work" --agent haiku-1
+cleo session start --scope epic:T050 --name "UI Work" --agent haiku-1
 
 # Both can work simultaneously
 # Each has own focus, own active task
@@ -649,10 +649,10 @@ claude-todo session start --scope epic:T050 --name "UI Work" --agent haiku-1
 
 ```bash
 # Agent 1: Testing phase of auth epic
-claude-todo session start --scope epicPhase:T001 --phase testing
+cleo session start --scope epicPhase:T001 --phase testing
 
 # Agent 2: Documentation phase of same epic
-claude-todo session start --scope epicPhase:T001 --phase polish
+cleo session start --scope epicPhase:T001 --phase polish
 
 # Different phases = disjoint scopes = no conflict
 ```
@@ -661,11 +661,11 @@ claude-todo session start --scope epicPhase:T001 --phase polish
 
 ```bash
 # Agent 1: Works on full epic
-claude-todo session start --scope epic:T001
+cleo session start --scope epic:T001
 
 # Agent 2: Works on specific task group within epic
 # With allowNestedScopes=true, parent auto-excludes
-claude-todo session start --scope taskGroup:T005
+cleo session start --scope taskGroup:T005
 
 # T005 and children excluded from Agent 1's scope
 ```

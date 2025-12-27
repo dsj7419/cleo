@@ -9,7 +9,7 @@
 
 ## 1. Overview
 
-The Phase System provides **project-level phase lifecycle management** for claude-todo, enabling tracking of which workflow stage a project is in while maintaining task-level phase categorization.
+The Phase System provides **project-level phase lifecycle management** for cleo, enabling tracking of which workflow stage a project is in while maintaining task-level phase categorization.
 
 ### 1.1 Design Philosophy
 
@@ -537,7 +537,7 @@ ct validate
 ### 11.1 Locking
 
 - All phase operations use file locking (`flock`)
-- Lock scope: `.claude/todo.json`
+- Lock scope: `.cleo/todo.json`
 - Lock timeout: 5 seconds
 
 ### 11.2 Atomic Operations
