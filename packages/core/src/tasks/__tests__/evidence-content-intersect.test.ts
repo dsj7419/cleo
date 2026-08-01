@@ -35,6 +35,7 @@ import { createTestDb, seedTasks, type TestDbEnv } from '../../store/__tests__/t
 import { resetDbState } from '../../store/sqlite.js';
 import {
   CRITICAL_GATES_NO_OVERRIDE,
+  diffIntersectsAc,
   extractTaskAcFiles,
   isHardAtom,
   resolveCanonicalProjectRoot,
@@ -249,6 +250,155 @@ describe('T9245 — validateCommit content-intersect (probe reproduction)', () =
 
     const r = await validateAtom({ kind: 'commit', sha }, env.tempDir);
     expect(r.ok).toBe(true);
+  });
+});
+
+// =============================================================================
+// T12029 — diffIntersectsAc segment-boundary suffix matching
+// =============================================================================
+
+describe('T12029 — diffIntersectsAc segment-boundary suffix match', () => {
+  it('ACCEPTS monorepo nesting: AC sub-path matches diff suffix at slash boundary', () => {
+    // AC declares sub-path; diff is the nested monorepo path.
+    const ac = ['scripts/modules/tabs/audit.py'];
+    const diff = ['plugins/dc-underwrite/scripts/modules/tabs/audit.py'];
+    expect(diffIntersectsAc(diff, ac)).toBe(true);
+  });
+
+  it('ACCEPTS deeply-nested monorepo: AC sub-path matches diff suffix at slash boundary', () => {
+    const ac = ['src/core/tasks/foo.ts'];
+    const diff = ['plugins/producer/packages/core/src/core/tasks/foo.ts'];
+    expect(diffIntersectsAc(diff, ac)).toBe(true);
+  });
+
+  it('ACCEPTS single-segment AC file nested in monorepo', () => {
+    const ac = ['setup.py'];
+    const diff = ['packages/my-lib/setup.py'];
+    expect(diffIntersectsAc(diff, ac)).toBe(true);
+  });
+
+  it('REJECTS partial-name false positive: "ipts" ≠ "scripts" suffix', () => {
+    // diff ends with "scripts/...", AC is "ipts/..." — partial suffix mismatch.
+    const ac = ['ipts/modules/tabs/audit.py'];
+    const diff = ['plugins/dc-underwrite/scripts/modules/tabs/audit.py'];
+    expect(diffIntersectsAc(diff, ac)).toBe(false);
+  });
+
+  it('REJECTS partial-name false positive: wrong segment boundary', () => {
+    // "ts/modules" is NOT a segment-boundary suffix of "scripts/modules" —
+    // the / preceding "ts/" would be "/ip" from "scripts", so the boundary
+    // fails.
+    const ac = ['ts/modules/tabs/audit.py'];
+    const diff = ['plugins/dc-underwrite/scripts/modules/tabs/audit.py'];
+    expect(diffIntersectsAc(diff, ac)).toBe(false);
+  });
+
+  it('REJECTS AC path that spans deeper than diff (suffix longer)', () => {
+    const ac = ['deep/nested/path/file.ts'];
+    const diff = ['shallow/file.ts'];
+    expect(diffIntersectsAc(diff, ac)).toBe(false);
+  });
+
+  it('preserves exact match behavior (regression)', () => {
+    const ac = ['src/fileA.ts'];
+    const diff = ['src/fileA.ts'];
+    expect(diffIntersectsAc(diff, ac)).toBe(true);
+  });
+
+  it('preserves directory-prefix behavior (regression)', () => {
+    const ac = ['packages/core/src/tasks/'];
+    const diff = ['packages/core/src/tasks/foo.ts'];
+    expect(diffIntersectsAc(diff, ac)).toBe(true);
+  });
+
+  it('preserves case-insensitive normalization', () => {
+    const ac = ['Scripts/X.py'];
+    const diff = ['plugins/name/scripts/x.py'];
+    expect(diffIntersectsAc(diff, ac)).toBe(true);
+  });
+
+  it('ACCEPTS when diff has leading ./ prefix', () => {
+    const ac = ['scripts/x.py'];
+    const diff = ['./plugins/name/scripts/x.py'];
+    expect(diffIntersectsAc(diff, ac)).toBe(true);
+  });
+
+  it('REJECTS when AC is not a suffix of any diff path', () => {
+    const ac = ['src/unrelated.ts'];
+    const diff = ['plugins/dc-underwrite/scripts/modules/tabs/audit.py'];
+    expect(diffIntersectsAc(diff, ac)).toBe(false);
+  });
+});
+
+// =============================================================================
+// T12029 — validateCommit monorepo content-intersect (integration)
+// =============================================================================
+
+describe('T12029 — validateCommit monorepo suffix match (integration)', () => {
+  let env: TestDbEnv;
+
+  beforeEach(async () => {
+    env = await createTestDb();
+    initGitRepo(env.tempDir);
+    gitCommitFile(env.tempDir, 'README.md', 'init\n', 'init');
+  });
+
+  afterEach(async () => {
+    await env.cleanup();
+    resetDbState();
+  });
+
+  it('ACCEPTS commit in monorepo-nested dir when AC declares sub-path', async () => {
+    await seedTasks(env.accessor, [
+      {
+        id: 'T_MONO_OK',
+        title: 'monorepo-suffix-ok',
+        description: 'monorepo-suffix-test',
+        status: 'pending',
+        priority: 'medium',
+        files: ['scripts/modules/tabs/audit.py'],
+        acceptance: ['scripts/modules/tabs/audit.py implements validation'],
+      } as Partial<Task> & { id: string },
+    ]);
+
+    // Commit in the monorepo-nested path matching the AC sub-path suffix.
+    const sha = gitCommitFile(
+      env.tempDir,
+      'plugins/dc-underwrite/scripts/modules/tabs/audit.py',
+      'def validate():\n  pass\n',
+      'feat(T_MONO_OK): implement audit validation',
+    );
+
+    const r = await validateAtom({ kind: 'commit', sha }, env.tempDir, 'T_MONO_OK');
+    expect(r.ok).toBe(true);
+  });
+
+  it('REJECTS commit in monorepo-nested dir when AC partial-name mismatches', async () => {
+    await seedTasks(env.accessor, [
+      {
+        id: 'T_MONO_NO',
+        title: 'monorepo-suffix-reject',
+        description: 'monorepo-suffix-reject-test',
+        status: 'pending',
+        priority: 'medium',
+        files: ['ipts/modules/tabs/audit.py'],
+        acceptance: ['ipts/modules/tabs/audit.py implements validation'],
+      } as Partial<Task> & { id: string },
+    ]);
+
+    // Commit touches `scripts/...` but AC declares `ipts/...` — partial-name false positive.
+    const sha = gitCommitFile(
+      env.tempDir,
+      'plugins/dc-underwrite/scripts/modules/tabs/audit.py',
+      'def validate():\n  pass\n',
+      'feat(T_MONO_NO): unrelated commit',
+    );
+
+    const r = await validateAtom({ kind: 'commit', sha }, env.tempDir, 'T_MONO_NO');
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.codeName).toBe('E_EVIDENCE_CONTENT_MISMATCH');
+    }
   });
 });
 
