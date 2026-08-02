@@ -113,7 +113,7 @@ export interface ToolRunResult {
   timedOut: boolean;
   /**
    * `true` when the per-key cache lock was held by another process and
-   * could not be acquired within the fail-fast retry window (~2.5 s).
+   * could not be acquired within the fail-fast retry window (~0.7 s).
    * The semaphore slot is released; a subsequent retry will re-attempt
    * lock acquisition.
    *
@@ -633,12 +633,12 @@ export async function runToolCached(
           entry,
         };
       },
-      { stale: lockStaleMs, retries: 5 },
+      { stale: lockStaleMs, retries: 3 },
     );
   } catch (err: unknown) {
     // T12025 (lock contention): a held cache lock causes ~47 s of blind
-    // proper-lockfile retries (50 × exponential backoff). Reduce to 5
-    // retries (~2.5 s fail-fast) and return a typed actionable result
+    // proper-lockfile retries (50 × exponential backoff). Reduce to 3
+    // retries (~0.7 s fail-fast) and return a typed actionable result
     // so callers surface E_EVIDENCE_TOOL_BUSY instead of a generic error.
     if (err instanceof CleoError && err.code === ExitCode.LOCK_TIMEOUT) {
       return {

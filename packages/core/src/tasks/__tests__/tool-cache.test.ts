@@ -610,8 +610,8 @@ describe('runToolCached — lock contention fail-fast (T12025)', () => {
       expect(r.lockBusy).toBe(true);
       expect(r.timedOut).toBe(false);
       expect(r.cacheHit).toBe(false);
-      // Must fail within 4 s (well under the previous ~47 s of 50 retries).
-      expect(elapsedMs).toBeLessThan(4_000);
+      // Must fail within 2 s (AC target ≤1 s + CI headroom).
+      expect(elapsedMs).toBeLessThan(2_000);
     } finally {
       await release();
     }
