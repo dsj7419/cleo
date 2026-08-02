@@ -262,7 +262,7 @@ export class Dispatcher {
         // the event loop can drain after shutdownCliRuntime.
         const controller = new AbortController();
         const deadline = setTimeout(
-          () => controller.abort(new Error('DIALECTIC_DEADLINE')),
+          () => controller.abort(new DOMException('DIALECTIC_DEADLINE', 'AbortError')),
           DIALECTIC_DEADLINE_MS,
         );
         deadline.unref();
