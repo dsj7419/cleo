@@ -16,11 +16,11 @@
  */
 
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-
+import { acquireLock } from '../../store/lock.js';
 import {
   cacheEntryPath,
   captureDirtyFingerprint,
@@ -562,5 +562,82 @@ describe('runToolCached — wall-clock spawn deadline (T12025)', () => {
     const r = await runToolCached(cmd, dir);
     expect(r.cacheHit).toBe(true);
     expect(r.timedOut).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// T12025: lock contention — fail-fast typed busy outcome + retry recovery
+// ---------------------------------------------------------------------------
+
+describe('runToolCached — lock contention fail-fast (T12025)', () => {
+  let dir: string;
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), 'tool-cache-busy-'));
+    initRepo(dir);
+  });
+  afterEach(() => {
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('returns lockBusy:true within 4 s when the cache lock is held externally', {
+    timeout: 10_000,
+  }, async () => {
+    const cmd = shCommand('echo ok');
+
+    // Pre-compute the exact cache path that runToolCached will target.
+    const headVal = await captureHead(dir);
+    const dirtyVal = await captureDirtyFingerprint(dir);
+    const key = computeCacheKey(cmd, headVal, dirtyVal);
+    const cachePath = cacheEntryPath(dir, key);
+
+    // Ensure the cache directory exists so the write succeeds.
+    mkdirSync(join(dir, '.cleo', 'cache', 'evidence'), { recursive: true });
+
+    // Write the pending entry so runToolCached doesn't re-create it.
+    writeFileSync(cachePath, JSON.stringify({ schemaVersion: 1, key, pending: true }));
+
+    // Hold the lock ourselves — simulates another process running the tool.
+    const release = await acquireLock(cachePath, { retries: 0 });
+
+    try {
+      const startedAt = Date.now();
+      const r = await runToolCached(cmd, dir, {
+        lockStaleMs: 10_000,
+        skipGlobalSemaphore: true,
+      });
+      const elapsedMs = Date.now() - startedAt;
+
+      expect(r.lockBusy).toBe(true);
+      expect(r.timedOut).toBe(false);
+      expect(r.cacheHit).toBe(false);
+      // Must fail within 4 s (well under the previous ~47 s of 50 retries).
+      expect(elapsedMs).toBeLessThan(4_000);
+    } finally {
+      await release();
+    }
+
+    // After releasing the lock, a retry must succeed.
+    const r2 = await runToolCached(cmd, dir, { skipGlobalSemaphore: true });
+    expect(r2.lockBusy).toBe(false);
+    expect(r2.timedOut).toBe(false);
+    expect(r2.cacheHit).toBe(false);
+    expect(r2.exitCode).toBe(0);
+  });
+
+  it('normal (non-contended) results have lockBusy:false', async () => {
+    const r = await runToolCached(shCommand('echo ok'), dir, {
+      skipGlobalSemaphore: true,
+    });
+    expect(r.lockBusy).toBe(false);
+    expect(r.timedOut).toBe(false);
+    expect(r.exitCode).toBe(0);
+  });
+
+  it('cache hits preserve lockBusy:false', async () => {
+    const cmd = shCommand('echo ok');
+    await runToolCached(cmd, dir, { skipGlobalSemaphore: true });
+    const r = await runToolCached(cmd, dir, { skipGlobalSemaphore: true });
+    expect(r.cacheHit).toBe(true);
+    expect(r.lockBusy).toBe(false);
   });
 });

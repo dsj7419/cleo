@@ -43,6 +43,8 @@ import {
 } from 'node:fs';
 import { join } from 'node:path';
 
+import { ExitCode } from '@cleocode/contracts';
+import { CleoError } from '../errors.js';
 import { withLock } from '../store/lock.js';
 import type { ResolvedToolCommand } from './tool-resolver.js';
 import { type AcquireSlotOptions, acquireGlobalSlot } from './tool-semaphore.js';
@@ -109,6 +111,15 @@ export interface ToolRunResult {
    * @task T12025
    */
   timedOut: boolean;
+  /**
+   * `true` when the per-key cache lock was held by another process and
+   * could not be acquired within the fail-fast retry window (~2.5 s).
+   * The semaphore slot is released; a subsequent retry will re-attempt
+   * lock acquisition.
+   *
+   * @task T12025
+   */
+  lockBusy: boolean;
   /** Full cache entry — useful for audit / debugging. */
   entry: ToolCacheEntry;
 }
@@ -504,6 +515,7 @@ export async function runToolCached(
         durationMs: existing.durationMs,
         cacheHit: true,
         timedOut: false,
+        lockBusy: false,
         entry: existing,
       };
     }
@@ -548,6 +560,7 @@ export async function runToolCached(
               durationMs: fresh.durationMs,
               cacheHit: true,
               timedOut: false,
+              lockBusy: false,
               entry: fresh,
             };
           }
@@ -570,6 +583,7 @@ export async function runToolCached(
             durationMs,
             cacheHit: false,
             timedOut: true,
+            lockBusy: false,
             entry: {
               schemaVersion: 1,
               key,
@@ -615,11 +629,45 @@ export async function runToolCached(
           durationMs: entry.durationMs,
           cacheHit: false,
           timedOut: false,
+          lockBusy: false,
           entry,
         };
       },
-      { stale: lockStaleMs, retries: 50 },
+      { stale: lockStaleMs, retries: 5 },
     );
+  } catch (err: unknown) {
+    // T12025 (lock contention): a held cache lock causes ~47 s of blind
+    // proper-lockfile retries (50 × exponential backoff). Reduce to 5
+    // retries (~2.5 s fail-fast) and return a typed actionable result
+    // so callers surface E_EVIDENCE_TOOL_BUSY instead of a generic error.
+    if (err instanceof CleoError && err.code === ExitCode.LOCK_TIMEOUT) {
+      return {
+        exitCode: null,
+        stdoutTail: '',
+        stderrTail: '',
+        durationMs: 0,
+        cacheHit: false,
+        timedOut: false,
+        lockBusy: true,
+        entry: {
+          schemaVersion: 1,
+          key,
+          canonical: command.canonical,
+          displayName: command.displayName,
+          cmd: command.cmd,
+          args: command.args,
+          source: command.source,
+          head,
+          dirtyFingerprint,
+          exitCode: null,
+          stdoutTail: '',
+          stderrTail: '',
+          durationMs: 0,
+          capturedAt: new Date().toISOString(),
+        },
+      };
+    }
+    throw err;
   } finally {
     if (releaseSemaphore) await releaseSemaphore();
   }

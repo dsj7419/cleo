@@ -1139,6 +1139,21 @@ async function validateTool(tool: string, projectRoot: string): Promise<AtomVali
     };
   }
 
+  // T12025 (lock contention): the per-key cache lock was held by another
+  // process and could not be acquired within the fail-fast retry window.
+  // Return a typed actionable result so the orchestrator can retry; do NOT
+  // record a partially captured gate.
+  if (result.lockBusy) {
+    return {
+      ok: false,
+      reason:
+        `Tool "${tool}" → ${resolution.command.cmd} ${resolution.command.args.join(' ')} ` +
+        `could not acquire the evidence cache lock — another process is currently ` +
+        `running this tool. The semaphore slot is released — retry the verify shortly.`,
+      codeName: 'E_EVIDENCE_TOOL_BUSY',
+    };
+  }
+
   if (result.exitCode === null) {
     return {
       ok: false,
