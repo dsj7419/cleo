@@ -87,6 +87,23 @@ async function autoLinkObservationToTask(
   });
 }
 
+/**
+ * Evict the project-scope dual-scope cache and drop the tasks-domain singleton
+ * so the next {@link getDb} call opens a fresh canonical handle via
+ * {@link openDualScopeDb}.  Used by the write-guard retry path (T12034) when the
+ * primary drizzle query returns stale results or the handle has been closed by
+ * another domain.
+ *
+ * @internal
+ * @task T12034
+ */
+async function evictAndDropForRetry(): Promise<void> {
+  const { _resetDualScopeDbCache } = await import('../../store/dual-scope-db.js');
+  _resetDualScopeDbCache('project');
+  const { dropDbSingletonForRetry } = await import('../../store/sqlite.js');
+  dropDbSingletonForRetry();
+}
+
 // ============================================================================
 // observeBrain — unified save
 // ============================================================================
@@ -233,27 +250,49 @@ export async function observeBrain(
     .digest('hex')
     .slice(0, 16);
 
-  // Write-guard: validate cross-db session reference before inserting.
-  // MUST run before the getBrainNativeDb import below — that import can trigger
-  // module-graph re-resolution in vitest's dynamic-import pipeline which
-  // invalidates the dual-scope-db _cache, causing getDb() to return a drizzle
-  // instance whose view of the sessions table is stale (T12034).
-  let validSessionId = sourceSessionId ?? null;
-  if (validSessionId) {
-    try {
-      const tasksDb = await getDb(projectRoot);
-      if (!(await sessionExistsInTasksDb(validSessionId, tasksDb))) {
-        validSessionId = null;
-      }
-    } catch {
-      // Best-effort: if tasks.db unavailable, null out the reference
-      validSessionId = null;
-    }
-  }
-
   // Load native DB handle for later embedding write (fire-and-forget).
   const { getBrainNativeDb } = await import('../../store/memory-sqlite.js');
   const nativeDb = getBrainNativeDb();
+
+  // Write-guard: validate cross-db session reference before inserting
+  let validSessionId = sourceSessionId ?? null;
+  if (validSessionId) {
+    let sessionExists = false;
+    try {
+      const tasksDb = await getDb(projectRoot);
+      sessionExists = await sessionExistsInTasksDb(validSessionId, tasksDb);
+    } catch {
+      // T12034: the shared cleo.db handle can be closed between getDb and the
+      // session query (T12020 TOCTOU).  Evict the stale dual-scope cache entry,
+      // drop the tasks singleton, and re-derive through the canonical
+      // openDualScopeDb chokepoint so a fresh DatabaseSync is used.
+      await evictAndDropForRetry();
+      try {
+        const tasksDb = await getDb(projectRoot);
+        sessionExists = await sessionExistsInTasksDb(validSessionId, tasksDb);
+      } catch {
+        // Non-recoverable second failure — leave sessionExists false.
+      }
+    }
+    if (!sessionExists) {
+      // T12034: the first query can succeed but return 0 rows on a stale
+      // drizzle view.  Same reacquire path — evict cache + re-derive — to
+      // force a fresh canonical open.  Only null sourceSessionId after the
+      // reacquired query also definitively returns absent.
+      await evictAndDropForRetry();
+      try {
+        const tasksDb = await getDb(projectRoot);
+        if (await sessionExistsInTasksDb(validSessionId, tasksDb)) {
+          sessionExists = true;
+        }
+      } catch {
+        // Second attempt failed — leave sessionExists false.
+      }
+    }
+    if (!sessionExists) {
+      validSessionId = null;
+    }
+  }
 
   // Compute quality score from text richness, title length, and T549 source multiplier.
   const qualityScore = computeObservationQuality({
