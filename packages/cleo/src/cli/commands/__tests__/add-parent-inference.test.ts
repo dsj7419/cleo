@@ -8,12 +8,14 @@
  * 2. Inference miss: no current task or no session → no inference
  * 3. Explicit override: --parent provided → use explicit, not inferred
  * 4. Epic exemption: --type epic → no inference (epics are root-level)
+ * 5. T11293: --parent none suppresses inference (escape hatch for depth-2 focus)
  *
  * T1490: parent inference moved to Core (`inferTaskAddParams`). Tests now mock
  * at the Core boundary rather than session-engine.js directly.
  *
  * @task T1329
  * @task T1490
+ * @task T11293
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -256,5 +258,120 @@ describe('cleo add --parent inference (T1329)', () => {
     expect(calls).toHaveLength(0);
 
     stderrWriteSpy.mockRestore();
+  });
+
+  // T11293: --parent none suppresses session-based parent inference.
+  // This is the escape hatch for the depth-2 focused-session failure:
+  // when the current focus task is a subtask at max depth, auto-inference
+  // would fail with E_CLEO_DEPTH_EXCEEDED. The user signals "I know this
+  // will be unparented — let strict-spine handle containment."
+  it('--parent none suppresses inference and does NOT set parent on dispatch (T11293)', async () => {
+    // Core inference returns no inferredParent (saw parentRaw='none')
+    mockInferTaskAddParams.mockResolvedValue({});
+
+    mockDispatchRaw.mockResolvedValue({
+      success: true,
+      data: {
+        task: { id: 'T123', title: 'New task' },
+        duplicate: false,
+      },
+    });
+
+    await invokeAdd('New task', { parent: 'none' });
+
+    // Verify dispatchRaw was called WITHOUT a parent field
+    expect(mockDispatchRaw).toHaveBeenCalledWith(
+      'mutate',
+      'tasks',
+      'add',
+      expect.not.objectContaining({
+        parent: 'none',
+      }),
+    );
+    const callParams = mockDispatchRaw.mock.calls[0][3] as Record<string, unknown>;
+    expect(callParams['parent']).toBeUndefined();
+  });
+
+  it('--parent none forwards sentinel to inferTaskAddParams as parentRaw (T11293)', async () => {
+    mockInferTaskAddParams.mockResolvedValue({});
+
+    mockDispatchRaw.mockResolvedValue({
+      success: true,
+      data: {
+        task: { id: 'T123', title: 'New task' },
+        duplicate: false,
+      },
+    });
+
+    await invokeAdd('New task', { parent: 'none' });
+
+    // Verify inferTaskAddParams received parentRaw = 'none'
+    expect(mockInferTaskAddParams).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        parentRaw: 'none',
+      }),
+    );
+  });
+
+  it('--parent none does NOT log inference notice (T11293)', async () => {
+    mockInferTaskAddParams.mockResolvedValue({});
+
+    mockDispatchRaw.mockResolvedValue({
+      success: true,
+      data: {
+        task: { id: 'T123', title: 'New task' },
+        duplicate: false,
+      },
+    });
+
+    await invokeAdd('New task', { parent: 'none' });
+
+    // Verify inference notice was NOT logged
+    const infoCalls = mockHumanInfo.mock.calls.filter((call: unknown[]) =>
+      String(call[0]).includes('[cleo add] inferred'),
+    );
+    expect(infoCalls).toHaveLength(0);
+  });
+
+  // T11293 alias regression: --parent-id none must behave identically to
+  // --parent none. The legacy alias was not covered by the initial sentinel
+  // guard and would have dispatched literal "none" as a parent ID.
+  it('--parent-id none suppresses inference like --parent none (T11293 alias)', async () => {
+    mockInferTaskAddParams.mockResolvedValue({});
+
+    mockDispatchRaw.mockResolvedValue({
+      success: true,
+      data: {
+        task: { id: 'T123', title: 'New task' },
+        duplicate: false,
+      },
+    });
+
+    await invokeAdd('New task', { 'parent-id': 'none' });
+
+    const callParams = mockDispatchRaw.mock.calls[0][3] as Record<string, unknown>;
+    expect(callParams['parent']).toBeUndefined();
+  });
+
+  it('--parent-id none forwards sentinel to inferTaskAddParams (T11293 alias)', async () => {
+    mockInferTaskAddParams.mockResolvedValue({});
+
+    mockDispatchRaw.mockResolvedValue({
+      success: true,
+      data: {
+        task: { id: 'T123', title: 'New task' },
+        duplicate: false,
+      },
+    });
+
+    await invokeAdd('New task', { 'parent-id': 'none' });
+
+    expect(mockInferTaskAddParams).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        parentRaw: 'none',
+      }),
+    );
   });
 });
