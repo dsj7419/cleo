@@ -275,6 +275,220 @@ describe('resolveToolCommand — error paths', () => {
   });
 });
 
+describe('resolveToolCommand — T12027 generalized overrides (lint/typecheck/audit/security-scan)', () => {
+  let dir: string;
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), 'tool-resolver-t12027-'));
+  });
+  afterEach(() => {
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('resolves lint from project-context lint.command', () => {
+    writeProjectContext(dir, {
+      schemaVersion: '1.0.0',
+      detectedAt: new Date().toISOString(),
+      projectTypes: ['node'],
+      primaryType: 'node',
+      lint: { command: 'pnpm biome check --write .' },
+    });
+    const r = resolveToolCommand('lint', dir);
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.command.canonical).toBe('lint');
+      expect(r.command.cmd).toBe('pnpm');
+      expect(r.command.args).toEqual(['biome', 'check', '--write', '.']);
+      expect(r.command.source).toBe('project-context');
+    }
+  });
+
+  it('resolves typecheck from project-context typecheck.command', () => {
+    writeProjectContext(dir, {
+      schemaVersion: '1.0.0',
+      detectedAt: new Date().toISOString(),
+      projectTypes: ['node'],
+      primaryType: 'node',
+      typecheck: { command: 'pnpm exec tsc --noEmit' },
+    });
+    const r = resolveToolCommand('typecheck', dir);
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.command.canonical).toBe('typecheck');
+      expect(r.command.cmd).toBe('pnpm');
+      expect(r.command.args).toEqual(['exec', 'tsc', '--noEmit']);
+      expect(r.command.source).toBe('project-context');
+    }
+  });
+
+  it('resolves audit from project-context audit.command', () => {
+    writeProjectContext(dir, {
+      schemaVersion: '1.0.0',
+      detectedAt: new Date().toISOString(),
+      projectTypes: ['node'],
+      primaryType: 'node',
+      audit: { command: 'pnpm audit --prod' },
+    });
+    const r = resolveToolCommand('audit', dir);
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.command.canonical).toBe('audit');
+      expect(r.command.cmd).toBe('pnpm');
+      expect(r.command.args).toEqual(['audit', '--prod']);
+      expect(r.command.source).toBe('project-context');
+    }
+  });
+
+  it('resolves security-scan from project-context security-scan.command', () => {
+    writeProjectContext(dir, {
+      schemaVersion: '1.0.0',
+      detectedAt: new Date().toISOString(),
+      projectTypes: ['node'],
+      primaryType: 'node',
+      'security-scan': { command: 'snyk test' },
+    });
+    const r = resolveToolCommand('security-scan', dir);
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.command.canonical).toBe('security-scan');
+      expect(r.command.cmd).toBe('snyk');
+      expect(r.command.args).toEqual(['test']);
+      expect(r.command.source).toBe('project-context');
+    }
+  });
+
+  it('configured lint override prevents node language default', () => {
+    writeProjectContext(dir, {
+      schemaVersion: '1.0.0',
+      detectedAt: new Date().toISOString(),
+      projectTypes: ['node'],
+      primaryType: 'node',
+      lint: { command: 'eslint .' },
+    });
+    const r = resolveToolCommand('lint', dir);
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.command.cmd).toBe('eslint');
+      // The node default would be 'npx biome check .' — must not be used.
+      expect(r.command.args).not.toContain('biome');
+      expect(r.command.source).toBe('project-context');
+    }
+  });
+
+  it('configured typecheck override prevents node language default', () => {
+    writeProjectContext(dir, {
+      schemaVersion: '1.0.0',
+      detectedAt: new Date().toISOString(),
+      projectTypes: ['node'],
+      primaryType: 'node',
+      typecheck: { command: 'pyright .' },
+    });
+    const r = resolveToolCommand('typecheck', dir);
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.command.cmd).toBe('pyright');
+      // The node default would be 'npx tsc --noEmit'
+      expect(r.command.args).not.toContain('tsc');
+    }
+  });
+
+  it('legacy alias `biome` resolves with legacy-alias provenance when lint.command override exists', () => {
+    writeProjectContext(dir, {
+      schemaVersion: '1.0.0',
+      detectedAt: new Date().toISOString(),
+      projectTypes: ['node'],
+      primaryType: 'node',
+      lint: { command: 'pnpm biome check --write .' },
+    });
+    const r = resolveToolCommand('biome', dir);
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.command.canonical).toBe('lint');
+      expect(r.command.displayName).toBe('biome');
+      expect(r.command.source).toBe('legacy-alias');
+    }
+  });
+
+  it('legacy alias `tsc` resolves with legacy-alias provenance when typecheck.command override exists', () => {
+    writeProjectContext(dir, {
+      schemaVersion: '1.0.0',
+      detectedAt: new Date().toISOString(),
+      projectTypes: ['node'],
+      primaryType: 'node',
+      typecheck: { command: 'pnpm exec tsc --noEmit' },
+    });
+    const r = resolveToolCommand('tsc', dir);
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.command.canonical).toBe('typecheck');
+      expect(r.command.displayName).toBe('tsc');
+      expect(r.command.source).toBe('legacy-alias');
+    }
+  });
+
+  it('legacy alias `eslint` resolves with legacy-alias provenance when lint.command override exists', () => {
+    writeProjectContext(dir, {
+      schemaVersion: '1.0.0',
+      detectedAt: new Date().toISOString(),
+      projectTypes: ['node'],
+      primaryType: 'node',
+      lint: { command: 'eslint .' },
+    });
+    const r = resolveToolCommand('eslint', dir);
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.command.canonical).toBe('lint');
+      expect(r.command.displayName).toBe('eslint');
+      expect(r.command.source).toBe('legacy-alias');
+    }
+  });
+
+  it('falls through to language default when override object exists but command is empty', () => {
+    writeProjectContext(dir, {
+      schemaVersion: '1.0.0',
+      detectedAt: new Date().toISOString(),
+      projectTypes: ['node'],
+      primaryType: 'node',
+      lint: { command: '' },
+    });
+    const r = resolveToolCommand('lint', dir);
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.command.source).toBe('language-default');
+    }
+  });
+
+  it('falls through to language default when override object exists but no command key', () => {
+    writeProjectContext(dir, {
+      schemaVersion: '1.0.0',
+      detectedAt: new Date().toISOString(),
+      projectTypes: ['node'],
+      primaryType: 'node',
+      lint: {},
+    });
+    const r = resolveToolCommand('lint', dir);
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.command.source).toBe('language-default');
+    }
+  });
+
+  it('legacy alias `cargo-audit` resolves canonical audit with legacy-alias provenance from audit.command override', () => {
+    writeProjectContext(dir, {
+      schemaVersion: '1.0.0',
+      detectedAt: new Date().toISOString(),
+      projectTypes: ['node'],
+      primaryType: 'node',
+      audit: { command: 'pnpm audit --prod' },
+    });
+    const r = resolveToolCommand('cargo-audit', dir);
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.command.canonical).toBe('audit');
+      expect(r.command.source).toBe('legacy-alias');
+    }
+  });
+});
+
 describe('listValidToolNames', () => {
   it('includes every canonical name', () => {
     const names = listValidToolNames();

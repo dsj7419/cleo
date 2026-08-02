@@ -52,6 +52,40 @@ export async function ensureProjectContext(
   const { detectProjectType } = await import('../store/project-detect.js');
   const context = detectProjectType(projectRoot);
 
+  // Preserve user-supplied command overrides from existing file so
+  // regeneration does not silently clobber them (T12027 / #1122 / #1129).
+  if (existsSync(contextPath)) {
+    try {
+      const existing = JSON.parse(readFileSync(contextPath, 'utf-8')) as Record<string, unknown>;
+      mergeCommandOverride(existing, context as unknown as Record<string, unknown>, [
+        'testing',
+        'command',
+      ]);
+      mergeCommandOverride(existing, context as unknown as Record<string, unknown>, [
+        'build',
+        'command',
+      ]);
+      mergeCommandOverride(existing, context as unknown as Record<string, unknown>, [
+        'lint',
+        'command',
+      ]);
+      mergeCommandOverride(existing, context as unknown as Record<string, unknown>, [
+        'typecheck',
+        'command',
+      ]);
+      mergeCommandOverride(existing, context as unknown as Record<string, unknown>, [
+        'audit',
+        'command',
+      ]);
+      mergeCommandOverride(existing, context as unknown as Record<string, unknown>, [
+        'security-scan',
+        'command',
+      ]);
+    } catch {
+      // If we can't parse existing, proceed with freshly-detected context
+    }
+  }
+
   try {
     const schemaPath = join(
       dirname(fileURLToPath(import.meta.url)),
@@ -95,4 +129,39 @@ export async function ensureProjectContext(
     action: existsSync(contextPath) ? 'repaired' : 'created',
     path: contextPath,
   };
+}
+
+/**
+ * Copy a user-supplied command override from `existing` into `context` at
+ * the given JSON path segments.
+ *
+ * Only copies if the existing file actually has a non-empty string at that
+ * path — auto-detected fields from `detectProjectType()` are preserved when
+ * the user has not set an override.
+ *
+ * @task T12027
+ */
+function mergeCommandOverride(
+  existing: Record<string, unknown>,
+  context: Record<string, unknown>,
+  path: string[],
+): void {
+  let src: unknown = existing;
+  for (const segment of path) {
+    if (!src || typeof src !== 'object' || Array.isArray(src)) return;
+    src = (src as Record<string, unknown>)[segment];
+  }
+  if (typeof src !== 'string' || src.length === 0) return;
+
+  let tgt: Record<string, unknown> = context;
+  for (let i = 0; i < path.length - 1; i++) {
+    const seg = path[i];
+    let next = tgt[seg];
+    if (!next || typeof next !== 'object' || Array.isArray(next)) {
+      next = {};
+      tgt[seg] = next;
+    }
+    tgt = next as Record<string, unknown>;
+  }
+  tgt[path[path.length - 1]] = src;
 }
