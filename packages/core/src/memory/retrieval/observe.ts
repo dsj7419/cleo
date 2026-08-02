@@ -87,23 +87,6 @@ async function autoLinkObservationToTask(
   });
 }
 
-/**
- * Evict the project-scope dual-scope cache and drop the tasks-domain singleton
- * so the next {@link getDb} call opens a fresh canonical handle via
- * {@link openDualScopeDb}.  Used by the write-guard retry path (T12034) when the
- * primary drizzle query returns stale results or the handle has been closed by
- * another domain.
- *
- * @internal
- * @task T12034
- */
-async function evictAndDropForRetry(): Promise<void> {
-  const { _resetDualScopeDbCache } = await import('../../store/dual-scope-db.js');
-  _resetDualScopeDbCache('project');
-  const { dropDbSingletonForRetry } = await import('../../store/sqlite.js');
-  dropDbSingletonForRetry();
-}
-
 // ============================================================================
 // observeBrain — unified save
 // ============================================================================
@@ -262,31 +245,20 @@ export async function observeBrain(
       const tasksDb = await getDb(projectRoot);
       sessionExists = await sessionExistsInTasksDb(validSessionId, tasksDb);
     } catch {
-      // T12034: the shared cleo.db handle can be closed between getDb and the
-      // session query (T12020 TOCTOU).  Evict the stale dual-scope cache entry,
-      // drop the tasks singleton, and re-derive through the canonical
-      // openDualScopeDb chokepoint so a fresh DatabaseSync is used.
-      await evictAndDropForRetry();
+      // T12034: the shared cleo.db DatabaseSync can be closed by another
+      // domain between getDb and the session query (T12020 TOCTOU race).
+      // Evict the stale dual-scope cache entry so the liveness guard inside
+      // getDb detects the closed handle and re-derives a fresh one from
+      // openDualScopeDb.  Only null sourceSessionId after a SUCCESSFUL query
+      // definitively returns absent — a first-attempt throw is a transient
+      // failure, not a proof of absence.
+      const { _resetDualScopeDbCache } = await import('../../store/dual-scope-db.js');
+      _resetDualScopeDbCache('project');
       try {
         const tasksDb = await getDb(projectRoot);
         sessionExists = await sessionExistsInTasksDb(validSessionId, tasksDb);
       } catch {
-        // Non-recoverable second failure — leave sessionExists false.
-      }
-    }
-    if (!sessionExists) {
-      // T12034: the first query can succeed but return 0 rows on a stale
-      // drizzle view.  Same reacquire path — evict cache + re-derive — to
-      // force a fresh canonical open.  Only null sourceSessionId after the
-      // reacquired query also definitively returns absent.
-      await evictAndDropForRetry();
-      try {
-        const tasksDb = await getDb(projectRoot);
-        if (await sessionExistsInTasksDb(validSessionId, tasksDb)) {
-          sessionExists = true;
-        }
-      } catch {
-        // Second attempt failed — leave sessionExists false.
+        // Non-recoverable second failure — treat as absent (best-effort).
       }
     }
     if (!sessionExists) {

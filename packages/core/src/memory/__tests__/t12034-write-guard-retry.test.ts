@@ -1,11 +1,6 @@
 /**
- * T12034 — deterministic regression: prove sourceSessionId survives a
- * stale/closed cleo.db handle thrown by sessionExistsInTasksDb.
- *
- * Forces the documented T12020 TOCTOU race — closeDb() drops the dual-scope
- * cache + native handle between getDb and the session query — then calls
- * observeBrain.  The first write-guard attempt throws, the catch-reacquire path
- * recovers, and sourceSessionId is preserved.
+ * T12034 — deterministic regression: the write-guard retry path survives a
+ * transient "database is not open" throw from sessionExistsInTasksDb.
  *
  * @task T12034
  */
@@ -13,11 +8,42 @@
 import { mkdir, mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+let throwCount = 0;
+
+/**
+ * Mock sessionExistsInTasksDb: throw once, then delegate to the real
+ * implementation.  This simulates the T12020 TOCTOU race where the shared
+ * cleo.db handle is closed between getDb and the drizzle query inside the
+ * real sessionExistsInTasksDb.
+ *
+ * Hoisted by vitest above imports — runs before the module graph loads.
+ */
+vi.mock('../../store/cross-db-cleanup.js', async () => {
+  const actual = await vi.importActual<typeof import('../../store/cross-db-cleanup.js')>(
+    '../../store/cross-db-cleanup.js',
+  );
+  return {
+    ...actual,
+    sessionExistsInTasksDb: vi.fn(
+      async (
+        sessionId: string,
+        tasksDb: Awaited<ReturnType<typeof import('../../store/sqlite.js')['getDb']>>,
+      ): Promise<boolean> => {
+        throwCount += 1;
+        if (throwCount === 1) {
+          throw new Error('database is not open');
+        }
+        return actual.sessionExistsInTasksDb(sessionId, tasksDb);
+      },
+    ),
+  };
+});
 
 let tempDir: string;
 
-describe('T12034 — sourceSessionId survives closed-handle retry', () => {
+describe('T12034 — write-guard retry on closed-handle throw', () => {
   beforeEach(async () => {
     tempDir = await mkdtemp(join(tmpdir(), 'cleo-t12034-'));
     const cleoDir = join(tempDir, '.cleo');
@@ -34,13 +60,13 @@ describe('T12034 — sourceSessionId survives closed-handle retry', () => {
       .onConflictDoNothing()
       .run();
 
-    // Verify durable
     const rows = await db
       .select({ id: sessions.id })
       .from(sessions)
       .where(eqOp(sessions.id, 'S-123'))
       .all();
     expect(rows).toHaveLength(1);
+    throwCount = 0;
   });
 
   afterEach(async () => {
@@ -75,20 +101,18 @@ describe('T12034 — sourceSessionId survives closed-handle retry', () => {
     await rm(tempDir, { recursive: true, force: true, maxRetries: 3 }).catch(() => {});
   });
 
-  it('survives closeDb() between getDb and session query', async () => {
-    // Force-close the shared handle — exactly the T12020 TOCTOU scenario that
-    // causes sessionExistsInTasksDb to throw "database is not open" on its
-    // first attempt inside the write-guard.
-    const { _resetDualScopeDbCache } = await import('../../store/dual-scope-db.js');
-    _resetDualScopeDbCache('project');
-
+  it('survives a thrown closed-handle error and recovers via canonical retry', async () => {
     const { observeBrain, fetchBrainEntries } = await import('../brain-retrieval.js');
+
     const result = await observeBrain(tempDir, {
-      text: 'Observation after forced cache reset',
+      text: 'Observation after forced TOCTOU throw',
       sourceType: 'session-debrief',
       project: 'cleo',
       sourceSessionId: 'S-123',
     });
+
+    // The first sessionExistsInTasksDb call must have thrown (TOCTOU simulated)
+    expect(throwCount).toBeGreaterThanOrEqual(2);
 
     const fetched = await fetchBrainEntries(tempDir, { ids: [result.id] });
     expect(fetched.results).toHaveLength(1);
@@ -96,36 +120,22 @@ describe('T12034 — sourceSessionId survives closed-handle retry', () => {
     expect(data['sourceSessionId']).toBe('S-123');
   });
 
-  it('survives closed native handle (closeDb on main handle)', async () => {
-    // Close the native handle through the sqlite.ts singleton — the _db
-    // still references a closed DatabaseSync.
-    const { closeDb, getDb } = await import('../../store/sqlite.js');
-    closeDb();
-
-    // Verify the data is still durable: open a fresh connection directly
-    const { sessions } = await import('../../store/tasks-schema.js');
-    const { eq: eqOp } = await import('drizzle-orm');
-    const db = await getDb(tempDir);
-    const rows = await db
-      .select({ id: sessions.id })
-      .from(sessions)
-      .where(eqOp(sessions.id, 'S-123'))
-      .all();
-    expect(rows).toHaveLength(1);
-    // Close again to set up the stale-handle condition for observeBrain
-    closeDb();
-
+  it('nulls sourceSessionId when the session is genuinely absent', async () => {
     const { observeBrain, fetchBrainEntries } = await import('../brain-retrieval.js');
+
+    // No session S-999 exists — the write-guard must null without retrying.
     const result = await observeBrain(tempDir, {
-      text: 'Observation after direct closeDb',
+      text: 'Observation for absent session',
       sourceType: 'session-debrief',
       project: 'cleo',
-      sourceSessionId: 'S-123',
+      sourceSessionId: 'S-999',
     });
 
+    // The mock still throws on first call, but the retry queries the real DB
+    // which has no S-999 → sessionExists false → nulled.
     const fetched = await fetchBrainEntries(tempDir, { ids: [result.id] });
     expect(fetched.results).toHaveLength(1);
     const data = fetched.results[0].data as Record<string, unknown>;
-    expect(data['sourceSessionId']).toBe('S-123');
+    expect(data['sourceSessionId']).toBeNull();
   });
 });

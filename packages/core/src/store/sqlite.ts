@@ -705,27 +705,6 @@ export function resetDbState(): void {
 }
 
 /**
- * Drop the tasks-domain singleton without evicting the dual-scope cache.
- *
- * Unlike {@link resetDbState} and {@link closeDb} this does NOT call
- * {@link _resetDualScopeDbCache}, so the shared {@link openDualScopeDb}
- * handle survives. The next {@link getDb} re-derives a fresh drizzle
- * wrapper from the existing dual-scope cache entry. Used by the
- * observeBrain write-guard retry path (T12034) to recover from a stale
- * drizzle view without disrupting the brain batch lease that co-owns the
- * same native handle.
- *
- * @internal
- * @task T12034
- */
-export function dropDbSingletonForRetry(): void {
-  _nativeDb = null;
-  _db = null;
-  _dbPath = null;
-  _initPromise = null;
-}
-
-/**
  * Get the schema version from the database.
  */
 export async function getSchemaVersion(cwd?: string): Promise<string | null> {
