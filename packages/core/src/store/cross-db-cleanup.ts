@@ -324,6 +324,35 @@ export async function sessionExistsInTasksDb(
     .from(sessions)
     .where(eqOp(sessions.id, sessionId))
     .all();
+
+  // T12034: the primary drizzle query can return stale (empty) results when
+  // the write-guard runs after closeDb()/getDb() cycling in a vitest fork.
+  // Fall back to a fresh independent connection that opens WAL and reads the
+  // latest durable state directly from the file system.
+  if (result.length === 0) {
+    const { getDbPath } = await import('./sqlite.js');
+    const { openNativeDatabase } = await import('./sqlite-native.js');
+    const dbPath = getDbPath();
+    let rawHandle: ReturnType<typeof openNativeDatabase> | null = null;
+    try {
+      rawHandle = openNativeDatabase(dbPath, { enableWal: true });
+      const row = rawHandle
+        .prepare('SELECT 1 FROM sessions WHERE id = ?')
+        .get(sessionId) as unknown;
+      rawHandle.close();
+      rawHandle = null;
+      if (row != null) return true;
+    } catch {
+      // best-effort fallback — use drizzle result below
+    } finally {
+      try {
+        rawHandle?.close();
+      } catch {
+        /* already closed */
+      }
+    }
+  }
+
   return result.length > 0;
 }
 

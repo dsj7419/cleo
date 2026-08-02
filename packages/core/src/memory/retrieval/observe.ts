@@ -233,11 +233,11 @@ export async function observeBrain(
     .digest('hex')
     .slice(0, 16);
 
-  // Load native DB handle for later embedding write (fire-and-forget).
-  const { getBrainNativeDb } = await import('../../store/memory-sqlite.js');
-  const nativeDb = getBrainNativeDb();
-
-  // Write-guard: validate cross-db session reference before inserting
+  // Write-guard: validate cross-db session reference before inserting.
+  // MUST run before the getBrainNativeDb import below — that import can trigger
+  // module-graph re-resolution in vitest's dynamic-import pipeline which
+  // invalidates the dual-scope-db _cache, causing getDb() to return a drizzle
+  // instance whose view of the sessions table is stale (T12034).
   let validSessionId = sourceSessionId ?? null;
   if (validSessionId) {
     try {
@@ -250,6 +250,10 @@ export async function observeBrain(
       validSessionId = null;
     }
   }
+
+  // Load native DB handle for later embedding write (fire-and-forget).
+  const { getBrainNativeDb } = await import('../../store/memory-sqlite.js');
+  const nativeDb = getBrainNativeDb();
 
   // Compute quality score from text richness, title length, and T549 source multiplier.
   const qualityScore = computeObservationQuality({
