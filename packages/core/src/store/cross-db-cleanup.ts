@@ -313,6 +313,13 @@ export async function reconcileOrphanedRefs(cwd?: string): Promise<{
   return result;
 }
 
+/**
+ * Verify a session ID through the caller's shared tasks database handle.
+ *
+ * @param sessionId - Session ID to verify.
+ * @param tasksDb - Shared tasks database handle.
+ * @returns True when the session exists.
+ */
 export async function sessionExistsInTasksDb(
   sessionId: string,
   tasksDb: Awaited<ReturnType<typeof import('./sqlite.js').getDb>>,
@@ -325,6 +332,52 @@ export async function sessionExistsInTasksDb(
     .where(eqOp(sessions.id, sessionId))
     .all();
   return result.length > 0;
+}
+
+interface SessionPresenceRow {
+  present: number;
+}
+
+interface TasksDbWithNativeClient {
+  $client?: import('./sqlite-native.js').DatabaseSync;
+}
+
+/**
+ * Verify a session ID through an independent read-only connection.
+ *
+ * This is the bounded fallback for callers whose shared project handle either
+ * closed during the primary query or returned a stale empty result. It does not
+ * evict the dual-scope cache, so other domains retaining the shared handle stay
+ * live while the probe runs.
+ *
+ * @param sessionId - Session ID to verify.
+ * @param tasksDb - Shared tasks handle whose native path anchors the probe when available.
+ * @param cwd - Project root used to resolve the project-scope cleo.db.
+ * @returns True when the session is present in the on-disk tasks_sessions table.
+ * @task T12034
+ */
+export async function sessionExistsInTasksDbFresh(
+  sessionId: string,
+  tasksDb: Awaited<ReturnType<typeof import('./sqlite.js').getDb>> | null,
+  cwd?: string,
+): Promise<boolean> {
+  const [{ resolveDualScopeDbPath }, { openNativeDatabase }] = await Promise.all([
+    import('./dual-scope-db.js'),
+    import('./sqlite-native.js'),
+  ]);
+  const sharedNative = (tasksDb as TasksDbWithNativeClient | null)?.$client;
+  const dbPath = sharedNative?.location() ?? resolveDualScopeDbPath('project', cwd);
+  const probe = openNativeDatabase(dbPath, {
+    readonly: true,
+  });
+  try {
+    const row = probe
+      .prepare('SELECT 1 AS present FROM tasks_sessions WHERE id = ? LIMIT 1')
+      .get(sessionId) as SessionPresenceRow | undefined;
+    return row !== undefined;
+  } finally {
+    probe.close();
+  }
 }
 
 /**
