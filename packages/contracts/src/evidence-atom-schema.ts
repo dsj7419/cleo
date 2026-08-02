@@ -762,6 +762,7 @@ export function parseEvidenceString(raw: string): EvidenceAtom[] {
   const chunks = raw
     .split(KIND_BOUNDARY_REGEX)
     .map((s) => s.trim())
+    .map((s) => s.replace(/^;+/, '')) // strip leading separator artifacts (;;commit: → commit:)
     .filter(Boolean);
   if (chunks.length === 0) {
     throw new EvidenceParseError(
@@ -780,7 +781,11 @@ export function parseEvidenceString(raw: string): EvidenceAtom[] {
       );
     }
     const kind = chunk.slice(0, colon).trim();
-    const payload = chunk.slice(colon + 1).trim();
+    const rawPayload = chunk.slice(colon + 1).trim();
+    // Strip trailing separator semicolons from non-note atoms (the old naive
+    // split consumed them as empty chunks).  Note payloads preserve every
+    // character, including trailing ';', so they act as real punctuation.
+    const payload = kind === 'note' ? rawPayload : rawPayload.replace(/;+$/, '');
     switch (kind) {
       case 'commit':
         atoms.push({ kind: 'commit', sha: payload });

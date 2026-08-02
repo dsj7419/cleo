@@ -391,9 +391,86 @@ describe('parseEvidenceString (T10337)', () => {
     ]);
   });
 
-  it('preserves trailing semicolons inside note payloads (T12030)', () => {
+  it('preserves trailing semicolons inside note payloads as punctuation (T12030)', () => {
     expect(parseEvidenceString('note:trailing;')).toEqual([{ kind: 'note', note: 'trailing;' }]);
     expect(parseEvidenceString('note:trailing; ')).toEqual([{ kind: 'note', note: 'trailing;' }]);
+    expect(parseEvidenceString('note:multiple;; semis')).toEqual([
+      { kind: 'note', note: 'multiple;; semis' },
+    ]);
+  });
+
+  // ─── T12030 compatibility: trailing / repeated semicolons on non-note atoms
+
+  it('strips trailing ; from commit atom (T12030)', () => {
+    expect(parseEvidenceString('commit:abc1234;')).toEqual([{ kind: 'commit', sha: 'abc1234' }]);
+  });
+
+  it('strips trailing ; from files atom (T12030)', () => {
+    expect(parseEvidenceString('files:a.ts,b.ts;')).toEqual([
+      { kind: 'files', paths: ['a.ts', 'b.ts'] },
+    ]);
+  });
+
+  it('strips trailing ; from pr atom (T12030)', () => {
+    expect(parseEvidenceString('pr:357;')).toEqual([{ kind: 'pr', prNumber: 357 }]);
+  });
+
+  it('strips trailing ; from tool atom (T12030)', () => {
+    expect(parseEvidenceString('tool:lint;')).toEqual([{ kind: 'tool', tool: 'lint' }]);
+  });
+
+  it('strips trailing ; from test-run atom (T12030)', () => {
+    expect(parseEvidenceString('test-run:/tmp/v.json;')).toEqual([
+      { kind: 'test-run', path: '/tmp/v.json' },
+    ]);
+  });
+
+  it('strips trailing ; from url atom (T12030)', () => {
+    expect(parseEvidenceString('url:https://example.com;')).toEqual([
+      { kind: 'url', url: 'https://example.com' },
+    ]);
+  });
+
+  it('strips trailing ; from decision atom (T12030)', () => {
+    expect(parseEvidenceString('decision:D-arch-001;')).toEqual([
+      { kind: 'decision', decisionId: 'D-arch-001' },
+    ]);
+  });
+
+  it('tolerates repeated ;; across non-note atoms (T12030)', () => {
+    expect(parseEvidenceString('commit:abc1234;;tool:test')).toEqual([
+      { kind: 'commit', sha: 'abc1234' },
+      { kind: 'tool', tool: 'test' },
+    ]);
+  });
+
+  it('tolerates double ;; between commit and files (T12030)', () => {
+    expect(parseEvidenceString('commit:abc1234;;files:a.ts,b.ts')).toEqual([
+      { kind: 'commit', sha: 'abc1234' },
+      { kind: 'files', paths: ['a.ts', 'b.ts'] },
+    ]);
+  });
+
+  it('tolerates trailing ;; after multi-atom string (T12030)', () => {
+    expect(parseEvidenceString('commit:abc1234;tool:test;;')).toEqual([
+      { kind: 'commit', sha: 'abc1234' },
+      { kind: 'tool', tool: 'test' },
+    ]);
+  });
+
+  it('preserves mid-payload ; in url atom (T12030)', () => {
+    expect(parseEvidenceString('url:https://example.com/path;param=value')).toEqual([
+      { kind: 'url', url: 'https://example.com/path;param=value' },
+    ]);
+  });
+
+  it('preserves internal ; in note while stripping on adjacent non-note atoms (T12030)', () => {
+    const atoms = parseEvidenceString('note:hello; world;commit:def5678;;tool:lint;');
+    expect(atoms).toEqual([
+      { kind: 'note', note: 'hello; world' },
+      { kind: 'commit', sha: 'def5678' },
+      { kind: 'tool', tool: 'lint' },
+    ]);
   });
 
   it('round-trip: every parseEvidenceString output validates under EvidenceAtomSchema', () => {
