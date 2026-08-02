@@ -1,6 +1,6 @@
 /**
- * T12034 — deterministic regression: the write-guard retry path survives a
- * transient "database is not open" throw from sessionExistsInTasksDb.
+ * T12034 — deterministic regressions: the write-guard retry path survives a
+ * transient throw or stale empty result from sessionExistsInTasksDb.
  *
  * @task T12034
  */
@@ -10,13 +10,13 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-let throwCount = 0;
+let lookupCount = 0;
+let firstLookupThrows = true;
 
 /**
- * Mock sessionExistsInTasksDb: throw once, then delegate to the real
- * implementation.  This simulates the T12020 TOCTOU race where the shared
- * cleo.db handle is closed between getDb and the drizzle query inside the
- * real sessionExistsInTasksDb.
+ * Mock sessionExistsInTasksDb: fail once, then delegate to the real
+ * implementation. This simulates both T12020 failure modes: the shared cleo.db
+ * handle throws after close, or a stale handle returns an empty result.
  *
  * Hoisted by vitest above imports — runs before the module graph loads.
  */
@@ -31,9 +31,12 @@ vi.mock('../../store/cross-db-cleanup.js', async () => {
         sessionId: string,
         tasksDb: Awaited<ReturnType<typeof import('../../store/sqlite.js')['getDb']>>,
       ): Promise<boolean> => {
-        throwCount += 1;
-        if (throwCount === 1) {
-          throw new Error('database is not open');
+        lookupCount += 1;
+        if (lookupCount === 1) {
+          if (firstLookupThrows) {
+            throw new Error('database is not open');
+          }
+          return false;
         }
         return actual.sessionExistsInTasksDb(sessionId, tasksDb);
       },
@@ -43,7 +46,7 @@ vi.mock('../../store/cross-db-cleanup.js', async () => {
 
 let tempDir: string;
 
-describe('T12034 — write-guard retry on closed-handle throw', () => {
+describe('T12034 — write-guard retry on transient lookup failure', () => {
   beforeEach(async () => {
     tempDir = await mkdtemp(join(tmpdir(), 'cleo-t12034-'));
     const cleoDir = join(tempDir, '.cleo');
@@ -66,7 +69,10 @@ describe('T12034 — write-guard retry on closed-handle throw', () => {
       .where(eqOp(sessions.id, 'S-123'))
       .all();
     expect(rows).toHaveLength(1);
-    throwCount = 0;
+    const { sessionExistsInTasksDbFresh } = await import('../../store/cross-db-cleanup.js');
+    await expect(sessionExistsInTasksDbFresh('S-123', db, tempDir)).resolves.toBe(true);
+    lookupCount = 0;
+    firstLookupThrows = true;
   });
 
   afterEach(async () => {
@@ -101,7 +107,7 @@ describe('T12034 — write-guard retry on closed-handle throw', () => {
     await rm(tempDir, { recursive: true, force: true, maxRetries: 3 }).catch(() => {});
   });
 
-  it('survives a thrown closed-handle error and recovers via canonical retry', async () => {
+  it('survives a thrown closed-handle error and recovers via a fresh probe', async () => {
     const { observeBrain, fetchBrainEntries } = await import('../brain-retrieval.js');
 
     const result = await observeBrain(tempDir, {
@@ -112,7 +118,26 @@ describe('T12034 — write-guard retry on closed-handle throw', () => {
     });
 
     // The first sessionExistsInTasksDb call must have thrown (TOCTOU simulated)
-    expect(throwCount).toBeGreaterThanOrEqual(2);
+    expect(lookupCount).toBe(1);
+
+    const fetched = await fetchBrainEntries(tempDir, { ids: [result.id] });
+    expect(fetched.results).toHaveLength(1);
+    const data = fetched.results[0].data as Record<string, unknown>;
+    expect(data['sourceSessionId']).toBe('S-123');
+  });
+
+  it('survives a transient empty lookup and recovers via a fresh probe', async () => {
+    const { observeBrain, fetchBrainEntries } = await import('../brain-retrieval.js');
+    firstLookupThrows = false;
+
+    const result = await observeBrain(tempDir, {
+      text: 'Observation after forced stale empty lookup',
+      sourceType: 'session-debrief',
+      project: 'cleo',
+      sourceSessionId: 'S-123',
+    });
+
+    expect(lookupCount).toBe(1);
 
     const fetched = await fetchBrainEntries(tempDir, { ids: [result.id] });
     expect(fetched.results).toHaveLength(1);
@@ -123,7 +148,7 @@ describe('T12034 — write-guard retry on closed-handle throw', () => {
   it('nulls sourceSessionId when the session is genuinely absent', async () => {
     const { observeBrain, fetchBrainEntries } = await import('../brain-retrieval.js');
 
-    // No session S-999 exists — the write-guard must null without retrying.
+    // No session S-999 exists — the write-guard must null after confirmation.
     const result = await observeBrain(tempDir, {
       text: 'Observation for absent session',
       sourceType: 'session-debrief',
@@ -131,11 +156,11 @@ describe('T12034 — write-guard retry on closed-handle throw', () => {
       sourceSessionId: 'S-999',
     });
 
-    // The mock still throws on first call, but the retry queries the real DB
-    // which has no S-999 → sessionExists false → nulled.
+    // The mock throws on the primary lookup; the fresh probe confirms S-999 is absent.
     const fetched = await fetchBrainEntries(tempDir, { ids: [result.id] });
     expect(fetched.results).toHaveLength(1);
     const data = fetched.results[0].data as Record<string, unknown>;
     expect(data['sourceSessionId']).toBeNull();
+    expect(lookupCount).toBe(1);
   });
 });

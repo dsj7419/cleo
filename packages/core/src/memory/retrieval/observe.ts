@@ -12,7 +12,10 @@ import type {
   ObserveBrainParams,
   ObserveBrainResult,
 } from '@cleocode/contracts';
-import { sessionExistsInTasksDb } from '../../store/cross-db-cleanup.js';
+import {
+  sessionExistsInTasksDb,
+  sessionExistsInTasksDbFresh,
+} from '../../store/cross-db-cleanup.js';
 import { getBrainAccessor } from '../../store/memory-accessor.js';
 import type { BrainMemoryTier } from '../../store/schema/memory-schema.js';
 import { getDb } from '../../store/sqlite.js';
@@ -148,11 +151,32 @@ export async function observeBrain(
   // the writer-thread handler — that recursion must execute the row insert
   // directly (otherwise the worker would post-message itself in a loop).
   if (!_skipQueue) {
+    let validatedSourceSessionId = sourceSessionId;
+    if (sourceSessionId) {
+      let sessionExists = false;
+      let tasksDb: Awaited<ReturnType<typeof getDb>> | null = null;
+      try {
+        tasksDb = await getDb(projectRoot);
+        sessionExists = await sessionExistsInTasksDb(sourceSessionId, tasksDb);
+      } catch {
+        // The independent probe below handles a closed shared handle.
+      }
+      if (!sessionExists) {
+        try {
+          // Validate before crossing the worker boundary, while the caller's
+          // project/worktree path context is still authoritative (T12034).
+          sessionExists = await sessionExistsInTasksDbFresh(sourceSessionId, tasksDb, projectRoot);
+        } catch {
+          // A failed confirmation remains absent (best-effort soft FK guard).
+        }
+      }
+      if (!sessionExists) validatedSourceSessionId = undefined;
+    }
     const { enqueueBrainWrite } = await import('../brain-writer-thread.js');
     const result = await enqueueBrainWrite({
       kind: 'observe',
       projectRoot,
-      params,
+      params: { ...params, sourceSessionId: validatedSourceSessionId },
     });
     if (result.kind !== 'observe') {
       throw new Error(`Unexpected writer result kind: ${result.kind}`);
@@ -237,34 +261,9 @@ export async function observeBrain(
   const { getBrainNativeDb } = await import('../../store/memory-sqlite.js');
   const nativeDb = getBrainNativeDb();
 
-  // Write-guard: validate cross-db session reference before inserting
-  let validSessionId = sourceSessionId ?? null;
-  if (validSessionId) {
-    let sessionExists = false;
-    try {
-      const tasksDb = await getDb(projectRoot);
-      sessionExists = await sessionExistsInTasksDb(validSessionId, tasksDb);
-    } catch {
-      // T12034: the shared cleo.db DatabaseSync can be closed by another
-      // domain between getDb and the session query (T12020 TOCTOU race).
-      // Evict the stale dual-scope cache entry so the liveness guard inside
-      // getDb detects the closed handle and re-derives a fresh one from
-      // openDualScopeDb.  Only null sourceSessionId after a SUCCESSFUL query
-      // definitively returns absent — a first-attempt throw is a transient
-      // failure, not a proof of absence.
-      const { _resetDualScopeDbCache } = await import('../../store/dual-scope-db.js');
-      _resetDualScopeDbCache('project');
-      try {
-        const tasksDb = await getDb(projectRoot);
-        sessionExists = await sessionExistsInTasksDb(validSessionId, tasksDb);
-      } catch {
-        // Non-recoverable second failure — treat as absent (best-effort).
-      }
-    }
-    if (!sessionExists) {
-      validSessionId = null;
-    }
-  }
+  // Queued observations were validated before crossing the worker boundary.
+  // Worker-internal dialectic observations carry their authoritative session ID.
+  const validSessionId = sourceSessionId ?? null;
 
   // Compute quality score from text richness, title length, and T549 source multiplier.
   const qualityScore = computeObservationQuality({
