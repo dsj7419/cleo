@@ -92,6 +92,7 @@ export interface ToolCacheEntry {
  * contract so callers can unconditionally inspect `exitCode + stdoutTail`.
  *
  * @task T1534
+ * @task T12025
  */
 export interface ToolRunResult {
   exitCode: number | null;
@@ -100,6 +101,14 @@ export interface ToolRunResult {
   durationMs: number;
   /** `true` when the result came from cache (no spawn occurred). */
   cacheHit: boolean;
+  /**
+   * `true` when the wall-clock child-process deadline was exceeded and the
+   * tool was terminated before producing a result. The lock + semaphore
+   * slot are released; a subsequent retry will attempt a fresh spawn.
+   *
+   * @task T12025
+   */
+  timedOut: boolean;
   /** Full cache entry — useful for audit / debugging. */
   entry: ToolCacheEntry;
 }
@@ -146,6 +155,17 @@ export interface RunToolOptions {
    * @internal
    */
   semaphoreOptions?: AcquireSlotOptions;
+  /**
+   * Wall-clock deadline for the child process (ms). When exceeded the
+   * process is SIGTERM'd, then SIGKILL'd after a 5 s grace period.
+   * The lock and semaphore slot are always released so a subsequent
+   * retry can proceed. Default covers a full monorepo test suite;
+   * tests inject shorter values for determinism.
+   *
+   * @defaultValue `300_000` (5 min)
+   * @task T12025
+   */
+  spawnTimeoutMs?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -189,6 +209,8 @@ interface CommandResult {
   exitCode: number | null;
   stdout: string;
   stderr: string;
+  /** `true` when the wall-clock deadline was exceeded and the process was force-killed. */
+  timedOut: boolean;
 }
 
 /**
@@ -249,7 +271,20 @@ class TailBuffer {
   }
 }
 
-function spawnCmd(cmd: string, args: string[], cwd: string): Promise<CommandResult> {
+/**
+ * Delta between SIGTERM and SIGKILL when the child-process deadline fires.
+ * Gives well-behaved toolchains a grace window to flush buffers and exit.
+ *
+ * @task T12025
+ */
+const GRACEFUL_KILL_MS = 5_000;
+
+function spawnCmd(
+  cmd: string,
+  args: string[],
+  cwd: string,
+  spawnTimeoutMs?: number,
+): Promise<CommandResult> {
   return new Promise((resolve) => {
     const stdoutBuf = new TailBuffer(STREAM_TAIL_CAP_BYTES);
     const stderrBuf = new TailBuffer(STREAM_TAIL_CAP_BYTES);
@@ -264,12 +299,41 @@ function spawnCmd(cmd: string, args: string[], cwd: string): Promise<CommandResu
     child.stderr?.on('data', (d: Buffer) => {
       stderrBuf.append(d);
     });
+
+    let timedOut = false;
+    let deadlineTimer: ReturnType<typeof setTimeout> | undefined;
+    let forceKillTimer: ReturnType<typeof setTimeout> | undefined;
+
+    const clearTimers = () => {
+      if (deadlineTimer !== undefined) clearTimeout(deadlineTimer);
+      if (forceKillTimer !== undefined) clearTimeout(forceKillTimer);
+    };
+
+    const finalise = (exitCode: number | null) => {
+      clearTimers();
+      resolve({ exitCode, stdout: stdoutBuf.toString(), stderr: stderrBuf.toString(), timedOut });
+    };
+
     child.on('error', () => {
-      resolve({ exitCode: null, stdout: stdoutBuf.toString(), stderr: stderrBuf.toString() });
+      finalise(null);
     });
     child.on('close', (code) => {
-      resolve({ exitCode: code, stdout: stdoutBuf.toString(), stderr: stderrBuf.toString() });
+      finalise(code);
     });
+
+    if (spawnTimeoutMs !== undefined && spawnTimeoutMs > 0) {
+      deadlineTimer = setTimeout(() => {
+        timedOut = true;
+        if (child.exitCode === null && child.signalCode === null) {
+          child.kill('SIGTERM');
+        }
+        forceKillTimer = setTimeout(() => {
+          if (child.exitCode === null && child.signalCode === null) {
+            child.kill('SIGKILL');
+          }
+        }, GRACEFUL_KILL_MS);
+      }, spawnTimeoutMs);
+    }
   });
 }
 
@@ -423,6 +487,7 @@ export async function runToolCached(
 ): Promise<ToolRunResult> {
   const tailBytes = opts.tailBytes ?? 512;
   const lockStaleMs = opts.lockStaleMs ?? 600_000;
+  const spawnTimeoutMs = opts.spawnTimeoutMs ?? 300_000;
 
   const head = await captureHead(projectRoot);
   const dirtyFingerprint = await captureDirtyFingerprint(projectRoot);
@@ -438,6 +503,7 @@ export async function runToolCached(
         stderrTail: existing.stderrTail,
         durationMs: existing.durationMs,
         cacheHit: true,
+        timedOut: false,
         entry: existing,
       };
     }
@@ -481,6 +547,7 @@ export async function runToolCached(
               stderrTail: fresh.stderrTail,
               durationMs: fresh.durationMs,
               cacheHit: true,
+              timedOut: false,
               entry: fresh,
             };
           }
@@ -488,8 +555,39 @@ export async function runToolCached(
 
         // Spawn the tool ourselves.
         const startedAt = Date.now();
-        const result = await spawnCmd(command.cmd, command.args, projectRoot);
+        const result = await spawnCmd(command.cmd, command.args, projectRoot, spawnTimeoutMs);
         const durationMs = Date.now() - startedAt;
+
+        // T12025: when the child exceeded its wall-clock deadline, do NOT
+        // persist a cache entry — the run produced no real result. The lock
+        // is released via withLock's finally so a subsequent retry can
+        // acquire it and attempt a fresh spawn from the same pending entry.
+        if (result.timedOut) {
+          return {
+            exitCode: result.exitCode,
+            stdoutTail: tailString(result.stdout, tailBytes),
+            stderrTail: tailString(result.stderr, tailBytes),
+            durationMs,
+            cacheHit: false,
+            timedOut: true,
+            entry: {
+              schemaVersion: 1,
+              key,
+              canonical: command.canonical,
+              displayName: command.displayName,
+              cmd: command.cmd,
+              args: command.args,
+              source: command.source,
+              head,
+              dirtyFingerprint,
+              exitCode: null,
+              stdoutTail: '',
+              stderrTail: '',
+              durationMs,
+              capturedAt: new Date().toISOString(),
+            },
+          };
+        }
 
         const entry: ToolCacheEntry = {
           schemaVersion: 1,
@@ -516,6 +614,7 @@ export async function runToolCached(
           stderrTail: entry.stderrTail,
           durationMs: entry.durationMs,
           cacheHit: false,
+          timedOut: false,
           entry,
         };
       },

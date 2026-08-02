@@ -1125,6 +1125,20 @@ async function validateTool(tool: string, projectRoot: string): Promise<AtomVali
 
   const result = await runToolCached(resolution.command, projectRoot);
 
+  // T12025: wall-clock child-process deadline exceeded — the tool was
+  // terminated and the lock released. Signal retry; do NOT record a partially
+  // captured gate.
+  if (result.timedOut) {
+    return {
+      ok: false,
+      reason:
+        `Tool "${tool}" → ${resolution.command.cmd} ${resolution.command.args.join(' ')} ` +
+        `exceeded the wall-clock deadline and was terminated. The lock and semaphore ` +
+        `slot are released — retry the verify once the system has capacity.`,
+      codeName: 'E_EVIDENCE_TOOL_TIMEOUT',
+    };
+  }
+
   if (result.exitCode === null) {
     return {
       ok: false,

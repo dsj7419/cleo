@@ -454,3 +454,113 @@ describe('clearToolCache', () => {
     }
   });
 });
+
+/**
+ * Build a ResolvedToolCommand that hangs forever (node event loop).
+ * Responds correctly to SIGTERM across all platforms (unlike `sleep`
+ * under `sh -c` which ignores signals in some environments).
+ */
+function hungCommand(): ResolvedToolCommand {
+  return {
+    canonical: 'test',
+    displayName: 'test',
+    cmd: 'node',
+    args: ['-e', 'setTimeout(() => {}, 999999)'],
+    source: 'language-default',
+    primaryType: 'unknown',
+  };
+}
+
+// ---------------------------------------------------------------------------
+// T12025: wall-clock child-process deadline + fail-fast timeout
+// ---------------------------------------------------------------------------
+
+describe('runToolCached — wall-clock spawn deadline (T12025)', () => {
+  let dir: string;
+  let markerDir: string;
+  let markerFile: string;
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), 'tool-cache-timed-'));
+    initRepo(dir);
+    markerDir = mkdtempSync(join(tmpdir(), 'tool-cache-marker-'));
+    markerFile = join(markerDir, 'spawn-count.txt');
+  });
+  afterEach(() => {
+    rmSync(dir, { recursive: true, force: true });
+    rmSync(markerDir, { recursive: true, force: true });
+  });
+
+  it('kills a hung child process and returns timedOut:true when the deadline fires', {
+    timeout: 15_000,
+  }, async () => {
+    const r = await runToolCached(hungCommand(), dir, {
+      spawnTimeoutMs: 300,
+      skipGlobalSemaphore: true,
+      lockStaleMs: 10_000,
+    });
+
+    expect(r.timedOut).toBe(true);
+    expect(r.cacheHit).toBe(false);
+  });
+
+  it('releases the lock after timeout so a subsequent retry succeeds', {
+    timeout: 15_000,
+  }, async () => {
+    // First call: hung process times out.
+    const r1 = await runToolCached(hungCommand(), dir, {
+      spawnTimeoutMs: 200,
+      skipGlobalSemaphore: true,
+      lockStaleMs: 10_000,
+    });
+    expect(r1.timedOut).toBe(true);
+
+    // Second call: fast process, no timeout — must succeed because the
+    // lock and semaphore were released after the first timeout.
+    const r2 = await runToolCached(shCommand(`printf x >> "${markerFile}"; echo ok`), dir, {
+      skipGlobalSemaphore: true,
+    });
+    expect(r2.timedOut).toBe(false);
+    expect(r2.cacheHit).toBe(false);
+    expect(r2.exitCode).toBe(0);
+
+    const { readFileSync: rs } = await import('node:fs');
+    expect(rs(markerFile, 'utf-8')).toBe('x');
+  });
+
+  it('no cached entry is written on timeout — retry triggers a fresh spawn', {
+    timeout: 15_000,
+  }, async () => {
+    // Force timeout with a hung process on a different key pair.
+    const r1 = await runToolCached(hungCommand(), dir, {
+      spawnTimeoutMs: 200,
+      skipGlobalSemaphore: true,
+      lockStaleMs: 10_000,
+    });
+    expect(r1.timedOut).toBe(true);
+
+    // Retry with a real command — must not see a stale cache entry
+    // and must produce a real result (cacheHit: false, exitCode: 0).
+    const r2 = await runToolCached(shCommand(`echo done`), dir, {
+      skipGlobalSemaphore: true,
+    });
+    expect(r2.timedOut).toBe(false);
+    expect(r2.cacheHit).toBe(false);
+    expect(r2.exitCode).toBe(0);
+  });
+
+  it('normal (non-timeout) results have timedOut:false', async () => {
+    const cmd = shCommand('echo ok');
+    const r = await runToolCached(cmd, dir);
+    expect(r.timedOut).toBe(false);
+    expect(r.cacheHit).toBe(false);
+    expect(r.exitCode).toBe(0);
+  });
+
+  it('cache hits preserve timedOut:false', async () => {
+    const cmd = shCommand('echo ok');
+    await runToolCached(cmd, dir);
+    const r = await runToolCached(cmd, dir);
+    expect(r.cacheHit).toBe(true);
+    expect(r.timedOut).toBe(false);
+  });
+});
