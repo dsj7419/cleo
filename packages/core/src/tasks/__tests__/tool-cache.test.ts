@@ -471,6 +471,35 @@ function hungCommand(): ResolvedToolCommand {
   };
 }
 
+/**
+ * Build a ResolvedToolCommand that hangs AND spawns a long-lived descendant
+ * with inherited stdio (simulating `pnpm test` that forks workers).
+ * Without process-group killing, the descendant keeps the pipe open and
+ * Node's `close` never fires.
+ *
+ * @task T12025
+ */
+function hungWithDescendantCommand(): ResolvedToolCommand {
+  return {
+    canonical: 'test',
+    displayName: 'test',
+    cmd: 'node',
+    args: [
+      '-e',
+      // Spawn a `sleep` descendant that inherits our stdio pipes,
+      // then the parent hangs on the event loop. The double-fork
+      // + unref ensures the descendant outlives the parent unless
+      // the entire process group is killed.
+      `const{spawn:c}=require("child_process");` +
+        `const d=c("sleep",["999"],{stdio:"inherit"});` +
+        `d.unref();` +
+        `setTimeout(()=>{},999999)`,
+    ],
+    source: 'language-default',
+    primaryType: 'unknown',
+  };
+}
+
 // ---------------------------------------------------------------------------
 // T12025: wall-clock child-process deadline + fail-fast timeout
 // ---------------------------------------------------------------------------
@@ -562,6 +591,31 @@ describe('runToolCached — wall-clock spawn deadline (T12025)', () => {
     const r = await runToolCached(cmd, dir);
     expect(r.cacheHit).toBe(true);
     expect(r.timedOut).toBe(false);
+  });
+
+  it('process-tree kill: timeout resolves when a descendant holds inherited stdio', {
+    timeout: 15_000,
+  }, async () => {
+    // Descendant `sleep 999` inherits our pipe — without process-group
+    // killing, the pipe stays open and Node's `close` never fires.
+    const r1 = await runToolCached(hungWithDescendantCommand(), dir, {
+      spawnTimeoutMs: 400,
+      skipGlobalSemaphore: true,
+      lockStaleMs: 10_000,
+    });
+
+    expect(r1.timedOut).toBe(true);
+    expect(r1.cacheHit).toBe(false);
+
+    // The `sleep` descendant was in the same process group and must be
+    // dead — otherwise the lock would still be held.  Retry proves it.
+    const r2 = await runToolCached(shCommand(`echo ok`), dir, {
+      skipGlobalSemaphore: true,
+    });
+    expect(r2.timedOut).toBe(false);
+    expect(r2.lockBusy).toBe(false);
+    expect(r2.cacheHit).toBe(false);
+    expect(r2.exitCode).toBe(0);
   });
 });
 

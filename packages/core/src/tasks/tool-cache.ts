@@ -30,7 +30,7 @@
  * @adr ADR-061
  */
 
-import { spawn } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import {
   existsSync,
@@ -290,6 +290,46 @@ class TailBuffer {
  */
 const GRACEFUL_KILL_MS = 5_000;
 
+/**
+ * Terminate a process and all its descendants reliably.
+ *
+ * On POSIX, spawns with {@link https://nodejs.org/api/child_process.html#optionsdetached | `detached: true`}
+ * which creates a new process group; a negative PID kill
+ * (`process.kill(-pid, sig)`) signals every process in the group.
+ * On Windows, falls back to `taskkill /T /F /PID <pid>`.
+ *
+ * @task T12025
+ */
+function killProcessTree(pid: number, signal: 'SIGTERM' | 'SIGKILL'): void {
+  if (process.platform === 'win32') {
+    const sigFlag = signal === 'SIGKILL' ? '/F' : '';
+    try {
+      execFileSync('taskkill', ['/PID', String(pid), '/T', sigFlag].filter(Boolean), {
+        stdio: 'ignore',
+      });
+    } catch {
+      // Best-effort — process may already be dead.
+    }
+    return;
+  }
+  // POSIX: negative PID = process group
+  try {
+    process.kill(-pid, signal);
+  } catch (err: unknown) {
+    // ESRCH = process already dead; ignore. EPERM = not our group — in that
+    // case fall back to killing just the immediate child (detached wasn't
+    // honored, e.g. inside a container without CAP_SYS_PTRACE).
+    const code = (err as NodeJS.ErrnoException).code;
+    if (code !== 'ESRCH') {
+      try {
+        process.kill(pid, signal);
+      } catch {
+        // Already dead.
+      }
+    }
+  }
+}
+
 function spawnCmd(
   cmd: string,
   args: string[],
@@ -303,6 +343,12 @@ function spawnCmd(
       cwd,
       stdio: ['ignore', 'pipe', 'pipe'],
       env: process.env,
+      // T12025: detached creates a new process group on POSIX so that
+      // killProcessTree can signal every descendant. Without this a
+      // tool like `pnpm test` that forks worker processes inheriting
+      // stdout/stderr pipes would leave descendants keeping pipes open,
+      // preventing the `close` event from ever firing.
+      detached: true,
     });
     child.stdout?.on('data', (d: Buffer) => {
       stdoutBuf.append(d);
@@ -336,11 +382,11 @@ function spawnCmd(
       deadlineTimer = setTimeout(() => {
         timedOut = true;
         if (child.exitCode === null && child.signalCode === null) {
-          child.kill('SIGTERM');
+          killProcessTree(child.pid!, 'SIGTERM');
         }
         forceKillTimer = setTimeout(() => {
           if (child.exitCode === null && child.signalCode === null) {
-            child.kill('SIGKILL');
+            killProcessTree(child.pid!, 'SIGKILL');
           }
         }, GRACEFUL_KILL_MS);
       }, spawnTimeoutMs);
@@ -640,32 +686,37 @@ export async function runToolCached(
     // proper-lockfile retries (50 × exponential backoff). Reduce to 3
     // retries (~0.7 s fail-fast) and return a typed actionable result
     // so callers surface E_EVIDENCE_TOOL_BUSY instead of a generic error.
+    // Only surface lockBusy for actual ELOCKED contention — permission
+    // errors and other lock failures are re-thrown as real errors.
     if (err instanceof CleoError && err.code === ExitCode.LOCK_TIMEOUT) {
-      return {
-        exitCode: null,
-        stdoutTail: '',
-        stderrTail: '',
-        durationMs: 0,
-        cacheHit: false,
-        timedOut: false,
-        lockBusy: true,
-        entry: {
-          schemaVersion: 1,
-          key,
-          canonical: command.canonical,
-          displayName: command.displayName,
-          cmd: command.cmd,
-          args: command.args,
-          source: command.source,
-          head,
-          dirtyFingerprint,
+      const causeCode = (err.cause as { code?: string } | undefined)?.code;
+      if (causeCode === 'ELOCKED') {
+        return {
           exitCode: null,
           stdoutTail: '',
           stderrTail: '',
           durationMs: 0,
-          capturedAt: new Date().toISOString(),
-        },
-      };
+          cacheHit: false,
+          timedOut: false,
+          lockBusy: true,
+          entry: {
+            schemaVersion: 1,
+            key,
+            canonical: command.canonical,
+            displayName: command.displayName,
+            cmd: command.cmd,
+            args: command.args,
+            source: command.source,
+            head,
+            dirtyFingerprint,
+            exitCode: null,
+            stdoutTail: '',
+            stderrTail: '',
+            durationMs: 0,
+            capturedAt: new Date().toISOString(),
+          },
+        };
+      }
     }
     throw err;
   } finally {
