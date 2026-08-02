@@ -271,10 +271,27 @@ describe('T12029 — diffIntersectsAc segment-boundary suffix match', () => {
     expect(diffIntersectsAc(diff, ac)).toBe(true);
   });
 
-  it('ACCEPTS single-segment AC file nested in monorepo', () => {
+  it('REJECTS single-segment AC file nested in monorepo (must match exactly)', () => {
+    // Single-segment paths like `setup.py` are excluded from suffix matching
+    // to prevent a bare `package.json` from matching every `packages/*/package.json`.
     const ac = ['setup.py'];
     const diff = ['packages/my-lib/setup.py'];
-    expect(diffIntersectsAc(diff, ac)).toBe(true);
+    expect(diffIntersectsAc(diff, ac)).toBe(false);
+  });
+
+  it('REJECTS single-segment common filename "package.json" in nested monorepo dir', () => {
+    // Bare `package.json` MUST only match via exact comparison.
+    // Suffix-matching it would accept every `packages/*/package.json`,
+    // weakening anti-fabrication evidence.
+    const ac = ['package.json'];
+    const diff = ['packages/foo/package.json'];
+    expect(diffIntersectsAc(diff, ac)).toBe(false);
+  });
+
+  it('REJECTS single-segment config file in deeply-nested monorepo dir', () => {
+    const ac = ['tsconfig.json'];
+    const diff = ['plugins/producer/packages/core/tsconfig.json'];
+    expect(diffIntersectsAc(diff, ac)).toBe(false);
   });
 
   it('REJECTS partial-name false positive: "ipts" ≠ "scripts" suffix', () => {
@@ -399,6 +416,63 @@ describe('T12029 — validateCommit monorepo suffix match (integration)', () => 
     if (!r.ok) {
       expect(r.codeName).toBe('E_EVIDENCE_CONTENT_MISMATCH');
     }
+  });
+
+  it('REJECTS commit touching nested package.json when AC declares bare package.json', async () => {
+    // Single-segment filenames are excluded from suffix matching — a bare
+    // `package.json` must only match via exact comparison. Adding it via
+    // `--files package.json` and then committing `packages/foo/package.json`
+    // is fabrication: the diff does NOT intersect the declared AC file.
+    await seedTasks(env.accessor, [
+      {
+        id: 'T_MONO_PKG',
+        title: 'monorepo-package-json-reject',
+        description: 'single-segment-suffix-reject-test',
+        status: 'pending',
+        priority: 'medium',
+        files: ['package.json'],
+        acceptance: ['package.json version bump'],
+      } as Partial<Task> & { id: string },
+    ]);
+
+    const sha = gitCommitFile(
+      env.tempDir,
+      'packages/foo/package.json',
+      '{"version":"2.0"}\n',
+      'feat(T_MONO_PKG): bump sub-package version',
+    );
+
+    const r = await validateAtom({ kind: 'commit', sha }, env.tempDir, 'T_MONO_PKG');
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.codeName).toBe('E_EVIDENCE_CONTENT_MISMATCH');
+    }
+  });
+
+  it('ACCEPTS commit touching nested multi-segment AC file (issue #1123 repro)', async () => {
+    // Multi-segment AC paths STILL get suffix matching — this is the core
+    // #1123 fix for monorepo sub-path declarations.
+    await seedTasks(env.accessor, [
+      {
+        id: 'T_MONO_MS',
+        title: 'monorepo-multi-segment-ok',
+        description: 'multi-segment-suffix-test',
+        status: 'pending',
+        priority: 'medium',
+        files: ['src/utils/validate.ts'],
+        acceptance: ['src/utils/validate.ts implements validation'],
+      } as Partial<Task> & { id: string },
+    ]);
+
+    const sha = gitCommitFile(
+      env.tempDir,
+      'plugins/producer/packages/core/src/utils/validate.ts',
+      'export function validate(): boolean { return true; }\n',
+      'feat(T_MONO_MS): implement validation util',
+    );
+
+    const r = await validateAtom({ kind: 'commit', sha }, env.tempDir, 'T_MONO_MS');
+    expect(r.ok).toBe(true);
   });
 });
 

@@ -757,8 +757,14 @@ export function diffIntersectsAc(diffFiles: string[], acFiles: string[]): boolea
     // is satisfied by diff `plugins/name/scripts/x.py` (monorepo nesting).
     // The `/${ac}` guard ensures the AC path starts at a slash boundary
     // in the diff path, preventing `ipts/x.py`-style false positives.
+    //
+    // Single-segment AC paths (no `/` — e.g. `package.json`, `setup.py`)
+    // are EXCLUDED from suffix matching.  A bare `package.json` must only
+    // match via exact comparison; suffix-matching it would accept EVERY
+    // `packages/*/package.json` in a monorepo, weakening anti-fabrication
+    // evidence (pre-merge review T12029).
     for (const ac of acSet) {
-      if (ac && nf.endsWith(`/${ac}`)) return true;
+      if (ac?.includes('/') && nf.endsWith(`/${ac}`)) return true;
     }
   }
   return false;
