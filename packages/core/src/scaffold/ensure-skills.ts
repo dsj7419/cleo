@@ -7,6 +7,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import type { ProjectContext } from '@cleocode/contracts';
 import type { ScaffoldResult } from '@cleocode/contracts/scaffold-diagnostics';
 import { pushWarning } from '../output.js';
 import { resolveScaffoldCleoDir } from './ensure-config.js';
@@ -57,30 +58,7 @@ export async function ensureProjectContext(
   if (existsSync(contextPath)) {
     try {
       const existing = JSON.parse(readFileSync(contextPath, 'utf-8')) as Record<string, unknown>;
-      mergeCommandOverride(existing, context as unknown as Record<string, unknown>, [
-        'testing',
-        'command',
-      ]);
-      mergeCommandOverride(existing, context as unknown as Record<string, unknown>, [
-        'build',
-        'command',
-      ]);
-      mergeCommandOverride(existing, context as unknown as Record<string, unknown>, [
-        'lint',
-        'command',
-      ]);
-      mergeCommandOverride(existing, context as unknown as Record<string, unknown>, [
-        'typecheck',
-        'command',
-      ]);
-      mergeCommandOverride(existing, context as unknown as Record<string, unknown>, [
-        'audit',
-        'command',
-      ]);
-      mergeCommandOverride(existing, context as unknown as Record<string, unknown>, [
-        'security-scan',
-        'command',
-      ]);
+      preserveUserOverrides(existing, context);
     } catch {
       // If we can't parse existing, proceed with freshly-detected context
     }
@@ -132,36 +110,63 @@ export async function ensureProjectContext(
 }
 
 /**
- * Copy a user-supplied command override from `existing` into `context` at
- * the given JSON path segments.
+ * Copy user-supplied command overrides from parsed JSON (`existing`) into
+ * the freshly-detected {@link ProjectContext} so regeneration does not
+ * silently clobber them.
  *
- * Only copies if the existing file actually has a non-empty string at that
- * path — auto-detected fields from `detectProjectType()` are preserved when
- * the user has not set an override.
+ * Each override is carried over only when the existing JSON carries a
+ * non-empty string at the typed command path.
  *
  * @task T12027
  */
-function mergeCommandOverride(
-  existing: Record<string, unknown>,
-  context: Record<string, unknown>,
-  path: string[],
-): void {
-  let src: unknown = existing;
-  for (const segment of path) {
-    if (!src || typeof src !== 'object' || Array.isArray(src)) return;
-    src = (src as Record<string, unknown>)[segment];
+function preserveUserOverrides(existing: Record<string, unknown>, context: ProjectContext): void {
+  // testing.command
+  const testingCmd = readCmdFromExisting(existing, 'testing');
+  if (testingCmd) {
+    context.testing = { ...context.testing, command: testingCmd };
   }
-  if (typeof src !== 'string' || src.length === 0) return;
 
-  let tgt: Record<string, unknown> = context;
-  for (let i = 0; i < path.length - 1; i++) {
-    const seg = path[i];
-    let next = tgt[seg];
-    if (!next || typeof next !== 'object' || Array.isArray(next)) {
-      next = {};
-      tgt[seg] = next;
-    }
-    tgt = next as Record<string, unknown>;
+  // build.command
+  const buildCmd = readCmdFromExisting(existing, 'build');
+  if (buildCmd) {
+    context.build = { ...context.build, command: buildCmd };
   }
-  tgt[path[path.length - 1]] = src;
+
+  // lint.command
+  const lintCmd = readCmdFromExisting(existing, 'lint');
+  if (lintCmd) {
+    context.lint = { command: lintCmd };
+  }
+
+  // typecheck.command
+  const typecheckCmd = readCmdFromExisting(existing, 'typecheck');
+  if (typecheckCmd) {
+    context.typecheck = { command: typecheckCmd };
+  }
+
+  // audit.command
+  const auditCmd = readCmdFromExisting(existing, 'audit');
+  if (auditCmd) {
+    context.audit = { command: auditCmd };
+  }
+
+  // security-scan.command
+  const secscanCmd = readCmdFromExisting(existing, 'security-scan');
+  if (secscanCmd) {
+    context['security-scan'] = { command: secscanCmd };
+  }
+}
+
+/**
+ * Safely extract a `.command` string from a nested key of a parsed JSON
+ * object. Returns `null` when the key is absent, not an object, or the
+ * command is missing / empty.
+ *
+ * @task T12027
+ */
+function readCmdFromExisting(existing: Record<string, unknown>, key: string): string | null {
+  const obj = existing[key];
+  if (obj === null || typeof obj !== 'object' || Array.isArray(obj)) return null;
+  const cmd = (obj as Record<string, unknown>).command;
+  return typeof cmd === 'string' && cmd.length > 0 ? cmd : null;
 }
