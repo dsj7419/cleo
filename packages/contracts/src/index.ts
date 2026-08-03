@@ -544,6 +544,7 @@ export {
   callsiteCoverageAtomSchema,
   commitAtomSchema,
   decisionAtomSchema,
+  EVIDENCE_ATOM_KINDS,
   EvidenceAtomSchema,
   EvidenceParseError,
   filesAtomSchema,

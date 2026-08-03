@@ -34,6 +34,52 @@ import { z } from 'zod';
 import type { VerificationGate } from './task.js';
 
 // ---------------------------------------------------------------------------
+// Known atom kinds — shared typed constant for boundary detection + error
+// messages.  Prefer this list over duplicated regex strings.
+// ---------------------------------------------------------------------------
+
+/**
+ * Every evidence atom kind recognized by the parser.
+ *
+ * Defines the exhaustive set of `kind:` prefixes accepted by
+ * {@link parseEvidenceString}. Derived from {@link EvidenceAtomSchema}'s
+ * discriminated union. Shared so boundary-splitting regexes, documentation,
+ * and error messages always agree without duplicating the literal list.
+ *
+ * Note: `state` is a recognized parser prefix (modifier for `pr:`) but is
+ * NOT a standalone {@link EvidenceAtom} kind — it is consumed in-place by the
+ * parser and never emitted as an atom. The boundary regex MUST include it so
+ * `pr:357;state:MERGED` splits correctly.
+ *
+ * @task T12030
+ */
+export const EVIDENCE_ATOM_KINDS = [
+  'commit',
+  'files',
+  'test-run',
+  'tool',
+  'url',
+  'note',
+  'decision',
+  'pr',
+  'loc-drop',
+  'callsite-coverage',
+  'satisfies',
+] as const satisfies ReadonlyArray<EvidenceAtom['kind']>;
+
+/** Parser-level prefixes — {@link EVIDENCE_ATOM_KINDS} + `state` modifier. */
+const PARSER_PREFIXES = [...EVIDENCE_ATOM_KINDS, 'state'] as const;
+
+/**
+ * Regex matching a `;` ONLY when the next non-whitespace token is a known
+ * atom kind prefix followed by `:`.  Used instead of a naive `split(';')` so
+ * semicolons inside `note:` payloads are preserved.
+ *
+ * @task T12030
+ */
+const KIND_BOUNDARY_REGEX = new RegExp(`;(?=\\s*(?:${PARSER_PREFIXES.join('|')})\\s*:)`, 'g');
+
+// ---------------------------------------------------------------------------
 // Per-atom Zod schemas
 // ---------------------------------------------------------------------------
 
@@ -714,8 +760,9 @@ export function parseEvidenceString(raw: string): EvidenceAtom[] {
     );
   }
   const chunks = raw
-    .split(';')
+    .split(KIND_BOUNDARY_REGEX)
     .map((s) => s.trim())
+    .map((s) => s.replace(/^;+/, '')) // strip leading separator artifacts (;;commit: → commit:)
     .filter(Boolean);
   if (chunks.length === 0) {
     throw new EvidenceParseError(
@@ -734,7 +781,11 @@ export function parseEvidenceString(raw: string): EvidenceAtom[] {
       );
     }
     const kind = chunk.slice(0, colon).trim();
-    const payload = chunk.slice(colon + 1).trim();
+    const rawPayload = chunk.slice(colon + 1).trim();
+    // Strip trailing separator semicolons from non-note atoms (the old naive
+    // split consumed them as empty chunks).  Note payloads preserve every
+    // character, including trailing ';', so they act as real punctuation.
+    const payload = kind === 'note' ? rawPayload : rawPayload.replace(/;+$/, '');
     switch (kind) {
       case 'commit':
         atoms.push({ kind: 'commit', sha: payload });
@@ -930,7 +981,7 @@ export function parseEvidenceString(raw: string): EvidenceAtom[] {
       default:
         throw new EvidenceParseError(
           `Unknown evidence kind: "${kind}" in atom "${chunk}"`,
-          'Valid kinds: commit, files, test-run, tool, url, note, loc-drop, callsite-coverage, decision, pr, satisfies, state',
+          `Valid kinds: ${PARSER_PREFIXES.join(', ')}`,
         );
     }
   }
