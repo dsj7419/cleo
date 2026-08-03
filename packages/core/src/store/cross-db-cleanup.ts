@@ -386,18 +386,30 @@ async function recordExistsInTasksDbFresh(
     import('./sqlite-native.js'),
   ]);
   const sharedNative = (tasksDb as TasksDbWithNativeClient | null)?.$client;
-  const dbPath =
+  const preferredPath =
     cwd !== undefined
       ? resolveDualScopeDbPath('project', cwd)
       : (sharedNative?.location() ?? resolveDualScopeDbPath('project'));
-  const probe = openNativeDatabase(dbPath, {
-    readonly: true,
-  });
-  try {
-    return projectRecordExists(probe, id, tableNames);
-  } finally {
-    probe.close();
+  const sharedPath = sharedNative?.location();
+  const probePath = (dbPath: string): boolean => {
+    const probe = openNativeDatabase(dbPath, {
+      readonly: true,
+    });
+    try {
+      return projectRecordExists(probe, id, tableNames);
+    } finally {
+      probe.close();
+    }
+  };
+
+  if (sharedPath != null && sharedPath !== preferredPath) {
+    try {
+      return probePath(preferredPath);
+    } catch {
+      return probePath(sharedPath);
+    }
   }
+  return probePath(preferredPath);
 }
 
 /**
