@@ -353,7 +353,11 @@ higher confidence because it describes a concrete, verifiable result.`;
  * ```
  *
  * @param turn - The conversational turn to evaluate.
- * @returns Extracted dialectic insights (empty arrays when no backend available).
+ * @param opts.abortSignal - Optional AbortSignal to cancel the LLM call.
+ *   The dispatcher passes a deadline signal to prevent background LLM calls
+ *   from keeping the CLI process alive after the envelope has been emitted.
+ * @returns Extracted dialectic insights (empty arrays when no backend available,
+ *   or when the LLM call was aborted).
  *
  * @example
  * ```ts
@@ -367,8 +371,12 @@ higher confidence because it describes a concrete, verifiable result.`;
  *
  * @task T1087
  * @task T1533
+ * @task T12024
  */
-export async function evaluateDialectic(turn: DialecticTurn): Promise<DialecticInsights> {
+export async function evaluateDialectic(
+  turn: DialecticTurn,
+  opts?: { abortSignal?: AbortSignal },
+): Promise<DialecticInsights> {
   const EMPTY: DialecticInsights = { globalTraits: [], peerInsights: [] };
 
   // Reject obviously empty turns early
@@ -406,6 +414,7 @@ export async function evaluateDialectic(turn: DialecticTurn): Promise<DialecticI
       schema: DialecticInsightsSchema,
       system: buildDialecticSystemPrompt(turn.activePeerId),
       prompt: userPrompt,
+      ...(opts?.abortSignal ? { abortSignal: opts.abortSignal } : {}),
     });
 
     // Filter out global traits below the confidence threshold.

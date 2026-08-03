@@ -457,3 +457,67 @@ describe('evaluateDialectic — telemetry: generateObject failure (warn-once)', 
     expect(mockLogError).not.toHaveBeenCalled();
   });
 });
+
+// ============================================================================
+// T12024 — Bounded deadline for background LLM calls
+// ============================================================================
+
+describe('evaluateDialectic — abortSignal deadline (T12024)', () => {
+  it('passes abortSignal through to generateObject', async () => {
+    mockBackendAvailable();
+    (generateObject as ReturnType<typeof vi.fn>).mockResolvedValue({
+      object: { globalTraits: [], peerInsights: [], sessionNarrativeDelta: undefined },
+    });
+
+    const signal = new AbortController().signal;
+    await evaluateDialectic(makeTurn({}), { abortSignal: signal });
+
+    const callArgs = (generateObject as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as
+      | Record<string, unknown>
+      | undefined;
+    expect(callArgs?.abortSignal).toBe(signal);
+  });
+
+  it('returns EMPTY when generateObject throws AbortError', async () => {
+    mockBackendAvailable();
+    const abortError = new DOMException('The operation was aborted', 'AbortError');
+    (generateObject as ReturnType<typeof vi.fn>).mockRejectedValue(abortError);
+
+    const result = await evaluateDialectic(makeTurn({}));
+
+    expect(result.globalTraits).toEqual([]);
+    expect(result.peerInsights).toEqual([]);
+  });
+
+  it('returns EMPTY when the abortSignal is already aborted', async () => {
+    mockBackendAvailable();
+    const controller = new AbortController();
+    controller.abort(); // pre-abort
+
+    // generateObject should throw when signal is already aborted
+    (generateObject as ReturnType<typeof vi.fn>).mockRejectedValue(
+      new DOMException('signal is aborted', 'AbortError'),
+    );
+
+    const result = await evaluateDialectic(makeTurn({ sessionId: 'ses_pre_aborted' }), {
+      abortSignal: controller.signal,
+    });
+
+    expect(result.globalTraits).toEqual([]);
+    expect(result.peerInsights).toEqual([]);
+  });
+
+  it('does not pass abortSignal when opts is omitted (backward compat)', async () => {
+    mockBackendAvailable();
+    (generateObject as ReturnType<typeof vi.fn>).mockResolvedValue({
+      object: { globalTraits: [], peerInsights: [], sessionNarrativeDelta: undefined },
+    });
+
+    await evaluateDialectic(makeTurn({}));
+
+    const callArgs = (generateObject as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as
+      | Record<string, unknown>
+      | undefined;
+    expect(callArgs?.abortSignal).toBeUndefined();
+  });
+});
