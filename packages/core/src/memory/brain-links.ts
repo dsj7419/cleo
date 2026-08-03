@@ -34,7 +34,14 @@ export interface BulkLinkEntry {
 /**
  * Link a memory entry to a task.
  *
- * @task T5156
+ * @param projectRoot - Project root containing the task and brain databases.
+ * @param memoryType - Type of memory entry to link.
+ * @param memoryId - Memory entry identifier.
+ * @param taskId - Task identifier to validate and link.
+ * @param linkType - Relationship represented by the link.
+ * @param tasksDbOverride - Existing task handle retained by a multi-step caller.
+ * @returns The existing or newly created memory link.
+ * @task T5156 T12034
  */
 export async function linkMemoryToTask(
   projectRoot: string,
@@ -42,6 +49,7 @@ export async function linkMemoryToTask(
   memoryId: string,
   taskId: string,
   linkType: LinkType,
+  tasksDbOverride?: Awaited<ReturnType<typeof getDb>>,
 ): Promise<BrainMemoryLinkRow> {
   if (!memoryId || !taskId) {
     throw new Error('memoryId and taskId are required');
@@ -51,7 +59,7 @@ export async function linkMemoryToTask(
   let taskExists = false;
   let tasksDb: Awaited<ReturnType<typeof getDb>> | null = null;
   try {
-    tasksDb = await getDb(projectRoot);
+    tasksDb = tasksDbOverride ?? (await getDb(projectRoot));
     taskExists = await taskExistsInTasksDb(taskId, tasksDb);
   } catch {
     // The independent probe below handles a closed shared handle.

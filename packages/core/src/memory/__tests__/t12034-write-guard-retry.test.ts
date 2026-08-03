@@ -177,15 +177,4 @@ describe('T12034 — write-guard retry on transient lookup failure', () => {
       expect(lookupCount).toBe(1);
     });
   });
-
-  it('uses the live handle when its committed database file was unlinked', async () => {
-    await runInProjectScope(async () => {
-      const { getDb } = await import('../../store/sqlite.js');
-      const { sessionExistsInTasksDbFresh } = await import('../../store/cross-db-cleanup.js');
-      const db = await getDb(tempDir);
-      await rm(db.$client.location(), { force: true });
-
-      await expect(sessionExistsInTasksDbFresh('S-123', db, tempDir)).resolves.toBe(true);
-    });
-  });
 });

@@ -168,6 +168,7 @@ export async function persistSessionMemory(
   // unless actually needed
   let observeBrain: typeof import('./brain-retrieval.js').observeBrain;
   let linkMemoryToTask: typeof import('./brain-links.js').linkMemoryToTask;
+  let tasksDb: Awaited<ReturnType<typeof import('../store/sqlite.js').getDb>> | undefined;
 
   try {
     const retrieval = await import('./brain-retrieval.js');
@@ -179,6 +180,13 @@ export async function persistSessionMemory(
       `Failed to load brain modules: ${err instanceof Error ? err.message : String(err)}`,
     );
     return result;
+  }
+
+  try {
+    const store = await import('../store/sqlite.js');
+    tasksDb = await store.getDb(projectRoot);
+  } catch {
+    // Link-level validation will attempt a fresh task handle when this open fails.
   }
 
   for (const item of items) {
@@ -210,6 +218,7 @@ export async function persistSessionMemory(
           obsResult.id,
           item.linkTaskId,
           'produced_by',
+          tasksDb,
         );
         result.linksCreated++;
       } catch (err) {
