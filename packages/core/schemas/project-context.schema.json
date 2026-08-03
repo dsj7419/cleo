@@ -203,6 +203,31 @@
           "description": "Command to run security vulnerability scanning"
         }
       }
+    },
+    "release": {
+      "type": "object",
+      "description": "Release and evidence behavior configured per project.",
+      "additionalProperties": false,
+      "properties": {
+        "integrationBranches": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true,
+          "description": "Branches whose reachable commits may satisfy commit evidence atoms."
+        },
+        "prRequiredWorkflows": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true,
+          "description": "Required successful checks for PR evidence atoms."
+        }
+      }
     }
   }
 }

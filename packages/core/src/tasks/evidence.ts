@@ -402,7 +402,12 @@ export async function validateAtom(
  *
  * @task T12028 (gh#1116)
  */
-const INTEGRATION_BRANCHES: readonly string[] = Object.freeze(['main', 'master']);
+const INTEGRATION_BRANCHES: readonly string[] = Object.freeze([
+  'main',
+  'master',
+  'develop',
+  'development',
+]);
 
 /**
  * Env var that overrides {@link INTEGRATION_BRANCHES}.
@@ -418,7 +423,8 @@ const INTEGRATION_BRANCHES_ENV_VAR = 'CLEO_INTEGRATION_BRANCHES';
  * Precedence (most specific wins):
  * 1. {@link INTEGRATION_BRANCHES_ENV_VAR} env var — CI/operator override.
  * 2. `.cleo/project-context.json` `release.integrationBranches` — per-project config.
- * 3. {@link INTEGRATION_BRANCHES} default (`main`, `master`).
+ * 3. {@link INTEGRATION_BRANCHES} default (`main`, `master`, `develop`,
+ *    `development`).
  *
  * @task T12028 (gh#1116)
  */
@@ -447,6 +453,33 @@ function resolveIntegrationBranches(
     }
   }
   return [...INTEGRATION_BRANCHES];
+}
+
+/**
+ * Find a local or origin-tracking integration branch that contains a commit.
+ *
+ * Checking the remote-tracking ref preserves verification after a merged local
+ * integration branch has been cleaned up.
+ */
+async function findReachableIntegrationBranch(
+  sha: string,
+  branches: readonly string[],
+  projectRoot: string,
+): Promise<string | null> {
+  for (const branch of branches) {
+    const refs = [`refs/heads/${branch}`, `refs/remotes/origin/${branch}`];
+    for (const ref of refs) {
+      const exists = await runCommand('git', ['rev-parse', '--verify', ref], projectRoot);
+      if (exists.exitCode !== 0) continue;
+      const reachable = await runCommand(
+        'git',
+        ['merge-base', '--is-ancestor', sha, ref],
+        projectRoot,
+      );
+      if (reachable.exitCode === 0) return branch;
+    }
+  }
+  return null;
 }
 
 async function validateCommit(
@@ -503,27 +536,10 @@ async function validateCommit(
     // `.cleo/project-context.json` (`release.integrationBranches`) so repos
     // that merge through a non-main branch can use commits on that branch
     // as evidence without synthetic task-branch scaffolding.
-    let isReachableFromIntegration = false;
-    if (taskId) {
-      for (const base of integrationBranches) {
-        const baseExists = await runCommand(
-          'git',
-          ['rev-parse', '--verify', `refs/heads/${base}`],
-          projectRoot,
-        );
-        if (baseExists.exitCode !== 0) continue;
-        const branchReachable = await runCommand(
-          'git',
-          ['merge-base', '--is-ancestor', sha, base],
-          projectRoot,
-        );
-        if (branchReachable.exitCode === 0) {
-          isReachableFromIntegration = true;
-          break;
-        }
-      }
-    }
-    if (!isReachableFromIntegration) {
+    const reachableIntegrationBranch = taskId
+      ? await findReachableIntegrationBranch(sha, integrationBranches, projectRoot)
+      : null;
+    if (reachableIntegrationBranch === null) {
       const branchList = integrationBranches.join(', ');
       return {
         ok: false,
@@ -564,25 +580,12 @@ async function validateCommit(
         //   - post-merge task branches that have been cleaned up (the SHA is now
         //     only reachable from main, not from `task/<id>` which no longer exists)
         // gh#1116 / T12028: reuses the integrationBranches resolved above.
-        let onIntegration = false;
-        for (const base of integrationBranches) {
-          const exists = await runCommand(
-            'git',
-            ['rev-parse', '--verify', `refs/heads/${base}`],
-            projectRoot,
-          );
-          if (exists.exitCode !== 0) continue;
-          const r = await runCommand(
-            'git',
-            ['merge-base', '--is-ancestor', sha, base],
-            projectRoot,
-          );
-          if (r.exitCode === 0) {
-            onIntegration = true;
-            break;
-          }
-        }
-        if (!onIntegration) {
+        const reachableIntegrationBranch = await findReachableIntegrationBranch(
+          sha,
+          integrationBranches,
+          projectRoot,
+        );
+        if (reachableIntegrationBranch === null) {
           const branchList = integrationBranches.join(', ');
           return {
             ok: false,
