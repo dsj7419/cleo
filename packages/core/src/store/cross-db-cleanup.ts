@@ -402,15 +402,18 @@ async function recordExistsInTasksDbFresh(
     }
   };
 
-  if (sharedPath != null && sharedPath !== preferredPath) {
+  const candidatePaths =
+    sharedPath != null && sharedPath !== preferredPath
+      ? [preferredPath, sharedPath]
+      : [preferredPath];
+  for (const dbPath of candidatePaths) {
     try {
-      if (probePath(preferredPath)) return true;
+      if (probePath(dbPath)) return true;
     } catch {
-      return probePath(sharedPath);
+      // A stale candidate may disappear between path discovery and the read-only open.
     }
-    return probePath(sharedPath);
   }
-  return probePath(preferredPath);
+  return false;
 }
 
 /**
