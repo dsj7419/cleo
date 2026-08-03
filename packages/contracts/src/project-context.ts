@@ -91,6 +91,26 @@ export interface ProjectContext {
     commonPatterns?: string[];
     avoidPatterns?: string[];
   };
+  /** Lint command override (T12026). */
+  lint?: {
+    /** Command to run static analysis / lint checks. */
+    command?: string;
+  };
+  /** Type-check command override (T12026). */
+  typecheck?: {
+    /** Command to run type checking. */
+    command?: string;
+  };
+  /** Audit command override (T12026). */
+  audit?: {
+    /** Command to run dependency/module audit checks. */
+    command?: string;
+  };
+  /** Security-scan command override (T12026). JSON key is `security-scan`. */
+  'security-scan'?: {
+    /** Command to run security vulnerability scanning. */
+    command?: string;
+  };
 }
 
 /**

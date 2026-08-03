@@ -95,11 +95,12 @@ export const addCommand = defineCommand({
     },
     parent: {
       type: 'string',
-      description: 'Parent task ID (makes this task a subtask)',
+      description:
+        'Parent task ID (makes this task a subtask). Pass "none" to suppress focus-task inference — the task will still require a valid parent per hierarchy policy (T11293).',
     },
     'parent-id': {
       type: 'string',
-      description: 'Alias for --parent (legacy parentId compatibility)',
+      description: 'Alias for --parent. Pass "none" to suppress focus-task inference (T11293).',
     },
     size: {
       type: 'string',
@@ -353,8 +354,15 @@ export const addCommand = defineCommand({
     if (args.status !== undefined) params['status'] = args.status;
     if (args.priority !== undefined) params['priority'] = args.priority;
     if (args.type !== undefined) params['type'] = args.type;
-    if (args.parent !== undefined) params['parent'] = args.parent;
-    if (args['parent-id'] !== undefined) params['parent'] = params['parent'] ?? args['parent-id'];
+    // T11293: `--parent none` is a sentinel that suppresses session-based
+    // parent inference. It MUST NOT be forwarded as a literal parent ID.
+    // Both --parent and --parent-id aliases accept the none sentinel.
+    const parentArg = args.parent as string | undefined;
+    const parentIdArg = args['parent-id'] as string | undefined;
+    const resolvedParent = parentArg ?? parentIdArg;
+    if (resolvedParent !== undefined && resolvedParent !== 'none') {
+      params['parent'] = resolvedParent;
+    }
     if (args.size !== undefined) params['size'] = args.size;
     if (args.phase !== undefined) params['phase'] = args.phase;
     if (args['add-phase'] !== undefined) params['addPhase'] = args['add-phase'];
@@ -408,13 +416,19 @@ export const addCommand = defineCommand({
     // T1490: Delegate file inference, acceptance parsing, and parent inference
     // to Core so the CLI layer stays a thin parse-and-delegate shell.
     // Stderr output (warnings, notices) remains here in the CLI layer.
+    //
+    // T11293: when `--parent none` (or `--parent-id none`) is passed, forward
+    // the sentinel so inferTaskAddParams skips the session-based auto-parent
+    // heuristic.
+    const parentSentinel = resolvedParent === 'none' ? 'none' : undefined;
+    const parentRawForInference = (params['parent'] as string | undefined) ?? parentSentinel;
     const inferred = await inferTaskAddParams(getProjectRoot(), {
       title: args.title,
       description: (args.description ?? args.desc) as string | undefined,
       filesInfer: args['files-infer'] as boolean | undefined,
       filesRaw: args.files as string | undefined,
       acceptanceRaw: args.acceptance as string | undefined,
-      parentRaw: params['parent'] as string | undefined,
+      parentRaw: parentRawForInference,
       type: params['type'] as string | undefined,
     });
 

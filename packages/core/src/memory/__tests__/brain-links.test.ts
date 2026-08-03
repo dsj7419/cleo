@@ -5,7 +5,7 @@
  * @epic T5149
  */
 
-import { mkdir, mkdtemp, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, rename, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -76,6 +76,25 @@ describe('Brain Memory Links', () => {
 
       expect(first.memoryId).toBe(second.memoryId);
       expect(first.taskId).toBe(second.taskId);
+    });
+
+    it('validates through a retained task handle after its database path moves', async () => {
+      const { linkMemoryToTask } = await import('../brain-links.js');
+      const { getDb } = await import('../../store/sqlite.js');
+      const tasksDb = await getDb(tempDir);
+      const dbPath = tasksDb.$client.location();
+      await rename(dbPath, `${dbPath}.moved`);
+
+      const link = await linkMemoryToTask(
+        tempDir,
+        'decision',
+        'D-retained',
+        'T1000',
+        'produced_by',
+        tasksDb,
+      );
+
+      expect(link.taskId).toBe('T1000');
     });
 
     it('should throw on empty memoryId or taskId', async () => {
