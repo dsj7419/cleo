@@ -8,7 +8,7 @@
  * @epic T5149
  */
 
-import { taskExistsInTasksDb } from '../store/cross-db-cleanup.js';
+import { taskExistsInTasksDb, taskExistsInTasksDbFresh } from '../store/cross-db-cleanup.js';
 import { getBrainAccessor } from '../store/memory-accessor.js';
 import type {
   BRAIN_LINK_TYPES,
@@ -34,7 +34,14 @@ export interface BulkLinkEntry {
 /**
  * Link a memory entry to a task.
  *
- * @task T5156
+ * @param projectRoot - Project root containing the task and brain databases.
+ * @param memoryType - Type of memory entry to link.
+ * @param memoryId - Memory entry identifier.
+ * @param taskId - Task identifier to validate and link.
+ * @param linkType - Relationship represented by the link.
+ * @param tasksDbOverride - Existing task handle retained by a multi-step caller.
+ * @returns The existing or newly created memory link.
+ * @task T5156 T12034
  */
 export async function linkMemoryToTask(
   projectRoot: string,
@@ -42,14 +49,29 @@ export async function linkMemoryToTask(
   memoryId: string,
   taskId: string,
   linkType: LinkType,
+  tasksDbOverride?: Awaited<ReturnType<typeof getDb>>,
 ): Promise<BrainMemoryLinkRow> {
   if (!memoryId || !taskId) {
     throw new Error('memoryId and taskId are required');
   }
 
   // Write-guard: reject stale task IDs before creating cross-db reference
-  const tasksDb = await getDb(projectRoot);
-  if (!(await taskExistsInTasksDb(taskId, tasksDb))) {
+  let taskExists = false;
+  let tasksDb: Awaited<ReturnType<typeof getDb>> | null = null;
+  try {
+    tasksDb = tasksDbOverride ?? (await getDb(projectRoot));
+    taskExists = await taskExistsInTasksDb(taskId, tasksDb);
+  } catch {
+    // The independent probe below handles a closed shared handle.
+  }
+  if (!taskExists) {
+    try {
+      taskExists = await taskExistsInTasksDbFresh(taskId, tasksDb, projectRoot);
+    } catch {
+      // A failed confirmation remains absent (best-effort soft FK guard).
+    }
+  }
+  if (!taskExists) {
     throw new Error(
       `Write-guard: task ${taskId} does not exist in tasks.db — refusing to create brain link`,
     );
