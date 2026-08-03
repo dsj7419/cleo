@@ -406,21 +406,27 @@ async function recordExistsInTasksDbFresh(
     sharedPath != null && sharedPath !== preferredPath
       ? [preferredPath, sharedPath]
       : [preferredPath];
+  let completedProbe = false;
   for (const dbPath of candidatePaths) {
     try {
-      if (probePath(dbPath)) return true;
+      const exists = probePath(dbPath);
+      completedProbe = true;
+      if (exists) return true;
     } catch {
       // A stale candidate may disappear between path discovery and the read-only open.
     }
   }
   if (sharedNative?.isOpen) {
     try {
-      return projectRecordExists(sharedNative, id, tableNames);
+      const exists = projectRecordExists(sharedNative, id, tableNames);
+      completedProbe = true;
+      if (exists) return true;
     } catch {
       // The caller's handle may close after the liveness check.
     }
   }
-  return false;
+  if (completedProbe) return false;
+  throw new Error(`Unable to verify project record ${id}: no readable tasks database candidate`);
 }
 
 /**
@@ -436,6 +442,7 @@ async function recordExistsInTasksDbFresh(
  * @param tasksDb - Shared tasks handle whose native path anchors the probe when available.
  * @param cwd - Project root used to resolve the project-scope cleo.db.
  * @returns True when the session is present in any live project session table.
+ * @throws Error when no database candidate can be read, distinguishing unavailable validation from absence.
  * @task T12034
  */
 export async function sessionExistsInTasksDbFresh(
@@ -456,6 +463,7 @@ export async function sessionExistsInTasksDbFresh(
  * @param tasksDb - Shared tasks handle used only when no project root is available.
  * @param cwd - Project root used to resolve the authoritative project database.
  * @returns True when the task exists in either supported project table.
+ * @throws Error when no database candidate can be read, distinguishing unavailable validation from absence.
  * @task T12034
  */
 export async function taskExistsInTasksDbFresh(

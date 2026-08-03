@@ -80,22 +80,24 @@ export async function linkMemoryToTask(
   }
 
   // Write-guard: reject stale task IDs before creating cross-db reference
-  let taskExists = false;
+  let taskExists: boolean | undefined;
   let tasksDb: Awaited<ReturnType<typeof getDb>> | null = null;
   try {
     tasksDb = tasksDbOverride ?? (await getDb(projectRoot));
-    taskExists = await taskExistsInTasksDb(taskId, tasksDb);
+    if (await taskExistsInTasksDb(taskId, tasksDb)) {
+      taskExists = true;
+    }
   } catch {
     // The independent probe below handles a closed shared handle.
   }
-  if (!taskExists) {
+  if (taskExists !== true) {
     try {
       taskExists = await taskExistsInTasksDbFresh(taskId, tasksDb, projectRoot);
     } catch {
-      // A failed confirmation remains absent (best-effort soft FK guard).
+      // Validation unavailable is not proof of absence. Preserve the link.
     }
   }
-  if (!taskExists) {
+  if (taskExists === false) {
     throw new Error(
       `Write-guard: task ${taskId} does not exist in tasks.db — refusing to create brain link`,
     );
