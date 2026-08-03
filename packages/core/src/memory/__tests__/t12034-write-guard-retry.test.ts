@@ -257,6 +257,38 @@ describe('T12034 — write-guard retry on transient lookup failure', () => {
     ).rejects.toThrow('no readable tasks database candidate');
   });
 
+  it('retries a fresh probe while a committed session becomes visible', async () => {
+    await runInProjectScope(async () => {
+      const actual = await vi.importActual<typeof import('../../store/cross-db-cleanup.js')>(
+        '../../store/cross-db-cleanup.js',
+      );
+      const { resolveDualScopeDbPath } = await import('../../store/dual-scope-db.js');
+      const { openNativeDatabase } = await import('../../store/sqlite-native.js');
+      const dbPath = resolveDualScopeDbPath('project', tempDir);
+      const insertion = new Promise<void>((resolve, reject) => {
+        setTimeout(() => {
+          let insertionDb: import('../../store/sqlite-native.js').DatabaseSync | null = null;
+          try {
+            insertionDb = openNativeDatabase(dbPath);
+            insertionDb
+              .prepare('INSERT INTO sessions (id, name, status) VALUES (?, ?, ?)')
+              .run('S-delayed', 'delayed-session', 'active');
+            resolve();
+          } catch (err) {
+            reject(err instanceof Error ? err : new Error(String(err)));
+          } finally {
+            insertionDb?.close();
+          }
+        }, 5);
+      });
+
+      await expect(actual.sessionExistsInTasksDbFresh('S-delayed', null, tempDir)).resolves.toBe(
+        true,
+      );
+      await insertion;
+    });
+  });
+
   it('preserves a task link when validation is unavailable', async () => {
     await runInProjectScope(async () => {
       const { linkMemoryToTask } = await import('../brain-links.js');

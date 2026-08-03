@@ -344,6 +344,9 @@ interface TasksDbWithNativeClient {
   $client?: import('./sqlite-native.js').DatabaseSync;
 }
 
+const FRESH_PROBE_ATTEMPTS = 3;
+const FRESH_PROBE_RETRY_DELAY_MS = 25;
+
 function projectRecordExists(
   probe: import('./sqlite-native.js').DatabaseSync,
   id: string,
@@ -407,22 +410,27 @@ async function recordExistsInTasksDbFresh(
       ? [preferredPath, sharedPath]
       : [preferredPath];
   let completedProbe = false;
-  for (const dbPath of candidatePaths) {
-    try {
-      const exists = probePath(dbPath);
-      completedProbe = true;
-      if (exists) return true;
-    } catch {
-      // A stale candidate may disappear between path discovery and the read-only open.
+  for (let attempt = 0; attempt < FRESH_PROBE_ATTEMPTS; attempt += 1) {
+    for (const dbPath of candidatePaths) {
+      try {
+        const exists = probePath(dbPath);
+        completedProbe = true;
+        if (exists) return true;
+      } catch {
+        // A stale candidate may disappear between path discovery and the read-only open.
+      }
     }
-  }
-  if (sharedNative?.isOpen) {
-    try {
-      const exists = projectRecordExists(sharedNative, id, tableNames);
-      completedProbe = true;
-      if (exists) return true;
-    } catch {
-      // The caller's handle may close after the liveness check.
+    if (sharedNative?.isOpen) {
+      try {
+        const exists = projectRecordExists(sharedNative, id, tableNames);
+        completedProbe = true;
+        if (exists) return true;
+      } catch {
+        // The caller's handle may close after the liveness check.
+      }
+    }
+    if (attempt + 1 < FRESH_PROBE_ATTEMPTS) {
+      await new Promise<void>((resolve) => setTimeout(resolve, FRESH_PROBE_RETRY_DELAY_MS));
     }
   }
   if (completedProbe) return false;
