@@ -806,11 +806,16 @@ async function gitShowFiles(sha: string, projectRoot: string): Promise<string[]>
  *   - leading `./` prefix
  *   - trailing slashes (directories listed in AC)
  *   - case-insensitive filesystems (rare on Linux/CI but defensive)
+ *   - monorepo nesting: AC sub-path `scripts/x.py` matches diff path
+ *     `plugins/<name>/scripts/x.py` via segment-boundary suffix (T12029).
+ *     The `/${ac}` guard prevents partial-name false positives like
+ *     `ipts/x.py` matching `scripts/x.py`.
  *
  * @internal
  * @task T9245
+ * @task T12029
  */
-function diffIntersectsAc(diffFiles: string[], acFiles: string[]): boolean {
+export function diffIntersectsAc(diffFiles: string[], acFiles: string[]): boolean {
   const norm = (s: string): string => s.replace(/^\.\//, '').replace(/\/+$/, '').toLowerCase();
   const acSet = new Set(acFiles.map(norm));
   const acPrefixes = acFiles.map(norm).filter((p) => !p.includes('.') || p.endsWith('/'));
@@ -821,6 +826,19 @@ function diffIntersectsAc(diffFiles: string[], acFiles: string[]): boolean {
     // diff touches `packages/core/src/tasks/evidence.ts`.
     for (const prefix of acPrefixes) {
       if (nf.startsWith(`${prefix}/`)) return true;
+    }
+    // T12029: Segment-boundary suffix match — AC `scripts/x.py`
+    // is satisfied by diff `plugins/name/scripts/x.py` (monorepo nesting).
+    // The `/${ac}` guard ensures the AC path starts at a slash boundary
+    // in the diff path, preventing `ipts/x.py`-style false positives.
+    //
+    // Single-segment AC paths (no `/` — e.g. `package.json`, `setup.py`)
+    // are EXCLUDED from suffix matching.  A bare `package.json` must only
+    // match via exact comparison; suffix-matching it would accept EVERY
+    // `packages/*/package.json` in a monorepo, weakening anti-fabrication
+    // evidence (pre-merge review T12029).
+    for (const ac of acSet) {
+      if (ac?.includes('/') && nf.endsWith(`/${ac}`)) return true;
     }
   }
   return false;
