@@ -153,24 +153,26 @@ export async function observeBrain(
   if (!_skipQueue) {
     let validatedSourceSessionId = sourceSessionId;
     if (sourceSessionId) {
-      let sessionExists = false;
+      let sessionExists: boolean | undefined;
       let tasksDb: Awaited<ReturnType<typeof getDb>> | null = null;
       try {
         tasksDb = await getDb(projectRoot);
-        sessionExists = await sessionExistsInTasksDb(sourceSessionId, tasksDb);
+        if (await sessionExistsInTasksDb(sourceSessionId, tasksDb)) {
+          sessionExists = true;
+        }
       } catch {
         // The independent probe below handles a closed shared handle.
       }
-      if (!sessionExists) {
+      if (sessionExists !== true) {
         try {
           // Validate before crossing the worker boundary, while the caller's
           // project/worktree path context is still authoritative (T12034).
           sessionExists = await sessionExistsInTasksDbFresh(sourceSessionId, tasksDb, projectRoot);
         } catch {
-          // A failed confirmation remains absent (best-effort soft FK guard).
+          // Validation unavailable is not proof of absence. Preserve provenance.
         }
       }
-      if (!sessionExists) validatedSourceSessionId = undefined;
+      if (sessionExists === false) validatedSourceSessionId = undefined;
     }
     const { enqueueBrainWrite } = await import('../brain-writer-thread.js');
     const result = await enqueueBrainWrite({

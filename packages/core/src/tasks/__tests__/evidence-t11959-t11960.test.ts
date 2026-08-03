@@ -391,3 +391,236 @@ describe('DHQ-083 companion (b) — merge-commit first-parent diff', () => {
     }
   });
 });
+
+// =============================================================================
+// T12028 (gh#1116) — integration-branch reachability fallback
+// =============================================================================
+
+describe('T12028 — integration-branch reachability fallback', () => {
+  let env: TestDbEnv;
+  const origEnv = { ...process.env };
+
+  beforeEach(async () => {
+    env = await createTestDb();
+    initGitRepo(env.tempDir);
+    gitCommitFile(env.tempDir, 'README.md', 'init\n', 'init');
+    // Clean slate: remove any test pollution.
+    delete process.env.CLEO_INTEGRATION_BRANCHES;
+  });
+
+  afterEach(async () => {
+    process.env = { ...origEnv };
+    delete process.env.CLEO_INTEGRATION_BRANCHES;
+    await env.cleanup();
+    resetDbState();
+  });
+
+  it('REJECTS commit on an unrelated branch when no config is set', async () => {
+    // Seed task.
+    await seedTasks(env.accessor, [
+      {
+        id: 'T_DEV_BRANCH',
+        title: 'dev-branch-test',
+        description: 'commit on development should fail',
+        status: 'pending',
+        priority: 'medium',
+        files: ['src/dev-feature.ts'],
+        acceptance: ['src/dev-feature.ts must implement feature'],
+      } as Partial<Task> & { id: string },
+    ]);
+
+    // Create an unrelated branch and commit on it.
+    git(env.tempDir, ['checkout', '-b', 'feature-only']);
+    const sha = gitCommitFile(
+      env.tempDir,
+      'src/dev-feature.ts',
+      'export const dev = 1;\n',
+      'feat(T_DEV_BRANCH): feature on development',
+    );
+
+    // Switch back to main.
+    git(env.tempDir, ['checkout', 'main']);
+
+    // No task branch or override means the unrelated branch is rejected.
+    const r = await validateAtom({ kind: 'commit', sha }, env.tempDir, 'T_DEV_BRANCH');
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.codeName).toBe('E_EVIDENCE_INVALID');
+    }
+  });
+
+  it('ACCEPTS commit on development using the default integration branches', async () => {
+    await seedTasks(env.accessor, [
+      {
+        id: 'T_DEV_DEFAULT',
+        title: 'dev-default-test',
+        description: 'commit on default development branch',
+        status: 'pending',
+        priority: 'medium',
+        files: ['src/dev-default.ts'],
+        acceptance: ['src/dev-default.ts must implement feature'],
+      } as Partial<Task> & { id: string },
+    ]);
+
+    git(env.tempDir, ['checkout', '-b', 'development']);
+    const sha = gitCommitFile(
+      env.tempDir,
+      'src/dev-default.ts',
+      'export const devDefault = 1;\n',
+      'feat(T_DEV_DEFAULT): feature on development',
+    );
+    git(env.tempDir, ['checkout', 'main']);
+
+    const r = await validateAtom({ kind: 'commit', sha }, env.tempDir, 'T_DEV_DEFAULT');
+    expect(r.ok).toBe(true);
+  });
+
+  it('ACCEPTS commit on development branch when CLEO_INTEGRATION_BRANCHES env var is set', async () => {
+    await seedTasks(env.accessor, [
+      {
+        id: 'T_DEV_ENV',
+        title: 'dev-env-test',
+        description: 'commit on development with env var',
+        status: 'pending',
+        priority: 'medium',
+        files: ['src/dev-env.ts'],
+        acceptance: ['src/dev-env.ts must implement feature'],
+      } as Partial<Task> & { id: string },
+    ]);
+
+    git(env.tempDir, ['checkout', '-b', 'development']);
+    const sha = gitCommitFile(
+      env.tempDir,
+      'src/dev-env.ts',
+      'export const devEnv = 1;\n',
+      'feat(T_DEV_ENV): feature on development',
+    );
+    git(env.tempDir, ['checkout', 'main']);
+
+    // Override via env var — should accept.
+    process.env.CLEO_INTEGRATION_BRANCHES = 'development';
+    const r = await validateAtom({ kind: 'commit', sha }, env.tempDir, 'T_DEV_ENV');
+    expect(r.ok).toBe(true);
+  });
+
+  it('ACCEPTS a configured remote-only integration branch', async () => {
+    await seedTasks(env.accessor, [
+      {
+        id: 'T_REMOTE_DEV',
+        title: 'remote-dev-test',
+        description: 'commit on remote-only integration branch',
+        status: 'pending',
+        priority: 'medium',
+        files: ['src/remote-dev.ts'],
+        acceptance: ['src/remote-dev.ts must implement feature'],
+      } as Partial<Task> & { id: string },
+    ]);
+
+    git(env.tempDir, ['checkout', '-b', 'integration']);
+    const sha = gitCommitFile(
+      env.tempDir,
+      'src/remote-dev.ts',
+      'export const remoteDev = 1;\n',
+      'feat(T_REMOTE_DEV): feature on remote integration branch',
+    );
+    git(env.tempDir, ['update-ref', 'refs/remotes/origin/integration', sha]);
+    git(env.tempDir, ['checkout', 'main']);
+    git(env.tempDir, ['branch', '-D', 'integration']);
+
+    process.env.CLEO_INTEGRATION_BRANCHES = 'integration';
+    const r = await validateAtom({ kind: 'commit', sha }, env.tempDir, 'T_REMOTE_DEV');
+    expect(r.ok).toBe(true);
+  });
+
+  it('ACCEPTS commit on development branch when project-context release.integrationBranches is set', async () => {
+    await seedTasks(env.accessor, [
+      {
+        id: 'T_DEV_CTX',
+        title: 'dev-context-test',
+        description: 'commit on development with project-context',
+        status: 'pending',
+        priority: 'medium',
+        files: ['src/dev-ctx.ts'],
+        acceptance: ['src/dev-ctx.ts must implement feature'],
+      } as Partial<Task> & { id: string },
+    ]);
+
+    git(env.tempDir, ['checkout', '-b', 'development']);
+    const sha = gitCommitFile(
+      env.tempDir,
+      'src/dev-ctx.ts',
+      'export const devCtx = 1;\n',
+      'feat(T_DEV_CTX): feature on development',
+    );
+    git(env.tempDir, ['checkout', 'main']);
+
+    // Write project-context.json with integrationBranches.
+    mkdirSync(join(env.tempDir, '.cleo'), { recursive: true });
+    writeFileSync(
+      join(env.tempDir, '.cleo', 'project-context.json'),
+      JSON.stringify({ release: { integrationBranches: ['development'] } }),
+    );
+
+    const r = await validateAtom({ kind: 'commit', sha }, env.tempDir, 'T_DEV_CTX');
+    expect(r.ok).toBe(true);
+  });
+
+  it('uses the environment override before project-context integration branches', async () => {
+    await seedTasks(env.accessor, [
+      {
+        id: 'T_DEV_PRECEDENCE',
+        title: 'dev-precedence-test',
+        description: 'environment integration branches take precedence',
+        status: 'pending',
+        priority: 'medium',
+        files: ['src/dev-precedence.ts'],
+        acceptance: ['src/dev-precedence.ts must implement feature'],
+      } as Partial<Task> & { id: string },
+    ]);
+
+    git(env.tempDir, ['checkout', '-b', 'development']);
+    const sha = gitCommitFile(
+      env.tempDir,
+      'src/dev-precedence.ts',
+      'export const devPrecedence = 1;\n',
+      'feat(T_DEV_PRECEDENCE): feature on development',
+    );
+    git(env.tempDir, ['checkout', 'main']);
+    mkdirSync(join(env.tempDir, '.cleo'), { recursive: true });
+    writeFileSync(
+      join(env.tempDir, '.cleo', 'project-context.json'),
+      JSON.stringify({ release: { integrationBranches: ['development'] } }),
+    );
+    process.env.CLEO_INTEGRATION_BRANCHES = 'integration';
+
+    const r = await validateAtom({ kind: 'commit', sha }, env.tempDir, 'T_DEV_PRECEDENCE');
+    expect(r.ok).toBe(false);
+  });
+
+  it('still ACCEPTS commit reachable from main (backward compat with existing DHQ-083 behavior)', async () => {
+    await seedTasks(env.accessor, [
+      {
+        id: 'T_MAIN_BACK',
+        title: 'main-backward-compat',
+        description: 'commit on main still works',
+        status: 'pending',
+        priority: 'medium',
+        files: ['src/main-back.ts'],
+        acceptance: ['src/main-back.ts must implement feature'],
+      } as Partial<Task> & { id: string },
+    ]);
+
+    mkdirSync(join(env.tempDir, 'src'), { recursive: true });
+    const sha = gitCommitFile(
+      env.tempDir,
+      'src/main-back.ts',
+      'export const back = 1;\n',
+      'feat(T_MAIN_BACK): on main',
+    );
+
+    // No task branch, no env var, no project-context — main is in the
+    // default integration-branch set.
+    const r = await validateAtom({ kind: 'commit', sha }, env.tempDir, 'T_MAIN_BACK');
+    expect(r.ok).toBe(true);
+  });
+});

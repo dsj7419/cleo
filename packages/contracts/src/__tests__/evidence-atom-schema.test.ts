@@ -15,6 +15,7 @@
 
 import { describe, expect, it } from 'vitest';
 import {
+  EVIDENCE_ATOM_KINDS,
   type EvidenceAtomInput,
   EvidenceAtomSchema,
   EvidenceParseError,
@@ -27,6 +28,26 @@ import {
 import type { VerificationGate } from '../task.js';
 
 describe('EvidenceAtomSchema (T10337)', () => {
+  it('EVIDENCE_ATOM_KINDS covers every discriminated union member (T12030)', () => {
+    // Verify the shared constant is in sync with the zod discriminated union.
+    // The discriminated union keys are 'commit','files','test-run','tool','url',
+    // 'note','decision','pr','loc-drop','callsite-coverage','satisfies'.
+    const expected = [
+      'commit',
+      'files',
+      'test-run',
+      'tool',
+      'url',
+      'note',
+      'decision',
+      'pr',
+      'loc-drop',
+      'callsite-coverage',
+      'satisfies',
+    ];
+    expect([...EVIDENCE_ATOM_KINDS].sort()).toEqual(expected.sort());
+  });
+
   // ─── Per-atom-prefix parse coverage ───────────────────────────────────────
 
   describe('commit atom', () => {
@@ -304,6 +325,152 @@ describe('parseEvidenceString (T10337)', () => {
     expect(() => parseEvidenceString('callsite-coverage:fn')).toThrow(EvidenceParseError);
     expect(() => parseEvidenceString('callsite-coverage::p.ts')).toThrow(EvidenceParseError);
     expect(() => parseEvidenceString('callsite-coverage:fn:')).toThrow(EvidenceParseError);
+  });
+
+  // ─── T12030: semicolons inside note: payloads ────────────────────────────
+
+  it('preserves semicolons inside note payloads (T12030)', () => {
+    const atoms = parseEvidenceString('note:hello; world');
+    expect(atoms).toEqual([{ kind: 'note', note: 'hello; world' }]);
+  });
+
+  it('preserves multiple semicolons inside note payloads (T12030)', () => {
+    const atoms = parseEvidenceString(
+      'note:AC1 verified via satisfy; AC2 tool:lint; AC3 documented in files',
+    );
+    expect(atoms).toEqual([
+      {
+        kind: 'note',
+        note: 'AC1 verified via satisfy; AC2 tool:lint; AC3 documented in files',
+      },
+    ]);
+  });
+
+  it('splits note at known kind boundary while preserving internal semicolons (T12030)', () => {
+    const atoms = parseEvidenceString('note:hello; world; commit:abc1234; tool:lint');
+    expect(atoms).toEqual([
+      { kind: 'note', note: 'hello; world' },
+      { kind: 'commit', sha: 'abc1234' },
+      { kind: 'tool', tool: 'lint' },
+    ]);
+  });
+
+  it('splits mixed note/hard-evidence at known boundaries (T12030)', () => {
+    const atoms = parseEvidenceString(
+      'note:multiple; semicolons; inside note; commit:def5678; files:src/a.ts,src/b.ts',
+    );
+    expect(atoms).toEqual([
+      { kind: 'note', note: 'multiple; semicolons; inside note' },
+      { kind: 'commit', sha: 'def5678' },
+      { kind: 'files', paths: ['src/a.ts', 'src/b.ts'] },
+    ]);
+  });
+
+  it('preserves semicolons in note when followed by unknown-kind-like text (T12030)', () => {
+    // mystery is not a known kind — the text stays inside the note.
+    const atoms = parseEvidenceString('note:look at mystery:foo for details');
+    expect(atoms).toEqual([{ kind: 'note', note: 'look at mystery:foo for details' }]);
+  });
+
+  it('rejects unknown kinds when they appear as standalone atoms (T12030)', () => {
+    expect(() => parseEvidenceString('mystery:foo')).toThrow(EvidenceParseError);
+    expect(() => parseEvidenceString('unknownkind:bar')).toThrow(EvidenceParseError);
+  });
+
+  it('absorbs unknown-kind-like text into preceding note (T12030)', () => {
+    // unknownkind is not a recognized boundary — it stays inside the note.
+    const atoms = parseEvidenceString('note:hello; unknownkind:bar');
+    expect(atoms).toEqual([{ kind: 'note', note: 'hello; unknownkind:bar' }]);
+  });
+
+  it('splits note at state:MERGED boundary (T12030)', () => {
+    const atoms = parseEvidenceString('note:merged; everything OK; pr:357; state:MERGED');
+    expect(atoms).toEqual([
+      { kind: 'note', note: 'merged; everything OK' },
+      { kind: 'pr', prNumber: 357 },
+    ]);
+  });
+
+  it('preserves trailing semicolons inside note payloads as punctuation (T12030)', () => {
+    expect(parseEvidenceString('note:trailing;')).toEqual([{ kind: 'note', note: 'trailing;' }]);
+    expect(parseEvidenceString('note:trailing; ')).toEqual([{ kind: 'note', note: 'trailing;' }]);
+    expect(parseEvidenceString('note:multiple;; semis')).toEqual([
+      { kind: 'note', note: 'multiple;; semis' },
+    ]);
+  });
+
+  // ─── T12030 compatibility: trailing / repeated semicolons on non-note atoms
+
+  it('strips trailing ; from commit atom (T12030)', () => {
+    expect(parseEvidenceString('commit:abc1234;')).toEqual([{ kind: 'commit', sha: 'abc1234' }]);
+  });
+
+  it('strips trailing ; from files atom (T12030)', () => {
+    expect(parseEvidenceString('files:a.ts,b.ts;')).toEqual([
+      { kind: 'files', paths: ['a.ts', 'b.ts'] },
+    ]);
+  });
+
+  it('strips trailing ; from pr atom (T12030)', () => {
+    expect(parseEvidenceString('pr:357;')).toEqual([{ kind: 'pr', prNumber: 357 }]);
+  });
+
+  it('strips trailing ; from tool atom (T12030)', () => {
+    expect(parseEvidenceString('tool:lint;')).toEqual([{ kind: 'tool', tool: 'lint' }]);
+  });
+
+  it('strips trailing ; from test-run atom (T12030)', () => {
+    expect(parseEvidenceString('test-run:/tmp/v.json;')).toEqual([
+      { kind: 'test-run', path: '/tmp/v.json' },
+    ]);
+  });
+
+  it('strips trailing ; from url atom (T12030)', () => {
+    expect(parseEvidenceString('url:https://example.com;')).toEqual([
+      { kind: 'url', url: 'https://example.com' },
+    ]);
+  });
+
+  it('strips trailing ; from decision atom (T12030)', () => {
+    expect(parseEvidenceString('decision:D-arch-001;')).toEqual([
+      { kind: 'decision', decisionId: 'D-arch-001' },
+    ]);
+  });
+
+  it('tolerates repeated ;; across non-note atoms (T12030)', () => {
+    expect(parseEvidenceString('commit:abc1234;;tool:test')).toEqual([
+      { kind: 'commit', sha: 'abc1234' },
+      { kind: 'tool', tool: 'test' },
+    ]);
+  });
+
+  it('tolerates double ;; between commit and files (T12030)', () => {
+    expect(parseEvidenceString('commit:abc1234;;files:a.ts,b.ts')).toEqual([
+      { kind: 'commit', sha: 'abc1234' },
+      { kind: 'files', paths: ['a.ts', 'b.ts'] },
+    ]);
+  });
+
+  it('tolerates trailing ;; after multi-atom string (T12030)', () => {
+    expect(parseEvidenceString('commit:abc1234;tool:test;;')).toEqual([
+      { kind: 'commit', sha: 'abc1234' },
+      { kind: 'tool', tool: 'test' },
+    ]);
+  });
+
+  it('preserves mid-payload ; in url atom (T12030)', () => {
+    expect(parseEvidenceString('url:https://example.com/path;param=value')).toEqual([
+      { kind: 'url', url: 'https://example.com/path;param=value' },
+    ]);
+  });
+
+  it('preserves internal ; in note while stripping on adjacent non-note atoms (T12030)', () => {
+    const atoms = parseEvidenceString('note:hello; world;commit:def5678;;tool:lint;');
+    expect(atoms).toEqual([
+      { kind: 'note', note: 'hello; world' },
+      { kind: 'commit', sha: 'def5678' },
+      { kind: 'tool', tool: 'lint' },
+    ]);
   });
 
   it('round-trip: every parseEvidenceString output validates under EvidenceAtomSchema', () => {
