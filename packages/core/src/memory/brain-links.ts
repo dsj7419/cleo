@@ -23,6 +23,30 @@ import { getDb } from '../store/sqlite.js';
 type MemoryType = (typeof BRAIN_MEMORY_TYPES)[number];
 type LinkType = (typeof BRAIN_LINK_TYPES)[number];
 
+async function createMemoryTaskLink(
+  projectRoot: string,
+  memoryType: MemoryType,
+  memoryId: string,
+  taskId: string,
+  linkType: LinkType,
+): Promise<BrainMemoryLinkRow> {
+  const accessor = await getBrainAccessor(projectRoot);
+
+  const existingLinks = await accessor.getLinksForMemory(memoryType, memoryId);
+  const duplicate = existingLinks.find((l) => l.taskId === taskId && l.linkType === linkType);
+  if (duplicate) return duplicate;
+
+  await accessor.addLink({
+    memoryType,
+    memoryId,
+    taskId,
+    linkType,
+  });
+
+  const links = await accessor.getLinksForMemory(memoryType, memoryId);
+  return links.find((l) => l.taskId === taskId && l.linkType === linkType)!;
+}
+
 /** A link to be created in bulk. */
 export interface BulkLinkEntry {
   memoryType: MemoryType;
@@ -77,26 +101,35 @@ export async function linkMemoryToTask(
     );
   }
 
-  const accessor = await getBrainAccessor(projectRoot);
+  return createMemoryTaskLink(projectRoot, memoryType, memoryId, taskId, linkType);
+}
 
-  // Check if link already exists
-  const existingLinks = await accessor.getLinksForMemory(memoryType, memoryId);
-  const duplicate = existingLinks.find((l) => l.taskId === taskId && l.linkType === linkType);
-
-  if (duplicate) {
-    return duplicate;
+/**
+ * Link memory to a task whose existence was validated before a multi-write batch.
+ *
+ * This preserves the soft-FK decision across queued BRAIN writes that may replace
+ * the caller's shared project handle. Callers MUST validate the task immediately
+ * before starting the batch; general callers should use {@link linkMemoryToTask}.
+ *
+ * @param projectRoot - Project root containing the consolidated database.
+ * @param memoryType - Type of memory entry to link.
+ * @param memoryId - Memory entry identifier.
+ * @param taskId - Prevalidated task identifier.
+ * @param linkType - Relationship represented by the link.
+ * @returns The existing or newly created memory link.
+ * @task T12034
+ */
+export async function linkPrevalidatedMemoryToTask(
+  projectRoot: string,
+  memoryType: MemoryType,
+  memoryId: string,
+  taskId: string,
+  linkType: LinkType,
+): Promise<BrainMemoryLinkRow> {
+  if (!memoryId || !taskId) {
+    throw new Error('memoryId and taskId are required');
   }
-
-  await accessor.addLink({
-    memoryType,
-    memoryId,
-    taskId,
-    linkType,
-  });
-
-  // Return the created link
-  const links = await accessor.getLinksForMemory(memoryType, memoryId);
-  return links.find((l) => l.taskId === taskId && l.linkType === linkType)!;
+  return createMemoryTaskLink(projectRoot, memoryType, memoryId, taskId, linkType);
 }
 
 /**
