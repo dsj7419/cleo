@@ -338,8 +338,66 @@ interface SessionPresenceRow {
   present: number;
 }
 
+type ProjectRecordTable = 'sessions' | 'tasks_sessions' | 'tasks' | 'tasks_tasks';
+
 interface TasksDbWithNativeClient {
   $client?: import('./sqlite-native.js').DatabaseSync;
+}
+
+function projectRecordExists(
+  probe: import('./sqlite-native.js').DatabaseSync,
+  id: string,
+  tableNames: readonly [ProjectRecordTable, ProjectRecordTable],
+): boolean {
+  const availableRows = probe
+    .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name IN (?, ?)")
+    .all(...tableNames);
+  const availableNames = new Set<ProjectRecordTable>();
+  for (const row of availableRows) {
+    const name = row['name'];
+    if (
+      name === 'sessions' ||
+      name === 'tasks_sessions' ||
+      name === 'tasks' ||
+      name === 'tasks_tasks'
+    ) {
+      availableNames.add(name);
+    }
+  }
+
+  for (const tableName of tableNames) {
+    if (!availableNames.has(tableName)) continue;
+    const row = probe
+      .prepare(`SELECT 1 AS present FROM ${tableName} WHERE id = ? LIMIT 1`)
+      .get(id) as SessionPresenceRow | undefined;
+    if (row !== undefined) return true;
+  }
+  return false;
+}
+
+async function recordExistsInTasksDbFresh(
+  id: string,
+  tableNames: readonly [ProjectRecordTable, ProjectRecordTable],
+  tasksDb: Awaited<ReturnType<typeof import('./sqlite.js').getDb>> | null,
+  cwd?: string,
+): Promise<boolean> {
+  const [{ resolveDualScopeDbPath }, { openNativeDatabase }] = await Promise.all([
+    import('./dual-scope-db.js'),
+    import('./sqlite-native.js'),
+  ]);
+  const sharedNative = (tasksDb as TasksDbWithNativeClient | null)?.$client;
+  const dbPath =
+    cwd !== undefined
+      ? resolveDualScopeDbPath('project', cwd)
+      : (sharedNative?.location() ?? resolveDualScopeDbPath('project'));
+  const probe = openNativeDatabase(dbPath, {
+    readonly: true,
+  });
+  try {
+    return projectRecordExists(probe, id, tableNames);
+  } finally {
+    probe.close();
+  }
 }
 
 /**
@@ -361,23 +419,27 @@ export async function sessionExistsInTasksDbFresh(
   tasksDb: Awaited<ReturnType<typeof import('./sqlite.js').getDb>> | null,
   cwd?: string,
 ): Promise<boolean> {
-  const [{ resolveDualScopeDbPath }, { openNativeDatabase }] = await Promise.all([
-    import('./dual-scope-db.js'),
-    import('./sqlite-native.js'),
-  ]);
-  const sharedNative = (tasksDb as TasksDbWithNativeClient | null)?.$client;
-  const dbPath = sharedNative?.location() ?? resolveDualScopeDbPath('project', cwd);
-  const probe = openNativeDatabase(dbPath, {
-    readonly: true,
-  });
-  try {
-    const row = probe
-      .prepare('SELECT 1 AS present FROM tasks_sessions WHERE id = ? LIMIT 1')
-      .get(sessionId) as SessionPresenceRow | undefined;
-    return row !== undefined;
-  } finally {
-    probe.close();
-  }
+  return recordExistsInTasksDbFresh(sessionId, ['sessions', 'tasks_sessions'], tasksDb, cwd);
+}
+
+/**
+ * Verify a task ID through an independent read-only connection.
+ *
+ * Checks both the active legacy tasks table and its consolidated prefixed
+ * counterpart so callers remain correct during the E3-to-E6 transition.
+ *
+ * @param taskId - Task ID to verify.
+ * @param tasksDb - Shared tasks handle used only when no project root is available.
+ * @param cwd - Project root used to resolve the authoritative project database.
+ * @returns True when the task exists in either supported project table.
+ * @task T12034
+ */
+export async function taskExistsInTasksDbFresh(
+  taskId: string,
+  tasksDb: Awaited<ReturnType<typeof import('./sqlite.js').getDb>> | null,
+  cwd?: string,
+): Promise<boolean> {
+  return recordExistsInTasksDbFresh(taskId, ['tasks', 'tasks_tasks'], tasksDb, cwd);
 }
 
 /**
