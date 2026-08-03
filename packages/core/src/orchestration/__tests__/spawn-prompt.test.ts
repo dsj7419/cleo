@@ -203,13 +203,16 @@ describe('buildSpawnPrompt — stage-specific guidance', () => {
     expect(result.prompt).toContain('CI must be GREEN');
   });
 
-  it('testing stage references evidence atom for pnpm-test', () => {
+  it('testing stage references canonical tool:test and distinguishes test-run:<json>', () => {
     const result = buildSpawnPrompt({
       task: BASE_TASK,
       protocol: 'testing',
       projectRoot: PROJECT_ROOT,
     });
-    expect(result.prompt).toContain('tool:pnpm-test');
+    expect(result.prompt).toContain('tool:test');
+    expect(result.prompt).toContain('executes resolved testing.command');
+    expect(result.prompt).toContain('test-run:<json>');
+    expect(result.prompt).toContain('pre-recorded structured output');
   });
 
   it('contribution stage documents follow-up tracking', () => {

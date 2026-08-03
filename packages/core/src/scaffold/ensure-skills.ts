@@ -7,6 +7,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import type { ProjectContext } from '@cleocode/contracts';
 import type { ScaffoldResult } from '@cleocode/contracts/scaffold-diagnostics';
 import { pushWarning } from '../output.js';
 import { resolveScaffoldCleoDir } from './ensure-config.js';
@@ -52,6 +53,17 @@ export async function ensureProjectContext(
   const { detectProjectType } = await import('../store/project-detect.js');
   const context = detectProjectType(projectRoot);
 
+  // Preserve user-supplied command overrides from existing file so
+  // regeneration does not silently clobber them (T12027 / #1122 / #1129).
+  if (existsSync(contextPath)) {
+    try {
+      const existing = JSON.parse(readFileSync(contextPath, 'utf-8')) as Record<string, unknown>;
+      preserveUserOverrides(existing, context);
+    } catch {
+      // If we can't parse existing, proceed with freshly-detected context
+    }
+  }
+
   try {
     const schemaPath = join(
       dirname(fileURLToPath(import.meta.url)),
@@ -95,4 +107,66 @@ export async function ensureProjectContext(
     action: existsSync(contextPath) ? 'repaired' : 'created',
     path: contextPath,
   };
+}
+
+/**
+ * Copy user-supplied command overrides from parsed JSON (`existing`) into
+ * the freshly-detected {@link ProjectContext} so regeneration does not
+ * silently clobber them.
+ *
+ * Each override is carried over only when the existing JSON carries a
+ * non-empty string at the typed command path.
+ *
+ * @task T12027
+ */
+function preserveUserOverrides(existing: Record<string, unknown>, context: ProjectContext): void {
+  // testing.command
+  const testingCmd = readCmdFromExisting(existing, 'testing');
+  if (testingCmd) {
+    context.testing = { ...context.testing, command: testingCmd };
+  }
+
+  // build.command
+  const buildCmd = readCmdFromExisting(existing, 'build');
+  if (buildCmd) {
+    context.build = { ...context.build, command: buildCmd };
+  }
+
+  // lint.command
+  const lintCmd = readCmdFromExisting(existing, 'lint');
+  if (lintCmd) {
+    context.lint = { command: lintCmd };
+  }
+
+  // typecheck.command
+  const typecheckCmd = readCmdFromExisting(existing, 'typecheck');
+  if (typecheckCmd) {
+    context.typecheck = { command: typecheckCmd };
+  }
+
+  // audit.command
+  const auditCmd = readCmdFromExisting(existing, 'audit');
+  if (auditCmd) {
+    context.audit = { command: auditCmd };
+  }
+
+  // security-scan.command
+  const secscanCmd = readCmdFromExisting(existing, 'security-scan');
+  if (secscanCmd) {
+    context['security-scan'] = { command: secscanCmd };
+  }
+}
+
+/**
+ * Safely extract a `.command` string from a nested key of a parsed JSON
+ * object. Returns `null` when the key is absent, not an object, or the
+ * command is missing / empty.
+ *
+ * @task T12027
+ */
+function readCmdFromExisting(existing: Record<string, unknown>, key: string): string | null {
+  const obj = existing[key];
+  if (obj === null || typeof obj !== 'object' || Array.isArray(obj)) return null;
+  const cmd = (obj as Record<string, unknown>).command;
+  return typeof cmd === 'string' && cmd.length > 0 ? cmd : null;
 }
