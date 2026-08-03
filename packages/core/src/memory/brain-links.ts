@@ -8,7 +8,7 @@
  * @epic T5149
  */
 
-import { taskExistsInTasksDb } from '../store/cross-db-cleanup.js';
+import { taskExistsInTasksDb, taskExistsInTasksDbFresh } from '../store/cross-db-cleanup.js';
 import { getBrainAccessor } from '../store/memory-accessor.js';
 import type {
   BRAIN_LINK_TYPES,
@@ -23,6 +23,30 @@ import { getDb } from '../store/sqlite.js';
 type MemoryType = (typeof BRAIN_MEMORY_TYPES)[number];
 type LinkType = (typeof BRAIN_LINK_TYPES)[number];
 
+async function createMemoryTaskLink(
+  projectRoot: string,
+  memoryType: MemoryType,
+  memoryId: string,
+  taskId: string,
+  linkType: LinkType,
+): Promise<BrainMemoryLinkRow> {
+  const accessor = await getBrainAccessor(projectRoot);
+
+  const existingLinks = await accessor.getLinksForMemory(memoryType, memoryId);
+  const duplicate = existingLinks.find((l) => l.taskId === taskId && l.linkType === linkType);
+  if (duplicate) return duplicate;
+
+  await accessor.addLink({
+    memoryType,
+    memoryId,
+    taskId,
+    linkType,
+  });
+
+  const links = await accessor.getLinksForMemory(memoryType, memoryId);
+  return links.find((l) => l.taskId === taskId && l.linkType === linkType)!;
+}
+
 /** A link to be created in bulk. */
 export interface BulkLinkEntry {
   memoryType: MemoryType;
@@ -34,9 +58,70 @@ export interface BulkLinkEntry {
 /**
  * Link a memory entry to a task.
  *
- * @task T5156
+ * @param projectRoot - Project root containing the task and brain databases.
+ * @param memoryType - Type of memory entry to link.
+ * @param memoryId - Memory entry identifier.
+ * @param taskId - Task identifier to validate and link.
+ * @param linkType - Relationship represented by the link.
+ * @param tasksDbOverride - Existing task handle retained by a multi-step caller.
+ * @returns The existing or newly created memory link.
+ * @task T5156 T12034
  */
 export async function linkMemoryToTask(
+  projectRoot: string,
+  memoryType: MemoryType,
+  memoryId: string,
+  taskId: string,
+  linkType: LinkType,
+  tasksDbOverride?: Awaited<ReturnType<typeof getDb>>,
+): Promise<BrainMemoryLinkRow> {
+  if (!memoryId || !taskId) {
+    throw new Error('memoryId and taskId are required');
+  }
+
+  // Write-guard: reject stale task IDs before creating cross-db reference
+  let taskExists: boolean | undefined;
+  let tasksDb: Awaited<ReturnType<typeof getDb>> | null = null;
+  try {
+    tasksDb = tasksDbOverride ?? (await getDb(projectRoot));
+    if (await taskExistsInTasksDb(taskId, tasksDb)) {
+      taskExists = true;
+    }
+  } catch {
+    // The independent probe below handles a closed shared handle.
+  }
+  if (taskExists !== true) {
+    try {
+      taskExists = await taskExistsInTasksDbFresh(taskId, tasksDb, projectRoot);
+    } catch {
+      // Validation unavailable is not proof of absence. Preserve the link.
+    }
+  }
+  if (taskExists === false) {
+    throw new Error(
+      `Write-guard: task ${taskId} does not exist in tasks.db — refusing to create brain link`,
+    );
+  }
+
+  return createMemoryTaskLink(projectRoot, memoryType, memoryId, taskId, linkType);
+}
+
+/**
+ * Link memory to a task whose existence was validated before a multi-write batch.
+ *
+ * This preserves the soft-FK decision across queued BRAIN writes that may replace
+ * the caller's shared project handle. Callers MUST validate the task immediately
+ * before starting the batch; general callers should use {@link linkMemoryToTask}.
+ *
+ * @param projectRoot - Project root containing the consolidated database.
+ * @param memoryType - Type of memory entry to link.
+ * @param memoryId - Memory entry identifier.
+ * @param taskId - Prevalidated task identifier.
+ * @param linkType - Relationship represented by the link.
+ * @returns The existing or newly created memory link.
+ * @task T12034
+ */
+export async function linkPrevalidatedMemoryToTask(
   projectRoot: string,
   memoryType: MemoryType,
   memoryId: string,
@@ -46,35 +131,7 @@ export async function linkMemoryToTask(
   if (!memoryId || !taskId) {
     throw new Error('memoryId and taskId are required');
   }
-
-  // Write-guard: reject stale task IDs before creating cross-db reference
-  const tasksDb = await getDb(projectRoot);
-  if (!(await taskExistsInTasksDb(taskId, tasksDb))) {
-    throw new Error(
-      `Write-guard: task ${taskId} does not exist in tasks.db — refusing to create brain link`,
-    );
-  }
-
-  const accessor = await getBrainAccessor(projectRoot);
-
-  // Check if link already exists
-  const existingLinks = await accessor.getLinksForMemory(memoryType, memoryId);
-  const duplicate = existingLinks.find((l) => l.taskId === taskId && l.linkType === linkType);
-
-  if (duplicate) {
-    return duplicate;
-  }
-
-  await accessor.addLink({
-    memoryType,
-    memoryId,
-    taskId,
-    linkType,
-  });
-
-  // Return the created link
-  const links = await accessor.getLinksForMemory(memoryType, memoryId);
-  return links.find((l) => l.taskId === taskId && l.linkType === linkType)!;
+  return createMemoryTaskLink(projectRoot, memoryType, memoryId, taskId, linkType);
 }
 
 /**

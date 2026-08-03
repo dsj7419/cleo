@@ -42,8 +42,19 @@
  * opportunistic dream OFF for one-shot read commands. The added case below
  * proves a one-shot `cleo briefing` exits on its own (no lingering worker).
  *
+ * ## T12024 — dialectic evaluation deadline (post-mutate hook hang)
+ *
+ * The dispatcher fires a background `evaluateDialectic` after every successful
+ * mutate. That evaluation makes an HTTP fetch to the resolved LLM backend
+ * (Ollama in warm tier), which keeps the event loop alive after
+ * `shutdownCliRuntime` tears down workers and databases. The fix wraps the
+ * evaluation with an AbortController whose unrefed 10-second deadline cancels
+ * the HTTP fetch when the LLM backend is hung, allowing the loop to drain.
+ * The fake-Ollama-server case below proves this end-to-end.
+ *
  * @task T11568
  * @task T11655
+ * @task T12024
  * @epic T11249 (E6)
  * @saga T11242
  */
@@ -51,6 +62,7 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { mkdir, mkdtemp, rm } from 'node:fs/promises';
+import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -184,4 +196,180 @@ describe.skipIf(!CLI_DIST_AVAILABLE)('T11568 — write commands exit, never hang
     ).toBeNull();
     expect(typeof briefing.status).toBe('number');
   }, 60_000);
+});
+
+// ============================================================================
+// T12024 — mutation commands exit despite a hung dialectic LLM backend
+// ============================================================================
+
+/**
+ * The dispatcher fires a background dialectic evaluation (→ Ollama) after
+ * every successful mutate. When the LLM backend accepts the connection but
+ * never responds, the pending HTTP fetch keeps the event loop alive after
+ * `shutdownCliRuntime` tears down everything else.
+ *
+ * This test starts a fake Ollama HTTP server on localhost:11434 that:
+ *   - Responds to GET /api/tags (so the warm-tier probe finds a backend),
+ *   - Writes HTTP headers for POST /v1/chat/completions but never calls
+ *     res.end() so the response body never arrives → fetch hangs.
+ *
+ * Without the abort-signal deadline the subprocess would hang until the
+ * 20-second spawnSync timeout kills it (signal: SIGTERM). With the fix,
+ * the 10-second unrefed deadline fires, cancelling the fetch so the
+ * event loop drains and the CLI exits on its own.
+ *
+ * The describe block skips if port 11434 cannot be bound (e.g. real Ollama
+ * is running) or the compiled CLI dist is unavailable.
+ *
+ * @task T12024
+ */
+describe('T12024 — mutation exit with hung dialectic backend (fake Ollama)', () => {
+  let projectRoot: string;
+  let dataHome: string;
+  let fakeOllama: ReturnType<typeof createServer> | null = null;
+  let fakeOllamaBound = false;
+
+  beforeEach(async () => {
+    projectRoot = await mkdtemp(join(tmpdir(), 'cleo-T12024-'));
+    dataHome = await mkdtemp(join(tmpdir(), 'cleo-T12024-xdg-'));
+    await mkdir(join(projectRoot, '.cleo'), { recursive: true });
+
+    // tryOllama() hardcodes localhost:11434 for both the /api/tags probe
+    // AND the AI-SDK-compatible provider base URL.
+    fakeOllama = createServer((_req, res) => {
+      if (_req.method === 'GET' && _req.url === '/api/tags') {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ models: [{ name: 'qwen2.5-coder:3b' }] }));
+        return;
+      }
+      if (_req.method === 'POST' && _req.url === '/v1/chat/completions') {
+        // Write the HTTP status line so the connection is established, then
+        // NEVER call res.end(). The client's fetch blocks on the body and
+        // the dispatcher's AbortController must cancel it.
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        return;
+      }
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end('{}');
+    });
+
+    fakeOllama.timeout = 0;
+    fakeOllama.keepAliveTimeout = 0;
+
+    try {
+      await new Promise<void>((resolve, reject) => {
+        fakeOllama!.once('error', reject);
+        fakeOllama!.listen(11434, '127.0.0.1', () => {
+          fakeOllama!.removeAllListeners('error');
+          fakeOllama!.on('error', () => {
+            /* swallow late errors during teardown */
+          });
+          resolve();
+        });
+      });
+      fakeOllamaBound = true;
+    } catch {
+      fakeOllamaBound = false;
+      if (fakeOllama) {
+        try {
+          fakeOllama.closeAllConnections?.();
+        } catch {
+          /* best-effort */
+        }
+        await new Promise<void>((r) => fakeOllama!.close(() => r()));
+        fakeOllama = null;
+      }
+    }
+  });
+
+  afterEach(async () => {
+    if (fakeOllama) {
+      try {
+        fakeOllama.closeAllConnections?.();
+      } catch {
+        /* best-effort */
+      }
+      await new Promise<void>((resolve) => {
+        fakeOllama!.close(() => resolve());
+      });
+      fakeOllama = null;
+    }
+    fakeOllamaBound = false;
+    await rm(projectRoot, { recursive: true, force: true }).catch(() => undefined);
+    await rm(dataHome, { recursive: true, force: true }).catch(() => undefined);
+  });
+
+  function runCliWithFakeOllama(
+    args: readonly string[],
+    _projectRoot: string,
+    _dataHome: string,
+  ): CliResult {
+    const env = {
+      ...process.env,
+      CLEO_PROJECT_ROOT: _projectRoot,
+      CLEO_ROOT: _projectRoot,
+      CLEO_DIR: join(_projectRoot, '.cleo'),
+      XDG_DATA_HOME: _dataHome,
+      CLEO_OUTPUT_FORMAT: 'json',
+    };
+    const result = spawnSync('node', [CLI_DIST, ...args], {
+      stdio: ['pipe', 'pipe', 'pipe'],
+      encoding: 'utf-8',
+      timeout: 20_000,
+      cwd: _projectRoot,
+      env,
+    });
+    return {
+      stdout: result.stdout ?? '',
+      stderr: result.stderr ?? '',
+      status: result.status,
+      signal: result.signal ?? null,
+    };
+  }
+
+  it(
+    'mutation exits on its own when dialectic backend hangs (deadline abort → loop drain)',
+    {
+      skip: !CLI_DIST_AVAILABLE || !fakeOllamaBound,
+    },
+    () => {
+      const init = runCliWithFakeOllama(['init'], projectRoot, dataHome);
+      expect(init.signal, `init was killed (hang); stderr:\n${init.stderr}`).toBeNull();
+
+      // Start a session so the dispatcher has a sessionId for dialectic eval.
+      const session = runCliWithFakeOllama(
+        ['session', 'start', 'epic:T12024', 'test-session'],
+        projectRoot,
+        dataHome,
+      );
+      expect(
+        session.signal,
+        `session start was killed (hang); stderr:\n${session.stderr}`,
+      ).toBeNull();
+      expect(session.status).toBe(0);
+
+      // Create a task — this mutate triggers the dispatcher's setImmediate
+      // dialectic evaluation, which resolves the fake Ollama backend and
+      // calls generateObject → POST /v1/chat/completions → hangs.
+      const add = runCliWithFakeOllama(
+        ['add', 'T12024 regression task', '--type', 'task'],
+        projectRoot,
+        dataHome,
+      );
+      expect(add.stdout).toContain('"success":true');
+      expect(add.stdout).toContain('"operation":"tasks.add"');
+
+      // The key assertion: the process MUST exit on its own. Without the
+      // deadline, the hung fetch keeps the event loop alive → spawnSync
+      // kills it after 20s → signal === 'SIGTERM'. With T12024, the 10s
+      // unrefed deadline aborts the fetch and the event loop drains
+      // naturally.
+      expect(
+        add.signal,
+        `cleo add was KILLED by timeout (dialectic fetch hang regression).\nstdout:\n${add.stdout}\nstderr:\n${add.stderr}`,
+      ).toBeNull();
+      expect(typeof add.status).toBe('number');
+    },
+    60_000,
+  );
 });

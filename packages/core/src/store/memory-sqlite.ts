@@ -453,15 +453,27 @@ export async function getBrainDb(cwd?: string): Promise<NodeSQLiteDatabase<typeo
     // consolidated cleo-project migrations (which create the `brain_*` tables),
     // and manages the singleton cache. We extract its native handle so we can
     // re-wrap it with the legacy brain-schema for caller compatibility.
-    const dualHandle = await openDualScopeDb('project', cwd);
+    let nativeDb: DatabaseSync | null = null;
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const dualHandle = await openDualScopeDb('project', cwd);
 
-    // Extract the underlying DatabaseSync. Drizzle exposes it via `$client`.
-    const nativeDb = (dualHandle.db as { $client?: DatabaseSync }).$client ?? null;
-    if (!nativeDb) {
-      throw new Error(
-        'E6-L2: openDualScopeDb returned a handle without $client — ' +
-          'cannot extract DatabaseSync for legacy brain-schema wrapping.',
-      );
+      // Extract the underlying DatabaseSync. Drizzle exposes it via `$client`.
+      nativeDb = (dualHandle.db as { $client?: DatabaseSync }).$client ?? null;
+      if (!nativeDb) {
+        throw new Error(
+          'E6-L2: openDualScopeDb returned a handle without $client — ' +
+            'cannot extract DatabaseSync for legacy brain-schema wrapping.',
+        );
+      }
+
+      // A shared handle can be closed after the dual-scope cache checks it but
+      // before this await resumes. Re-open once; the cache then evicts the dead
+      // entry and returns the current live handle.
+      if (nativeDb.isOpen) break;
+    }
+
+    if (!nativeDb?.isOpen) {
+      throw new Error('E6-L2: openDualScopeDb repeatedly returned a closed DatabaseSync handle.');
     }
 
     _nativeDb = nativeDb;

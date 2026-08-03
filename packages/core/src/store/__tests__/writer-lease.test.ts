@@ -592,8 +592,8 @@ describe('Finding 2 — concurrent first-acquire single-flights onto one grant',
  * If the underlying native handle is closed while a lease is still held, the
  * unref'd heartbeat timer's `prepare().run()` throws `database is not open`
  * INSIDE the timer callback — an UNCAUGHT exception that crashes Node. The fix
- * wraps heartbeat() (and releaseRow()) in try/catch: on a closed-DB error it
- * stops the timer and marks released rather than throwing.
+ * wraps heartbeat() in try/catch and retries releaseRow() through a fresh handle:
+ * the timer must not throw, and release must not leave a durable active row.
  */
 describe('Finding 3 — heartbeat does not throw when the native handle is closed', () => {
   it('a heartbeat tick after the DB is closed is swallowed (no uncaught exception)', async () => {
@@ -608,7 +608,13 @@ describe('Finding 3 — heartbeat does not throw when the native handle is close
     ).db.$client;
 
     _resetWriterLeaseStateForTest();
-    _setNativeDbResolverForTest(async (): Promise<LeaseTarget> => ({ native, dbPath }));
+    const { DatabaseSync } = await import('node:sqlite');
+    const recoveryNative = new DatabaseSync(dbPath);
+    let resolverCalls = 0;
+    _setNativeDbResolverForTest(async (): Promise<LeaseTarget> => {
+      resolverCalls += 1;
+      return { native: resolverCalls === 1 ? native : recoveryNative, dbPath };
+    });
 
     // Capture any uncaught exception the heartbeat timer would raise.
     const uncaught: unknown[] = [];
@@ -628,8 +634,10 @@ describe('Finding 3 — heartbeat does not throw when the native handle is close
       expect(() => h.heartbeat()).not.toThrow();
       // release() (which runs releaseRow → prepare on the closed DB) must not throw.
       await expect(h.release()).resolves.toBeUndefined();
+      expect(countActive(recoveryNative, 'project', 'tasks')).toBe(0);
     } finally {
       process.off('uncaughtException', onUncaught);
+      recoveryNative.close();
     }
     // No heartbeat tick crashed the process.
     expect(uncaught, JSON.stringify(uncaught.map(String))).toHaveLength(0);

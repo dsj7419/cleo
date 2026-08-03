@@ -314,8 +314,13 @@ export async function inferTaskAddParams(
 
   // ─── 3. Parent inference from session ────────────────────────────────────────
   // Only infer when:
-  //   - No explicit parent was provided
+  //   - No explicit parent was provided (including explicit "none" — user opted out)
   //   - Task type is not 'epic' (epics are root-level containers)
+  //
+  // T11293: `--parent none` is an explicit opt-out from the depth-2 focused-session
+  // auto-parent trap. When the current focus task is at max depth (task depth 2),
+  // auto-inference would fail with E_CLEO_DEPTH_EXCEEDED. The user signals "I know
+  // this will be unparented — let strict-spine handle the containment check."
   if (!input.parentRaw && input.type !== 'epic') {
     try {
       const accessor = await getTaskAccessor(projectRoot);

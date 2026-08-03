@@ -159,6 +159,26 @@ const LEGACY_TOOL_ALIASES: Record<string, CanonicalTool> = {
 };
 
 /**
+ * Mapping from canonical tool name to the JSON-path segments in
+ * `.cleo/project-context.json` that carry the user-supplied command override.
+ *
+ * `null` entries have no project-context override and always fall through
+ * to the per-language defaults (e.g. `nexus-impact-full` is always `cleo
+ * nexus impact-full`).
+ *
+ * @task T12027
+ */
+const PROJECT_CONTEXT_KEY_MAP: Record<CanonicalTool, string[] | null> = {
+  test: ['testing', 'command'],
+  build: ['build', 'command'],
+  lint: ['lint', 'command'],
+  typecheck: ['typecheck', 'command'],
+  audit: ['audit', 'command'],
+  'security-scan': ['security-scan', 'command'],
+  'nexus-impact-full': null,
+};
+
+/**
  * Set of all valid `tool:<name>` payloads — canonical names plus legacy
  * aliases. Returned by {@link listValidToolNames} for help / validation
  * surfaces.
@@ -313,9 +333,13 @@ interface ResolveOptions {
  * Resolution order:
  *
  *   1. Map alias → canonical (e.g. `pnpm-test` → `test`).
- *   2. Check `.cleo/project-context.json`:
+ *   2. Check `.cleo/project-context.json` via {@link PROJECT_CONTEXT_KEY_MAP}:
  *      - `test` → `testing.command`
  *      - `build` → `build.command`
+ *      - `lint` → `lint.command`
+ *      - `typecheck` → `typecheck.command`
+ *      - `audit` → `audit.command`
+ *      - `security-scan` → `security-scan.command`
  *   3. Read `primaryType` from `project-context.json` (or detect from cwd).
  *   4. Look up the canonical name in `LANGUAGE_DEFAULTS[primaryType]`.
  *   5. Verify the resolved binary exists on `PATH` (best-effort, non-fatal —
@@ -365,25 +389,9 @@ export function resolveToolCommand(
   // Step 2 — project-context overrides
   const ctx = loadProjectContext(projectRoot).context;
 
-  if (canonical === 'test') {
-    const cmd = readNestedString(ctx, ['testing', 'command']);
-    const parsed = cmd ? parseCommandString(cmd) : null;
-    if (parsed) {
-      return {
-        ok: true,
-        command: {
-          canonical,
-          displayName: toolName,
-          cmd: parsed.cmd,
-          args: parsed.args,
-          source: isAlias ? 'legacy-alias' : 'project-context',
-        },
-      };
-    }
-  }
-
-  if (canonical === 'build') {
-    const cmd = readNestedString(ctx, ['build', 'command']);
+  const pcKey = PROJECT_CONTEXT_KEY_MAP[canonical];
+  if (pcKey) {
+    const cmd = readNestedString(ctx, pcKey);
     const parsed = cmd ? parseCommandString(cmd) : null;
     if (parsed) {
       return {
@@ -414,7 +422,7 @@ export function resolveToolCommand(
       ok: false,
       reason:
         `Tool "${toolName}" has no resolved command for primaryType="${primaryType}". ` +
-        `Add an explicit command to .cleo/project-context.json (testing.command / build.command) ` +
+        `Add an explicit command to .cleo/project-context.json (testing.command / build.command / lint.command / typecheck.command / audit.command / security-scan.command) ` +
         `or extend LANGUAGE_DEFAULTS in @cleocode/core/tasks/tool-resolver.ts.`,
       codeName: 'E_TOOL_UNAVAILABLE',
     };

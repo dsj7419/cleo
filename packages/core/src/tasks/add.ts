@@ -982,10 +982,17 @@ export async function addTask(
       // ordered [immediateParent, grandparent, …, root]. When the parent is a
       // task (depth 2), ancestors[0] is the epic (depth 1) — tell the user
       // to file under THAT epic instead.
+      //
+      // T11293: NEVER suggest "omit --parent to create a standalone task."
+      // Under strict-spine containment (T11811) only sagas may be root-level,
+      // and the parent may have been auto-inferred from the session focus
+      // (so the user never supplied --parent in the first place). Point to a
+      // concrete higher-level container, or to --parent none to escape
+      // auto-inference (the task will still need a valid parent).
       const grandparentEpic = ancestors.length > 0 ? ancestors[ancestors.length - 1] : ancestors[0];
       const epicSuggestion = grandparentEpic
-        ? ` Use --parent ${grandparentEpic.id} (the parent epic) instead, or omit --parent to create a standalone task.`
-        : ' Omit --parent to create a standalone task, or reparent under a higher-level epic.';
+        ? ` Use --parent ${grandparentEpic.id} (the parent epic) instead.`
+        : ' Reparent under a higher-level container, or use --parent none to suppress session-based parent inference.';
       throw new CleoError(
         ExitCode.DEPTH_EXCEEDED,
         `Cannot add a child to ${parentId}: the hierarchy depth cap (${policy.maxDepth}) would be exceeded. ` +
