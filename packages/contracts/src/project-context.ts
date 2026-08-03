@@ -55,6 +55,14 @@ export type FileNamingConvention = 'kebab-case' | 'snake_case' | 'camelCase' | '
 /** Module import style. */
 export type ImportStyle = 'esm' | 'commonjs' | 'mixed';
 
+/** Release and evidence behavior configured per project. */
+export interface ProjectReleaseContext {
+  /** Branches whose reachable commits may satisfy `commit:` evidence atoms. */
+  integrationBranches?: string[];
+  /** Required successful checks for `pr:` evidence atoms. */
+  prRequiredWorkflows?: string[];
+}
+
 /** Schema-compliant project context for LLM agent consumption. */
 export interface ProjectContext {
   schemaVersion: string;
@@ -111,6 +119,8 @@ export interface ProjectContext {
     /** Command to run security vulnerability scanning. */
     command?: string;
   };
+  /** Release and evidence behavior for this project. */
+  release?: ProjectReleaseContext;
 }
 
 /**
