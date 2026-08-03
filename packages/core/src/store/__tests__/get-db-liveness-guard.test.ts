@@ -94,4 +94,23 @@ describe('getDb liveness guard (T12020) — shared consolidated handle reset', (
       .all();
     expect(rows.map((r) => r.id)).toEqual(['S-123']);
   });
+
+  it('retries when the shared handle closes while getBrainDb awaits it', async () => {
+    const { openDualScopeDb } = await import('../dual-scope-db.js');
+    const { closeBrainDb, getBrainDb, getBrainNativeDb } = await import('../memory-sqlite.js');
+    await import('../data-accessor.js');
+
+    closeBrainDb();
+    const staleHandle = await openDualScopeDb('project', tempDir);
+    const staleNative = staleHandle.db.$client;
+
+    const pendingBrainDb = getBrainDb(tempDir);
+    queueMicrotask(() => staleHandle.close());
+    const brainDb = await pendingBrainDb;
+
+    expect(brainDb).toBeDefined();
+    expect(staleNative.isOpen).toBe(false);
+    expect(getBrainNativeDb()?.isOpen).toBe(true);
+    expect(Object.is(getBrainNativeDb(), staleNative)).toBe(false);
+  });
 });

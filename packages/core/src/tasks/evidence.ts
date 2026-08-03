@@ -395,6 +395,93 @@ export async function validateAtom(
  * @adr ADR-051
  * @adr ADR-051-worktree-extension
  */
+
+/**
+ * Default integration branches checked for `commit:` evidence-atom
+ * reachability when task-branch ancestry fails.
+ *
+ * @task T12028 (gh#1116)
+ */
+const INTEGRATION_BRANCHES: readonly string[] = Object.freeze([
+  'main',
+  'master',
+  'develop',
+  'development',
+]);
+
+/**
+ * Env var that overrides {@link INTEGRATION_BRANCHES}.
+ * Format: comma-separated branch names.
+ *
+ * @task T12028 (gh#1116)
+ */
+const INTEGRATION_BRANCHES_ENV_VAR = 'CLEO_INTEGRATION_BRANCHES';
+
+/**
+ * Resolve integration branches for `commit:` evidence-atom reachability.
+ *
+ * Precedence (most specific wins):
+ * 1. {@link INTEGRATION_BRANCHES_ENV_VAR} env var — CI/operator override.
+ * 2. `.cleo/project-context.json` `release.integrationBranches` — per-project config.
+ * 3. {@link INTEGRATION_BRANCHES} default (`main`, `master`, `develop`,
+ *    `development`).
+ *
+ * @task T12028 (gh#1116)
+ */
+function resolveIntegrationBranches(
+  env: NodeJS.ProcessEnv,
+  projectContext: Record<string, unknown> | null,
+): string[] {
+  const raw = env[INTEGRATION_BRANCHES_ENV_VAR];
+  if (typeof raw === 'string' && raw.trim().length > 0) {
+    return raw
+      .split(',')
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
+  }
+  if (typeof projectContext === 'object' && projectContext !== null) {
+    const release = (projectContext as Record<string, unknown>).release;
+    if (typeof release === 'object' && release !== null) {
+      const declared = (release as Record<string, unknown>).integrationBranches;
+      if (Array.isArray(declared)) {
+        const branches = declared
+          .filter((s): s is string => typeof s === 'string')
+          .map((s) => s.trim())
+          .filter((s) => s.length > 0);
+        if (branches.length > 0) return branches;
+      }
+    }
+  }
+  return [...INTEGRATION_BRANCHES];
+}
+
+/**
+ * Find a local or origin-tracking integration branch that contains a commit.
+ *
+ * Checking the remote-tracking ref preserves verification after a merged local
+ * integration branch has been cleaned up.
+ */
+async function findReachableIntegrationBranch(
+  sha: string,
+  branches: readonly string[],
+  projectRoot: string,
+): Promise<string | null> {
+  for (const branch of branches) {
+    const refs = [`refs/heads/${branch}`, `refs/remotes/origin/${branch}`];
+    for (const ref of refs) {
+      const exists = await runCommand('git', ['rev-parse', '--verify', ref], projectRoot);
+      if (exists.exitCode !== 0) continue;
+      const reachable = await runCommand(
+        'git',
+        ['merge-base', '--is-ancestor', sha, ref],
+        projectRoot,
+      );
+      if (reachable.exitCode === 0) return branch;
+    }
+  }
+  return null;
+}
+
 async function validateCommit(
   sha: string,
   projectRoot: string,
@@ -419,6 +506,18 @@ async function validateCommit(
   // falls back to "HEAD" when taskId is absent or the branch does not yet exist.
   // This is env-var-independent: it does not rely on CLEO_WORKTREE_ROOT / ALS.
   const effectiveHead = await getEffectiveHead(projectRoot, taskId);
+
+  // T12028 / gh#1116: resolve integration branches for reachability fallbacks.
+  // Loaded once and reused by both the effective-head fallback and the
+  // branch-scope fallback below. Resolution follows the same 3-tier precedence
+  // as prRequiredWorkflows (env var → project-context → default).
+  const { loadProjectContext } = await import('../agents/variable-substitution.js');
+  const projectCtx = loadProjectContext(projectRoot);
+  const integrationBranches = resolveIntegrationBranches(
+    process.env,
+    projectCtx.loaded ? projectCtx.context : null,
+  );
+
   const reachable = await runCommand(
     'git',
     ['merge-base', '--is-ancestor', sha, effectiveHead],
@@ -426,39 +525,26 @@ async function validateCommit(
   );
   if (reachable.exitCode !== 0) {
     // DHQ-083 companion (a): when the commit is not reachable from the task
-    // branch HEAD, also accept commits reachable from the canonical integration
-    // branches (main or master). This covers:
+    // branch HEAD, also accept commits reachable from the configured
+    // integration branches. This covers:
     //   - owner commits directly to main (meta-tasks, emergency fixes)
     //   - post-merge cleanup where the task branch was deleted and the SHA is
     //     now only reachable from main
     //   - the `effectiveHead = "HEAD"` case when HEAD == main tip but taskId
     //     was not supplied (handled by the no-taskId fast path via getEffectiveHead)
-    let isReachableFromMain = false;
-    if (taskId) {
-      const mainBranches = ['main', 'master'];
-      for (const base of mainBranches) {
-        const baseExists = await runCommand(
-          'git',
-          ['rev-parse', '--verify', `refs/heads/${base}`],
-          projectRoot,
-        );
-        if (baseExists.exitCode !== 0) continue;
-        const mainReachable = await runCommand(
-          'git',
-          ['merge-base', '--is-ancestor', sha, base],
-          projectRoot,
-        );
-        if (mainReachable.exitCode === 0) {
-          isReachableFromMain = true;
-          break;
-        }
-      }
-    }
-    if (!isReachableFromMain) {
+    // gh#1116 / T12028: integration branches are configurable via
+    // `.cleo/project-context.json` (`release.integrationBranches`) so repos
+    // that merge through a non-main branch can use commits on that branch
+    // as evidence without synthetic task-branch scaffolding.
+    const reachableIntegrationBranch = taskId
+      ? await findReachableIntegrationBranch(sha, integrationBranches, projectRoot)
+      : null;
+    if (reachableIntegrationBranch === null) {
+      const branchList = integrationBranches.join(', ');
       return {
         ok: false,
         reason: taskId
-          ? `Commit ${sha} exists but is not reachable from ${effectiveHead} or main`
+          ? `Commit ${sha} exists but is not reachable from ${effectiveHead} or any integration branch (${branchList})`
           : `Commit ${sha} exists but is not reachable from ${effectiveHead}`,
         codeName: 'E_EVIDENCE_INVALID',
       };
@@ -488,34 +574,22 @@ async function validateCommit(
         projectRoot,
       );
       if (onBranch.exitCode !== 0) {
-        // T11959 / DHQ-083 companion (a): also accept commits reachable from the
-        // canonical integration branches (main or master). This covers:
+        // T11959 / DHQ-083 companion (a): also accept commits reachable from
+        // the configured integration branches. This covers:
         //   - commits on main used by meta-tasks / owner-driven completions
         //   - post-merge task branches that have been cleaned up (the SHA is now
         //     only reachable from main, not from `task/<id>` which no longer exists)
-        const mainBranches = ['main', 'master'];
-        let onMain = false;
-        for (const base of mainBranches) {
-          const exists = await runCommand(
-            'git',
-            ['rev-parse', '--verify', `refs/heads/${base}`],
-            projectRoot,
-          );
-          if (exists.exitCode !== 0) continue;
-          const reachable = await runCommand(
-            'git',
-            ['merge-base', '--is-ancestor', sha, base],
-            projectRoot,
-          );
-          if (reachable.exitCode === 0) {
-            onMain = true;
-            break;
-          }
-        }
-        if (!onMain) {
+        // gh#1116 / T12028: reuses the integrationBranches resolved above.
+        const reachableIntegrationBranch = await findReachableIntegrationBranch(
+          sha,
+          integrationBranches,
+          projectRoot,
+        );
+        if (reachableIntegrationBranch === null) {
+          const branchList = integrationBranches.join(', ');
           return {
             ok: false,
-            reason: `Commit ${sha} not reachable from ${branchRef} or main — possible phantom evidence`,
+            reason: `Commit ${sha} not reachable from ${branchRef} or any integration branch (${branchList}) — possible phantom evidence`,
             codeName: 'E_EVIDENCE_INVALID',
           };
         }
@@ -1142,6 +1216,35 @@ async function validateTool(tool: string, projectRoot: string): Promise<AtomVali
   }
 
   const result = await runToolCached(resolution.command, projectRoot);
+
+  // T12025: wall-clock child-process deadline exceeded — the tool was
+  // terminated and the lock released. Signal retry; do NOT record a partially
+  // captured gate.
+  if (result.timedOut) {
+    return {
+      ok: false,
+      reason:
+        `Tool "${tool}" → ${resolution.command.cmd} ${resolution.command.args.join(' ')} ` +
+        `exceeded the wall-clock deadline and was terminated. The lock and semaphore ` +
+        `slot are released — retry the verify once the system has capacity.`,
+      codeName: 'E_EVIDENCE_TOOL_TIMEOUT',
+    };
+  }
+
+  // T12025 (lock contention): the per-key cache lock was held by another
+  // process and could not be acquired within the fail-fast retry window.
+  // Return a typed actionable result so the orchestrator can retry; do NOT
+  // record a partially captured gate.
+  if (result.lockBusy) {
+    return {
+      ok: false,
+      reason:
+        `Tool "${tool}" → ${resolution.command.cmd} ${resolution.command.args.join(' ')} ` +
+        `could not acquire the evidence cache lock — another process is currently ` +
+        `running this tool. The semaphore slot is released — retry the verify shortly.`,
+      codeName: 'E_EVIDENCE_TOOL_BUSY',
+    };
+  }
 
   if (result.exitCode === null) {
     return {

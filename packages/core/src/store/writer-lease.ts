@@ -582,29 +582,36 @@ class InternalLeaseHandle implements LeaseHandle {
     }
   }
 
-  /** Free the row (`active = 0`) under the epoch guard, stop the heartbeat. */
-  releaseRow(): void {
-    if (this.released) return;
-    this.released = true;
-    if (this.heartbeatTimer) {
-      clearInterval(this.heartbeatTimer);
-      this.heartbeatTimer = null;
+  /**
+   * Free the row (`active = 0`) under the epoch guard and stop the heartbeat.
+   *
+   * @param nativeDb - Handle to use for the release update. A caller may retry
+   *   with a freshly resolved handle when the lease's original shared handle
+   *   was closed mid-operation.
+   * @returns True when the release update executed successfully.
+   */
+  releaseRow(nativeDb: DatabaseSync = this.nativeDb): boolean {
+    if (!this.released) {
+      this.released = true;
+      if (this.heartbeatTimer) {
+        clearInterval(this.heartbeatTimer);
+        this.heartbeatTimer = null;
+      }
     }
-    // Tolerate a closed native handle on release (same race as the heartbeat):
-    // the lease row is freed implicitly when the DB closes / dies, so a failed
-    // free-row UPDATE must not throw out of `release()`.
     try {
-      this.nativeDb
+      nativeDb
         .prepare(
           `UPDATE ${WRITER_LEASES_TABLE} SET active = 0, reentrancy_depth = 0 ` +
             `WHERE scope = ? AND lane = ? AND holder_id = ? AND epoch = ? AND active = 1`,
         )
         .run(this.scope, this.lane, this.holderId, this.epoch);
+      return true;
     } catch (err) {
       log().debug(
         { scope: this.scope, lane: this.lane, err: err instanceof Error ? err.message : err },
-        'writer-lease releaseRow failed (native handle likely closed); row freed by close/TTL',
+        'writer-lease releaseRow failed (native handle likely closed); fresh-handle retry required',
       );
+      return false;
     }
   }
 
@@ -667,12 +674,13 @@ export class WriterLeaseRequiredError extends Error {
  *
  * @param scope - The cleo.db scope.
  * @param lane - The write lane.
+ * @param dbPath - Optional explicit database path to inspect.
  * @returns `true` iff a memoized grant with `refcount > 0` exists for the key.
  *
  * @task T11627
  */
-export function hasActiveGrant(scope: LeaseScope, lane: LeaseLane): boolean {
-  const entry = _grantMemo.get(memoKey(scope, _dbPathResolver(scope), lane));
+export function hasActiveGrant(scope: LeaseScope, lane: LeaseLane, dbPath?: string): boolean {
+  const entry = _grantMemo.get(memoKey(scope, dbPath ?? _dbPathResolver(scope), lane));
   return entry !== undefined && entry.refcount > 0;
 }
 
@@ -684,13 +692,14 @@ export function hasActiveGrant(scope: LeaseScope, lane: LeaseLane): boolean {
  *
  * @param scope - The cleo.db scope the handle writes to.
  * @param lane - The write lane that must be held.
+ * @param dbPath - Optional explicit database path the write will target.
  * @throws {WriterLeaseRequiredError} when no grant is held and mode is not `off`.
  *
  * @task T11627
  */
-export function assertWriterLeaseHeld(scope: LeaseScope, lane: LeaseLane): void {
+export function assertWriterLeaseHeld(scope: LeaseScope, lane: LeaseLane, dbPath?: string): void {
   if (effectiveMode() === 'off') return;
-  if (!hasActiveGrant(scope, lane)) {
+  if (!hasActiveGrant(scope, lane, dbPath)) {
     throw new WriterLeaseRequiredError(scope, lane);
   }
 }
@@ -994,8 +1003,23 @@ async function performFirstAcquire(
       // on the connection still serializes the actual write. A no-op handle writes
       // no row, starts no heartbeat, and is never memoized — so single-flight
       // followers find no memo entry and acquire freshly.
+      const active = native
+        .prepare(
+          `SELECT holder_id, holder_pid, epoch, heartbeat_at, ttl_ms ` +
+            `FROM ${WRITER_LEASES_TABLE} WHERE scope = ? AND lane = ? AND active = 1`,
+        )
+        .get(scope, lane) as ActiveLeaseRow | undefined;
       log().warn(
-        { scope, lane },
+        {
+          scope,
+          lane,
+          dbPath,
+          activeHolderId: active?.holder_id,
+          activeHolderPid: active?.holder_pid,
+          activeEpoch: active?.epoch,
+          activeHeartbeatAgeMs:
+            active === undefined ? undefined : Math.max(0, Date.now() - active.heartbeat_at),
+        },
         'writer-lease acquire deadline exceeded; proceeding under busy_timeout fallback (degraded)',
       );
       return makeNoopHandle(scope, lane);
@@ -1025,7 +1049,21 @@ async function releaseGrant(scope: LeaseScope, dbPath: string, lane: LeaseLane):
   }
   // Depth 0 — free the row and evict the memo.
   _grantMemo.delete(key);
-  entry.handle.releaseRow();
+  if (entry.handle.releaseRow()) return;
+
+  // The domain can close and replace the shared dual-scope handle while a lease
+  // is still unwinding. Closing SQLite does not mutate the persisted lease row;
+  // retry through the path-aware resolver so the next writer does not wait for
+  // the full stale-holder TTL.
+  try {
+    const { native } = await _nativeDbResolver(scope, dbPath);
+    entry.handle.releaseRow(native);
+  } catch (err) {
+    log().debug(
+      { scope, lane, dbPath, err: err instanceof Error ? err.message : err },
+      'writer-lease fresh-handle release retry failed; row will expire by TTL',
+    );
+  }
 }
 
 /**

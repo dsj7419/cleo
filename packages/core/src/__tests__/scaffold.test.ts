@@ -306,6 +306,107 @@ describe('ensureProjectContext', () => {
     const result = await ensureProjectContext(tmpDir, { staleDays: 30 });
     expect(result.action).toBe('repaired');
   });
+
+  // ── T12027: override preservation during regeneration ─────────────────
+
+  it('preserves user lint.command override during force regeneration', async () => {
+    const contextPath = join(tmpDir, '.cleo', 'project-context.json');
+    writeFileSync(
+      contextPath,
+      JSON.stringify({
+        schemaVersion: '1.0.0',
+        detectedAt: new Date().toISOString(),
+        projectTypes: ['node'],
+        primaryType: 'node',
+        monorepo: true,
+        lint: { command: 'eslint .' },
+      }),
+    );
+    const result = await ensureProjectContext(tmpDir, { force: true });
+    expect(result.action).toBe('repaired');
+    const regenerated = JSON.parse(readFileSync(contextPath, 'utf-8'));
+    expect(regenerated.lint).toEqual({ command: 'eslint .' });
+  });
+
+  it('preserves user typecheck.command override during stale regeneration', async () => {
+    const contextPath = join(tmpDir, '.cleo', 'project-context.json');
+    const oldDate = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString();
+    writeFileSync(
+      contextPath,
+      JSON.stringify({
+        schemaVersion: '1.0.0',
+        detectedAt: oldDate,
+        projectTypes: ['node'],
+        primaryType: 'node',
+        monorepo: true,
+        typecheck: { command: 'pnpm exec tsc --noEmit' },
+      }),
+    );
+    const result = await ensureProjectContext(tmpDir, { staleDays: 30 });
+    expect(result.action).toBe('repaired');
+    const regenerated = JSON.parse(readFileSync(contextPath, 'utf-8'));
+    expect(regenerated.typecheck).toEqual({ command: 'pnpm exec tsc --noEmit' });
+  });
+
+  it('preserves user audit.command override during force regeneration', async () => {
+    const contextPath = join(tmpDir, '.cleo', 'project-context.json');
+    writeFileSync(
+      contextPath,
+      JSON.stringify({
+        schemaVersion: '1.0.0',
+        detectedAt: new Date().toISOString(),
+        projectTypes: ['node'],
+        primaryType: 'node',
+        monorepo: true,
+        audit: { command: 'pnpm audit --prod' },
+      }),
+    );
+    const result = await ensureProjectContext(tmpDir, { force: true });
+    expect(result.action).toBe('repaired');
+    const regenerated = JSON.parse(readFileSync(contextPath, 'utf-8'));
+    expect(regenerated.audit).toEqual({ command: 'pnpm audit --prod' });
+  });
+
+  it('preserves user security-scan.command override during force regeneration', async () => {
+    const contextPath = join(tmpDir, '.cleo', 'project-context.json');
+    writeFileSync(
+      contextPath,
+      JSON.stringify({
+        schemaVersion: '1.0.0',
+        detectedAt: new Date().toISOString(),
+        projectTypes: ['node'],
+        primaryType: 'node',
+        monorepo: true,
+        'security-scan': { command: 'snyk test' },
+      }),
+    );
+    const result = await ensureProjectContext(tmpDir, { force: true });
+    expect(result.action).toBe('repaired');
+    const regenerated = JSON.parse(readFileSync(contextPath, 'utf-8'));
+    expect(regenerated['security-scan']).toEqual({ command: 'snyk test' });
+  });
+
+  it('does not inject lint override when existing file has none', async () => {
+    const contextPath = join(tmpDir, '.cleo', 'project-context.json');
+    writeFileSync(
+      contextPath,
+      JSON.stringify({
+        schemaVersion: '1.0.0',
+        detectedAt: new Date().toISOString(),
+        projectTypes: ['node'],
+        primaryType: 'node',
+        monorepo: true,
+      }),
+    );
+    const result = await ensureProjectContext(tmpDir, { force: true });
+    expect(result.action).toBe('repaired');
+    const regenerated = JSON.parse(readFileSync(contextPath, 'utf-8'));
+    // lint is not auto-detected by detectProjectType, so it should be absent
+    expect(regenerated.lint).toBeUndefined();
+    expect(regenerated.typecheck).toBeUndefined();
+    expect(regenerated.audit).toBeUndefined();
+    expect(regenerated['security-scan']).toBeUndefined();
+  });
 });
 
 // ── ensureCleoGitRepo ────────────────────────────────────────────────
