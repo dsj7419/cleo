@@ -413,21 +413,29 @@ async function recordExistsInTasksDbFresh(
       // A stale candidate may disappear between path discovery and the read-only open.
     }
   }
+  if (sharedNative?.isOpen) {
+    try {
+      return projectRecordExists(sharedNative, id, tableNames);
+    } catch {
+      // The caller's handle may close after the liveness check.
+    }
+  }
   return false;
 }
 
 /**
- * Verify a session ID through an independent read-only connection.
+ * Verify a session ID through fresh read-only connections and the caller's live handle.
  *
  * This is the bounded fallback for callers whose shared project handle either
  * closed during the primary query or returned a stale empty result. It does not
  * evict the dual-scope cache, so other domains retaining the shared handle stay
- * live while the probe runs.
+ * live while the probe runs. The live handle is checked last because it can own
+ * a committed, unlinked SQLite file that is no longer reachable by path.
  *
  * @param sessionId - Session ID to verify.
  * @param tasksDb - Shared tasks handle whose native path anchors the probe when available.
  * @param cwd - Project root used to resolve the project-scope cleo.db.
- * @returns True when the session is present in the on-disk tasks_sessions table.
+ * @returns True when the session is present in any live project session table.
  * @task T12034
  */
 export async function sessionExistsInTasksDbFresh(
@@ -439,7 +447,7 @@ export async function sessionExistsInTasksDbFresh(
 }
 
 /**
- * Verify a task ID through an independent read-only connection.
+ * Verify a task ID through fresh read-only connections and the caller's live handle.
  *
  * Checks both the active legacy tasks table and its consolidated prefixed
  * counterpart so callers remain correct during the E3-to-E6 transition.
