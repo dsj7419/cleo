@@ -247,8 +247,8 @@ function assertNoRecordedExodusAbort(): void {
 type CacheKey = string;
 
 interface CacheEntry {
-  handle: DualScopeDbHandle;
-  nativeDb: DatabaseSync;
+  handle: DualScopeDbHandle | null;
+  nativeDb: DatabaseSync | null;
   initPromise: Promise<DualScopeDbHandle> | null;
 }
 
@@ -594,7 +594,10 @@ export async function openDualScopeDbAtPath(
       if (existing.initPromise) {
         return existing.initPromise;
       }
-      return existing.handle;
+      if (existing.handle && existing.nativeDb?.isOpen) {
+        return existing.handle;
+      }
+      _cache.delete(key);
     }
   }
 
@@ -708,6 +711,7 @@ export async function openDualScopeDbAtPath(
         if (entry) {
           entry.initPromise = null;
           entry.handle = built;
+          entry.nativeDb = nativeDb;
         }
 
         return built;
@@ -829,10 +833,8 @@ export async function openDualScopeDbAtPath(
 
   // Store a placeholder with the in-flight promise so concurrent callers wait.
   _cache.set(key, {
-    // biome-ignore lint/suspicious/noExplicitAny: placeholder until initPromise resolves
-    handle: null as any,
-    // biome-ignore lint/suspicious/noExplicitAny: nativeDb not available yet
-    nativeDb: null as any,
+    handle: null,
+    nativeDb: null,
     initPromise,
   });
 

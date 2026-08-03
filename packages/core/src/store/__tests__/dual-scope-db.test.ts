@@ -113,6 +113,16 @@ describe('openDualScopeDb', () => {
     expect(h1).toBe(h2);
   }, 30_000);
 
+  it('reopens a cached handle whose native connection was closed', async () => {
+    const first = await openDualScopeDb('project', projectDir);
+    first.db.$client.close();
+
+    const reopened = await openDualScopeDb('project', projectDir);
+
+    expect(reopened).not.toBe(first);
+    expect(reopened.db.$client.isOpen).toBe(true);
+  }, 30_000);
+
   it('project and global scopes are different handles', async () => {
     const proj = await openDualScopeDb('project', projectDir);
     const glob = await openDualScopeDb('global');

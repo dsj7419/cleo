@@ -338,26 +338,46 @@ interface SessionPresenceRow {
   present: number;
 }
 
+type ProjectRecordTable = 'sessions' | 'tasks_sessions' | 'tasks' | 'tasks_tasks';
+
 interface TasksDbWithNativeClient {
   $client?: import('./sqlite-native.js').DatabaseSync;
 }
 
-/**
- * Verify a session ID through an independent read-only connection.
- *
- * This is the bounded fallback for callers whose shared project handle either
- * closed during the primary query or returned a stale empty result. It does not
- * evict the dual-scope cache, so other domains retaining the shared handle stay
- * live while the probe runs.
- *
- * @param sessionId - Session ID to verify.
- * @param tasksDb - Shared tasks handle whose native path anchors the probe when available.
- * @param cwd - Project root used to resolve the project-scope cleo.db.
- * @returns True when the session is present in the on-disk tasks_sessions table.
- * @task T12034
- */
-export async function sessionExistsInTasksDbFresh(
-  sessionId: string,
+function projectRecordExists(
+  probe: import('./sqlite-native.js').DatabaseSync,
+  id: string,
+  tableNames: readonly [ProjectRecordTable, ProjectRecordTable],
+): boolean {
+  const availableRows = probe
+    .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name IN (?, ?)")
+    .all(...tableNames);
+  const availableNames = new Set<ProjectRecordTable>();
+  for (const row of availableRows) {
+    const name = row['name'];
+    if (
+      name === 'sessions' ||
+      name === 'tasks_sessions' ||
+      name === 'tasks' ||
+      name === 'tasks_tasks'
+    ) {
+      availableNames.add(name);
+    }
+  }
+
+  for (const tableName of tableNames) {
+    if (!availableNames.has(tableName)) continue;
+    const row = probe
+      .prepare(`SELECT 1 AS present FROM ${tableName} WHERE id = ? LIMIT 1`)
+      .get(id) as SessionPresenceRow | undefined;
+    if (row !== undefined) return true;
+  }
+  return false;
+}
+
+async function recordExistsInTasksDbFresh(
+  id: string,
+  tableNames: readonly [ProjectRecordTable, ProjectRecordTable],
   tasksDb: Awaited<ReturnType<typeof import('./sqlite.js').getDb>> | null,
   cwd?: string,
 ): Promise<boolean> {
@@ -366,18 +386,84 @@ export async function sessionExistsInTasksDbFresh(
     import('./sqlite-native.js'),
   ]);
   const sharedNative = (tasksDb as TasksDbWithNativeClient | null)?.$client;
-  const dbPath = sharedNative?.location() ?? resolveDualScopeDbPath('project', cwd);
-  const probe = openNativeDatabase(dbPath, {
-    readonly: true,
-  });
-  try {
-    const row = probe
-      .prepare('SELECT 1 AS present FROM tasks_sessions WHERE id = ? LIMIT 1')
-      .get(sessionId) as SessionPresenceRow | undefined;
-    return row !== undefined;
-  } finally {
-    probe.close();
+  const preferredPath =
+    cwd !== undefined
+      ? resolveDualScopeDbPath('project', cwd)
+      : (sharedNative?.location() ?? resolveDualScopeDbPath('project'));
+  const sharedPath = sharedNative?.location();
+  const probePath = (dbPath: string): boolean => {
+    const probe = openNativeDatabase(dbPath, {
+      readonly: true,
+    });
+    try {
+      return projectRecordExists(probe, id, tableNames);
+    } finally {
+      probe.close();
+    }
+  };
+
+  const candidatePaths =
+    sharedPath != null && sharedPath !== preferredPath
+      ? [preferredPath, sharedPath]
+      : [preferredPath];
+  for (const dbPath of candidatePaths) {
+    try {
+      if (probePath(dbPath)) return true;
+    } catch {
+      // A stale candidate may disappear between path discovery and the read-only open.
+    }
   }
+  if (sharedNative?.isOpen) {
+    try {
+      return projectRecordExists(sharedNative, id, tableNames);
+    } catch {
+      // The caller's handle may close after the liveness check.
+    }
+  }
+  return false;
+}
+
+/**
+ * Verify a session ID through fresh read-only connections and the caller's live handle.
+ *
+ * This is the bounded fallback for callers whose shared project handle either
+ * closed during the primary query or returned a stale empty result. It does not
+ * evict the dual-scope cache, so other domains retaining the shared handle stay
+ * live while the probe runs. The live handle is checked last because it can own
+ * a committed, unlinked SQLite file that is no longer reachable by path.
+ *
+ * @param sessionId - Session ID to verify.
+ * @param tasksDb - Shared tasks handle whose native path anchors the probe when available.
+ * @param cwd - Project root used to resolve the project-scope cleo.db.
+ * @returns True when the session is present in any live project session table.
+ * @task T12034
+ */
+export async function sessionExistsInTasksDbFresh(
+  sessionId: string,
+  tasksDb: Awaited<ReturnType<typeof import('./sqlite.js').getDb>> | null,
+  cwd?: string,
+): Promise<boolean> {
+  return recordExistsInTasksDbFresh(sessionId, ['sessions', 'tasks_sessions'], tasksDb, cwd);
+}
+
+/**
+ * Verify a task ID through fresh read-only connections and the caller's live handle.
+ *
+ * Checks both the active legacy tasks table and its consolidated prefixed
+ * counterpart so callers remain correct during the E3-to-E6 transition.
+ *
+ * @param taskId - Task ID to verify.
+ * @param tasksDb - Shared tasks handle used only when no project root is available.
+ * @param cwd - Project root used to resolve the authoritative project database.
+ * @returns True when the task exists in either supported project table.
+ * @task T12034
+ */
+export async function taskExistsInTasksDbFresh(
+  taskId: string,
+  tasksDb: Awaited<ReturnType<typeof import('./sqlite.js').getDb>> | null,
+  cwd?: string,
+): Promise<boolean> {
+  return recordExistsInTasksDbFresh(taskId, ['tasks', 'tasks_tasks'], tasksDb, cwd);
 }
 
 /**

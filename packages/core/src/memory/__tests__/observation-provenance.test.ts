@@ -105,6 +105,7 @@ describe('observeBrain — T1897 provenance columns', () => {
       text: 'Test observation',
       origin: 'manual',
       _skipGate: true,
+      _skipQueue: true,
     });
 
     expect(mockAddObservation).toHaveBeenCalledTimes(1);
@@ -120,6 +121,7 @@ describe('observeBrain — T1897 provenance columns', () => {
       origin: 'auto-extract',
       provenanceChain: ['O-parent-001', 'O-parent-002'],
       _skipGate: true,
+      _skipQueue: true,
     });
 
     expect(mockAddObservation).toHaveBeenCalledTimes(1);
@@ -134,6 +136,7 @@ describe('observeBrain — T1897 provenance columns', () => {
     await observeBrain(PROJECT_ROOT, {
       text: 'Legacy observation',
       _skipGate: true,
+      _skipQueue: true,
     });
 
     expect(mockAddObservation).toHaveBeenCalledTimes(1);
@@ -149,6 +152,7 @@ describe('observeBrain — T1897 provenance columns', () => {
       text: 'Test fixture observation',
       origin: 'test',
       _skipGate: true,
+      _skipQueue: true,
     });
 
     const call = mockAddObservation.mock.calls[0][0];
