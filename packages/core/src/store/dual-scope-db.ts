@@ -63,8 +63,6 @@ import {
   resolveConsolidatedJournalSiblings,
   resolveCorePackageMigrationsFolder,
 } from './resolve-migrations-folder.js';
-import type * as CleoGlobalSchemaTypes from './schema/cleo-global/index.js';
-import type * as CleoProjectSchemaTypes from './schema/cleo-project/index.js';
 import { applyPerfPragmas } from './sqlite-pragmas.js';
 import {
   activeScope,
@@ -84,10 +82,10 @@ import {
 export type DualScope = 'project' | 'global';
 
 /** Typed Drizzle handle for the project-scope `cleo.db`. */
-export type CleoProjectDb = NodeSQLiteDatabase<typeof CleoProjectSchemaTypes>;
+export type CleoProjectDb = NodeSQLiteDatabase;
 
 /** Typed Drizzle handle for the global-scope `cleo.db`. */
-export type CleoGlobalDb = NodeSQLiteDatabase<typeof CleoGlobalSchemaTypes>;
+export type CleoGlobalDb = NodeSQLiteDatabase;
 
 /**
  * Handle returned by {@link openDualScopeDb}.
@@ -322,29 +320,6 @@ function getDatabaseSyncCtor(): DatabaseSyncCtor {
   return _DatabaseSyncCtor;
 }
 
-// ── Schema loading ───────────────────────────────────────────────────────────
-
-// Dynamic imports for schema barrels. Loaded once per scope and cached.
-// We use dynamic import() to avoid loading both schemas at module-init time —
-// only the requested scope's schema is loaded.
-
-let _projectSchema: typeof CleoProjectSchemaTypes | null = null;
-let _globalSchema: typeof CleoGlobalSchemaTypes | null = null;
-
-async function loadProjectSchema(): Promise<typeof CleoProjectSchemaTypes> {
-  if (_projectSchema === null) {
-    _projectSchema = await import('./schema/cleo-project/index.js');
-  }
-  return _projectSchema;
-}
-
-async function loadGlobalSchema(): Promise<typeof CleoGlobalSchemaTypes> {
-  if (_globalSchema === null) {
-    _globalSchema = await import('./schema/cleo-global/index.js');
-  }
-  return _globalSchema;
-}
-
 // ── Existence table for migration reconciliation ──────────────────────────────
 
 /**
@@ -479,10 +454,9 @@ async function openDedicatedDualScopeDb(
   // T11829: bound per-connection memory for one-shot/CLI opens (full SSoT for daemon).
   applyPerfPragmas(nativeDb, memoryBoundedPragmaOverrides());
 
-  const schema = scope === 'project' ? await loadProjectSchema() : await loadGlobalSchema();
   const drizzle = getDrizzle();
-  // biome-ignore lint/suspicious/noExplicitAny: schema type is scope-specific; typed via DualScopeDbHandle<TScope>
-  const db = drizzle({ client: nativeDb, schema }) as NodeSQLiteDatabase<any>;
+  // biome-ignore lint/suspicious/noExplicitAny: dual-scope handle is untyped at construction; typed via DualScopeDbHandle<TScope>
+  const db = drizzle({ client: nativeDb }) as NodeSQLiteDatabase<any>;
 
   const migrationsFolder = resolveCorePackageMigrationsFolder(migrationsSetName(scope));
   // T11829: pass the OTHER lineages that share this scope's consolidated cleo.db
@@ -630,14 +604,10 @@ export async function openDualScopeDbAtPath(
     // per-connection memory for one-shot/CLI opens (full SSoT for daemon) — T11829.
     applyPerfPragmas(nativeDb, memoryBoundedPragmaOverrides());
 
-    // Load the schema barrel for this scope.
-    const schema = scope === 'project' ? await loadProjectSchema() : await loadGlobalSchema();
-
     // Create the Drizzle ORM wrapper.
-    // Drizzle v1 RC3 node-sqlite API: pass { client, schema } as a single config object.
     const drizzle = getDrizzle();
-    // biome-ignore lint/suspicious/noExplicitAny: schema type is scope-specific; typed via DualScopeDbHandle<TScope>
-    const db = drizzle({ client: nativeDb, schema }) as NodeSQLiteDatabase<any>;
+    // biome-ignore lint/suspicious/noExplicitAny: dual-scope handle is untyped at construction; typed via DualScopeDbHandle<TScope>
+    const db = drizzle({ client: nativeDb }) as NodeSQLiteDatabase<any>;
 
     // Resolve the migrations folder for this scope.
     const migrationsFolder = resolveCorePackageMigrationsFolder(migrationsSetName(scope));
@@ -890,12 +860,6 @@ export function _resetDualScopeDbCache(scope?: DualScope): void {
     // handle.close() already deletes the key for the targeted entry; delete
     // defensively in case the handle was a mid-init placeholder.
     _cache.delete(key);
-  }
-  // Only reset the schema caches on a full (unscoped) reset — a scoped reset must
-  // not force the OTHER scope to reload its schema barrel mid-flight.
-  if (scope === undefined) {
-    _projectSchema = null;
-    _globalSchema = null;
   }
 }
 

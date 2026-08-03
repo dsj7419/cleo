@@ -91,7 +91,6 @@ import {
   resolveConsolidatedJournalSiblings,
   resolveCorePackageMigrationsFolder,
 } from './resolve-migrations-folder.js';
-import * as conduitSchema from './schema/cleo-project/conduit.js';
 import { applyPerfPragmas } from './sqlite-pragmas.js';
 
 const _require = createRequire(import.meta.url);
@@ -268,7 +267,7 @@ function runConduitMigrations(nativeDb: DatabaseSync): void {
     resolveConsolidatedJournalSiblings('drizzle-conduit'),
   );
 
-  const db = _getDrizzle()({ client: nativeDb, schema: conduitSchema });
+  const db = _getDrizzle()({ client: nativeDb });
   migrateSanitized(db, { migrationsFolder });
 }
 

@@ -27,7 +27,7 @@ import * as nexusSchema from '../store/schema/nexus-schema.js';
 import { SIGIL_ROLES } from '../store/schema/nexus-schema.js';
 
 /** Type alias for the Drizzle nexus database instance. */
-type NexusDb = NodeSQLiteDatabase<typeof nexusSchema>;
+type NexusDb = NodeSQLiteDatabase;
 
 /**
  * Legal `nexus_sigils.role` values accepted by the consolidated migration's

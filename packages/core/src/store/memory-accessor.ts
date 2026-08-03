@@ -42,7 +42,7 @@ import type {
 import * as brainSchema from './schema/memory-schema.js';
 
 export class BrainDataAccessor {
-  constructor(private db: NodeSQLiteDatabase<typeof brainSchema>) {}
+  constructor(private db: NodeSQLiteDatabase) {}
 
   // =========================================================================
   // Decisions CRUD

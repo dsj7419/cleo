@@ -68,7 +68,6 @@ import {
   resolveConsolidatedJournalSiblings,
   resolveCorePackageMigrationsFolder,
 } from './resolve-migrations-folder.js';
-import * as agentRegistrySchema from './schema/cleo-global/agent-registry.js';
 
 /**
  * Database file name within the global cleo home directory.
@@ -227,7 +226,7 @@ function runAgentRegistryMigrations(nativeDb: DatabaseSync): void {
 
   // Create the drizzle ORM wrapper and run any pending migrations (the
   // health-probe ledger tables). The schema is the prefixed consolidated shape.
-  const db = drizzle({ client: nativeDb, schema: agentRegistrySchema });
+  const db = drizzle({ client: nativeDb });
   migrateSanitized(db, { migrationsFolder });
 }
 

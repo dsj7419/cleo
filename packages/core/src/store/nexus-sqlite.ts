@@ -96,7 +96,7 @@ import { isSqliteBusy } from './with-retry.js';
 export const NEXUS_SCHEMA_VERSION = '1.0.0';
 
 /** Singleton state for lazy initialization. */
-let _nexusDb: NodeSQLiteDatabase<typeof nexusSchema> | null = null;
+let _nexusDb: NodeSQLiteDatabase | null = null;
 let _nexusNativeDb: DatabaseSync | null = null;
 let _nexusDbPath: string | null = null;
 /**
@@ -108,7 +108,7 @@ let _nexusDbPath: string | null = null;
  */
 let _nexusRegistryPath: string | null = null;
 /** Guard against concurrent initialization (async migration). */
-let _nexusInitPromise: Promise<NodeSQLiteDatabase<typeof nexusSchema>> | null = null;
+let _nexusInitPromise: Promise<NodeSQLiteDatabase> | null = null;
 
 /**
  * SQLite ATTACH alias under which the GLOBAL consolidated `cleo.db` is mounted
@@ -615,10 +615,7 @@ function ensureNexusRelationWeights(nativeDb: DatabaseSync): void {
  * @task T11578
  * @task T11648
  */
-function runNexusMigrations(
-  nativeDb: DatabaseSync,
-  db: NodeSQLiteDatabase<typeof nexusSchema>,
-): void {
+function runNexusMigrations(nativeDb: DatabaseSync, db: NodeSQLiteDatabase): void {
   const migrationsFolder = resolveNexusMigrationsFolder();
 
   // If existing DB with populated graph, create a safety backup (cleo compat).
@@ -724,7 +721,7 @@ function runNexusMigrations(
  * @task T11578 (AC3 — prefixed `nexus_*` tables)
  * @task T11648 (ADR-090 runtime read half — project-scope graph + global attach)
  */
-export async function getNexusDb(): Promise<NodeSQLiteDatabase<typeof nexusSchema>> {
+export async function getNexusDb(): Promise<NodeSQLiteDatabase> {
   const requestedPath = getNexusDbPath();
   const requestedRegistryPath = getNexusRegistryDbPath();
 
@@ -820,7 +817,7 @@ export async function getNexusDb(): Promise<NodeSQLiteDatabase<typeof nexusSchem
     // Wrap the native handle with the `nexusSchema` drizzle instance so existing
     // accessors (nexusSchema.* queries) run unchanged: graph tables resolve to
     // the project `main`; registry/identity tables fall through to the attach.
-    const db = drizzle({ client: nativeDb, schema: nexusSchema });
+    const db = drizzle({ client: nativeDb });
 
     // Apply the nexus DELTA migration + idempotent safety nets on top of the
     // consolidated prefixed tables openDualScopeDb already created: the FTS5

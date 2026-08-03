@@ -142,5 +142,5 @@ export function jsonbText<T = unknown>(column: SQL | SQL.Aliased): SQL<T> {
   // `sql` interpolates a column reference, an aliased expression, or a raw SQL
   // fragment uniformly — all are valid `json()` arguments. The decoder parses
   // the TEXT json() emits so consumers receive the live document.
-  return sql`json(${column})`.mapWith((text: string): T => JSON.parse(text) as T);
+  return sql`json(${column})`.mapWith((value: unknown): T => JSON.parse(String(value)) as T);
 }
