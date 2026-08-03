@@ -404,10 +404,11 @@ async function recordExistsInTasksDbFresh(
 
   if (sharedPath != null && sharedPath !== preferredPath) {
     try {
-      return probePath(preferredPath);
+      if (probePath(preferredPath)) return true;
     } catch {
       return probePath(sharedPath);
     }
+    return probePath(sharedPath);
   }
   return probePath(preferredPath);
 }
