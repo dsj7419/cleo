@@ -8,7 +8,7 @@
  * @epic T5149
  */
 
-import { taskExistsInTasksDb } from '../store/cross-db-cleanup.js';
+import { taskExistsInTasksDb, taskExistsInTasksDbFresh } from '../store/cross-db-cleanup.js';
 import { getBrainAccessor } from '../store/memory-accessor.js';
 import type {
   BRAIN_LINK_TYPES,
@@ -48,8 +48,22 @@ export async function linkMemoryToTask(
   }
 
   // Write-guard: reject stale task IDs before creating cross-db reference
-  const tasksDb = await getDb(projectRoot);
-  if (!(await taskExistsInTasksDb(taskId, tasksDb))) {
+  let taskExists = false;
+  let tasksDb: Awaited<ReturnType<typeof getDb>> | null = null;
+  try {
+    tasksDb = await getDb(projectRoot);
+    taskExists = await taskExistsInTasksDb(taskId, tasksDb);
+  } catch {
+    // The independent probe below handles a closed shared handle.
+  }
+  if (!taskExists) {
+    try {
+      taskExists = await taskExistsInTasksDbFresh(taskId, tasksDb, projectRoot);
+    } catch {
+      // A failed confirmation remains absent (best-effort soft FK guard).
+    }
+  }
+  if (!taskExists) {
     throw new Error(
       `Write-guard: task ${taskId} does not exist in tasks.db — refusing to create brain link`,
     );

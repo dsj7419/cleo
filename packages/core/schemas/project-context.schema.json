@@ -159,6 +159,50 @@
           "description": "Deprecated APIs, incompatible syntax, style violations to avoid"
         }
       }
+    },
+    "lint": {
+      "type": "object",
+      "description": "Lint command override (T12026).",
+      "additionalProperties": false,
+      "properties": {
+        "command": {
+          "type": "string",
+          "description": "Command to run static analysis / lint checks"
+        }
+      }
+    },
+    "typecheck": {
+      "type": "object",
+      "description": "Type-check command override (T12026).",
+      "additionalProperties": false,
+      "properties": {
+        "command": {
+          "type": "string",
+          "description": "Command to run type checking"
+        }
+      }
+    },
+    "audit": {
+      "type": "object",
+      "description": "Audit command override (T12026).",
+      "additionalProperties": false,
+      "properties": {
+        "command": {
+          "type": "string",
+          "description": "Command to run dependency/module audit checks"
+        }
+      }
+    },
+    "security-scan": {
+      "type": "object",
+      "description": "Security-scan command override (T12026).",
+      "additionalProperties": false,
+      "properties": {
+        "command": {
+          "type": "string",
+          "description": "Command to run security vulnerability scanning"
+        }
+      }
     }
   }
 }

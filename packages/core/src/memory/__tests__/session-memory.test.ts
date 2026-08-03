@@ -9,7 +9,8 @@
 import { mkdir, mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, aroundEach, beforeEach, describe, expect, it } from 'vitest';
+import { worktreeScope } from '../../paths.js';
 import type { DebriefData } from '../../sessions/handoff.js';
 
 let tempDir: string;
@@ -51,12 +52,15 @@ function makeDebrief(overrides?: Partial<DebriefData>): DebriefData {
 }
 
 describe('Session Memory', () => {
-  beforeEach(async () => {
+  aroundEach(async (runTest) => {
     tempDir = await mkdtemp(join(tmpdir(), 'cleo-session-memory-'));
     cleoDir = join(tempDir, '.cleo');
     await mkdir(cleoDir, { recursive: true });
-    process.env['CLEO_DIR'] = cleoDir;
 
+    await worktreeScope.run({ worktreeRoot: tempDir, projectHash: 'session-memory-test' }, runTest);
+  });
+
+  beforeEach(async () => {
     // Initialize tasks.db with test task IDs and session for cross-db write-guard validation
     const { getDb } = await import('../../store/sqlite.js');
     const { tasks, sessions } = await import('../../store/tasks-schema.js');
@@ -77,6 +81,15 @@ describe('Session Memory', () => {
 
   afterEach(async () => {
     try {
+      const { shutdownBrainWriter, _resetBrainWriterForTests } = await import(
+        '../brain-writer-thread.js'
+      );
+      await shutdownBrainWriter();
+      _resetBrainWriterForTests();
+    } catch {
+      /* may not be loaded */
+    }
+    try {
       const { closeBrainDb } = await import('../../store/memory-sqlite.js');
       closeBrainDb();
     } catch {
@@ -94,7 +107,6 @@ describe('Session Memory', () => {
     } catch {
       /* may not be loaded */
     }
-    delete process.env['CLEO_DIR'];
     // Race rm against an 8s timeout. On Windows, fs.rm can block indefinitely
     // on locked SQLite WAL files — racing prevents the hook from timing out.
     await Promise.race([
@@ -236,9 +248,9 @@ describe('Session Memory', () => {
       const result = await persistSessionMemory(tempDir, 'S-001', debrief);
 
       // 2 decisions + 1 session summary + 1 session note = 4 observations
-      expect(result.observationsCreated).toBe(4);
+      expect(result.observationsCreated, result.errors.join('\n')).toBe(4);
       // 2 decisions with taskIds => 2 links
-      expect(result.linksCreated).toBe(2);
+      expect(result.linksCreated, result.errors.join('\n')).toBe(2);
       expect(result.observationIds).toHaveLength(4);
     });
 
