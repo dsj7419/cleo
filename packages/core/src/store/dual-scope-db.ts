@@ -707,8 +707,10 @@ export async function openDualScopeDbAtPath(
       // `__drizzle_migrations` journal) WITH the supervisor daemon disabled (`local`
       // mode default). `off` mode is a pass-through → byte-identical to pre-lease
       // behaviour (busy_timeout=30000 still serializes the write-txn).
-      // `withColdOpenLease` also records the scope in the Seam-1 active-scope registry
-      // so chokepoint write primitives lease correctly.
+      // The identity is bound to the drizzle DB handle via
+      // registerDbIdentity during construction — the chokepoint write
+      // primitives resolve it from the exact handle binding (T12042), no
+      // longer from a process-global active-scope registry.
       //
       // The lease wraps ONLY reconcileJournal + migrateWithRetry — the precise write-
       // txn that races in T5158. The exodus-on-open hook runs AFTER the lease releases

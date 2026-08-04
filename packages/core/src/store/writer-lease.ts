@@ -129,12 +129,12 @@ export interface LeaseAcquireOptions {
    */
   reentrant?: boolean;
   /**
-   * Pin the lease to a SPECIFIC cleo.db file (its resolved on-disk path) instead
-   * of the cwd-default canonical path the scope→path resolver returns. The
-   * chokepoint write primitives pass the dbPath recorded at cold-open
-   * ({@link activeScopeDbPath}) so the lease row lands in the SAME file the write
-   * targets — correct when more than one project's cleo.db is open in one process
-   * (Finding 1). When omitted, the canonical scope→path resolution is used.
+   * Pin the lease to a SPECIFIC cleo.db file path. When omitted the
+   * canonical scope→path resolver is used. The path is normalized via
+   * `path.resolve()` before memo-keying so alias paths share one grant
+   * row (T12042 Finding 4). The chokepoint write primitives resolve
+   * identity from their exact DB handle via {@link resolveDbIdentity},
+   * not from a process-global registry.
    */
   dbPath?: string;
 }
@@ -446,17 +446,33 @@ const _dbIdentityRegistry = new WeakMap<object, WriterLeaseIdentity>();
  * Register a drizzle DB handle's immutable writer-lease identity.
  *
  * Called at {@link DualScopeDbHandle} construction time (both cached and
- * dedicated opens). Subsequent calls for the SAME handle object silently
- * overwrite (last registration wins), but the identity is immutable — a
- * replacement identity for the same handle is a bug.
+ * dedicated opens). Idempotent when the same DB handle is re-registered with
+ * the SAME canonical identity (same scope AND same `dbPath`). Throws
+ * `E_WRITER_LEASE_IDENTITY_MISMATCH` when the same DB handle is registered
+ * with a DIFFERENT identity — a scope/path mismatch for the same handle is a
+ * programming error.
  *
  * @param db - The drizzle DB handle (or any non-primitive key). Must be the
  *   exact same object reference that {@link resolveDbIdentity} will look up.
  * @param identity - The frozen identity built by {@link makeWriterLeaseIdentity}.
+ * @throws {Error} When the handle was previously registered with a different
+ *   scope or dbPath.
  *
  * @task T12042 (E6-L12b)
  */
 export function registerDbIdentity(db: object, identity: WriterLeaseIdentity): void {
+  const existing = _dbIdentityRegistry.get(db);
+  if (existing) {
+    if (existing.scope === identity.scope && existing.dbPath === identity.dbPath) {
+      return; // idempotent — same canonical identity
+    }
+    throw new Error(
+      'E_WRITER_LEASE_IDENTITY_MISMATCH: the same drizzle DB handle was ' +
+        `previously registered as ${existing.scope}::${existing.dbPath} ` +
+        `but is being re-registered as ${identity.scope}::${identity.dbPath}. ` +
+        'A DB handle must carry exactly one immutable identity (T12042).',
+    );
+  }
   _dbIdentityRegistry.set(db, identity);
 }
 
@@ -889,13 +905,11 @@ export async function acquireWriterLease(
     return makeNoopHandle(scope, lane);
   }
 
-  // Build the lease-scope key up front from the explicit pinned dbPath (when the
-  // chokepoint pins a non-cwd-default file) or the I/O-free path resolver, so the
-  // re-entrant fast path AND the single-flight guard are decided SYNCHRONOUSLY,
-  // before any `await` yields the event loop. Keying on `${scope}::${dbPath}::
-  // ${lane}` means two different project files in one process are distinct lease
-  // scopes (Finding 1) and that the same (scope,dbPath,lane) never double-claims.
-  const dbPath = opts?.dbPath ?? _dbPathResolver(scope);
+  // Build the lease-scope key up front from the normalized dbPath. Normalizing
+  // BEFORE keying and resolver use means alias paths (/a/../a/cleo.db) resolve
+  // to the same memo key + grant row as canonical (/a/cleo.db) — a single
+  // memoized grant, one active row (T12042 Finding 4).
+  const dbPath = opts?.dbPath ? resolvePath(opts.dbPath) : _dbPathResolver(scope);
   const key = memoKey(scope, dbPath, lane);
 
   // Re-entrant fast path: an existing same-(scope,dbPath,lane) grant is shared
@@ -904,14 +918,21 @@ export async function acquireWriterLease(
     const existing = _grantMemo.get(key);
     if (existing) {
       existing.refcount += 1;
-      // Reflect the re-entry in the durable row depth (best-effort under epoch guard).
-      const { native } = await _nativeDbResolver(scope, dbPath);
-      native
-        .prepare(
-          `UPDATE ${WRITER_LEASES_TABLE} SET reentrancy_depth = reentrancy_depth + 1 ` +
-            `WHERE scope = ? AND lane = ? AND holder_id = ? AND epoch = ? AND active = 1`,
-        )
-        .run(scope, lane, existing.handle.holderId, existing.handle.epoch);
+      try {
+        const { native } = await _nativeDbResolver(scope, dbPath);
+        native
+          .prepare(
+            `UPDATE ${WRITER_LEASES_TABLE} SET reentrancy_depth = reentrancy_depth + 1 ` +
+              `WHERE scope = ? AND lane = ? AND holder_id = ? AND epoch = ? AND active = 1`,
+          )
+          .run(scope, lane, existing.handle.holderId, existing.handle.epoch);
+      } catch (err) {
+        // Native resolver or depth-update failed — roll back the refcount
+        // increment so the grant is not leaked. The caller receives the
+        // original error; the held grant is intact (single refcount tick).
+        existing.refcount -= 1;
+        throw err;
+      }
       return existing.handle;
     }
 
@@ -928,14 +949,18 @@ export async function acquireWriterLease(
       const entry = _grantMemo.get(key);
       if (entry && entry.handle === shared) {
         entry.refcount += 1;
-        // `entry.handle` is the concrete InternalLeaseHandle (holderId/epoch).
-        const { native } = await _nativeDbResolver(scope, dbPath);
-        native
-          .prepare(
-            `UPDATE ${WRITER_LEASES_TABLE} SET reentrancy_depth = reentrancy_depth + 1 ` +
-              `WHERE scope = ? AND lane = ? AND holder_id = ? AND epoch = ? AND active = 1`,
-          )
-          .run(scope, lane, entry.handle.holderId, entry.handle.epoch);
+        try {
+          const { native } = await _nativeDbResolver(scope, dbPath);
+          native
+            .prepare(
+              `UPDATE ${WRITER_LEASES_TABLE} SET reentrancy_depth = reentrancy_depth + 1 ` +
+                `WHERE scope = ? AND lane = ? AND holder_id = ? AND epoch = ? AND active = 1`,
+            )
+            .run(scope, lane, entry.handle.holderId, entry.handle.epoch);
+        } catch (err) {
+          entry.refcount -= 1;
+          throw err;
+        }
         return entry.handle;
       }
       // The shared acquire is no longer active — fall through to a fresh acquire.

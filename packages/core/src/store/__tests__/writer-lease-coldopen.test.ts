@@ -1,15 +1,14 @@
 /**
- * T11627 ST-3 — T5158 heal wiring tests (Seams 0 & 1).
+ * T11627 ST-3 — T5158 heal wiring tests (Seams 0 & 1) + T12042 identity binding.
  *
- * Covers the spec test-plan rows assigned to ST-3:
- *   - T12042 — writer-lease identity isolation: concurrent project A / project B /
- *     global writers cannot steal, release, resolve, or close each other's lease
- *     identity; the removed process-global activeScope() registry is replaced with
- *     immutable DB-bound WriterLeaseIdentity via typed WeakMap + registerDbIdentity.
- *   - Alias paths normalize to one identity; one memoized grant row.
- *   - Chokepoint write primitives resolve identity from exact DB binding.
- *   - Seam 0 — `withColdOpenLease` serializes the cold-open critical section.
- *   - T9  — dual-scope independence.
+ * Covers:
+ *   - T12042 — exact DB-bound writer-lease identity (WeakMap).
+ *   - T12042 Finding 4 — alias path normalization in acquireWriterLease.
+ *   - T12042 — registerDbIdentity hardening (idempotent same, throw mismatch).
+ *   - T12042 — primitive-level row isolation: insertIdempotent + upsertIdempotent
+ *     across project A / project B / global handles.
+ *   - Seam 0 — withColdOpenLease serializes the cold-open critical section.
+ *   - T9  — dual-scope cold-open lease independence.
  *   - T11 — two-writer arbitration.
  *   - T14 — T5158 regression.
  *
@@ -29,6 +28,7 @@ import {
   _resetDualScopeDbCache,
   insertIdempotent,
   openDualScopeDbAtPath,
+  upsertIdempotent,
 } from '../dual-scope-db.js';
 import { applyPerfPragmas } from '../sqlite-pragmas.js';
 import {
@@ -65,7 +65,6 @@ afterEach(() => {
   }
 });
 
-/** Open + migrate an isolated temp cleo.db for a scope; return its native handle. */
 async function openTempScope(scope: LeaseScope, dir: string): Promise<DatabaseSync> {
   mkdirSync(dir, { recursive: true });
   const dbPath = join(dir, 'cleo.db');
@@ -88,28 +87,18 @@ function countActive(db: DatabaseSync, scope: string, lane: string): number {
   );
 }
 
-// ── T12042 — identity normalization: alias paths resolve to one identity ──────
+function countRows(db: DatabaseSync, table: string): number {
+  return (
+    (db.prepare(`SELECT COUNT(*) AS c FROM ${table}`).get() as { c: number } | undefined)?.c ?? 0
+  );
+}
 
-describe('T12042 — makeWriterLeaseIdentity normalizes alias paths to one identity', () => {
-  it('alias paths produce byte-identical identities (path.resolve normalization)', () => {
-    const idA = makeWriterLeaseIdentity('project', '/tmp/./proj/.cleo/cleo.db');
-    const idB = makeWriterLeaseIdentity('project', '/tmp/proj/.cleo/cleo.db');
-    expect(idA.dbPath).toBe(idB.dbPath);
-    expect(idA.dbPath).toBe(resolvePath('/tmp/proj/.cleo/cleo.db'));
-  });
+// ── T12042 Finding 4 — alias path normalization in acquireWriterLease ───────
 
-  it('different canonical paths produce distinct identities', () => {
-    const idA = makeWriterLeaseIdentity('project', '/tmp/a/.cleo/cleo.db');
-    const idB = makeWriterLeaseIdentity('project', '/tmp/b/.cleo/cleo.db');
-    expect(idA.dbPath).not.toBe(idB.dbPath);
-    expect(idA.scope).toBe(idB.scope);
-  });
-
-  it('a single memoized grant row for alias paths (one identity)', async () => {
-    // Two callers acquire the same scope+dbPath through an aliased dbPath param.
+describe('T12042 Finding 4 — acquireWriterLease normalizes alias dbPath', () => {
+  it('alias path resolves to one memoized grant + one active row', async () => {
     const native = await openTempScope('project', join(testRoot, 'alias', '.cleo'));
     const realPath = resolvePath(join(testRoot, 'alias', '.cleo', 'cleo.db'));
-    const aliasPath = join(testRoot, 'alias', '.cleo', '.', 'cleo.db'); // aliased via redundant .
 
     _setNativeDbResolverForTest(
       async (): Promise<LeaseTarget> => ({
@@ -118,19 +107,172 @@ describe('T12042 — makeWriterLeaseIdentity normalizes alias paths to one ident
       }),
     );
 
-    // The identity created by makeWriterLeaseIdentity normalizes alias → canonical.
-    const id = makeWriterLeaseIdentity('project', aliasPath);
-    expect(id.dbPath).toBe(realPath);
+    // Pass an aliased path (with redundant segments) directly to acquireWriterLease.
+    const aliasPath = join(testRoot, 'alias', '.cleo', '.', 'cleo.db');
+    const h1 = await acquireWriterLease('project', 'tasks', { dbPath: aliasPath });
+    // Same canonical path, different spelling — must share the grant.
+    const h2 = await acquireWriterLease('project', 'tasks', { dbPath: realPath });
 
-    const h1 = await acquireWriterLease(id.scope, 'tasks', { dbPath: id.dbPath });
-    const h2 = await acquireWriterLease(id.scope, 'tasks', { dbPath: id.dbPath });
-    // Same identity → same memo key → shared grant (re-entrant).
-    expect(h2).toBe(h1);
-    expect(countActive(native, 'project', 'tasks')).toBe(1);
+    expect(h2).toBe(h1); // same memoized grant (re-entrant)
+    expect(h1.epoch).toBeGreaterThan(0);
+    expect(countActive(native, 'project', 'tasks')).toBe(1); // one active row
 
     await h1.release();
     await h2.release();
     expect(countActive(native, 'project', 'tasks')).toBe(0);
+  }, 20_000);
+});
+
+// ── T12042 — registerDbIdentity hardening ────────────────────────────────────
+
+describe('T12042 — registerDbIdentity hardening', () => {
+  it('same DB + same canonical identity is idempotent', () => {
+    const db = {};
+    const id = makeWriterLeaseIdentity('project', '/tmp/cleo.db');
+    registerDbIdentity(db, id);
+    expect(() => registerDbIdentity(db, id)).not.toThrow();
+    expect(resolveDbIdentity(db)).toBe(id);
+  });
+
+  it('same DB with different scope must throw', () => {
+    const db = {};
+    registerDbIdentity(db, makeWriterLeaseIdentity('project', '/tmp/cleo.db'));
+    expect(() => registerDbIdentity(db, makeWriterLeaseIdentity('global', '/tmp/cleo.db'))).toThrow(
+      /E_WRITER_LEASE_IDENTITY_MISMATCH/,
+    );
+  });
+
+  it('same DB with different dbPath must throw', () => {
+    const db = {};
+    registerDbIdentity(db, makeWriterLeaseIdentity('project', '/tmp/a/cleo.db'));
+    expect(() =>
+      registerDbIdentity(db, makeWriterLeaseIdentity('project', '/tmp/b/cleo.db')),
+    ).toThrow(/E_WRITER_LEASE_IDENTITY_MISMATCH/);
+  });
+});
+
+// ── T12042 — primitive row isolation across project A / B / global ────────────
+
+/**
+ * Build a stub drizzle DB that writes rows to the given native handle's test
+ * table via raw SQL. The stub is registered with the correct identity so
+ * insertIdempotent/upsertIdempotent can resolve scope+dbPath from it.
+ */
+function makeStubDb(
+  native: DatabaseSync,
+  identity: WriterLeaseIdentity,
+): { db: Record<string, unknown>; calls: () => number } {
+  let callCount = 0;
+  const db = {
+    insert() {
+      return {
+        values(_row: unknown) {
+          return {
+            onConflictDoNothing() {
+              return {
+                async returning() {
+                  callCount += 1;
+                  native.prepare('INSERT OR IGNORE INTO _t_iso (k, v) VALUES (?, ?)').run('x', 1);
+                  return [{ k: 'x' }];
+                },
+              };
+            },
+            onConflictDoUpdate(opts: { target: unknown; set: unknown }) {
+              void opts;
+              return {
+                async returning() {
+                  callCount += 1;
+                  native
+                    .prepare(
+                      'INSERT INTO _t_iso (k, v) VALUES (?, ?) ON CONFLICT(k) DO UPDATE SET v = excluded.v',
+                    )
+                    .run('x', 99);
+                  return [{ k: 'x' }];
+                },
+              };
+            },
+          };
+        },
+      };
+    },
+  };
+  registerDbIdentity(db, identity);
+  return { db, calls: () => callCount };
+}
+
+describe('T12042 — primitive row isolation: insertIdempotent + upsertIdempotent', () => {
+  /** Open a real dual-scope handle, capture identity + native for inspection. */
+  async function openIsolated(
+    scope: LeaseScope,
+    dir: string,
+  ): Promise<{ native: DatabaseSync; dbPath: string; identity: WriterLeaseIdentity }> {
+    mkdirSync(dir, { recursive: true });
+    const dbPath = join(dir, 'cleo.db');
+    const handle =
+      scope === 'project'
+        ? await openDualScopeDbAtPath('project', dbPath)
+        : await openDualScopeDbAtPath('global', dbPath);
+    const native = (handle.db as unknown as { $client: DatabaseSync }).$client;
+    native.exec('CREATE TABLE IF NOT EXISTS _t_iso (k TEXT PRIMARY KEY, v INTEGER NOT NULL)');
+    return { native, dbPath, identity: handle.identity };
+  }
+
+  it('insertIdempotent lands rows ONLY in the correct project-A DB, not B', async () => {
+    const a = await openIsolated('project', join(testRoot, 'projA', '.cleo'));
+    const b = await openIsolated('project', join(testRoot, 'projB', '.cleo'));
+
+    _setNativeDbResolverForTest(async (_scope, dbPath): Promise<LeaseTarget> => {
+      if (dbPath === a.dbPath) return { native: a.native, dbPath: a.dbPath };
+      return { native: b.native, dbPath: b.dbPath };
+    });
+
+    const stubA = makeStubDb(a.native, a.identity);
+    await insertIdempotent(stubA.db as any, {} as any, {} as any, 'k');
+
+    expect(countRows(a.native, '_t_iso')).toBe(1);
+    expect(countRows(b.native, '_t_iso')).toBe(0);
+    expect(countActive(a.native, 'project', 'tasks')).toBe(0);
+    expect(countActive(b.native, 'project', 'tasks')).toBe(0);
+  }, 20_000);
+
+  it('insertIdempotent across project-A and global lands in each exact DB', async () => {
+    const p = await openIsolated('project', join(testRoot, 'p', '.cleo'));
+    const g = await openIsolated('global', join(testRoot, 'g'));
+
+    _setNativeDbResolverForTest(async (scope, dbPath): Promise<LeaseTarget> => {
+      if (scope === 'global') return { native: g.native, dbPath: g.dbPath };
+      return { native: p.native, dbPath: p.dbPath };
+    });
+
+    const stubP = makeStubDb(p.native, p.identity);
+    const stubG = makeStubDb(g.native, g.identity);
+
+    await insertIdempotent(stubP.db as any, {} as any, {} as any, 'k');
+    await insertIdempotent(stubG.db as any, {} as any, {} as any, 'k');
+
+    expect(countRows(p.native, '_t_iso')).toBe(1);
+    expect(countRows(g.native, '_t_iso')).toBe(1);
+    expect(countActive(p.native, 'project', 'tasks')).toBe(0);
+    expect(countActive(g.native, 'global', 'tasks')).toBe(0);
+  }, 20_000);
+
+  it('upsertIdempotent conflict-update lands in the correct DB only', async () => {
+    const a = await openIsolated('project', join(testRoot, 'upA', '.cleo'));
+    const b = await openIsolated('project', join(testRoot, 'upB', '.cleo'));
+
+    _setNativeDbResolverForTest(
+      async (): Promise<LeaseTarget> => ({
+        native: a.native,
+        dbPath: a.dbPath,
+      }),
+    );
+
+    const { db: dbA, calls } = makeStubDb(a.native, a.identity);
+    const result = await upsertIdempotent(dbA as any, {} as any, {} as any, 'k', {} as any);
+    expect(result).toBe(1);
+    expect(calls()).toBe(1); // upsert chain was reached
+    expect(countActive(a.native, 'project', 'tasks')).toBe(0);
+    expect(countRows(b.native, '_t_iso')).toBe(0);
   }, 20_000);
 });
 
@@ -194,7 +336,7 @@ describe('T12042 — writer-lease identity isolation (project A / B / global)', 
   }, 20_000);
 });
 
-// ── T12042 — insertIdempotent resolves identity from exact DB binding ─────────
+// ── T12042 — insertIdempotent + resolveDbIdentity ────────────────────────────
 
 describe('T12042 — write primitive resolves identity from exact DB binding (WeakMap)', () => {
   it('insertIdempotent resolves identity from registered DB handle', async () => {
@@ -231,10 +373,7 @@ describe('T12042 — write primitive resolves identity from exact DB binding (We
       },
     } as Record<string, unknown>;
 
-    // Register the stub DB so insertIdempotent can resolve its identity.
     registerDbIdentity(stubDb, identity);
-
-    // The primitive call shape is UNCHANGED — no identity parameter.
     const inserted = await insertIdempotent(stubDb as any, {} as any, {} as any, 'k');
     expect(inserted).toBe(1);
     expect(activeDuringWrite).toBe(1);
@@ -242,17 +381,13 @@ describe('T12042 — write primitive resolves identity from exact DB binding (We
   }, 20_000);
 
   it('resolveDbIdentity throws for unregistered DB handle', () => {
-    const unregistered = {};
-    expect(() => resolveDbIdentity(unregistered)).toThrow(/E_WRITER_LEASE_IDENTITY_UNREGISTERED/);
+    expect(() => resolveDbIdentity({})).toThrow(/E_WRITER_LEASE_IDENTITY_UNREGISTERED/);
   });
 
   it('a real DualScopeDbHandle carries identity bound at construction', async () => {
-    // openDualScopeDbAtPath constructs the identity internally via
-    // makeWriterLeaseIdentity + registerDbIdentity.
     const handle = await openDualScopeDbAtPath('project', join(testRoot, 'ds', '.cleo', 'cleo.db'));
     expect(handle.identity.scope).toBe('project');
     expect(handle.identity.dbPath).toBe(handle.dbPath);
-    // The identity is registered on the drizzle DB handle.
     expect(() => resolveDbIdentity(handle.db)).not.toThrow();
     const resolved = resolveDbIdentity(handle.db);
     expect(resolved.scope).toBe('project');
