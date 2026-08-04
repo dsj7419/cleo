@@ -39,7 +39,8 @@
  *
  * const runtime = createCleoRuntime();
  * const projectA = await runtime.openProject(resolveDualScopeDbPath('project', '/path/A'));
- * const projectB = await runtime.openProject(resolveDualScopeDbPath('project', '/path/B'));
+ * const dedicated = await runtime.openProject('/path/to/snapshot.db', { dedicated: true });
+ * // dedicated.close() closes only this connection; the runtime does NOT track it.
  * ```
  *
  * @packageDocumentation
@@ -55,6 +56,7 @@ export {
   type CleoGlobalDb,
   type CleoProjectDb,
   type CleoRuntime,
+  type CleoRuntimeOpenOptions,
   createCleoRuntime,
   type DualScope,
   type DualScopeDbHandle,

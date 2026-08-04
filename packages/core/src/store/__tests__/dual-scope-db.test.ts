@@ -324,15 +324,6 @@ describe('CleoRuntime store registry', () => {
     }
   });
 
-  // ── Helper ────────────────────────────────────────────────────────────────
-
-  /** Extract the native DatabaseSync from a store's db handle. */
-  function nativeFromStore(store: {
-    db: { $client?: unknown };
-  }): import('node:sqlite').DatabaseSync {
-    return (store.db as unknown as { $client: import('node:sqlite').DatabaseSync }).$client;
-  }
-
   // ── openProject ───────────────────────────────────────────────────────────
 
   describe('openProject', () => {
@@ -352,8 +343,8 @@ describe('CleoRuntime store registry', () => {
       expect(resolvePath(storeA.dbPath)).toBe(resolvePath(projectAPath));
       expect(resolvePath(storeB.dbPath)).toBe(resolvePath(projectBPath));
       expect(storeA.db).not.toBe(storeB.db);
-      expect(nativeFromStore(storeA).isOpen).toBe(true);
-      expect(nativeFromStore(storeB).isOpen).toBe(true);
+      expect(storeA.isOpen).toBe(true);
+      expect(storeB.isOpen).toBe(true);
     }, 30_000);
 
     it('same-path concurrent opens single-flight and share one entry', async () => {
@@ -430,7 +421,7 @@ describe('CleoRuntime store registry', () => {
 
       expect(runtime.openPaths.has(projectAKey)).toBe(false);
       expect(runtime.openPaths.has(projectBKey)).toBe(true);
-      expect(nativeFromStore(storeB).isOpen).toBe(true);
+      expect(storeB.isOpen).toBe(true);
     }, 30_000);
 
     it('closing a project never closes the global scope', async () => {
@@ -440,7 +431,7 @@ describe('CleoRuntime store registry', () => {
       project.close();
 
       expect(runtime.openPaths.has(projectAKey)).toBe(false);
-      expect(nativeFromStore(global).isOpen).toBe(true);
+      expect(global.isOpen).toBe(true);
       const reopenedGlobal = await runtime.openGlobal();
       expect(reopenedGlobal).toBe(global);
     }, 30_000);
@@ -454,7 +445,7 @@ describe('CleoRuntime store registry', () => {
 
       expect(runtime.openPaths.has(projectAKey)).toBe(false);
       expect(runtime.openPaths.has(projectBKey)).toBe(true);
-      expect(nativeFromStore(global).isOpen).toBe(true);
+      expect(global.isOpen).toBe(true);
     }, 30_000);
 
     it('closeProject is idempotent', async () => {
@@ -515,7 +506,7 @@ describe('CleoRuntime store registry', () => {
       // A fresh open should work and return a new live store.
       const fresh = await runtime.openProject(projectAPath);
       expect(fresh.scope).toBe('project');
-      expect(nativeFromStore(fresh).isOpen).toBe(true);
+      expect(fresh.isOpen).toBe(true);
     }, 30_000);
 
     it('cancelled-then-retry succeeds with a fresh entry', async () => {
@@ -527,7 +518,7 @@ describe('CleoRuntime store registry', () => {
       // Retry — must succeed.
       const second = await runtime.openProject(projectAPath);
       expect(second.scope).toBe('project');
-      expect(nativeFromStore(second).isOpen).toBe(true);
+      expect(second.isOpen).toBe(true);
       expect(runtime.openPaths.has(projectAKey)).toBe(true);
     }, 30_000);
   });
@@ -545,9 +536,9 @@ describe('CleoRuntime store registry', () => {
       // The runtime should detect the closed native handle and reopen.
       const second = await runtime.openProject(projectAPath);
       expect(second).not.toBe(first);
-      expect(nativeFromStore(second).isOpen).toBe(true);
+      expect(second.isOpen).toBe(true);
       // The old store's native handle is now closed.
-      expect(nativeFromStore(first).isOpen).toBe(false);
+      expect(first.isOpen).toBe(false);
     }, 30_000);
 
     it('reopens after external close of global handle', async () => {
@@ -556,8 +547,8 @@ describe('CleoRuntime store registry', () => {
 
       const second = await runtime.openGlobal();
       expect(second).not.toBe(first);
-      expect(nativeFromStore(second).isOpen).toBe(true);
-      expect(nativeFromStore(first).isOpen).toBe(false);
+      expect(second.isOpen).toBe(true);
+      expect(first.isOpen).toBe(false);
     }, 30_000);
   });
 
@@ -574,7 +565,7 @@ describe('CleoRuntime store registry', () => {
       // store1.close() again must NOT affect store2 or the registry.
       store1.close();
       expect(runtime.openPaths.has(projectAKey)).toBe(true);
-      expect(nativeFromStore(store2).isOpen).toBe(true);
+      expect(store2.isOpen).toBe(true);
     }, 30_000);
 
     it('old store close after closeAll+reopen is a no-op', async () => {
@@ -586,7 +577,7 @@ describe('CleoRuntime store registry', () => {
       // Old close must not delete the new entry.
       store1.close();
       expect(runtime.openPaths.has(projectAKey)).toBe(true);
-      expect(nativeFromStore(store2).isOpen).toBe(true);
+      expect(store2.isOpen).toBe(true);
     }, 30_000);
   });
 
@@ -606,7 +597,7 @@ describe('CleoRuntime store registry', () => {
 
       // Close only project — global must survive.
       project.close();
-      expect(nativeFromStore(global).isOpen).toBe(true);
+      expect(global.isOpen).toBe(true);
     }, 30_000);
   });
 
@@ -622,18 +613,17 @@ describe('CleoRuntime store registry', () => {
 
       // Same underlying drizzle + native handle (shared _cache).
       expect(s1.db).toBe(s2.db);
-      expect(nativeFromStore(s1)).toBe(nativeFromStore(s2));
 
       // Closing s1 in runtime A closes the shared handle.
       s1.close();
       // Runtime B's store now points to a closed native connection.
-      expect(nativeFromStore(s2).isOpen).toBe(false);
+      expect(s2.isOpen).toBe(false);
 
       // But runtime B's liveness check on the next open reacquires a fresh
       // handle.
       const s3 = await rt2.openProject(projectAPath);
       expect(s3).not.toBe(s2);
-      expect(nativeFromStore(s3).isOpen).toBe(true);
+      expect(s3.isOpen).toBe(true);
 
       rt1.closeAll();
       rt2.closeAll();
@@ -654,7 +644,58 @@ describe('CleoRuntime store registry', () => {
 
       // Retry: should succeed.
       const retry = await runtime.openProject(projectAPath);
-      expect(nativeFromStore(retry).isOpen).toBe(true);
+      expect(retry.isOpen).toBe(true);
+    }, 30_000);
+  });
+
+  // ── Dedicated mode (T12036 — snapshots/workers isolation) ───────────────
+
+  describe('dedicated mode', () => {
+    it('dedicated project open returns a live store not in the registry', async () => {
+      const store = await runtime.openProject(projectAPath, { dedicated: true });
+      expect(store.scope).toBe('project');
+      expect(store.isOpen).toBe(true);
+      // Dedicated entries are NOT tracked.
+      expect(runtime.openPaths.size).toBe(0);
+      store.close();
+      expect(store.isOpen).toBe(false);
+    }, 30_000);
+
+    it('dedicated global open returns a live store not in the registry', async () => {
+      const store = await runtime.openGlobal({ dedicated: true });
+      expect(store.scope).toBe('global');
+      expect(store.isOpen).toBe(true);
+      expect(runtime.openPaths.size).toBe(0);
+      store.close();
+      expect(store.isOpen).toBe(false);
+    }, 30_000);
+
+    it('dedicated close does not affect a cached non-dedicated entry', async () => {
+      const cached = await runtime.openProject(projectAPath);
+      const dedicated = await runtime.openProject(projectAPath, { dedicated: true });
+
+      // They are distinct stores with different handles.
+      expect(dedicated).not.toBe(cached);
+      expect(dedicated.db).not.toBe(cached.db);
+
+      dedicated.close();
+      // Cached entry survives.
+      expect(cached.isOpen).toBe(true);
+      expect(runtime.openPaths.has(projectAKey)).toBe(true);
+
+      cached.close();
+    }, 30_000);
+
+    it('dedicated stores are never single-flighted', async () => {
+      const [d1, d2] = await Promise.all([
+        runtime.openProject(projectAPath, { dedicated: true }),
+        runtime.openProject(projectAPath, { dedicated: true }),
+      ]);
+      // Each dedicated call opens a new connection — they are distinct.
+      expect(d1).not.toBe(d2);
+      expect(d1.db).not.toBe(d2.db);
+      d1.close();
+      d2.close();
     }, 30_000);
   });
 });

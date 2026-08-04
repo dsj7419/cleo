@@ -102,6 +102,11 @@ export interface DualScopeDbHandle<TScope extends DualScope = DualScope> {
   /** Absolute path to the underlying SQLite file. */
   readonly dbPath: string;
   /**
+   * Whether the underlying native `DatabaseSync` connection is still
+   * open. Reflects `nativeDb.isOpen` and is `false` after `close()`.
+   */
+  readonly isOpen: boolean;
+  /**
    * Set ONLY when the exodus-on-open data-continuity gate ABORTED the first-open
    * auto-migration for this scope (T11828 · DHQ-059). When present, the handle is
    * live and the consolidated `cleo.db` is internally consistent but EMPTY — the
@@ -486,6 +491,9 @@ async function openDedicatedDualScopeDb(
     db,
     scope,
     dbPath,
+    get isOpen() {
+      return nativeDb.isOpen;
+    },
     close() {
       // Dedicated handles are never cached — close only the native connection.
       try {
@@ -704,6 +712,9 @@ export async function openDualScopeDbAtPath(
             db,
             scope,
             dbPath,
+            get isOpen() {
+              return nativeDb.isOpen;
+            },
             close() {
               _cache.delete(key);
               try {
@@ -913,6 +924,12 @@ export interface ProjectStore {
   /** The typed Drizzle ORM handle for the project-scope consolidated schema. */
   readonly db: CleoProjectDb;
   /**
+   * Whether the underlying native `DatabaseSync` connection is still
+   * open. `false` after `close()`. Delegates to
+   * {@link DualScopeDbHandle.isOpen}.
+   */
+  readonly isOpen: boolean;
+  /**
    * Set when the exodus-on-open auto-migration aborted for this project
    * (T11828 · DHQ-059). `undefined` on a normal open.
    */
@@ -949,6 +966,12 @@ export interface GlobalStore {
   readonly dbPath: string;
   /** The typed Drizzle ORM handle for the global-scope consolidated schema. */
   readonly db: CleoGlobalDb;
+  /**
+   * Whether the underlying native `DatabaseSync` connection is still
+   * open. `false` after `close()`. Delegates to
+   * {@link DualScopeDbHandle.isOpen}.
+   */
+  readonly isOpen: boolean;
   /**
    * Set when the exodus-on-open auto-migration aborted for the global scope
    * (T11828 · DHQ-059). `undefined` on a normal open.
@@ -992,18 +1015,43 @@ export interface GlobalStore {
  * {@link createCleoRuntime}) share the **process-global** dual-scope handle
  * cache (`_cache` in this module). A project opened by runtime A returns a
  * store whose `close()` closes that shared handle — runtime B's store for the
- * same path will observe a closed `DatabaseSync` on its next query, and the
+ * same path will observe `isOpen === false` on its store, and the
  * **cache-hit liveness** check in this runtime will reacquire a fresh handle
  * on the next `openProject`/`openGlobal`. This is by design: the runtime
- * registry owns **entry lifecycle**, not the underlying connection. For true
- * connection-level isolation between concurrent consumers, use a dedicated
- * handle via `openDualScopeDbAtPath(scope, dbPath, undefined, { dedicated:
- * true })`.
+ * registry owns **entry lifecycle**, not the underlying connection.
+ *
+ * For connection-level isolation, pass `{ dedicated: true }` to
+ * {@link CleoRuntime.openProject} or {@link CleoRuntime.openGlobal}. This
+ * opens a second `DatabaseSync` connection to the same file (WAL allows
+ * concurrent connections), bypasses the shared chokepoint cache, and returns
+ * a store whose `close()` closes only that dedicated connection. Dedicated
+ * entries are NOT keyed or tracked by the runtime registry — they are
+ * returned directly and the caller is responsible for closing them.
  *
  * @task T12036 (E6-L12)
  * @epic T11249 (E6)
  * @saga T11242
  */
+
+/**
+ * Options for {@link CleoRuntime.openProject} and
+ * {@link CleoRuntime.openGlobal}.
+ *
+ * @task T12036 (E6-L12)
+ */
+export interface CleoRuntimeOpenOptions {
+  /**
+   * When `true`, open a DEDICATED, NON-cached connection — a second SQLite
+   * handle to the same file, independent of the singleton `_cache`. The
+   * returned store is NOT tracked in the runtime registry and its `close()`
+   * closes only that dedicated connection. Used for isolation between
+   * concurrent consumers (e.g. a snapshot worker, a migration engine).
+   *
+   * @default false
+   */
+  readonly dedicated?: boolean;
+}
+
 export interface CleoRuntime {
   /**
    * Open (or reuse) the project-scope `cleo.db` at the given path.
@@ -1014,24 +1062,27 @@ export interface CleoRuntime {
    * it from a project root directory).
    *
    * Concurrent calls for the same normalized path single-flight — all callers
-   * receive the same {@link ProjectStore} instance.
+   * receive the same {@link ProjectStore} instance unless `dedicated: true`
+   * was passed.
    *
    * @param dbPath - Absolute or relative path to the project's `cleo.db`.
    *   Normalized via `path.resolve()` before keying.
+   * @param options - Optional open mode (e.g. `{ dedicated: true }`).
    * @returns A typed {@link ProjectStore} bound to the requested path.
    */
-  openProject(dbPath: string): Promise<ProjectStore>;
+  openProject(dbPath: string, options?: CleoRuntimeOpenOptions): Promise<ProjectStore>;
 
   /**
    * Open (or reuse) the global-scope `cleo.db`. The path is resolved
    * internally via {@link getCleoHome}.
    *
    * Concurrent calls single-flight — all callers receive the same
-   * {@link GlobalStore} instance.
+   * {@link GlobalStore} instance unless `dedicated: true`.
    *
+   * @param options - Optional open mode (e.g. `{ dedicated: true }`).
    * @returns A typed {@link GlobalStore} bound to the global scope.
    */
-  openGlobal(): Promise<GlobalStore>;
+  openGlobal(options?: CleoRuntimeOpenOptions): Promise<GlobalStore>;
 
   /**
    * Close and evict a single project entry from the registry. The
@@ -1078,7 +1129,6 @@ type EntryId = number;
 interface RuntimeEntry {
   id: EntryId;
   store: ProjectStore | GlobalStore | null;
-  nativeDb: DatabaseSync | null;
   initPromise: Promise<ProjectStore | GlobalStore> | null;
 }
 
@@ -1117,10 +1167,16 @@ class EntryCancelledError extends Error {
  *    evicts the registry entry when its `id` still matches; an old stale close
  *    is a no-op.
  * 4. **Cache-hit liveness** — before returning a cached store, the runtime
- *    checks the underlying `DatabaseSync.isOpen`. A handle closed externally
- *    (e.g. `_resetDualScopeDbCache`) is evicted and re-opened.
+ *    checks {@link ProjectStore.isOpen} / {@link GlobalStore.isOpen}
+ *    (which delegates to {@link DualScopeDbHandle.isOpen}, a typed getter
+ *    reflecting the underlying `DatabaseSync.isOpen`). A handle closed
+ *    externally (e.g. `_resetDualScopeDbCache`) is evicted and re-opened.
  * 5. **Path normalization** — all paths are normalized via `path.resolve()`
  *    before keying, so `/path/./to/db` and `/path/to/db` share one entry.
+ * 6. **Dedicated mode** — passing `{ dedicated: true }` opens a second
+ *    `DatabaseSync` connection (WAL-allowed) that bypasses the shared cache.
+ *    Dedicated stores are NOT registered or tracked; the caller is responsible
+ *    for closing them.
  *
  * @task T12036 (E6-L12)
  */
@@ -1134,15 +1190,28 @@ class CleoRuntimeImpl implements CleoRuntime {
   }
 
   /** @inheritdoc */
-  async openProject(dbPath: string): Promise<ProjectStore> {
+  async openProject(dbPath: string, options?: CleoRuntimeOpenOptions): Promise<ProjectStore> {
     const normalized = resolve(dbPath);
+    if (options?.dedicated) {
+      const handle = await openDualScopeDbAtPath('project', normalized, undefined, {
+        dedicated: true,
+      });
+      return this.buildStore('project', handle, 0) as ProjectStore;
+    }
     return this.openEntry('project', normalized) as Promise<ProjectStore>;
   }
 
   /** @inheritdoc */
-  async openGlobal(): Promise<GlobalStore> {
+  async openGlobal(options?: CleoRuntimeOpenOptions): Promise<GlobalStore> {
     const dbPath = resolveDualScopeDbPath('global');
-    return this.openEntry('global', resolve(dbPath)) as Promise<GlobalStore>;
+    const normalized = resolve(dbPath);
+    if (options?.dedicated) {
+      const handle = await openDualScopeDbAtPath('global', normalized, undefined, {
+        dedicated: true,
+      });
+      return this.buildStore('global', handle, 0) as GlobalStore;
+    }
+    return this.openEntry('global', normalized) as Promise<GlobalStore>;
   }
 
   /** @inheritdoc */
@@ -1178,7 +1247,7 @@ class CleoRuntimeImpl implements CleoRuntime {
       if (existing.initPromise) {
         return existing.initPromise;
       }
-      if (existing.store && existing.nativeDb?.isOpen) {
+      if (existing.store?.isOpen) {
         return existing.store;
       }
       // Handle was closed externally — evict and re-open.
@@ -1194,7 +1263,7 @@ class CleoRuntimeImpl implements CleoRuntime {
       initReject = reject;
     });
 
-    this._registry.set(key, { id: entryId, store: null, nativeDb: null, initPromise });
+    this._registry.set(key, { id: entryId, store: null, initPromise });
 
     // Evict on failure so a transient error doesn't poison.
     initPromise.catch(() => {
@@ -1222,12 +1291,8 @@ class CleoRuntimeImpl implements CleoRuntime {
         throw err;
       }
 
-      // biome-ignore lint/suspicious/noExplicitAny: $client is untyped on the generic Drizzle handle
-      const nativeDb = (dualHandle.db as unknown as { $client: DatabaseSync }).$client;
-
       const store = this.buildStore(scope, dualHandle, entryId);
       current.store = store;
-      current.nativeDb = nativeDb;
       current.initPromise = null;
       initResolve(store);
       return store;
@@ -1257,6 +1322,9 @@ class CleoRuntimeImpl implements CleoRuntime {
         scope: 'project',
         dbPath,
         db: dualHandle.db as CleoProjectDb,
+        get isOpen() {
+          return dualHandle.isOpen;
+        },
         exodusAbort,
         close: () => {
           dualHandle.close();
@@ -1270,6 +1338,9 @@ class CleoRuntimeImpl implements CleoRuntime {
       scope: 'global',
       dbPath,
       db: dualHandle.db as CleoGlobalDb,
+      get isOpen() {
+        return dualHandle.isOpen;
+      },
       exodusAbort,
       close: () => {
         dualHandle.close();
