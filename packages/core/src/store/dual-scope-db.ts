@@ -64,12 +64,7 @@ import {
   resolveCorePackageMigrationsFolder,
 } from './resolve-migrations-folder.js';
 import { applyPerfPragmas } from './sqlite-pragmas.js';
-import {
-  activeScope,
-  activeScopeDbPath,
-  withColdOpenLease,
-  withWriterLease,
-} from './writer-lease.js';
+import { type WriterLeaseIdentity, withColdOpenLease, withWriterLease } from './writer-lease.js';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -1573,14 +1568,22 @@ import type { SQLiteTableWithColumns, TableConfig } from 'drizzle-orm/sqlite-cor
  * the consolidated-schema MUTATION primitives, so the guard is write-only and
  * never affects read paths.
  *
+ * @param identity - The explicit writer-lease identity (scope + canonical dbPath)
+ *   owning this write. Replaces the removed process-global last-writer scope
+ *   (T12042) so concurrent project A, B, and global writers cannot steal or
+ *   release each other's lease.
+ *
  * @example
  * ```ts
  * import { tasksTasksTable } from '@cleocode/core/store/schema/cleo-project';
- * const inserted = await insertIdempotent(db, tasksTasksTable, newTask, 'idempotencyKey');
+ * import { makeWriterLeaseIdentity } from '@cleocode/core/store/writer-lease';
+ * const identity = makeWriterLeaseIdentity('project', handle.dbPath);
+ * const inserted = await insertIdempotent(db, tasksTasksTable, newTask, 'idempotencyKey', identity);
  * ```
  *
  * @task T11513 (E4-T2)
  * @task T11828 (write-side exodus-abort guard)
+ * @task T12042 (E6-L12b — explicit writer-lease identity)
  * @epic T11247 (E4)
  * @saga T11242
  */
@@ -1591,23 +1594,17 @@ export async function insertIdempotent<TTable extends SQLiteTableWithColumns<Tab
   row: InferInsertModel<TTable>,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   _keyColumn: string,
+  identity: WriterLeaseIdentity,
 ): Promise<number> {
   assertNoRecordedExodusAbort();
-  // Seam 1 (T11627 ST-3): gate the chokepoint write through the writer lease so
-  // it serializes with the leased cold-open (Seam 0) and every other chokepoint
-  // write in the process. The scope AND dbPath come from the process-local
-  // active-scope registry recorded at cold-open ({@link activeScope} /
-  // {@link activeScopeDbPath}) — no signature change. Pinning the dbPath keeps the
-  // lease row in the SAME file this write targets when multiple projects are open
-  // (T11627 Finding 1). `off` mode is a pass-through (busy_timeout serializes).
   return withWriterLease(
-    activeScope(),
+    identity.scope,
     'tasks',
     async () => {
       const result = await db.insert(table).values(row).onConflictDoNothing().returning();
       return result.length;
     },
-    { dbPath: activeScopeDbPath() },
+    { dbPath: identity.dbPath },
   );
 }
 
@@ -1632,14 +1629,20 @@ export async function insertIdempotent<TTable extends SQLiteTableWithColumns<Tab
  * Refuses the write (throws {@link ExodusAbortWriteUnsafeError}) when a prior
  * exodus-on-open aborted in this process (T11828 · DHQ-059) — write-only guard.
  *
+ * @param identity - The explicit writer-lease identity (scope + canonical dbPath)
+ *   owning this write. Replaces the removed process-global last-writer scope
+ *   (T12042) so concurrent project A, B, and global writers cannot steal or
+ *   release each other's lease.
+ *
  * @example
  * ```ts
  * await upsertIdempotent(db, tasksTasksTable, updatedTask, 'idempotencyKey',
- *   tasksTasksTable.idempotencyKey);
+ *   tasksTasksTable.idempotencyKey, identity);
  * ```
  *
  * @task T11513 (E4-T2)
  * @task T11828 (write-side exodus-abort guard)
+ * @task T12042 (E6-L12b — explicit writer-lease identity)
  * @epic T11247 (E4)
  * @saga T11242
  */
@@ -1653,13 +1656,11 @@ export async function upsertIdempotent<TTable extends SQLiteTableWithColumns<Tab
   // biome-ignore lint/suspicious/noExplicitAny: column reference type varies by table
   conflictTarget: any,
   set?: Partial<InferInsertModel<TTable>>,
+  identity?: WriterLeaseIdentity,
 ): Promise<number> {
   assertNoRecordedExodusAbort();
-  // Seam 1 (T11627 ST-3): gate the chokepoint upsert through the writer lease —
-  // same active-scope-registry path as insertIdempotent (scope + pinned dbPath),
-  // no signature change.
   return withWriterLease(
-    activeScope(),
+    identity?.scope ?? 'project',
     'tasks',
     async () => {
       const updateSet = set ?? row;
@@ -1674,6 +1675,6 @@ export async function upsertIdempotent<TTable extends SQLiteTableWithColumns<Tab
         .returning();
       return result.length;
     },
-    { dbPath: activeScopeDbPath() },
+    identity ? { dbPath: identity.dbPath } : undefined,
   );
 }

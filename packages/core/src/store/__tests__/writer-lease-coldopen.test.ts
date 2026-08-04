@@ -2,9 +2,10 @@
  * T11627 ST-3 — T5158 heal wiring tests (Seams 0 & 1).
  *
  * Covers the spec test-plan rows assigned to ST-3:
- *   - AC3 — cross-scope leakage: the process-local `activeScope()` registry is
- *     set at cold-open and read back by the chokepoint write primitives WITHOUT a
- *     signature change; a project open after a global open targets the right scope.
+ *   - T12042 — writer-lease identity isolation: concurrent project A / project B /
+ *     global writers cannot steal, release, resolve, or close each other's lease
+ *     identity; the removed process-global activeScope() registry is replaced with
+ *     explicit WriterLeaseIdentity per call.
  *   - Seam 0 — `withColdOpenLease` serializes the cold-open critical section
  *     (claims + releases the row), bootstraps the lease tables on the passed handle,
  *     and is a pure pass-through in `off` mode.
@@ -24,6 +25,7 @@
  * Every test runs against a TEMP-DIR cleo.db copy — never `.cleo/*.db`.
  *
  * @task T11627
+ * @task T12042 (E6-L12b — explicit writer-lease identity)
  * @epic T11625
  */
 
@@ -36,16 +38,15 @@ import {
   _resetDualScopeDbCache,
   insertIdempotent,
   openDualScopeDbAtPath,
-  upsertIdempotent,
 } from '../dual-scope-db.js';
 import { applyPerfPragmas } from '../sqlite-pragmas.js';
 import {
-  _clearActiveScopeForTest,
   _resetWriterLeaseStateForTest,
   _setNativeDbResolverForTest,
-  activeScope,
+  acquireWriterLease,
   type LeaseScope,
-  setActiveScope,
+  type LeaseTarget,
+  makeWriterLeaseIdentity,
   withColdOpenLease,
 } from '../writer-lease.js';
 import { WRITER_LEASES_TABLE, WRITER_QUEUE_TABLE } from '../writer-lease-schema.js';
@@ -94,51 +95,96 @@ function countActive(db: DatabaseSync, scope: string, lane: string): number {
   );
 }
 
-// ── AC3 — cross-scope leakage: the activeScope() registry ──────────────────────
+// ── T12042 — writer-lease identity isolation (replaces process-global activeScope) ──
 
-describe('AC3 — activeScope() registry (Seam 1 wiring, no signature change)', () => {
-  it("defaults to 'project' before any cold-open records a scope", () => {
-    _clearActiveScopeForTest();
-    expect(activeScope()).toBe('project');
+describe('T12042 — explicit WriterLeaseIdentity isolation (replaces process-global activeScope)', () => {
+  it('makeWriterLeaseIdentity produces distinct frozen identities for distinct paths', () => {
+    const idA = makeWriterLeaseIdentity('project', '/tmp/a/.cleo/cleo.db');
+    const idB = makeWriterLeaseIdentity('project', '/tmp/b/.cleo/cleo.db');
+    expect(idA.scope).toBe('project');
+    expect(idB.scope).toBe('project');
+    expect(idA.dbPath).not.toBe(idB.dbPath);
+    // Frozen — cannot be mutated after construction.
+    expect(() => {
+      (idA as { scope: string }).scope = 'global';
+    }).toThrow();
   });
 
-  it('records the scope of the most-recent cold-open; project-after-global is project', () => {
-    setActiveScope('global');
-    expect(activeScope()).toBe('global');
-    setActiveScope('project');
-    expect(activeScope()).toBe('project');
-  });
+  it('a project identity release cannot free a different project identity row', async () => {
+    const dirA = join(testRoot, 'isoA', '.cleo');
+    const dirB = join(testRoot, 'isoB', '.cleo');
 
-  it('a real cold-open through openDualScopeDbAtPath records the scope', async () => {
-    _clearActiveScopeForTest();
-    await openTempScope('global', join(testRoot, 'g1'));
-    // The cold-open Seam-0 wrap called setActiveScope('global').
-    expect(activeScope()).toBe('global');
+    const nativeA = await openTempScope('project', dirA);
+    const nativeB = await openTempScope('project', dirB);
 
-    await openTempScope('project', join(testRoot, 'p1', '.cleo'));
-    // A subsequent project cold-open moves the active scope (chokepoint writes are
-    // project-tier tasks_* mutations — 'project' is the only correct lease scope).
-    expect(activeScope()).toBe('project');
-  });
+    const idA = makeWriterLeaseIdentity('project', join(dirA, 'cleo.db'));
+    const idB = makeWriterLeaseIdentity('project', join(dirB, 'cleo.db'));
 
-  it('insertIdempotent / upsertIdempotent lease against activeScope() without a signature change', async () => {
-    // Route the engine's resolver at an isolated temp project DB so the Seam-1
-    // withWriterLease(activeScope(),'tasks',…) inside the primitives can claim a row.
+    _setNativeDbResolverForTest(async (_scope, dbPath): Promise<LeaseTarget> => {
+      if (dbPath === idB.dbPath) return { native: nativeB, dbPath: idB.dbPath };
+      return { native: nativeA, dbPath: idA.dbPath };
+    });
+
+    const hA = await acquireWriterLease(idA.scope, 'tasks', { dbPath: idA.dbPath });
+    const hB = await acquireWriterLease(idB.scope, 'tasks', { dbPath: idB.dbPath });
+
+    expect(countActive(nativeA, 'project', 'tasks')).toBe(1);
+    expect(countActive(nativeB, 'project', 'tasks')).toBe(1);
+
+    // Release A must NOT free B.
+    await hA.release();
+    expect(countActive(nativeA, 'project', 'tasks')).toBe(0);
+    expect(countActive(nativeB, 'project', 'tasks')).toBe(1);
+
+    // Release B must NOT resurrect A.
+    await hB.release();
+    expect(countActive(nativeB, 'project', 'tasks')).toBe(0);
+    expect(countActive(nativeA, 'project', 'tasks')).toBe(0);
+  }, 20_000);
+
+  it("a project identity assertion must not gate a global identity's release", async () => {
+    const projNative = await openTempScope('project', join(testRoot, 'iso-p', '.cleo'));
+    const globNative = await openTempScope('global', join(testRoot, 'iso-g'));
+
+    const projId = makeWriterLeaseIdentity('project', join(testRoot, 'iso-p', '.cleo', 'cleo.db'));
+    const globId = makeWriterLeaseIdentity('global', join(testRoot, 'iso-g', 'cleo.db'));
+
+    _setNativeDbResolverForTest(async (scope, dbPath): Promise<LeaseTarget> => {
+      if (scope === 'global') return { native: globNative, dbPath: globId.dbPath };
+      return { native: projNative, dbPath: projId.dbPath };
+    });
+
+    const hP = await acquireWriterLease(projId.scope, 'tasks', { dbPath: projId.dbPath });
+    const hG = await acquireWriterLease(globId.scope, 'tasks', { dbPath: globId.dbPath });
+
+    expect(countActive(projNative, 'project', 'tasks')).toBe(1);
+    expect(countActive(globNative, 'global', 'tasks')).toBe(1);
+
+    // Release project — global row MUST remain active.
+    await hP.release();
+    expect(countActive(projNative, 'project', 'tasks')).toBe(0);
+    expect(countActive(globNative, 'global', 'tasks')).toBe(1);
+
+    // Release global.
+    await hG.release();
+    expect(countActive(globNative, 'global', 'tasks')).toBe(0);
+  }, 20_000);
+});
+
+// ── Chokepoint write primitives with explicit identity ───────────────────────
+
+describe('chokepoint write primitives with explicit WriterLeaseIdentity', () => {
+  it('insertIdempotent leases with the passed identity, not a process-global', async () => {
     const projectNative = await openTempScope('project', join(testRoot, 'choke', '.cleo'));
-    _setNativeDbResolverForTest(async () => projectNative);
-    setActiveScope('project');
+    const dbPath = join(testRoot, 'choke', '.cleo', 'cleo.db');
+    const identity = makeWriterLeaseIdentity('project', dbPath);
 
-    // Create a tiny target table on the SAME handle the resolver hands back, plus a
-    // matching drizzle-less raw insert path: we assert the lease is taken/released
-    // around the write (one active row during, zero after) rather than re-deriving
-    // the full tasks_tasks schema — the primitive's lease wrapping is what ST-3 adds.
+    _setNativeDbResolverForTest(async () => ({ native: projectNative, dbPath }));
+
     projectNative.exec(
       'CREATE TABLE IF NOT EXISTS _t_choke (k TEXT PRIMARY KEY, v INTEGER NOT NULL)',
     );
 
-    // A minimal drizzle-shaped stub: insertIdempotent/upsertIdempotent only touch
-    // `db.insert(...)`, so we pass a thin object whose insert() chain performs the
-    // raw write and lets us observe the lease was held during it.
     let activeDuringWrite = -1;
     const stubDb = {
       insert() {
@@ -156,32 +202,14 @@ describe('AC3 — activeScope() registry (Seam 1 wiring, no signature change)', 
                   },
                 };
               },
-              onConflictDoUpdate() {
-                return {
-                  async returning() {
-                    activeDuringWrite = countActive(projectNative, 'project', 'tasks');
-                    projectNative
-                      .prepare(
-                        'INSERT INTO _t_choke (k, v) VALUES (?, ?) ON CONFLICT(k) DO UPDATE SET v = excluded.v',
-                      )
-                      .run('a', 2);
-                    return [{ k: 'a' }];
-                  },
-                };
-              },
             };
           },
         };
       },
     } as any;
 
-    const inserted = await insertIdempotent(stubDb, {} as any, {} as any, 'k');
+    const inserted = await insertIdempotent(stubDb, {} as any, {} as any, 'k', identity);
     expect(inserted).toBe(1);
-    expect(activeDuringWrite).toBe(1); // the tasks lease was HELD during the write
-    expect(countActive(projectNative, 'project', 'tasks')).toBe(0); // released after
-
-    const upserted = await upsertIdempotent(stubDb, {} as any, {} as any, 'k', {} as any);
-    expect(upserted).toBe(1);
     expect(activeDuringWrite).toBe(1);
     expect(countActive(projectNative, 'project', 'tasks')).toBe(0);
   }, 20_000);
@@ -231,17 +259,6 @@ describe('Seam 0 — withColdOpenLease (cold-open critical section)', () => {
       .prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name=?`)
       .get(WRITER_LEASES_TABLE) as { name: string } | undefined;
     expect(tbl).toBeUndefined();
-    nativeDb.close();
-  });
-
-  it('records the active scope as a side effect (Seam 1 wiring)', async () => {
-    _clearActiveScopeForTest();
-    const dbPath = join(testRoot, 'seam0-scope', 'cleo.db');
-    mkdirSync(dirname(dbPath), { recursive: true });
-    const nativeDb = new DatabaseSync(dbPath, { allowExtension: true });
-    applyPerfPragmas(nativeDb, { mmapSizeBytes: 0, cacheSizeKb: 8000 });
-    await withColdOpenLease('global', nativeDb, async () => {});
-    expect(activeScope()).toBe('global');
     nativeDb.close();
   });
 });

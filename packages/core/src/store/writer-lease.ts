@@ -239,7 +239,6 @@ export function _resetWriterLeaseStateForTest(): void {
   _inflightAcquire.clear();
   _nativeDbResolver = defaultNativeDbResolver;
   _dbPathResolver = resolveDualScopeDbPath;
-  _activeScope = null;
 }
 
 // ── Native handle resolution (test-injectable) ────────────────────────────────
@@ -383,87 +382,41 @@ function memoKey(scope: LeaseScope, dbPath: string, lane: LeaseLane): string {
   return `${scope}::${dbPath}::${lane}`;
 }
 
-// ── Active-scope registry (ST-3 · Seam 1 — process-local, no signature change) ──
-
 /**
- * The scope + resolved dbPath of the most-recent canonical cold-open in this
- * process.
+ * Writer-lease identity: explicit scope and canonical dbPath.
  *
- * The chokepoint write primitives ({@link insertIdempotent} /
- * {@link upsertIdempotent} in `dual-scope-db.ts`) receive only a drizzle handle —
- * NOT the scope or a {@link LeaseHandle}. To gate them through the writer lease
- * (Seam 1) WITHOUT a signature change, the cold-open path records its scope AND
- * dbPath here (mirroring the `getRecordedExodusAbort` registry pattern already
- * used by those primitives) and the primitive reads them back via
- * {@link activeScope} / {@link activeScopeDbPath}.
+ * Replaces the removed process-global last-writer scope with explicit per-call
+ * identity so concurrent project A, project B, and global writers cannot steal,
+ * release, resolve, or close each other's lease identity. Every lease
+ * acquire/release/renew/assert and cold-open path uses this same explicit
+ * identity — a release for A must never affect B/global even when concurrent.
  *
- * Recording the dbPath (not just the abstract scope LABEL) means the chokepoint
- * leases against the lease ROW in the SAME file the open targeted — so two
- * different projects opened in one process lease in their OWN cleo.db, never the
- * cwd-default file (Finding 1).
- *
- * `null` until the first canonical cold-open records a scope.
- */
-let _activeScope: LeaseScope | null = null;
-let _activeScopeDbPath: string | null = null;
-
-/**
- * Record the scope (and optionally the resolved dbPath) of the cold-open
- * currently in progress / most recently opened. Called by `dual-scope-db.ts` at
- * the head of its cold-open critical section (Seam 0). Idempotent — last writer
- * wins; a project open after a global open makes `'project'` the active scope,
- * which is correct because the chokepoint write primitives only ever write the
- * project-tier `tasks_*` tables.
- *
- * @param scope - The scope of the in-progress cold-open.
- * @param dbPath - The resolved on-disk path of that scope's cleo.db. When
- *   omitted, the active dbPath is cleared so {@link activeScopeDbPath} falls back
- *   to the canonical scope→path resolver.
- * @internal
+ * @task T12042 (E6-L12b)
  * @task T11627
  */
-export function setActiveScope(scope: LeaseScope, dbPath?: string): void {
-  _activeScope = scope;
-  _activeScopeDbPath = dbPath ?? null;
+export interface WriterLeaseIdentity {
+  /** The cleo.db scope this lease arbitrates within. */
+  readonly scope: LeaseScope;
+  /** Absolute canonical on-disk path to this scope's cleo.db. */
+  readonly dbPath: string;
 }
 
 /**
- * The scope the chokepoint write primitives should lease against. Defaults to
- * `'project'` (the tasks chokepoint is project-tier) when no cold-open has
- * recorded a scope yet — a write before any open is degenerate, but `'project'`
- * is the only correct lease scope for `tasks_*` mutations.
+ * Build a {@link WriterLeaseIdentity} from explicit scope and dbPath. Extracts
+ * the canonical identity key used by the grant memo, the native handle resolver,
+ * and the lease row claims. Two different project files opened in one process
+ * produce DISTINCT identities (distinct `dbPath` values), so their grants never
+ * cross — a release for one file cannot free the other's row, and a cold-open
+ * at one path cannot overwrite identity for the other.
  *
- * @returns The active {@link LeaseScope}.
- * @internal
- * @task T11627
- */
-export function activeScope(): LeaseScope {
-  return _activeScope ?? 'project';
-}
-
-/**
- * The dbPath the chokepoint write primitives should lease their row in. Returns
- * the path recorded by the most-recent cold-open, or — defensively — the
- * canonical scope→path resolution for {@link activeScope} when none was recorded.
+ * @param scope - The cleo.db scope.
+ * @param dbPath - The absolute canonical on-disk path.
+ * @returns A frozen identity object.
  *
- * @returns The active cleo.db on-disk path.
- * @internal
- * @task T11627
+ * @task T12042 (E6-L12b)
  */
-export function activeScopeDbPath(): string {
-  return _activeScopeDbPath ?? _dbPathResolver(activeScope());
-}
-
-/**
- * Clear the recorded active scope + dbPath. Tests only — production records once
- * per cold-open and never clears (the scope of the last canonical open remains
- * the lease target for subsequent writes).
- *
- * @internal
- */
-export function _clearActiveScopeForTest(): void {
-  _activeScope = null;
-  _activeScopeDbPath = null;
+export function makeWriterLeaseIdentity(scope: LeaseScope, dbPath: string): WriterLeaseIdentity {
+  return Object.freeze({ scope, dbPath });
 }
 
 // ── Small helpers ─────────────────────────────────────────────────────────────
@@ -1205,9 +1158,10 @@ function ensureColdOpenLeaseTables(nativeDb: DatabaseSync): void {
  * Unlike {@link withWriterLease} it operates DIRECTLY on the already-opened native
  * handle — it never routes through the default resolver (which would re-enter
  * `openDualScopeDb` and recurse) and it bootstraps the lease tables first (the full
- * migration that creates them runs inside `fn`). It also records the scope in the
- * Seam-1 active-scope registry ({@link setActiveScope}) so chokepoint write
- * primitives lease against the right scope.
+ * migration that creates them runs inside `fn`). The caller is responsible for
+ * threading the correct explicit {@link WriterLeaseIdentity} into downstream
+ * chokepoint write primitives — the removed process-global active-scope registry
+ * (T12042) is no longer set as a side effect.
  *
  * Mode semantics mirror {@link withWriterLease}:
  * - `off` → pass-through: runs `fn` under today's `busy_timeout=30000`, byte-
@@ -1221,9 +1175,9 @@ function ensureColdOpenLeaseTables(nativeDb: DatabaseSync): void {
  * @param nativeDb - The native handle the cold-open just created (pragmas applied).
  * @param fn - The cold-open body to run while holding the lease.
  * @param opts - Priority / TTL options + the resolved `dbPath` of this cold-open.
- *   `dbPath` is recorded in the Seam-1 active-scope registry so the chokepoint
- *   write primitives lease their row in the SAME file this open targeted (correct
- *   when more than one project is open in one process — Finding 1). Cold-open
+ *   The caller must thread `dbPath` into the explicit {@link WriterLeaseIdentity}
+ *   passed to downstream chokepoint write primitives (T12042) — the removed
+ *   process-global registry no longer propagates it as a side effect. Cold-open
  *   defaults to highest priority ({@link SCHEMA_BOOTSTRAP_PRIORITY}) and a 60s TTL
  *   (schema bootstrap can be slow).
  * @returns The resolved value of `fn`.
@@ -1236,11 +1190,6 @@ export async function withColdOpenLease<T>(
   fn: () => Promise<T>,
   opts?: { priority?: number; ttlMs?: number; dbPath?: string },
 ): Promise<T> {
-  // Seam 1 wiring: record the scope + resolved dbPath of this cold-open so
-  // chokepoint write primitives (insertIdempotent/upsertIdempotent) lease against
-  // the right scope AND the right file.
-  setActiveScope(scope, opts?.dbPath);
-
   const mode = effectiveMode();
 
   // `off` mode — pure pass-through. busy_timeout=30000 on the connection still
