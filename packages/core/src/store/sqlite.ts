@@ -469,15 +469,39 @@ export async function getDb(cwd?: string): Promise<NodeSQLiteDatabase> {
     // openDualScopeDb applies pragma SSoT, creates the directory, runs cleo-project
     // migrations, and manages the singleton cache. We extract its native handle
     // so we can re-wrap it with the legacy tasks-schema for caller compatibility.
-    const dualHandle = await openDualScopeDb('project', cwd);
+    //
+    // T12035: bounded reacquisition loop — the shared consolidated DatabaseSync
+    // can be closed after openDualScopeDb checks the cache but before this await
+    // resumes (another domain's closeDb / reset / brain write firing across a
+    // microtask gap). Re-open once; the cache evicts the dead entry and returns
+    // the current live handle. This transitional guard will be removed by T12036's
+    // runtime ownership cutover.
+    let nativeDb: DatabaseSync | null = null;
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const dualHandle = await openDualScopeDb('project', cwd);
 
-    // Extract the underlying DatabaseSync. Drizzle exposes it via `$client`.
-    const nativeDb = (dualHandle.db as { $client?: DatabaseSync }).$client ?? null;
-    if (!nativeDb) {
-      throw new Error(
-        'E6-L1: openDualScopeDb returned a handle without $client — ' +
-          'cannot extract DatabaseSync for legacy tasks-schema wrapping.',
-      );
+      nativeDb = (dualHandle.db as { $client?: DatabaseSync }).$client ?? null;
+      if (!nativeDb) {
+        throw new Error(
+          'E6-L1: openDualScopeDb returned a handle without $client — ' +
+            'cannot extract DatabaseSync for legacy tasks-schema wrapping.',
+        );
+      }
+
+      if (nativeDb.isOpen) break;
+
+      // T12035: handle-liveness reacquisition — the shared consolidated
+      // DatabaseSync can be closed after openDualScopeDb checks the cache but
+      // before this await resumes (another domain's closeDb / reset / brain
+      // write firing across a microtask gap). Close this stale dual-scope
+      // handle — which evicts it from the singleton cache — so the next
+      // attempt opens a fresh, live connection. This transitional guard
+      // will be removed by T12036's runtime ownership cutover.
+      dualHandle.close();
+    }
+
+    if (!nativeDb?.isOpen) {
+      throw new Error('E6-L1: openDualScopeDb repeatedly returned a closed DatabaseSync handle.');
     }
 
     _nativeDb = nativeDb;

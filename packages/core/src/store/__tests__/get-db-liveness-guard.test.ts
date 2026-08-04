@@ -113,4 +113,45 @@ describe('getDb liveness guard (T12020) — shared consolidated handle reset', (
     expect(getBrainNativeDb()?.isOpen).toBe(true);
     expect(Object.is(getBrainNativeDb(), staleNative)).toBe(false);
   });
+
+  /**
+   * T12035: deterministic regression — closes the initially returned shared
+   * handle during getDb() initialization (in the microtask gap between
+   * openDualScopeDb resolving and the caller checking isOpen). The bounded
+   * reacquisition loop must detect the closed handle on attempt 0, re-open,
+   * and return a live replacement that correctly reads the durable seed row.
+   */
+  it('retries when the shared handle closes during getDb initialization (T12035)', async () => {
+    const { openDualScopeDb } = await import('../dual-scope-db.js');
+    const { closeDb, getDb, getNativeDb } = await import('../sqlite.js');
+    const { sessions } = await import('../tasks-schema.js');
+    const { eq } = await import('drizzle-orm');
+
+    closeDb();
+
+    // Prime the dual-scope cache with a live handle that getDb() will receive
+    // on its first openDualScopeDb call.
+    const staleHandle = await openDualScopeDb('project', tempDir);
+    const staleNative = staleHandle.db.$client;
+
+    // Start getDb() — it enters init and awaits openDualScopeDb, which returns
+    // the cached staleHandle. The queueMicrotask closes staleHandle before the
+    // reacquisition loop checks isOpen.
+    const pendingDb = getDb(tempDir);
+    queueMicrotask(() => staleHandle.close());
+    const db = await pendingDb;
+
+    expect(db).toBeDefined();
+    expect(staleNative.isOpen).toBe(false);
+    expect(getNativeDb()?.isOpen).toBe(true);
+    expect(Object.is(getNativeDb(), staleNative)).toBe(false);
+
+    // The live replacement must see the durable seed row from beforeEach.
+    const rows = await db
+      .select({ id: sessions.id })
+      .from(sessions)
+      .where(eq(sessions.id, 'S-123'))
+      .all();
+    expect(rows.map((r) => r.id)).toEqual(['S-123']);
+  });
 });
