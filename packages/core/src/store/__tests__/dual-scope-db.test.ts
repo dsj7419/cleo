@@ -25,6 +25,7 @@ import {
   createCleoRuntime,
   insertIdempotent,
   openDualScopeDb,
+  openDualScopeDbAtPath,
   resolveDualScopeDbPath,
 } from '../dual-scope-db.js';
 
@@ -696,6 +697,104 @@ describe('CleoRuntime store registry', () => {
       expect(d1.db).not.toBe(d2.db);
       d1.close();
       d2.close();
+    }, 30_000);
+
+    // ── F4: concurrent dedicated fresh-file migration consistency ─────────
+
+    it('concurrent dedicated opens of a fresh file both resolve live', async () => {
+      // Dedicated opens now run under withColdOpenLease, so two concurrent
+      // dedicated opens of a brand-new file serialize their migrations and
+      // both succeed with live, independent handles.
+      const [d1, d2] = await Promise.all([
+        runtime.openProject(projectAPath, { dedicated: true }),
+        runtime.openProject(projectAPath, { dedicated: true }),
+      ]);
+      expect(d1.isOpen).toBe(true);
+      expect(d2.isOpen).toBe(true);
+      expect(d1).not.toBe(d2);
+      expect(d1.db).not.toBe(d2.db);
+      d1.close();
+      d2.close();
+    }, 30_000);
+  });
+
+  // ── F1: identity-guarded chokepoint close ──────────────────────────────
+
+  describe('identity-guarded chokepoint close (F1 · stale close after replacement)', () => {
+    it('stale store close does not evict replacement from chokepoint cache', async () => {
+      const store1 = await runtime.openProject(projectAPath);
+      store1.close();
+
+      // Open a replacement — this is a new chokepoint cache entry.
+      const store2 = await runtime.openProject(projectAPath);
+
+      // store1.close() again — must NOT evict store2's chokepoint entry.
+      store1.close();
+
+      // Verify store2's handle is still live in the chokepoint cache:
+      // a direct openDualScopeDbAtPath returns the same handle.
+      const directHandle = await openDualScopeDbAtPath('project', resolvePath(projectAPath));
+      expect(directHandle.db).toBe(store2.db);
+      expect(directHandle.isOpen).toBe(true);
+
+      store2.close();
+    }, 30_000);
+  });
+
+  // ── F2: cancel then immediate reopen shares in-flight chokepoint ──────
+
+  describe('cancel-then-immediate-reopen (F2 · shared chokepoint promise)', () => {
+    it('cancelled open does not close handle that replacement inherits', async () => {
+      // p1 starts, enters chokepoint init.
+      const p1 = runtime.openProject(projectAPath);
+      // Cancel before p1 resolves.
+      runtime.closeProject(projectAPath);
+      // p2 starts IMMEDIATELY — before p1's await continues.
+      const p2 = runtime.openProject(projectAPath);
+
+      // p1 must reject.
+      await expect(p1).rejects.toThrow(/cancelled/i);
+
+      // p2 must resolve with a live store.
+      const store2 = await p2;
+      expect(store2.scope).toBe('project');
+      expect(store2.isOpen).toBe(true);
+
+      store2.close();
+    }, 30_000);
+  });
+
+  // ── F3: post-await liveness before publish ─────────────────────────────
+
+  describe('post-await liveness (F3 · handle closed before publish)', () => {
+    it('reopens via existing store.isOpen check when handle is dead before next open', async () => {
+      // Open, then externally close the dual-scope handle.
+      const store1 = await runtime.openProject(projectAPath);
+      // Simulate external close: evict from cache and close native handle.
+      _resetDualScopeDbCache('project');
+
+      // The runtime still has the entry but store1.isOpen is now false.
+      // The next openProject detects the dead handle via isOpen and reopens.
+      const store2 = await runtime.openProject(projectAPath);
+      expect(store2).not.toBe(store1);
+      expect(store2.isOpen).toBe(true);
+      expect(store1.isOpen).toBe(false);
+      store2.close();
+    }, 30_000);
+  });
+
+  // ── Path normalization in chokepoint (F5 extension) ────────────────────
+
+  describe('chokepoint path normalization', () => {
+    it('direct openDualScopeDbAtPath with aliased path shares cache entry', async () => {
+      const h1 = await openDualScopeDbAtPath('project', resolvePath(projectAPath));
+      // Open with a path containing ./ that normalize resolves.
+      const aliased = join(join(resolvePath(projectAPath), '..'), '.', 'cleo.db');
+      const h2 = await openDualScopeDbAtPath('project', aliased);
+
+      // Same cache entry (normalized path key).
+      expect(h2.db).toBe(h1.db);
+      h1.close();
     }, 30_000);
   });
 });
