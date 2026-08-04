@@ -14,11 +14,9 @@
 import { copyFileSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import type { DatabaseSync } from 'node:sqlite';
-import type { AnyRelations } from 'drizzle-orm';
 import type { MigrationConfig, MigrationMeta } from 'drizzle-orm/migrator';
 import { readMigrationFiles } from 'drizzle-orm/migrator';
 import type { NodeSQLiteDatabase } from 'drizzle-orm/node-sqlite';
-import type { SQLiteAsyncSession } from 'drizzle-orm/sqlite-core';
 import { migrateSync } from 'drizzle-orm/sqlite-core';
 import { getLogger } from '../logger.js';
 import { isSqliteBusy } from './with-retry.js';
@@ -1251,25 +1249,16 @@ export function sanitizeMigrationStatements(migrations: MigrationMeta[]): Migrat
 }
 
 /**
- * Internal properties of {@link NodeSQLiteDatabase} needed for
- * {@link migrateSanitized}. The session property is typed as
- * {@link SQLiteAsyncSession} (the same type {@link migrateSync} accepts)
- * rather than the concrete {@link NodeSQLiteSession} to stay compatible
- * with {@link migrateSync}'s parameter shape.
- *
- * @internal
- */
-interface DrizzleNodeSQLiteInternals {
-  session: SQLiteAsyncSession<'sync', unknown, AnyRelations>;
-}
-
-/**
  * Run drizzle migrations after sanitizing whitespace-only SQL statements.
  *
  * Reads migration files via {@link readMigrationFiles}, filters any
  * empty/whitespace-only statement chunks, then delegates to
  * {@link migrateSync} from `drizzle-orm/sqlite-core` — bypassing the
  * re-read that drizzle's `migrate()` would perform internally.
+ *
+ * The session is accessed through the public {@link NodeSQLiteDatabase._}
+ * property ({@link SQLiteAsyncDatabase._}) — no internal-type cast needed
+ * in rc.4.
  *
  * Use this at every call site instead of drizzle's `migrate()` to defend
  * against malformed migration files regardless of authoring discipline.
@@ -1284,11 +1273,7 @@ export function migrateSanitized(
 ): void {
   const raw = readMigrationFiles(config);
   const sanitized = sanitizeMigrationStatements(raw);
-  // Access drizzle's @internal session via a typed assertion.
-  // The session property is public at runtime but not surfaced in the
-  // TypeScript type declarations (it is documented as @internal in drizzle-orm source).
-  const dbInternal = db as unknown as DrizzleNodeSQLiteInternals;
-  migrateSync(sanitized, dbInternal.session, config);
+  migrateSync(sanitized, db._.session, config);
 }
 
 /**
