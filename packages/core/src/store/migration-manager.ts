@@ -14,9 +14,11 @@
 import { copyFileSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import type { DatabaseSync } from 'node:sqlite';
+import type { AnyRelations } from 'drizzle-orm';
 import type { MigrationConfig, MigrationMeta } from 'drizzle-orm/migrator';
 import { readMigrationFiles } from 'drizzle-orm/migrator';
 import type { NodeSQLiteDatabase } from 'drizzle-orm/node-sqlite';
+import type { SQLiteAsyncSession } from 'drizzle-orm/sqlite-core';
 import { migrateSync } from 'drizzle-orm/sqlite-core';
 import { getLogger } from '../logger.js';
 import { isSqliteBusy } from './with-retry.js';
@@ -1250,16 +1252,15 @@ export function sanitizeMigrationStatements(migrations: MigrationMeta[]): Migrat
 
 /**
  * Internal properties of {@link NodeSQLiteDatabase} needed for
- * {@link migrateSanitized}. The session property exists at runtime but
- * is not surfaced in the public TypeScript type.
- *
- * We declare only the subset we need here to avoid coupling to drizzle
- * internals any more than necessary.
+ * {@link migrateSanitized}. The session property is typed as
+ * {@link SQLiteAsyncSession} (the same type {@link migrateSync} accepts)
+ * rather than the concrete {@link NodeSQLiteSession} to stay compatible
+ * with {@link migrateSync}'s parameter shape.
  *
  * @internal
  */
 interface DrizzleNodeSQLiteInternals {
-  session: any;
+  session: SQLiteAsyncSession<'sync', unknown, AnyRelations>;
 }
 
 /**
