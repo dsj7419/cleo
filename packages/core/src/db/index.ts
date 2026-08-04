@@ -20,6 +20,10 @@
  *   exodus-on-open (T11828 · DHQ-059).
  * - {@link ExodusAbortWriteUnsafeError} — thrown by `assertWriteDurable`.
  * - {@link _resetDualScopeDbCache} — test helper: clear singleton cache.
+ * - {@link createCleoRuntime} — create the runtime store registry.
+ * - {@link CleoRuntime} — the registry interface.
+ * - {@link ProjectStore} — typed project-scope handle from the runtime.
+ * - {@link GlobalStore} — typed global-scope handle from the runtime.
  *
  * ## Usage
  *
@@ -30,8 +34,18 @@
  * const global = await openDualScopeDb('global');
  * ```
  *
+ * ```ts
+ * import { createCleoRuntime, resolveDualScopeDbPath } from '@cleocode/core/db';
+ *
+ * const runtime = createCleoRuntime();
+ * const projectA = await runtime.openProject(resolveDualScopeDbPath('project', '/path/A'));
+ * const dedicated = await runtime.openProject('/path/to/snapshot.db', { dedicated: true });
+ * // dedicated.close() closes only this connection; the runtime does NOT track it.
+ * ```
+ *
  * @packageDocumentation
  * @task T11514 (E4-T3)
+ * @task T12036 (E6-L12)
  * @epic T11247 (E4)
  * @saga T11242 (SG-DB-SUBSTRATE-V2)
  */
@@ -41,11 +55,16 @@ export {
   assertWriteDurable,
   type CleoGlobalDb,
   type CleoProjectDb,
+  type CleoRuntime,
+  type CleoRuntimeOpenOptions,
+  createCleoRuntime,
   type DualScope,
   type DualScopeDbHandle,
   ExodusAbortWriteUnsafeError,
+  type GlobalStore,
   insertIdempotent,
   openDualScopeDb,
+  type ProjectStore,
   resolveDualScopeDbPath,
   upsertIdempotent,
 } from '../store/dual-scope-db.js';
