@@ -27,6 +27,7 @@ import { join } from 'node:path';
 import type { Task } from '@cleocode/contracts';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { _resetGovernorStateForTest } from '../../resources/governor.js';
 import { SENTIENT_STATE_FILE } from '../daemon.js';
 import { DEFAULT_SENTIENT_STATE, writeSentientState } from '../state.js';
 import {
@@ -74,16 +75,25 @@ function mkTickOpts(projectRoot: string, overrides: Partial<TickOptions> = {}): 
 
 describe('dream-tick integration (T996)', () => {
   let root: string;
+  let prevResourcesMode: string | undefined;
 
   beforeEach(async () => {
     root = await mkdtemp(join(tmpdir(), 'cleo-dream-tick-'));
     const statePath = join(root, SENTIENT_STATE_FILE);
     await writeSentientState(statePath, { ...DEFAULT_SENTIENT_STATE });
     _resetDreamTickState();
+    // T12035: safeRunTick gates through governor.tryAcquire('db-heavy').
+    // Disable the governor for unit tests so admission is deterministic
+    // and independent of host memory pressure.
+    prevResourcesMode = process.env.CLEO_RESOURCES_MODE;
+    process.env.CLEO_RESOURCES_MODE = 'off';
+    _resetGovernorStateForTest();
   });
 
   afterEach(async () => {
     _resetDreamTickState();
+    process.env.CLEO_RESOURCES_MODE = prevResourcesMode;
+    _resetGovernorStateForTest();
     // maxRetries: Windows WAL sidecar files (.db-shm/.db-wal) stay locked
     // briefly after close(). 5 retries × 500 ms = 2.5 s max wait.
     await rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 500 });
