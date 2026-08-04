@@ -291,6 +291,16 @@ jobs:
         run: {{INSTALL_CMD}}
         timeout-minutes: 5
 
+      - name: Build CLI
+        run: pnpm run build
+        timeout-minutes: 15
+
+      - name: Link cleo CLI
+        run: |
+          chmod +x packages/cleo/bin/cleo.js
+          ln -sf "$PWD/packages/cleo/bin/cleo.js" /usr/local/bin/cleo
+        timeout-minutes: 1
+
       # R-205(a)/(b): resolve plan — call `cleo release plan` if sha is empty,
       # otherwise verify the existing plan blob via sha256.
       - name: Resolve release plan
