@@ -522,12 +522,26 @@ describe('Finding 1 — two project files in one process are distinct lease scop
   }, 20_000);
 
   it('concurrent withWriterLease across two projects writes independent rows (T12044)', async () => {
-    // AC2: two concurrent withWriterLease calls for project-A and project-B
-    // must each claim an independent active row and neither row leaks across.
-    await Promise.all([
-      withWriterLease('project', 'bulk', async () => {}, { dbPath: pathA }),
-      withWriterLease('project', 'bulk', async () => {}, { dbPath: pathB }),
+    const bothEntered = Promise.withResolvers<void>();
+    const releaseBoth = Promise.withResolvers<void>();
+    let enteredCount = 0;
+    const holdLease = async (): Promise<void> => {
+      enteredCount += 1;
+      if (enteredCount === 2) bothEntered.resolve();
+      await releaseBoth.promise;
+    };
+
+    const leases = Promise.all([
+      withWriterLease('project', 'bulk', holdLease, { dbPath: pathA }),
+      withWriterLease('project', 'bulk', holdLease, { dbPath: pathB }),
     ]);
+
+    await bothEntered.promise;
+    expect(countActive(projA, 'project', 'bulk')).toBe(1);
+    expect(countActive(projB, 'project', 'bulk')).toBe(1);
+
+    releaseBoth.resolve();
+    await leases;
 
     // After both leases complete, neither file should have a lingering active row.
     expect(countActive(projA, 'project', 'bulk')).toBe(0);

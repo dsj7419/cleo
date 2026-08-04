@@ -685,21 +685,12 @@ export class LocalTransport implements Transport {
   }
 
   /**
-   * Seam 3 (T11627): conduit.db is a raw bypass writer (project-tier, sidesteps
-   * the tasks chokepoint via its own `openFreshConduitDb` handle). Hold the
-   * project `bulk` lease around a synchronous write block so conduit writes
-   * serialize against other writers on the same scope. `off` mode → pass-through
-   * (busy_timeout serializes as before). The wrapped `fn` is synchronous because
-   * every conduit write is a synchronous `db.prepare(...).run(...)`.
+   * Run a synchronous conduit write under the project `bulk` lease. Conduit uses
+   * the consolidated project cleo.db, so the connection state's exact path pins
+   * the lease to this project rather than the process cwd.
    *
    * @param fn - The synchronous write block to run under the lease.
    * @returns The value returned by `fn`.
-   */
-  /**
-   * Seam 3 (T11627): conduit.db is now the same file as the project cleo.db
-   * (E6-L3). Pass the exact canonical dbPath from the state so the lease row
-   * lands in THIS project's cleo.db — never in the cwd-default file — ensuring
-   * concurrent projects route to their own rows (T12044 · E6-L12d).
    */
   private runWrite<T>(fn: () => T): Promise<T> {
     return withWriterLease('project', 'bulk', async () => fn(), {
