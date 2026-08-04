@@ -41,6 +41,7 @@ import type {
 } from '@earendil-works/pi-agent-core';
 import { SessionError } from '@earendil-works/pi-agent-core';
 import { getLogger } from '../../logger.js';
+import { resolveDualScopeDbPath } from '../../store/dual-scope-db.js';
 import {
   getPiSessionNativeDb,
   insertPiSessionEntry,
@@ -156,6 +157,7 @@ export class CleoSessionStorage implements SessionStorage {
   readonly #sessionId: string;
   readonly #cwd: string | undefined;
   readonly #now: () => string;
+  readonly #dbPath: string;
 
   /**
    * @param options - The daemon-stamped session id + optional cwd / clock.
@@ -164,6 +166,7 @@ export class CleoSessionStorage implements SessionStorage {
     this.#sessionId = options.sessionId;
     this.#cwd = options.cwd;
     this.#now = options.now ?? (() => new Date().toISOString());
+    this.#dbPath = resolveDualScopeDbPath('project', options.cwd);
   }
 
   /**
@@ -367,9 +370,16 @@ export class CleoSessionStorage implements SessionStorage {
     fn: (native: Awaited<ReturnType<typeof getPiSessionNativeDb>>) => void,
   ): Promise<void> {
     const native = await getPiSessionNativeDb(this.#cwd);
-    await withWriterLease('project', 'bulk', async () => {
-      fn(native);
-    });
+    // Pinned to the exact project cleo.db path so lease rows for two concurrent
+    // projects remain isolated (T12045 · E6-L12e).
+    await withWriterLease(
+      'project',
+      'bulk',
+      async () => {
+        fn(native);
+      },
+      { dbPath: this.#dbPath },
+    );
     log().debug({ sessionId: this.#sessionId }, 'pi session leased write committed');
   }
 }

@@ -20,6 +20,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { and, count, desc, gt, lt, sql } from 'drizzle-orm';
 import { getCleoHome } from '../paths.js';
+import { resolveDualScopeDbPath } from '../store/dual-scope-db.js';
 import { telemetryEvents } from '../store/schema/telemetry-schema.js';
 import { withWriterLease } from '../store/writer-lease.js';
 import { getTelemetryDb } from './sqlite.js';
@@ -63,12 +64,19 @@ async function _flushTelemetryBuffer(): Promise<void> {
     // Seam 3 (T11627): telemetry.db is a raw bypass writer (global-tier, sidesteps
     // the tasks chokepoint). Hold the global `bulk` lease for the whole flush batch
     // so the writes serialize against other writers. `off` mode → pass-through.
-    await withWriterLease('global', 'bulk', async () => {
-      const db = await getTelemetryDb();
-      for (const row of batch) {
-        await db.insert(telemetryEvents).values(row).run();
-      }
-    });
+    // Pinned to the global cleo.db path so the lease row lives in the canonical
+    // global arbitration file (T12045 · E6-L12e).
+    await withWriterLease(
+      'global',
+      'bulk',
+      async () => {
+        const db = await getTelemetryDb();
+        for (const row of batch) {
+          await db.insert(telemetryEvents).values(row).run();
+        }
+      },
+      { dbPath: resolveDualScopeDbPath('global') },
+    );
   } catch {
     // Non-fatal — telemetry flush must never surface errors.
   } finally {

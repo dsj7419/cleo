@@ -36,6 +36,7 @@
  * @task T11913
  */
 
+import { resolveDualScopeDbPath } from '../store/dual-scope-db.js';
 import {
   getSelfimproveDhqNativeDb,
   readOpenSelfimproveDhq,
@@ -113,6 +114,7 @@ export interface DhqAdapter {
 export function createDhqAdapter(opts: { cwd?: string; now?: () => number } = {}): DhqAdapter {
   const cwd = opts.cwd;
   const now = opts.now ?? (() => Date.now());
+  const dbPath = resolveDualScopeDbPath('project', cwd);
 
   return {
     async readOpen(questionHash: string): Promise<SelfimproveDhqRow | null> {
@@ -123,27 +125,39 @@ export function createDhqAdapter(opts: { cwd?: string; now?: () => number } = {}
     async upsertOpenDhq(input: UpsertDhqInput): Promise<void> {
       // EVERY write is leased — never raw / unleased. The lease serializes against
       // other writers on (project, bulk); the table-confinement is the accessor's.
-      await withWriterLease('project', 'bulk', async () => {
-        const native = await getSelfimproveDhqNativeDb(cwd);
-        const row: SelfimproveDhqUpsert = {
-          dhqId: input.dhqId,
-          scenario: input.scenario,
-          questionHash: input.questionHash,
-          title: input.title,
-          regressionJson: input.regressionJson,
-          severity: input.severity,
-          runId: input.runId,
-          now: now(),
-        };
-        upsertOpenSelfimproveDhq(native, row);
-      });
+      // Pinned to the exact project cleo.db path so lease rows for two concurrent
+      // projects remain isolated (T12045 · E6-L12e).
+      await withWriterLease(
+        'project',
+        'bulk',
+        async () => {
+          const native = await getSelfimproveDhqNativeDb(cwd);
+          const row: SelfimproveDhqUpsert = {
+            dhqId: input.dhqId,
+            scenario: input.scenario,
+            questionHash: input.questionHash,
+            title: input.title,
+            regressionJson: input.regressionJson,
+            severity: input.severity,
+            runId: input.runId,
+            now: now(),
+          };
+          upsertOpenSelfimproveDhq(native, row);
+        },
+        { dbPath },
+      );
     },
 
     async recordPrUrl(questionHash: string, prUrl: string): Promise<number> {
-      return withWriterLease('project', 'bulk', async () => {
-        const native = await getSelfimproveDhqNativeDb(cwd);
-        return setSelfimproveDhqPrUrl(native, questionHash, prUrl, now());
-      });
+      return withWriterLease(
+        'project',
+        'bulk',
+        async () => {
+          const native = await getSelfimproveDhqNativeDb(cwd);
+          return setSelfimproveDhqPrUrl(native, questionHash, prUrl, now());
+        },
+        { dbPath },
+      );
     },
   };
 }

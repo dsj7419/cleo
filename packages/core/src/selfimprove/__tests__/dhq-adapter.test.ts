@@ -18,14 +18,21 @@
  */
 
 import { describe, expect, it, vi } from 'vitest';
+import { resolveDualScopeDbPath } from '../../store/dual-scope-db.js';
+import type { LeaseAcquireOptions, LeaseLane, LeaseScope } from '../../store/writer-lease.js';
 
-// ── Mock the lease: capture (scope, lane) and run fn() inline ──────────────────
-const leaseCalls: Array<{ scope: string; lane: string }> = [];
+// ── Mock the lease: capture (scope, lane, opts) and run fn() inline ──────────────
+const leaseCalls: Array<{ scope: LeaseScope; lane: LeaseLane; opts?: LeaseAcquireOptions }> = [];
 vi.mock('../../store/writer-lease.js', () => ({
   withWriterLease: vi.fn(
-    async (scope: string, lane: string, fn: (h: unknown) => Promise<unknown>) => {
-      leaseCalls.push({ scope, lane });
-      return fn({});
+    async <T>(
+      scope: LeaseScope,
+      lane: LeaseLane,
+      fn: () => Promise<T>,
+      opts?: LeaseAcquireOptions,
+    ): Promise<T> => {
+      leaseCalls.push({ scope, lane, opts });
+      return fn();
     },
   ),
 }));
@@ -58,7 +65,7 @@ vi.mock('../../store/selfimprove-dhq-store.js', async () => {
 import { createDhqAdapter } from '../dhq-adapter.js';
 
 describe('dhq-adapter — lease discipline', () => {
-  it('upsertOpenDhq acquires the (project, bulk) lease exactly once', async () => {
+  it('upsertOpenDhq acquires the (project, bulk) lease exactly once with explicit dbPath', async () => {
     leaseCalls.length = 0;
     const adapter = createDhqAdapter({ now: () => 42 });
     await adapter.upsertOpenDhq({
@@ -70,14 +77,20 @@ describe('dhq-adapter — lease discipline', () => {
       severity: null,
       runId: 'r',
     });
-    expect(leaseCalls).toEqual([{ scope: 'project', lane: 'bulk' }]);
+    expect(leaseCalls).toHaveLength(1);
+    expect(leaseCalls[0]?.scope).toBe('project');
+    expect(leaseCalls[0]?.lane).toBe('bulk');
+    expect(leaseCalls[0]?.opts?.dbPath).toBe(resolveDualScopeDbPath('project'));
   });
 
-  it('recordPrUrl acquires the (project, bulk) lease exactly once', async () => {
+  it('recordPrUrl acquires the (project, bulk) lease exactly once with explicit dbPath', async () => {
     leaseCalls.length = 0;
     const adapter = createDhqAdapter({ now: () => 42 });
     await adapter.recordPrUrl('h', 'https://x/pull/1');
-    expect(leaseCalls).toEqual([{ scope: 'project', lane: 'bulk' }]);
+    expect(leaseCalls).toHaveLength(1);
+    expect(leaseCalls[0]?.scope).toBe('project');
+    expect(leaseCalls[0]?.lane).toBe('bulk');
+    expect(leaseCalls[0]?.opts?.dbPath).toBe(resolveDualScopeDbPath('project'));
   });
 
   it('readOpen does NOT acquire a lease (reads are lease-free)', async () => {

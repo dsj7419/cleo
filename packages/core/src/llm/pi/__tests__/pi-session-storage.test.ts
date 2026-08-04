@@ -197,7 +197,7 @@ describe('AC4.1 — tree-structured persistence round-trip', () => {
 });
 
 describe('AC4.2 — lease-held write proof', () => {
-  it('appendEntry + setLeafId acquire the project/bulk writer lease', async () => {
+  it('appendEntry + setLeafId acquire the project/bulk writer lease with explicit dbPath identity', async () => {
     const spy = vi.spyOn(writerLease, 'withWriterLease');
     const s = durableStorage('sess-lease');
 
@@ -213,6 +213,7 @@ describe('AC4.2 — lease-held write proof', () => {
     for (const call of spy.mock.calls) {
       expect(call[0]).toBe('project');
       expect(call[1]).toBe('bulk');
+      expect(call[3]?.dbPath).toBe(join(projectCwd, '.cleo', 'cleo.db'));
     }
   });
 
@@ -234,7 +235,9 @@ describe('AC4.2 — lease-held write proof', () => {
         message: { role: 'user', content: 'x', timestamp: 1 },
       } as SessionTreeEntry),
     ).rejects.toThrow();
-    expect(spy).toHaveBeenCalledWith('project', 'bulk', expect.any(Function));
+    expect(spy).toHaveBeenCalledWith('project', 'bulk', expect.any(Function), {
+      dbPath: join(projectCwd, '.cleo', 'cleo.db'),
+    });
 
     // Nothing was written outside the (rejected) lease.
     const count = (
