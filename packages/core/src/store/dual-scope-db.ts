@@ -64,7 +64,14 @@ import {
   resolveCorePackageMigrationsFolder,
 } from './resolve-migrations-folder.js';
 import { applyPerfPragmas } from './sqlite-pragmas.js';
-import { type WriterLeaseIdentity, withColdOpenLease, withWriterLease } from './writer-lease.js';
+import {
+  makeWriterLeaseIdentity,
+  registerDbIdentity,
+  resolveDbIdentity,
+  type WriterLeaseIdentity,
+  withColdOpenLease,
+  withWriterLease,
+} from './writer-lease.js';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -96,6 +103,13 @@ export interface DualScopeDbHandle<TScope extends DualScope = DualScope> {
   readonly scope: TScope;
   /** Absolute path to the underlying SQLite file. */
   readonly dbPath: string;
+  /**
+   * Immutable writer-lease identity bound to this exact handle at construction
+   * (T12042). The chokepoint write primitives derive scope + dbPath from this
+   * identity via {@link resolveDbIdentity} — a caller cannot pair file-A
+   * identity with file-B DB. Frozen and normalized.
+   */
+  readonly identity: WriterLeaseIdentity;
   /**
    * Whether the underlying native `DatabaseSync` connection is still
    * open. Reflects `nativeDb.isOpen` and is `false` after `close()`.
@@ -489,10 +503,14 @@ async function openDedicatedDualScopeDb(
 
         log.debug({ scope, dbPath }, 'DEDICATED dual-scope cleo.db ready (T11782 FIX D)');
 
+        const identity = makeWriterLeaseIdentity(scope, dbPath);
+        registerDbIdentity(db, identity);
+
         return {
           db,
           scope,
           dbPath,
+          identity,
           get isOpen() {
             return nativeDb.isOpen;
           },
@@ -506,7 +524,6 @@ async function openDedicatedDualScopeDb(
           },
         };
       },
-      { dbPath },
     );
 
     return handle;
@@ -728,10 +745,14 @@ export async function openDualScopeDbAtPath(
 
           log.debug({ scope, dbPath: normalizedPath }, 'dual-scope cleo.db ready');
 
+          const identity = makeWriterLeaseIdentity(scope, normalizedPath);
+          registerDbIdentity(db, identity);
+
           const built: DualScopeDbHandle = {
             db,
             scope,
             dbPath: normalizedPath,
+            identity,
             get isOpen() {
               return nativeDb.isOpen;
             },
@@ -762,10 +783,6 @@ export async function openDualScopeDbAtPath(
 
           return built;
         },
-        // Record this open's resolved dbPath in the Seam-1 registry so the chokepoint
-        // write primitives lease their row in THIS file — not the cwd-default — when
-        // more than one project's cleo.db is open in this process (T11627 Finding 1).
-        { dbPath: normalizedPath },
       );
 
       // ── Exodus-on-open (E6 · T11553) — runs AFTER the cold-open lease releases ──
@@ -950,6 +967,11 @@ export interface ProjectStore {
   readonly scope: 'project';
   /** Absolute on-disk path to this project's `cleo.db`. */
   readonly dbPath: string;
+  /**
+   * Immutable writer-lease identity bound to this store's underlying
+   * {@link DualScopeDbHandle} at construction (T12042).
+   */
+  readonly identity: WriterLeaseIdentity;
   /** The typed Drizzle ORM handle for the project-scope consolidated schema. */
   readonly db: CleoProjectDb;
   /**
@@ -993,6 +1015,11 @@ export interface GlobalStore {
   readonly scope: 'global';
   /** Absolute on-disk path to the global `cleo.db`. */
   readonly dbPath: string;
+  /**
+   * Immutable writer-lease identity bound to this store's underlying
+   * {@link DualScopeDbHandle} at construction (T12042).
+   */
+  readonly identity: WriterLeaseIdentity;
   /** The typed Drizzle ORM handle for the global-scope consolidated schema. */
   readonly db: CleoGlobalDb;
   /**
@@ -1395,6 +1422,7 @@ class CleoRuntimeImpl implements CleoRuntime {
     entryId: EntryId,
   ): ProjectStore | GlobalStore {
     const dbPath = dualHandle.dbPath;
+    const identity = dualHandle.identity;
     const exodusAbort = dualHandle.exodusAbort;
     const key = cacheKey(scope, dbPath);
 
@@ -1402,6 +1430,7 @@ class CleoRuntimeImpl implements CleoRuntime {
       const store: ProjectStore = {
         scope: 'project',
         dbPath,
+        identity,
         db: dualHandle.db as CleoProjectDb,
         get isOpen() {
           return dualHandle.isOpen;
@@ -1418,6 +1447,7 @@ class CleoRuntimeImpl implements CleoRuntime {
     const store: GlobalStore = {
       scope: 'global',
       dbPath,
+      identity,
       db: dualHandle.db as CleoGlobalDb,
       get isOpen() {
         return dualHandle.isOpen;
@@ -1568,22 +1598,20 @@ import type { SQLiteTableWithColumns, TableConfig } from 'drizzle-orm/sqlite-cor
  * the consolidated-schema MUTATION primitives, so the guard is write-only and
  * never affects read paths.
  *
- * @param identity - The explicit writer-lease identity (scope + canonical dbPath)
- *   owning this write. Replaces the removed process-global last-writer scope
- *   (T12042) so concurrent project A, B, and global writers cannot steal or
- *   release each other's lease.
+ * Derives the writer-lease identity from the DB handle itself via
+ * {@link resolveDbIdentity} — the identity was registered at
+ * {@link DualScopeDbHandle} construction, so a caller cannot pair file-A
+ * identity with file-B DB (T12042).
  *
  * @example
  * ```ts
  * import { tasksTasksTable } from '@cleocode/core/store/schema/cleo-project';
- * import { makeWriterLeaseIdentity } from '@cleocode/core/store/writer-lease';
- * const identity = makeWriterLeaseIdentity('project', handle.dbPath);
- * const inserted = await insertIdempotent(db, tasksTasksTable, newTask, 'idempotencyKey', identity);
+ * const inserted = await insertIdempotent(db, tasksTasksTable, newTask, 'idempotencyKey');
  * ```
  *
  * @task T11513 (E4-T2)
  * @task T11828 (write-side exodus-abort guard)
- * @task T12042 (E6-L12b — explicit writer-lease identity)
+ * @task T12042 (E6-L12b — exact DB-bound identity)
  * @epic T11247 (E4)
  * @saga T11242
  */
@@ -1594,9 +1622,9 @@ export async function insertIdempotent<TTable extends SQLiteTableWithColumns<Tab
   row: InferInsertModel<TTable>,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   _keyColumn: string,
-  identity: WriterLeaseIdentity,
 ): Promise<number> {
   assertNoRecordedExodusAbort();
+  const identity = resolveDbIdentity(db);
   return withWriterLease(
     identity.scope,
     'tasks',
@@ -1629,20 +1657,18 @@ export async function insertIdempotent<TTable extends SQLiteTableWithColumns<Tab
  * Refuses the write (throws {@link ExodusAbortWriteUnsafeError}) when a prior
  * exodus-on-open aborted in this process (T11828 · DHQ-059) — write-only guard.
  *
- * @param identity - The explicit writer-lease identity (scope + canonical dbPath)
- *   owning this write. Replaces the removed process-global last-writer scope
- *   (T12042) so concurrent project A, B, and global writers cannot steal or
- *   release each other's lease.
+ * Derives the writer-lease identity from the DB handle itself via
+ * {@link resolveDbIdentity} (T12042 — exact DB-bound identity, no fallback).
  *
  * @example
  * ```ts
  * await upsertIdempotent(db, tasksTasksTable, updatedTask, 'idempotencyKey',
- *   tasksTasksTable.idempotencyKey, identity);
+ *   tasksTasksTable.idempotencyKey);
  * ```
  *
  * @task T11513 (E4-T2)
  * @task T11828 (write-side exodus-abort guard)
- * @task T12042 (E6-L12b — explicit writer-lease identity)
+ * @task T12042 (E6-L12b — exact DB-bound identity)
  * @epic T11247 (E4)
  * @saga T11242
  */
@@ -1656,11 +1682,11 @@ export async function upsertIdempotent<TTable extends SQLiteTableWithColumns<Tab
   // biome-ignore lint/suspicious/noExplicitAny: column reference type varies by table
   conflictTarget: any,
   set?: Partial<InferInsertModel<TTable>>,
-  identity?: WriterLeaseIdentity,
 ): Promise<number> {
   assertNoRecordedExodusAbort();
+  const identity = resolveDbIdentity(db);
   return withWriterLease(
-    identity?.scope ?? 'project',
+    identity.scope,
     'tasks',
     async () => {
       const updateSet = set ?? row;
@@ -1675,6 +1701,6 @@ export async function upsertIdempotent<TTable extends SQLiteTableWithColumns<Tab
         .returning();
       return result.length;
     },
-    identity ? { dbPath: identity.dbPath } : undefined,
+    { dbPath: identity.dbPath },
   );
 }

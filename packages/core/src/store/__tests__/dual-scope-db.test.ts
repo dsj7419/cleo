@@ -29,7 +29,6 @@ import {
   resolveDualScopeDbPath,
   setRuntimeOpenFn,
 } from '../dual-scope-db.js';
-import { makeWriterLeaseIdentity } from '../writer-lease.js';
 
 // ── Test directory management ─────────────────────────────────────────────────
 
@@ -194,9 +193,8 @@ describe('insertIdempotent + idempotency guarantee (E4 AC7)', () => {
     const { tasksTasks } = (await import('../schema/cleo-project/tasks-core.js')) as any; // db-open-allowed: test-only schema import
 
     let insertedCount = 0;
-    const identity = makeWriterLeaseIdentity('project', handle.dbPath);
     for (let i = 0; i < 100; i++) {
-      const n = await insertIdempotent(handle.db, tasksTasks, row, 'idempotencyKey', identity);
+      const n = await insertIdempotent(handle.db, tasksTasks, row, 'idempotencyKey');
       insertedCount += n;
     }
 

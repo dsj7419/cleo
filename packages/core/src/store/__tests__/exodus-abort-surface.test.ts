@@ -33,7 +33,7 @@ import {
   exodusAbortEvents,
   getRecordedExodusAbort,
 } from '../exodus/abort-events.js';
-import { makeWriterLeaseIdentity } from '../writer-lease.js';
+import { makeWriterLeaseIdentity, registerDbIdentity } from '../writer-lease.js';
 
 function makeDetail(over: Partial<ExodusAbortDetail> = {}): ExodusAbortDetail {
   return {
@@ -135,8 +135,6 @@ describe('exodus abort surface (T11828)', () => {
   });
 
   describe('write primitives reject while an abort is recorded', () => {
-    const identity = makeWriterLeaseIdentity('project', '/tmp/cleo.db');
-
     // A stub Drizzle handle whose insert chain would resolve if reached — proves
     // the guard short-circuits BEFORE any DB call when an abort is live.
     function makeInsertSpyDb(): { db: never; calls: number } {
@@ -162,7 +160,7 @@ describe('exodus abort surface (T11828)', () => {
       emitExodusAbort(makeDetail());
       const spy = makeInsertSpyDb();
       await expect(
-        insertIdempotent(spy.db, {} as never, {} as never, 'idempotencyKey', identity),
+        insertIdempotent(spy.db, {} as never, {} as never, 'idempotencyKey'),
       ).rejects.toBeInstanceOf(ExodusAbortWriteUnsafeError);
       expect(spy.calls).toBe(0);
     });
@@ -171,13 +169,8 @@ describe('exodus abort surface (T11828)', () => {
       emitExodusAbort(makeDetail());
       clearExodusAborts();
       const spy = makeInsertSpyDb();
-      const inserted = await insertIdempotent(
-        spy.db,
-        {} as never,
-        {} as never,
-        'idempotencyKey',
-        identity,
-      );
+      registerDbIdentity(spy.db, makeWriterLeaseIdentity('project', '/tmp/cleo.db'));
+      const inserted = await insertIdempotent(spy.db, {} as never, {} as never, 'idempotencyKey');
       expect(inserted).toBe(1);
       expect(spy.calls).toBe(1);
     });

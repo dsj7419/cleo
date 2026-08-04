@@ -64,6 +64,7 @@
  */
 
 import { randomUUID } from 'node:crypto';
+import { resolve as resolvePath } from 'node:path';
 import type { DatabaseSync } from 'node:sqlite';
 import type { LeaseLane, LeaseScope } from '@cleocode/contracts';
 import { getLogger } from '../logger.js';
@@ -391,32 +392,104 @@ function memoKey(scope: LeaseScope, dbPath: string, lane: LeaseLane): string {
  * acquire/release/renew/assert and cold-open path uses this same explicit
  * identity — a release for A must never affect B/global even when concurrent.
  *
+ * Identity is IMMUTABLE after construction: it is frozen and bound to the
+ * exact drizzle DB handle at {@link DualScopeDbHandle} construction time via
+ * {@link registerDbIdentity}. Callers resolve it through
+ * {@link resolveDbIdentity} — never construct one by hand.
+ *
  * @task T12042 (E6-L12b)
  * @task T11627
  */
 export interface WriterLeaseIdentity {
   /** The cleo.db scope this lease arbitrates within. */
   readonly scope: LeaseScope;
-  /** Absolute canonical on-disk path to this scope's cleo.db. */
+  /** Absolute canonical on-disk path to this scope's cleo.db (normalized). */
   readonly dbPath: string;
 }
 
 /**
- * Build a {@link WriterLeaseIdentity} from explicit scope and dbPath. Extracts
- * the canonical identity key used by the grant memo, the native handle resolver,
- * and the lease row claims. Two different project files opened in one process
- * produce DISTINCT identities (distinct `dbPath` values), so their grants never
- * cross — a release for one file cannot free the other's row, and a cold-open
- * at one path cannot overwrite identity for the other.
+ * Build a frozen {@link WriterLeaseIdentity} from scope + dbPath.
+ *
+ * The dbPath is normalized via `path.resolve()` before freezing — so alias paths
+ * (`/a/../a/cleo.db`, `/a/cleo.db`) produce byte-identical identities and a
+ * single memoized grant row. Callers MUST pass the identity through
+ * {@link registerDbIdentity} to bind it to a concrete drizzle DB handle; the
+ * chokepoint write primitives resolve identity from the handle itself.
  *
  * @param scope - The cleo.db scope.
- * @param dbPath - The absolute canonical on-disk path.
- * @returns A frozen identity object.
+ * @param dbPath - An absolute or relative path to the scope's cleo.db. Normalized
+ *   via `path.resolve()` before freezing.
+ * @returns A frozen, normalized identity.
  *
  * @task T12042 (E6-L12b)
  */
 export function makeWriterLeaseIdentity(scope: LeaseScope, dbPath: string): WriterLeaseIdentity {
-  return Object.freeze({ scope, dbPath });
+  return Object.freeze({ scope, dbPath: resolvePath(dbPath) });
+}
+
+// ── DB-identity registry (typed WeakMap — immutable, concurrency-safe) ──────
+
+/**
+ * Maps a drizzle DB object to its immutable writer-lease identity. Keyed on the
+ * EXACT drizzle DB object reference so two different projects' drizzle handles
+ * are distinct keys — a caller cannot pair file-A identity with file-B DB.
+ *
+ * Typed `WeakMap<object, …>` because WeakMap keys must be non-primitive; the DB
+ * handles are always objects. Unregistered lookups throw a descriptive error —
+ * there is NO fallback, ambient cwd lookup, or compatibility shim.
+ *
+ * @task T12042 (E6-L12b)
+ */
+const _dbIdentityRegistry = new WeakMap<object, WriterLeaseIdentity>();
+
+/**
+ * Register a drizzle DB handle's immutable writer-lease identity.
+ *
+ * Called at {@link DualScopeDbHandle} construction time (both cached and
+ * dedicated opens). Subsequent calls for the SAME handle object silently
+ * overwrite (last registration wins), but the identity is immutable — a
+ * replacement identity for the same handle is a bug.
+ *
+ * @param db - The drizzle DB handle (or any non-primitive key). Must be the
+ *   exact same object reference that {@link resolveDbIdentity} will look up.
+ * @param identity - The frozen identity built by {@link makeWriterLeaseIdentity}.
+ *
+ * @task T12042 (E6-L12b)
+ */
+export function registerDbIdentity(db: object, identity: WriterLeaseIdentity): void {
+  _dbIdentityRegistry.set(db, identity);
+}
+
+/**
+ * Resolve the immutable writer-lease identity bound to a drizzle DB handle.
+ *
+ * The chokepoint write primitives ({@link insertIdempotent} /
+ * {@link upsertIdempotent}) call this with their `db` parameter to derive the
+ * correct scope + dbPath for the writer lease. A handle opened through the
+ * dual-scope chokepoint is always registered; a stub or synthetic handle
+ * passed in tests must be registered via {@link registerDbIdentity} before a
+ * write primitive reaches the identity-resolve point.
+ *
+ * @param db - The drizzle DB handle whose identity to look up.
+ * @returns The frozen identity registered at construction time.
+ * @throws {Error} `E_WRITER_LEASE_IDENTITY_UNREGISTERED` when the handle was
+ *   not registered — the caller MUST open the DB through the dual-scope
+ *   chokepoint or call {@link registerDbIdentity} explicitly.
+ *
+ * @task T12042 (E6-L12b)
+ */
+export function resolveDbIdentity(db: object): WriterLeaseIdentity {
+  const identity = _dbIdentityRegistry.get(db);
+  if (!identity) {
+    throw new Error(
+      'E_WRITER_LEASE_IDENTITY_UNREGISTERED: the drizzle DB handle has no ' +
+        'registered writer-lease identity. Open the DB through the dual-scope ' +
+        'chokepoint (openDualScopeDb/openDualScopeDbAtPath) or call ' +
+        'registerDbIdentity(handle, identity) explicitly in tests. ' +
+        '(T12042 — no ambient fallback)',
+    );
+  }
+  return identity;
 }
 
 // ── Small helpers ─────────────────────────────────────────────────────────────
@@ -1158,10 +1231,9 @@ function ensureColdOpenLeaseTables(nativeDb: DatabaseSync): void {
  * Unlike {@link withWriterLease} it operates DIRECTLY on the already-opened native
  * handle — it never routes through the default resolver (which would re-enter
  * `openDualScopeDb` and recurse) and it bootstraps the lease tables first (the full
- * migration that creates them runs inside `fn`). The caller is responsible for
- * threading the correct explicit {@link WriterLeaseIdentity} into downstream
- * chokepoint write primitives — the removed process-global active-scope registry
- * (T12042) is no longer set as a side effect.
+ * migration that creates them runs inside `fn`). The identity is bound to the
+ * drizzle DB handle at construction via {@link registerDbIdentity} — this function
+ * no longer records a process-global side effect (T12042).
  *
  * Mode semantics mirror {@link withWriterLease}:
  * - `off` → pass-through: runs `fn` under today's `busy_timeout=30000`, byte-
@@ -1174,21 +1246,19 @@ function ensureColdOpenLeaseTables(nativeDb: DatabaseSync): void {
  * @param scope - The cleo.db scope being cold-opened.
  * @param nativeDb - The native handle the cold-open just created (pragmas applied).
  * @param fn - The cold-open body to run while holding the lease.
- * @param opts - Priority / TTL options + the resolved `dbPath` of this cold-open.
- *   The caller must thread `dbPath` into the explicit {@link WriterLeaseIdentity}
- *   passed to downstream chokepoint write primitives (T12042) — the removed
- *   process-global registry no longer propagates it as a side effect. Cold-open
- *   defaults to highest priority ({@link SCHEMA_BOOTSTRAP_PRIORITY}) and a 60s TTL
- *   (schema bootstrap can be slow).
+ * @param opts - Priority / TTL options. Cold-open defaults to highest priority
+ *   ({@link SCHEMA_BOOTSTRAP_PRIORITY}) and a 60s TTL (schema bootstrap can be
+ *   slow).
  * @returns The resolved value of `fn`.
  *
  * @task T11627
+ * @task T12042 (E6-L12b — no process-global side effect)
  */
 export async function withColdOpenLease<T>(
   scope: LeaseScope,
   nativeDb: DatabaseSync,
   fn: () => Promise<T>,
-  opts?: { priority?: number; ttlMs?: number; dbPath?: string },
+  opts?: { priority?: number; ttlMs?: number },
 ): Promise<T> {
   const mode = effectiveMode();
 
