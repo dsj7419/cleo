@@ -19,12 +19,12 @@
 
 import { describe, expect, it, vi } from 'vitest';
 
-// ── Mock the lease: capture (scope, lane) and run fn() inline ──────────────────
-const leaseCalls: Array<{ scope: string; lane: string }> = [];
+// ── Mock the lease: capture (scope, lane, opts) and run fn() inline ──────────────
+const leaseCalls: Array<{ scope: string; lane: string; opts?: unknown }> = [];
 vi.mock('../../store/writer-lease.js', () => ({
   withWriterLease: vi.fn(
-    async (scope: string, lane: string, fn: (h: unknown) => Promise<unknown>) => {
-      leaseCalls.push({ scope, lane });
+    async (scope: string, lane: string, fn: (h: unknown) => Promise<unknown>, opts?: unknown) => {
+      leaseCalls.push({ scope, lane, opts });
       return fn({});
     },
   ),
@@ -58,7 +58,7 @@ vi.mock('../../store/selfimprove-dhq-store.js', async () => {
 import { createDhqAdapter } from '../dhq-adapter.js';
 
 describe('dhq-adapter — lease discipline', () => {
-  it('upsertOpenDhq acquires the (project, bulk) lease exactly once', async () => {
+  it('upsertOpenDhq acquires the (project, bulk) lease exactly once with explicit dbPath', async () => {
     leaseCalls.length = 0;
     const adapter = createDhqAdapter({ now: () => 42 });
     await adapter.upsertOpenDhq({
@@ -70,14 +70,28 @@ describe('dhq-adapter — lease discipline', () => {
       severity: null,
       runId: 'r',
     });
-    expect(leaseCalls).toEqual([{ scope: 'project', lane: 'bulk' }]);
+    expect(leaseCalls).toHaveLength(1);
+    expect(leaseCalls[0].scope).toBe('project');
+    expect(leaseCalls[0].lane).toBe('bulk');
+    // T12045 · E6-L12e: explicit canonical dbPath identity must be passed.
+    expect(leaseCalls[0].opts).toBeDefined();
+    expect((leaseCalls[0].opts as Record<string, unknown>).dbPath).toEqual(
+      expect.stringContaining('.cleo/cleo.db'),
+    );
   });
 
-  it('recordPrUrl acquires the (project, bulk) lease exactly once', async () => {
+  it('recordPrUrl acquires the (project, bulk) lease exactly once with explicit dbPath', async () => {
     leaseCalls.length = 0;
     const adapter = createDhqAdapter({ now: () => 42 });
     await adapter.recordPrUrl('h', 'https://x/pull/1');
-    expect(leaseCalls).toEqual([{ scope: 'project', lane: 'bulk' }]);
+    expect(leaseCalls).toHaveLength(1);
+    expect(leaseCalls[0].scope).toBe('project');
+    expect(leaseCalls[0].lane).toBe('bulk');
+    // T12045 · E6-L12e: explicit canonical dbPath identity must be passed.
+    expect(leaseCalls[0].opts).toBeDefined();
+    expect((leaseCalls[0].opts as Record<string, unknown>).dbPath).toEqual(
+      expect.stringContaining('.cleo/cleo.db'),
+    );
   });
 
   it('readOpen does NOT acquire a lease (reads are lease-free)', async () => {
