@@ -21,6 +21,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as governorModule from '../../resources/governor.js';
 import {
   _resetDualScopeDbCache,
+  type CleoRuntime,
+  createCleoRuntime,
   insertIdempotent,
   openDualScopeDb,
   resolveDualScopeDbPath,
@@ -283,5 +285,179 @@ describe('exodus-on-open db-heavy admission (T12001 / Epic T11992)', () => {
     const handle = await openDualScopeDb('project', projectDir);
     expect(handle).toBeDefined();
     expect(spy).toHaveBeenCalledWith('db-heavy');
+  });
+});
+
+// ── CleoRuntime store registry tests (E6-L12 · T12036) ────────────────────────
+
+describe('CleoRuntime store registry', () => {
+  let runtime: CleoRuntime;
+  let projectAPath: string;
+  let projectBPath: string;
+
+  beforeEach(() => {
+    // Reset the dual-scope cache so each test starts clean.
+    _resetDualScopeDbCache();
+    runtime = createCleoRuntime();
+
+    // Create two distinct project directories with .cleo subdirs.
+    const dirA = join(testRoot, 'project-a');
+    const dirB = join(testRoot, 'project-b');
+    mkdirSync(join(dirA, '.cleo'), { recursive: true });
+    mkdirSync(join(dirB, '.cleo'), { recursive: true });
+    projectAPath = resolveDualScopeDbPath('project', dirA);
+    projectBPath = resolveDualScopeDbPath('project', dirB);
+  });
+
+  afterEach(async () => {
+    runtime.closeAll();
+    _resetDualScopeDbCache();
+    try {
+      rmSync(testRoot, { recursive: true, force: true });
+    } catch {
+      // best-effort
+    }
+  });
+
+  describe('openProject', () => {
+    it('returns a ProjectStore bound to the requested canonical path', async () => {
+      const store = await runtime.openProject(projectAPath);
+      expect(store.scope).toBe('project');
+      expect(store.dbPath).toBe(projectAPath);
+      expect(store.db).toBeDefined();
+    }, 30_000);
+
+    it('concurrent openProject(A) and openProject(B) return distinct live handles', async () => {
+      const [storeA, storeB] = await Promise.all([
+        runtime.openProject(projectAPath),
+        runtime.openProject(projectBPath),
+      ]);
+      expect(storeA).not.toBe(storeB);
+      expect(storeA.dbPath).toBe(projectAPath);
+      expect(storeB.dbPath).toBe(projectBPath);
+      expect(storeA.db).not.toBe(storeB.db);
+      // Both handles are live — queryable.
+      const nativeA = (storeA.db as unknown as { $client: import('node:sqlite').DatabaseSync })
+        .$client;
+      const nativeB = (storeB.db as unknown as { $client: import('node:sqlite').DatabaseSync })
+        .$client;
+      expect(nativeA.isOpen).toBe(true);
+      expect(nativeB.isOpen).toBe(true);
+    }, 30_000);
+
+    it('same-path concurrent opens single-flight and share one entry', async () => {
+      // Fire 10 concurrent opens of the same path.
+      const stores = await Promise.all(
+        Array.from({ length: 10 }, () => runtime.openProject(projectAPath)),
+      );
+      // All must be the same object reference.
+      for (const store of stores) {
+        expect(store).toBe(stores[0]);
+        expect(store.dbPath).toBe(projectAPath);
+      }
+    }, 30_000);
+
+    it('returns cached entry on sequential same-path opens', async () => {
+      const first = await runtime.openProject(projectAPath);
+      const second = await runtime.openProject(projectAPath);
+      expect(second).toBe(first);
+    }, 30_000);
+
+    it('reports paths in openPaths', async () => {
+      await runtime.openProject(projectAPath);
+      await runtime.openProject(projectBPath);
+      const paths = runtime.openPaths;
+      expect(paths.has(projectAPath)).toBe(true);
+      expect(paths.has(projectBPath)).toBe(true);
+    }, 30_000);
+  });
+
+  describe('openGlobal', () => {
+    it('returns a GlobalStore bound to the canonical global path', async () => {
+      const store = await runtime.openGlobal();
+      expect(store.scope).toBe('global');
+      expect(store.dbPath).toContain('cleo.db');
+      expect(store.db).toBeDefined();
+    }, 30_000);
+
+    it('same-path concurrent opens single-flight', async () => {
+      const stores = await Promise.all([runtime.openGlobal(), runtime.openGlobal()]);
+      expect(stores[0]).toBe(stores[1]);
+    }, 30_000);
+  });
+
+  describe('scoped disposal', () => {
+    it('closing one project never closes another project', async () => {
+      const storeA = await runtime.openProject(projectAPath);
+      const storeB = await runtime.openProject(projectBPath);
+
+      storeA.close();
+
+      // Project A is evicted, project B is still live.
+      expect(runtime.openPaths.has(projectAPath)).toBe(false);
+      expect(runtime.openPaths.has(projectBPath)).toBe(true);
+      const nativeB = (storeB.db as unknown as { $client: import('node:sqlite').DatabaseSync })
+        .$client;
+      expect(nativeB.isOpen).toBe(true);
+    }, 30_000);
+
+    it('closing a project never closes the global scope', async () => {
+      const project = await runtime.openProject(projectAPath);
+      const global = await runtime.openGlobal();
+
+      project.close();
+
+      expect(runtime.openPaths.has(projectAPath)).toBe(false);
+      const nativeGlobal = (global.db as unknown as { $client: import('node:sqlite').DatabaseSync })
+        .$client;
+      expect(nativeGlobal.isOpen).toBe(true);
+      // Global is still re-openable.
+      const reopenedGlobal = await runtime.openGlobal();
+      expect(reopenedGlobal).toBe(global);
+    }, 30_000);
+
+    it('closeProject() evicts only the targeted project', async () => {
+      await runtime.openProject(projectAPath);
+      await runtime.openProject(projectBPath);
+      const global = await runtime.openGlobal();
+
+      runtime.closeProject(projectAPath);
+
+      expect(runtime.openPaths.has(projectAPath)).toBe(false);
+      expect(runtime.openPaths.has(projectBPath)).toBe(true);
+      const nativeGlobal = (global.db as unknown as { $client: import('node:sqlite').DatabaseSync })
+        .$client;
+      expect(nativeGlobal.isOpen).toBe(true);
+    }, 30_000);
+
+    it('closeProject is idempotent', async () => {
+      await runtime.openProject(projectAPath);
+      runtime.closeProject(projectAPath);
+      // Second close is a no-op — no throw.
+      runtime.closeProject(projectAPath);
+      expect(runtime.openPaths.has(projectAPath)).toBe(false);
+    }, 30_000);
+
+    it('closeAll() disposes every entry', async () => {
+      await runtime.openProject(projectAPath);
+      await runtime.openProject(projectBPath);
+      await runtime.openGlobal();
+
+      runtime.closeAll();
+
+      // All entries evicted.
+      expect(runtime.openPaths.size).toBe(0);
+    }, 30_000);
+
+    it('closeAll is idempotent and safe across edge cases', async () => {
+      // Close with no entries — no throw.
+      runtime.closeAll();
+      expect(runtime.openPaths.size).toBe(0);
+      // Re-open, close again.
+      await runtime.openProject(projectAPath);
+      runtime.closeAll();
+      runtime.closeAll();
+      expect(runtime.openPaths.size).toBe(0);
+    }, 30_000);
   });
 });

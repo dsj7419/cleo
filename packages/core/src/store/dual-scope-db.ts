@@ -886,6 +886,336 @@ export function _resetDualScopeDbCache(scope?: DualScope): void {
   }
 }
 
+// ── CleoRuntime store registry (E6-L12 · T12036) ───────────────────────────────
+
+/**
+ * A typed handle to a single project's consolidated `cleo.db`, keyed by canonical
+ * database path. Obtained from {@link CleoRuntime.openProject}.
+ *
+ * Each {@link ProjectStore} wraps ONE shared {@link DualScopeDbHandle} — closing
+ * it affects only this project; other projects and the global scope are untouched.
+ *
+ * @task T12036 (E6-L12)
+ * @epic T11249 (E6)
+ * @saga T11242
+ */
+export interface ProjectStore {
+  /** The literal scope discriminator. */
+  readonly scope: 'project';
+  /** Absolute on-disk path to this project's `cleo.db`. */
+  readonly dbPath: string;
+  /** The typed Drizzle ORM handle for the project-scope consolidated schema. */
+  readonly db: CleoProjectDb;
+  /**
+   * Set when the exodus-on-open auto-migration aborted for this project
+   * (T11828 · DHQ-059). `undefined` on a normal open.
+   */
+  readonly exodusAbort?: ExodusAbortDetail;
+  /**
+   * Close this project's handle and evict it from the runtime registry.
+   * Safe to call multiple times (idempotent). Does NOT affect the global scope
+   * or other open projects.
+   */
+  close(): void;
+}
+
+/**
+ * A typed handle to the global consolidated `cleo.db`, keyed by canonical
+ * database path. Obtained from {@link CleoRuntime.openGlobal}.
+ *
+ * The {@link GlobalStore} wraps the shared dual-scope chokepoint handle —
+ * closing it only disposes the global entry, never any project.
+ *
+ * @task T12036 (E6-L12)
+ * @epic T11249 (E6)
+ * @saga T11242
+ */
+export interface GlobalStore {
+  /** The literal scope discriminator. */
+  readonly scope: 'global';
+  /** Absolute on-disk path to the global `cleo.db`. */
+  readonly dbPath: string;
+  /** The typed Drizzle ORM handle for the global-scope consolidated schema. */
+  readonly db: CleoGlobalDb;
+  /**
+   * Set when the exodus-on-open auto-migration aborted for the global scope
+   * (T11828 · DHQ-059). `undefined` on a normal open.
+   */
+  readonly exodusAbort?: ExodusAbortDetail;
+  /**
+   * Close the global handle and evict it from the runtime registry.
+   * Safe to call multiple times (idempotent).
+   */
+  close(): void;
+}
+
+/**
+ * The CleoRuntime store registry — the explicit composition root that owns
+ * project and global database entries keyed by canonical database path.
+ *
+ * Created via {@link createCleoRuntime}. Each entry in the registry is a
+ * {@link ProjectStore} or {@link GlobalStore} that wraps a shared consolidated
+ * {@link DualScopeDbHandle} obtained from the dual-scope chokepoint
+ * ({@link openDualScopeDbAtPath}). The registry provides:
+ *
+ * - **Path-keyed identity** — entries are keyed by canonical `cleo.db`
+ *   absolute path, not cwd or "last opened project".
+ * - **Single-flight** — concurrent `openProject(p)` or `openGlobal()` calls
+ *   for the same path share one initialization.
+ * - **Scoped disposal** — closing a project never closes another project or
+ *   the global scope. `closeAll()` disposes every entry.
+ *
+ * @task T12036 (E6-L12)
+ * @epic T11249 (E6)
+ * @saga T11242
+ */
+export interface CleoRuntime {
+  /**
+   * Open (or reuse) the project-scope `cleo.db` at the given canonical
+   * database path. The path MUST be the resolved absolute path to the
+   * project's `cleo.db` (use {@link resolveDualScopeDbPath} to compute it).
+   *
+   * Concurrent calls for the same `dbPath` single-flight — all callers
+   * receive the same {@link ProjectStore} instance.
+   *
+   * @param dbPath - Absolute path to the project's `cleo.db`.
+   * @returns A typed {@link ProjectStore} bound to the requested path.
+   */
+  openProject(dbPath: string): Promise<ProjectStore>;
+
+  /**
+   * Open (or reuse) the global-scope `cleo.db`. The path is resolved
+   * internally via {@link getCleoHome}.
+   *
+   * Concurrent calls single-flight — all callers receive the same
+   * {@link GlobalStore} instance.
+   *
+   * @returns A typed {@link GlobalStore} bound to the global scope.
+   */
+  openGlobal(): Promise<GlobalStore>;
+
+  /**
+   * Close and evict a single project entry from the registry. The
+   * underlying dual-scope handle is closed (evicted from the chokepoint
+   * cache) and this project is removed from the registry map. Other
+   * projects and the global scope are unaffected.
+   *
+   * Idempotent — a path not in the registry is a no-op.
+   *
+   * @param dbPath - The canonical path previously passed to
+   *   {@link openProject}.
+   */
+  closeProject(dbPath: string): void;
+
+  /**
+   * Close and evict every entry in the registry. Disposes all project
+   * handles and the global handle if open. Safe to call multiple times.
+   */
+  closeAll(): void;
+
+  /**
+   * The set of canonical database paths currently tracked by this
+   * registry. Read-only snapshot — concurrent opens/closes may race the
+   * snapshot, so it is suitable for polling, not for gating mutations.
+   */
+  readonly openPaths: ReadonlySet<string>;
+}
+
+/**
+ * Internal mutable state for a single runtime entry.
+ */
+interface RuntimeEntry {
+  store: ProjectStore | GlobalStore;
+  initPromise: Promise<ProjectStore | GlobalStore> | null;
+}
+
+/**
+ * Concrete implementation of the {@link CleoRuntime} store registry.
+ *
+ * Maintains a private `Map<string, RuntimeEntry>` keyed by canonical
+ * `cleo.db` path. Each call to {@link openProject} or {@link openGlobal}
+ * flows through the existing dual-scope chokepoint
+ * ({@link openDualScopeDbAtPath}) so migrations, pragmas, and the singleton
+ * `_cache` are shared — the runtime adds explicit per-entry wrapping and
+ * scoped disposal on top.
+ *
+ * @task T12036 (E6-L12)
+ */
+class CleoRuntimeImpl implements CleoRuntime {
+  private readonly _registry = new Map<string, RuntimeEntry>();
+
+  /** @inheritdoc */
+  get openPaths(): ReadonlySet<string> {
+    return new Set(this._registry.keys());
+  }
+
+  /** @inheritdoc */
+  async openProject(dbPath: string): Promise<ProjectStore> {
+    return this.openEntry('project', dbPath) as Promise<ProjectStore>;
+  }
+
+  /** @inheritdoc */
+  async openGlobal(): Promise<GlobalStore> {
+    const dbPath = resolveDualScopeDbPath('global');
+    return this.openEntry('global', dbPath) as Promise<GlobalStore>;
+  }
+
+  /** @inheritdoc */
+  closeProject(dbPath: string): void {
+    this.closeEntry(dbPath);
+  }
+
+  /** @inheritdoc */
+  closeAll(): void {
+    for (const dbPath of this._registry.keys()) {
+      try {
+        this.closeEntry(dbPath);
+      } catch {
+        // Continue closing remaining entries.
+      }
+    }
+  }
+
+  // ── Private helpers ──────────────────────────────────────────────────────
+
+  /**
+   * Open (or reuse) a scoped entry. If the registry already has a live entry
+   * for `dbPath`, return it. If an `initPromise` is in flight (single-flight),
+   * await it. Otherwise, open a fresh handle through the dual-scope chokepoint.
+   */
+  private async openEntry(scope: DualScope, dbPath: string): Promise<ProjectStore | GlobalStore> {
+    // Return cached live entry.
+    const existing = this._registry.get(dbPath);
+    if (existing) {
+      if (existing.initPromise) {
+        return existing.initPromise;
+      }
+      return existing.store;
+    }
+
+    // Create an initPromise for single-flight before the first await.
+    let initResolve!: (store: ProjectStore | GlobalStore) => void;
+    let initReject!: (err: unknown) => void;
+    const initPromise = new Promise<ProjectStore | GlobalStore>((resolve, reject) => {
+      initResolve = resolve;
+      initReject = reject;
+    });
+
+    this._registry.set(dbPath, { store: undefined as unknown as ProjectStore, initPromise });
+
+    // Evict on failure so a transient error doesn't poison.
+    initPromise.catch(() => {
+      const entry = this._registry.get(dbPath);
+      if (entry?.initPromise === initPromise) {
+        this._registry.delete(dbPath);
+      }
+    });
+
+    try {
+      let dualHandle: DualScopeDbHandle;
+      if (scope === 'project') {
+        dualHandle = await openDualScopeDbAtPath('project', dbPath);
+      } else {
+        dualHandle = await openDualScopeDbAtPath('global', dbPath);
+      }
+
+      const store = this.buildStore(scope, dualHandle);
+      const entry = this._registry.get(dbPath);
+      if (entry) {
+        entry.store = store;
+        entry.initPromise = null;
+      }
+      initResolve(store);
+      return store;
+    } catch (err) {
+      initReject(err);
+      throw err;
+    }
+  }
+
+  /**
+   * Build a typed {@link ProjectStore} or {@link GlobalStore} from a
+   * {@link DualScopeDbHandle}. The store's `close()` both closes the
+   * underlying dual-scope handle AND evicts this entry from the registry.
+   */
+  private buildStore(scope: DualScope, dualHandle: DualScopeDbHandle): ProjectStore | GlobalStore {
+    const dbPath = dualHandle.dbPath;
+    const exodusAbort = dualHandle.exodusAbort;
+
+    if (scope === 'project') {
+      const store: ProjectStore = {
+        scope: 'project',
+        dbPath,
+        db: dualHandle.db as CleoProjectDb,
+        exodusAbort,
+        close: () => {
+          dualHandle.close();
+          this._registry.delete(dbPath);
+        },
+      };
+      return store;
+    }
+
+    const store: GlobalStore = {
+      scope: 'global',
+      dbPath,
+      db: dualHandle.db as CleoGlobalDb,
+      exodusAbort,
+      close: () => {
+        dualHandle.close();
+        this._registry.delete(dbPath);
+      },
+    };
+    return store;
+  }
+
+  /**
+   * Close and evict a single entry from the registry.
+   */
+  private closeEntry(dbPath: string): void {
+    const entry = this._registry.get(dbPath);
+    if (!entry) return;
+    if (entry.store) {
+      try {
+        entry.store.close();
+      } catch {
+        // Close is defensive; the registry entry is removed regardless.
+      }
+    }
+    this._registry.delete(dbPath);
+  }
+}
+
+/**
+ * Create a new {@link CleoRuntime} store registry.
+ *
+ * The returned runtime is the explicit composition root for project and
+ * global database entries. Use {@link CleoRuntime.openProject} to open a
+ * project's `cleo.db` at a canonical path, and {@link CleoRuntime.openGlobal}
+ * for the global scope. Closing a project via {@link CleoRuntime.closeProject}
+ * or the store's own `close()` disposes only that entry.
+ *
+ * @returns A fresh {@link CleoRuntime} instance with an empty registry.
+ *
+ * @example
+ * ```ts
+ * import { createCleoRuntime, resolveDualScopeDbPath } from '@cleocode/core/db';
+ *
+ * const runtime = createCleoRuntime();
+ * const projectA = await runtime.openProject(resolveDualScopeDbPath('project', '/path/to/projA'));
+ * const projectB = await runtime.openProject(resolveDualScopeDbPath('project', '/path/to/projB'));
+ * // projectA and projectB are distinct, independent handles.
+ * projectA.close(); // Only closes projectA; projectB and any global handle are intact.
+ * ```
+ *
+ * @task T12036 (E6-L12)
+ * @epic T11249 (E6)
+ * @saga T11242
+ */
+export function createCleoRuntime(): CleoRuntime {
+  return new CleoRuntimeImpl();
+}
+
 // ── Idempotent write helpers (E4-T2 · T11513) ───────────────────────────────
 
 import type { InferInsertModel } from 'drizzle-orm';
