@@ -78,10 +78,10 @@ export const SKILLS_SCHEMA_VERSION = '2026.5.81';
 // Singleton state — one open handle per process, reset across tests.
 // ---------------------------------------------------------------------------
 
-let _skillsDb: NodeSQLiteDatabase<typeof skillsSchema> | null = null;
+let _skillsDb: NodeSQLiteDatabase | null = null;
 let _skillsNativeDb: DatabaseSync | null = null;
 let _skillsDbPath: string | null = null;
-let _skillsInitPromise: Promise<NodeSQLiteDatabase<typeof skillsSchema>> | null = null;
+let _skillsInitPromise: Promise<NodeSQLiteDatabase> | null = null;
 
 // ---------------------------------------------------------------------------
 // Path resolution
@@ -167,9 +167,7 @@ export interface OpenSkillsDbOptions {
  * @task T9651
  * @task T11525
  */
-export async function openSkillsDb(
-  options?: OpenSkillsDbOptions,
-): Promise<NodeSQLiteDatabase<typeof skillsSchema>> {
+export async function openSkillsDb(options?: OpenSkillsDbOptions): Promise<NodeSQLiteDatabase> {
   // Fast-path: if no explicit override was requested AND a singleton already
   // exists, return it without re-resolving `getDefaultSkillsDbPath()`. This
   // is important for tests that open the DB at a tmpdir via `{path:...}` and
@@ -223,7 +221,7 @@ export async function openSkillsDb(
     // Wrap the native handle with the prefix-renamed skills schema so existing
     // callers (skillsSchema.* queries) bind to the consolidated `skills_*`
     // tables the dual-scope migration already created.
-    const db = drizzle({ client: nativeDb, schema: skillsSchema });
+    const db = drizzle({ client: nativeDb });
 
     _skillsDb = db;
     return db;

@@ -17,6 +17,7 @@ import type { DatabaseSync } from 'node:sqlite';
 import type { MigrationConfig, MigrationMeta } from 'drizzle-orm/migrator';
 import { readMigrationFiles } from 'drizzle-orm/migrator';
 import type { NodeSQLiteDatabase } from 'drizzle-orm/node-sqlite';
+import { migrateSync } from 'drizzle-orm/sqlite-core';
 import { getLogger } from '../logger.js';
 import { isSqliteBusy } from './with-retry.js';
 
@@ -1248,36 +1249,16 @@ export function sanitizeMigrationStatements(migrations: MigrationMeta[]): Migrat
 }
 
 /**
- * Minimal interface for drizzle's synchronous SQLite dialect internals.
- *
- * `dialect` and `session` are `@internal` properties on `BaseSQLiteDatabase`
- * — they exist at runtime but are not surfaced in the public TypeScript type.
- * We declare only the subset we need here to avoid coupling to drizzle internals
- * any more than necessary.
- *
- * @internal
- */
-interface DrizzleNodeSQLiteInternals {
-  dialect: {
-    migrate(
-      migrations: MigrationMeta[],
-      // biome-ignore lint/suspicious/noExplicitAny: session type varies per drizzle version — safe to use any here as we only call .migrate()
-      session: any,
-      config: MigrationConfig,
-    ): void;
-  };
-  // biome-ignore lint/suspicious/noExplicitAny: session type varies per drizzle version — opaque passthrough
-  session: any;
-}
-
-/**
  * Run drizzle migrations after sanitizing whitespace-only SQL statements.
  *
- * This is a drop-in replacement for drizzle's `migrate()` from
- * `drizzle-orm/node-sqlite/migrator`. It reads migration files via
- * `readMigrationFiles`, filters any empty/whitespace-only statement chunks,
- * then delegates to `db.dialect.migrate()` directly — bypassing the
+ * Reads migration files via {@link readMigrationFiles}, filters any
+ * empty/whitespace-only statement chunks, then delegates to
+ * {@link migrateSync} from `drizzle-orm/sqlite-core` — bypassing the
  * re-read that drizzle's `migrate()` would perform internally.
+ *
+ * The session is accessed through the public {@link NodeSQLiteDatabase._}
+ * property ({@link SQLiteAsyncDatabase._}) — no internal-type cast needed
+ * in rc.4.
  *
  * Use this at every call site instead of drizzle's `migrate()` to defend
  * against malformed migration files regardless of authoring discipline.
@@ -1286,17 +1267,13 @@ interface DrizzleNodeSQLiteInternals {
  * @param config - Migration config (migrationsFolder required)
  */
 export function migrateSanitized(
-  // biome-ignore lint/suspicious/noExplicitAny: Drizzle's NodeSQLiteDatabase is generic — accepting any schema avoids coupling to a specific schema type
+  // biome-ignore lint/suspicious/noExplicitAny: Drizzle's NodeSQLiteDatabase<TRelations> — accepting any avoids coupling to a specific relations type
   db: NodeSQLiteDatabase<any>,
   config: MigrationConfig,
 ): void {
   const raw = readMigrationFiles(config);
   const sanitized = sanitizeMigrationStatements(raw);
-  // Access drizzle's @internal dialect and session via a typed assertion.
-  // These properties are public at runtime but not surfaced in the TypeScript
-  // type declarations (they are documented as @internal in drizzle-orm source).
-  const dbInternal = db as unknown as DrizzleNodeSQLiteInternals;
-  dbInternal.dialect.migrate(sanitized, dbInternal.session, config);
+  migrateSync(sanitized, db._.session, config);
 }
 
 /**

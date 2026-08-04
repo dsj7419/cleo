@@ -121,6 +121,20 @@ describe('T10 — AC4 brain isolation (lease-less write throws)', () => {
     expect(() => assertWriterLeaseHeld('project', 'brain')).toThrow(WriterLeaseRequiredError);
   });
 
+  it('checks an explicitly pinned project database independently of the ambient path', async () => {
+    const explicitPath = 'test://project/explicit';
+    const h = await acquireWriterLease('project', 'brain', { dbPath: explicitPath });
+
+    expect(hasActiveGrant('project', 'brain')).toBe(false);
+    expect(hasActiveGrant('project', 'brain', explicitPath)).toBe(true);
+    expect(() => assertWriterLeaseHeld('project', 'brain', explicitPath)).not.toThrow();
+    expect(() => assertWriterLeaseHeld('project', 'brain', 'test://project/other')).toThrow(
+      WriterLeaseRequiredError,
+    );
+
+    await h.release();
+  });
+
   it("'off' mode is EXEMPT from the AC4 guard (no lease, busy_timeout serializes)", () => {
     process.env.CLEO_WRITER_LEASE_MODE = 'off';
     _resetWriterLeaseStateForTest();

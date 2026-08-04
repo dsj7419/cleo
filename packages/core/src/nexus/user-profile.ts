@@ -37,7 +37,7 @@ import { getNexusDb } from '../store/nexus-sqlite.js';
 import * as nexusSchema from '../store/schema/nexus-schema.js';
 
 /** Type alias for the Drizzle nexus database instance. */
-type NexusDb = NodeSQLiteDatabase<typeof nexusSchema>;
+type NexusDb = NodeSQLiteDatabase;
 
 // ---------------------------------------------------------------------------
 // Internal helpers

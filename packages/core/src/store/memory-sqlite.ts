@@ -98,11 +98,11 @@ function _getDrizzle(): typeof drizzleFn {
 export const BRAIN_SCHEMA_VERSION = '1.0.0';
 
 /** Singleton state for lazy initialization. */
-let _db: NodeSQLiteDatabase<typeof brainSchema> | null = null;
+let _db: NodeSQLiteDatabase | null = null;
 let _nativeDb: DatabaseSync | null = null;
 let _dbPath: string | null = null;
 /** Guard against concurrent initialization (async migration). */
-let _initPromise: Promise<NodeSQLiteDatabase<typeof brainSchema>> | null = null;
+let _initPromise: Promise<NodeSQLiteDatabase> | null = null;
 /** Whether sqlite-vec extension loaded successfully. */
 let _vecLoaded = false;
 
@@ -235,10 +235,7 @@ function brainTablesAreConsolidatedShape(nativeDb: DatabaseSync): boolean {
  * @internal
  * @task T11522
  */
-function establishLegacyBrainSchema(
-  nativeDb: DatabaseSync,
-  db: NodeSQLiteDatabase<typeof brainSchema>,
-): void {
+function establishLegacyBrainSchema(nativeDb: DatabaseSync, db: NodeSQLiteDatabase): void {
   const log = getLogger('brain-schema');
 
   if (brainTablesAreConsolidatedShape(nativeDb)) {
@@ -420,7 +417,7 @@ async function initEmbeddingProvider(cwd?: string): Promise<void> {
  * Uses a promise guard so concurrent callers wait for the same initialization to
  * complete (migrations are async).
  */
-export async function getBrainDb(cwd?: string): Promise<NodeSQLiteDatabase<typeof brainSchema>> {
+export async function getBrainDb(cwd?: string): Promise<NodeSQLiteDatabase> {
   const requestedPath = getBrainDbPath(cwd);
 
   // T1906: guard against prod-DB writes in test mode.
@@ -453,15 +450,27 @@ export async function getBrainDb(cwd?: string): Promise<NodeSQLiteDatabase<typeo
     // consolidated cleo-project migrations (which create the `brain_*` tables),
     // and manages the singleton cache. We extract its native handle so we can
     // re-wrap it with the legacy brain-schema for caller compatibility.
-    const dualHandle = await openDualScopeDb('project', cwd);
+    let nativeDb: DatabaseSync | null = null;
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const dualHandle = await openDualScopeDb('project', cwd);
 
-    // Extract the underlying DatabaseSync. Drizzle exposes it via `$client`.
-    const nativeDb = (dualHandle.db as { $client?: DatabaseSync }).$client ?? null;
-    if (!nativeDb) {
-      throw new Error(
-        'E6-L2: openDualScopeDb returned a handle without $client — ' +
-          'cannot extract DatabaseSync for legacy brain-schema wrapping.',
-      );
+      // Extract the underlying DatabaseSync. Drizzle exposes it via `$client`.
+      nativeDb = (dualHandle.db as { $client?: DatabaseSync }).$client ?? null;
+      if (!nativeDb) {
+        throw new Error(
+          'E6-L2: openDualScopeDb returned a handle without $client — ' +
+            'cannot extract DatabaseSync for legacy brain-schema wrapping.',
+        );
+      }
+
+      // A shared handle can be closed after the dual-scope cache checks it but
+      // before this await resumes. Re-open once; the cache then evicts the dead
+      // entry and returns the current live handle.
+      if (nativeDb.isOpen) break;
+    }
+
+    if (!nativeDb?.isOpen) {
+      throw new Error('E6-L2: openDualScopeDb repeatedly returned a closed DatabaseSync handle.');
     }
 
     _nativeDb = nativeDb;
@@ -474,7 +483,7 @@ export async function getBrainDb(cwd?: string): Promise<NodeSQLiteDatabase<typeo
 
     // Wrap the native handle with the legacy brain-schema drizzle instance so
     // existing callers (brainSchema.* queries) continue to work unchanged.
-    const db = _getDrizzle()({ client: nativeDb, schema: brainSchema });
+    const db = _getDrizzle()({ client: nativeDb });
 
     // Reconcile the LEGACY brain-domain schema inside the consolidated cleo.db.
     // Since T11647 the consolidated `cleo.db` migration already creates every

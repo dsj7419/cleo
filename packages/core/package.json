@@ -442,7 +442,7 @@
     "ajv": "^8.18.0",
     "ajv-formats": "^3.0.1",
     "check-disk-space": "^3.4.0",
-    "drizzle-orm": "1.0.0-rc.3",
+    "drizzle-orm": "1.0.0-rc.4",
     "env-paths": "^4.0.0",
     "js-tiktoken": "^1.0.21",
     "jsonrepair": "^3.8.0",

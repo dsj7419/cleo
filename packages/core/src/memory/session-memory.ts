@@ -168,17 +168,49 @@ export async function persistSessionMemory(
   // unless actually needed
   let observeBrain: typeof import('./brain-retrieval.js').observeBrain;
   let linkMemoryToTask: typeof import('./brain-links.js').linkMemoryToTask;
+  let linkPrevalidatedMemoryToTask: typeof import('./brain-links.js').linkPrevalidatedMemoryToTask;
+  let tasksDb: Awaited<ReturnType<typeof import('../store/sqlite.js').getDb>> | undefined;
 
   try {
     const retrieval = await import('./brain-retrieval.js');
     observeBrain = retrieval.observeBrain;
     const links = await import('./brain-links.js');
     linkMemoryToTask = links.linkMemoryToTask;
+    linkPrevalidatedMemoryToTask = links.linkPrevalidatedMemoryToTask;
   } catch (err) {
     result.errors.push(
       `Failed to load brain modules: ${err instanceof Error ? err.message : String(err)}`,
     );
     return result;
+  }
+
+  try {
+    const store = await import('../store/sqlite.js');
+    tasksDb = await store.getDb(projectRoot);
+  } catch {
+    // Link-level validation will attempt a fresh task handle when this open fails.
+  }
+
+  const prevalidatedTaskIds = new Set<string>();
+  if (tasksDb) {
+    const taskIds = new Set(items.flatMap((item) => (item.linkTaskId ? [item.linkTaskId] : [])));
+    const { taskExistsInTasksDb, taskExistsInTasksDbFresh } = await import(
+      '../store/cross-db-cleanup.js'
+    );
+    for (const taskId of taskIds) {
+      let taskExists = false;
+      try {
+        taskExists = await taskExistsInTasksDb(taskId, tasksDb);
+      } catch {
+        // The fresh probe below handles a closed shared handle.
+      }
+      if (!taskExists) {
+        taskExists = await taskExistsInTasksDbFresh(taskId, tasksDb, projectRoot).catch(
+          () => false,
+        );
+      }
+      if (taskExists) prevalidatedTaskIds.add(taskId);
+    }
   }
 
   for (const item of items) {
@@ -204,13 +236,24 @@ export async function persistSessionMemory(
     // Create cross-link if there's a task ID
     if (item.linkTaskId && obsResult) {
       try {
-        await linkMemoryToTask(
-          projectRoot,
-          'observation',
-          obsResult.id,
-          item.linkTaskId,
-          'produced_by',
-        );
+        if (prevalidatedTaskIds.has(item.linkTaskId)) {
+          await linkPrevalidatedMemoryToTask(
+            projectRoot,
+            'observation',
+            obsResult.id,
+            item.linkTaskId,
+            'produced_by',
+          );
+        } else {
+          await linkMemoryToTask(
+            projectRoot,
+            'observation',
+            obsResult.id,
+            item.linkTaskId,
+            'produced_by',
+            tasksDb,
+          );
+        }
         result.linksCreated++;
       } catch (err) {
         result.errors.push(

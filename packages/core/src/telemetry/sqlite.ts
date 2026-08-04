@@ -16,7 +16,6 @@ import { drizzle } from 'drizzle-orm/node-sqlite';
 import { getCleoHome } from '../paths.js';
 import { ensureColumns, migrateWithRetry, reconcileJournal } from '../store/migration-manager.js';
 import { resolveCorePackageMigrationsFolder } from '../store/resolve-migrations-folder.js';
-import * as telemetrySchema from '../store/schema/telemetry-schema.js';
 import { openNativeDatabase } from '../store/sqlite.js';
 
 /** Database file name in the global CLEO home directory. */
@@ -26,10 +25,10 @@ const DB_FILENAME = 'telemetry.db';
 export const TELEMETRY_SCHEMA_VERSION = '1.0.0';
 
 /** Singleton state. */
-let _db: NodeSQLiteDatabase<typeof telemetrySchema> | null = null;
+let _db: NodeSQLiteDatabase | null = null;
 let _nativeDb: DatabaseSync | null = null;
 let _dbPath: string | null = null;
-let _initPromise: Promise<NodeSQLiteDatabase<typeof telemetrySchema>> | null = null;
+let _initPromise: Promise<NodeSQLiteDatabase> | null = null;
 
 /**
  * Get the absolute path to telemetry.db in the global CLEO home directory.
@@ -54,10 +53,7 @@ export function resolveTelemetryMigrationsFolder(): string {
 /**
  * Run drizzle migrations to create/update telemetry.db tables.
  */
-function runTelemetryMigrations(
-  nativeDb: DatabaseSync,
-  db: NodeSQLiteDatabase<typeof telemetrySchema>,
-): void {
+function runTelemetryMigrations(nativeDb: DatabaseSync, db: NodeSQLiteDatabase): void {
   const migrationsFolder = resolveTelemetryMigrationsFolder();
 
   reconcileJournal(nativeDb, migrationsFolder, 'telemetry_events', 'telemetry');
@@ -115,7 +111,7 @@ export function getTelemetryNativeDb(): DatabaseSync | null {
  * Initialize telemetry.db (lazy singleton).
  * Creates the file and runs migrations on first call.
  */
-export async function getTelemetryDb(): Promise<NodeSQLiteDatabase<typeof telemetrySchema>> {
+export async function getTelemetryDb(): Promise<NodeSQLiteDatabase> {
   const requestedPath = getTelemetryDbPath();
 
   if (_db && _dbPath !== requestedPath) {
@@ -134,7 +130,7 @@ export async function getTelemetryDb(): Promise<NodeSQLiteDatabase<typeof teleme
     const nativeDb = openNativeDatabase(dbPath);
     _nativeDb = nativeDb;
 
-    const db = drizzle({ client: nativeDb, schema: telemetrySchema });
+    const db = drizzle({ client: nativeDb });
 
     runTelemetryMigrations(nativeDb, db);
 

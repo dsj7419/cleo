@@ -207,7 +207,7 @@ export async function migrateJsonToSqliteAtomic(
     // Create temp directory and open file-backed database at temp path
     mkdirSync(dirname(tempDbPath), { recursive: true });
     const nativeDb = openNativeDatabase(tempDbPath, { enableWal: true });
-    const db = drizzle({ client: nativeDb, schema });
+    const db = drizzle({ client: nativeDb });
 
     // Run migrations to create tables.
     // T11578 · AC1: the runtime store now reads/writes the PREFIXED consolidated
@@ -273,7 +273,7 @@ export async function migrateJsonToSqliteAtomic(
  * Run the actual data import for migration.
  */
 async function runMigrationDataImport(
-  db: NodeSQLiteDatabase<typeof schema>,
+  db: NodeSQLiteDatabase,
   cleoDir: string,
   result: MigrationResult,
   logger?: import('../migration/logger.js').MigrationLogger,

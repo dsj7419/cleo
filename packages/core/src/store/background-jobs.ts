@@ -24,7 +24,6 @@
 import { randomUUID } from 'node:crypto';
 import { eq, inArray } from 'drizzle-orm';
 import type { NodeSQLiteDatabase } from './sqlite.js';
-import type * as schema from './tasks-schema.js';
 import {
   type BackgroundJobRow,
   type BackgroundJobStatus,
@@ -116,7 +115,7 @@ function rowToJob(row: BackgroundJobRow): BackgroundJob {
 // DurableJobStore — thin Drizzle-backed persistence layer
 // ---------------------------------------------------------------------------
 
-type TasksDb = NodeSQLiteDatabase<typeof schema>;
+type TasksDb = NodeSQLiteDatabase;
 
 /**
  * Drizzle-backed persistence layer for background jobs.
