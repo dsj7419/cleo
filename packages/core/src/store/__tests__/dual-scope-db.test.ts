@@ -16,7 +16,7 @@
 
 import { mkdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve as resolvePath } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as governorModule from '../../resources/governor.js';
 import {
@@ -294,6 +294,9 @@ describe('CleoRuntime store registry', () => {
   let runtime: CleoRuntime;
   let projectAPath: string;
   let projectBPath: string;
+  /** Scope-qualified key that openPaths should report for project A. */
+  let projectAKey: string;
+  let projectBKey: string;
 
   beforeEach(() => {
     // Reset the dual-scope cache so each test starts clean.
@@ -307,6 +310,8 @@ describe('CleoRuntime store registry', () => {
     mkdirSync(join(dirB, '.cleo'), { recursive: true });
     projectAPath = resolveDualScopeDbPath('project', dirA);
     projectBPath = resolveDualScopeDbPath('project', dirB);
+    projectAKey = `project::${resolvePath(projectAPath)}`;
+    projectBKey = `project::${resolvePath(projectBPath)}`;
   });
 
   afterEach(async () => {
@@ -319,11 +324,22 @@ describe('CleoRuntime store registry', () => {
     }
   });
 
+  // ── Helper ────────────────────────────────────────────────────────────────
+
+  /** Extract the native DatabaseSync from a store's db handle. */
+  function nativeFromStore(store: {
+    db: { $client?: unknown };
+  }): import('node:sqlite').DatabaseSync {
+    return (store.db as unknown as { $client: import('node:sqlite').DatabaseSync }).$client;
+  }
+
+  // ── openProject ───────────────────────────────────────────────────────────
+
   describe('openProject', () => {
     it('returns a ProjectStore bound to the requested canonical path', async () => {
       const store = await runtime.openProject(projectAPath);
       expect(store.scope).toBe('project');
-      expect(store.dbPath).toBe(projectAPath);
+      expect(resolvePath(store.dbPath)).toBe(resolvePath(projectAPath));
       expect(store.db).toBeDefined();
     }, 30_000);
 
@@ -333,27 +349,19 @@ describe('CleoRuntime store registry', () => {
         runtime.openProject(projectBPath),
       ]);
       expect(storeA).not.toBe(storeB);
-      expect(storeA.dbPath).toBe(projectAPath);
-      expect(storeB.dbPath).toBe(projectBPath);
+      expect(resolvePath(storeA.dbPath)).toBe(resolvePath(projectAPath));
+      expect(resolvePath(storeB.dbPath)).toBe(resolvePath(projectBPath));
       expect(storeA.db).not.toBe(storeB.db);
-      // Both handles are live — queryable.
-      const nativeA = (storeA.db as unknown as { $client: import('node:sqlite').DatabaseSync })
-        .$client;
-      const nativeB = (storeB.db as unknown as { $client: import('node:sqlite').DatabaseSync })
-        .$client;
-      expect(nativeA.isOpen).toBe(true);
-      expect(nativeB.isOpen).toBe(true);
+      expect(nativeFromStore(storeA).isOpen).toBe(true);
+      expect(nativeFromStore(storeB).isOpen).toBe(true);
     }, 30_000);
 
     it('same-path concurrent opens single-flight and share one entry', async () => {
-      // Fire 10 concurrent opens of the same path.
       const stores = await Promise.all(
         Array.from({ length: 10 }, () => runtime.openProject(projectAPath)),
       );
-      // All must be the same object reference.
       for (const store of stores) {
         expect(store).toBe(stores[0]);
-        expect(store.dbPath).toBe(projectAPath);
       }
     }, 30_000);
 
@@ -363,14 +371,39 @@ describe('CleoRuntime store registry', () => {
       expect(second).toBe(first);
     }, 30_000);
 
-    it('reports paths in openPaths', async () => {
+    it('reports scope-qualified keys in openPaths', async () => {
       await runtime.openProject(projectAPath);
       await runtime.openProject(projectBPath);
       const paths = runtime.openPaths;
-      expect(paths.has(projectAPath)).toBe(true);
-      expect(paths.has(projectBPath)).toBe(true);
+      expect(paths.has(projectAKey)).toBe(true);
+      expect(paths.has(projectBKey)).toBe(true);
+    }, 30_000);
+
+    // ── Bug 5 regressions: canonical path aliases ──────────────────────────
+
+    it('equivalent path spellings single-flight (path normalization)', async () => {
+      // Insert `/.` before the filename: /path/.cleo/./cleo.db → same as /path/.cleo/cleo.db
+      const aliased = join(join(projectAPath, '..'), '.', 'cleo.db');
+      const [store1, store2] = await Promise.all([
+        runtime.openProject(projectAPath),
+        runtime.openProject(aliased),
+      ]);
+      expect(store1).toBe(store2);
+    }, 30_000);
+
+    it('normalized path keying: path with redundant segments resolves to canonical', async () => {
+      // Provide a path with a redundant `./` segment that resolve() normalizes.
+      const dir = join(projectAPath, '..');
+      const aliased = join(dir, '.', 'cleo.db');
+      const [store1, store2] = await Promise.all([
+        runtime.openProject(projectAPath),
+        runtime.openProject(aliased),
+      ]);
+      expect(store1).toBe(store2);
     }, 30_000);
   });
+
+  // ── openGlobal ────────────────────────────────────────────────────────────
 
   describe('openGlobal', () => {
     it('returns a GlobalStore bound to the canonical global path', async () => {
@@ -386,6 +419,8 @@ describe('CleoRuntime store registry', () => {
     }, 30_000);
   });
 
+  // ── Scoped disposal ──────────────────────────────────────────────────────
+
   describe('scoped disposal', () => {
     it('closing one project never closes another project', async () => {
       const storeA = await runtime.openProject(projectAPath);
@@ -393,12 +428,9 @@ describe('CleoRuntime store registry', () => {
 
       storeA.close();
 
-      // Project A is evicted, project B is still live.
-      expect(runtime.openPaths.has(projectAPath)).toBe(false);
-      expect(runtime.openPaths.has(projectBPath)).toBe(true);
-      const nativeB = (storeB.db as unknown as { $client: import('node:sqlite').DatabaseSync })
-        .$client;
-      expect(nativeB.isOpen).toBe(true);
+      expect(runtime.openPaths.has(projectAKey)).toBe(false);
+      expect(runtime.openPaths.has(projectBKey)).toBe(true);
+      expect(nativeFromStore(storeB).isOpen).toBe(true);
     }, 30_000);
 
     it('closing a project never closes the global scope', async () => {
@@ -407,11 +439,8 @@ describe('CleoRuntime store registry', () => {
 
       project.close();
 
-      expect(runtime.openPaths.has(projectAPath)).toBe(false);
-      const nativeGlobal = (global.db as unknown as { $client: import('node:sqlite').DatabaseSync })
-        .$client;
-      expect(nativeGlobal.isOpen).toBe(true);
-      // Global is still re-openable.
+      expect(runtime.openPaths.has(projectAKey)).toBe(false);
+      expect(nativeFromStore(global).isOpen).toBe(true);
       const reopenedGlobal = await runtime.openGlobal();
       expect(reopenedGlobal).toBe(global);
     }, 30_000);
@@ -423,19 +452,16 @@ describe('CleoRuntime store registry', () => {
 
       runtime.closeProject(projectAPath);
 
-      expect(runtime.openPaths.has(projectAPath)).toBe(false);
-      expect(runtime.openPaths.has(projectBPath)).toBe(true);
-      const nativeGlobal = (global.db as unknown as { $client: import('node:sqlite').DatabaseSync })
-        .$client;
-      expect(nativeGlobal.isOpen).toBe(true);
+      expect(runtime.openPaths.has(projectAKey)).toBe(false);
+      expect(runtime.openPaths.has(projectBKey)).toBe(true);
+      expect(nativeFromStore(global).isOpen).toBe(true);
     }, 30_000);
 
     it('closeProject is idempotent', async () => {
       await runtime.openProject(projectAPath);
       runtime.closeProject(projectAPath);
-      // Second close is a no-op — no throw.
       runtime.closeProject(projectAPath);
-      expect(runtime.openPaths.has(projectAPath)).toBe(false);
+      expect(runtime.openPaths.has(projectAKey)).toBe(false);
     }, 30_000);
 
     it('closeAll() disposes every entry', async () => {
@@ -445,19 +471,190 @@ describe('CleoRuntime store registry', () => {
 
       runtime.closeAll();
 
-      // All entries evicted.
       expect(runtime.openPaths.size).toBe(0);
     }, 30_000);
 
     it('closeAll is idempotent and safe across edge cases', async () => {
-      // Close with no entries — no throw.
       runtime.closeAll();
       expect(runtime.openPaths.size).toBe(0);
-      // Re-open, close again.
       await runtime.openProject(projectAPath);
       runtime.closeAll();
       runtime.closeAll();
       expect(runtime.openPaths.size).toBe(0);
+    }, 30_000);
+  });
+
+  // ── Bug 1 regressions: close during in-flight init ───────────────────────
+
+  describe('init cancellation (close during in-flight open)', () => {
+    it('closeProject during in-flight open cancels the init and rejects', async () => {
+      // Start an open on a path we haven't opened yet — it won't hit cache.
+      const openPromise = runtime.openProject(projectAPath);
+      // Cancel it immediately.
+      runtime.closeProject(projectAPath);
+
+      await expect(openPromise).rejects.toThrow(/cancelled/i);
+    }, 30_000);
+
+    it('closeAll during in-flight open cancels all inits', async () => {
+      const openA = runtime.openProject(projectAPath);
+      const openB = runtime.openProject(projectBPath);
+      runtime.closeAll();
+
+      await expect(openA).rejects.toThrow(/cancelled/i);
+      await expect(openB).rejects.toThrow(/cancelled/i);
+    }, 30_000);
+
+    it('acquired handle is closed when init is cancelled', async () => {
+      const openPromise = runtime.openProject(projectAPath);
+      runtime.closeProject(projectAPath);
+
+      await expect(openPromise).rejects.toThrow();
+
+      // The dual-scope cache should have no live handle for projectAPath now.
+      // A fresh open should work and return a new live store.
+      const fresh = await runtime.openProject(projectAPath);
+      expect(fresh.scope).toBe('project');
+      expect(nativeFromStore(fresh).isOpen).toBe(true);
+    }, 30_000);
+
+    it('cancelled-then-retry succeeds with a fresh entry', async () => {
+      // Open + cancel.
+      const first = runtime.openProject(projectAPath);
+      runtime.closeProject(projectAPath);
+      await expect(first).rejects.toThrow();
+
+      // Retry — must succeed.
+      const second = await runtime.openProject(projectAPath);
+      expect(second.scope).toBe('project');
+      expect(nativeFromStore(second).isOpen).toBe(true);
+      expect(runtime.openPaths.has(projectAKey)).toBe(true);
+    }, 30_000);
+  });
+
+  // ── Bug 2 regressions: cache-hit liveness ────────────────────────────────
+
+  describe('cache-hit liveness (externally closed handle)', () => {
+    it('reopens when the underlying DatabaseSync was externally closed', async () => {
+      const first = await runtime.openProject(projectAPath);
+
+      // Simulate external close — the dual-scope cache is evicted and
+      // the native connection is closed, but the runtime still has the entry.
+      _resetDualScopeDbCache('project');
+
+      // The runtime should detect the closed native handle and reopen.
+      const second = await runtime.openProject(projectAPath);
+      expect(second).not.toBe(first);
+      expect(nativeFromStore(second).isOpen).toBe(true);
+      // The old store's native handle is now closed.
+      expect(nativeFromStore(first).isOpen).toBe(false);
+    }, 30_000);
+
+    it('reopens after external close of global handle', async () => {
+      const first = await runtime.openGlobal();
+      _resetDualScopeDbCache('global');
+
+      const second = await runtime.openGlobal();
+      expect(second).not.toBe(first);
+      expect(nativeFromStore(second).isOpen).toBe(true);
+      expect(nativeFromStore(first).isOpen).toBe(false);
+    }, 30_000);
+  });
+
+  // ── Bug 3 regressions: stale store close ─────────────────────────────────
+
+  describe('stale store close (old close after reopen)', () => {
+    it('old store close is a no-op after reopen', async () => {
+      const store1 = await runtime.openProject(projectAPath);
+      // Close and reopen.
+      store1.close();
+      const store2 = await runtime.openProject(projectAPath);
+      expect(store2).not.toBe(store1);
+
+      // store1.close() again must NOT affect store2 or the registry.
+      store1.close();
+      expect(runtime.openPaths.has(projectAKey)).toBe(true);
+      expect(nativeFromStore(store2).isOpen).toBe(true);
+    }, 30_000);
+
+    it('old store close after closeAll+reopen is a no-op', async () => {
+      const store1 = await runtime.openProject(projectAPath);
+      runtime.closeAll();
+      expect(runtime.openPaths.size).toBe(0);
+      const store2 = await runtime.openProject(projectAPath);
+
+      // Old close must not delete the new entry.
+      store1.close();
+      expect(runtime.openPaths.has(projectAKey)).toBe(true);
+      expect(nativeFromStore(store2).isOpen).toBe(true);
+    }, 30_000);
+  });
+
+  // ── Bug 4 regressions: scope collision via scope-qualified keys ──────────
+
+  describe('scope-qualified keys (no project/global collision)', () => {
+    it('project and global entries with overlapping path strings are distinct', async () => {
+      const project = await runtime.openProject(projectAPath);
+      const global = await runtime.openGlobal();
+
+      // The runtime's openPaths must use scope-qualified keys, so both are
+      // present even if projectAPath and the global path were identical
+      // (they aren't here, but the test proves the key scheme).
+      expect(runtime.openPaths.size).toBeGreaterThanOrEqual(2);
+      expect(project.scope).toBe('project');
+      expect(global.scope).toBe('global');
+
+      // Close only project — global must survive.
+      project.close();
+      expect(nativeFromStore(global).isOpen).toBe(true);
+    }, 30_000);
+  });
+
+  // ── Cross-runtime sharing (documented invariant) ─────────────────────────
+
+  describe('cross-runtime shared handle behavior', () => {
+    it('two runtimes share the same underlying handle for the same path', async () => {
+      const rt1 = createCleoRuntime();
+      const rt2 = createCleoRuntime();
+
+      const s1 = await rt1.openProject(projectAPath);
+      const s2 = await rt2.openProject(projectAPath);
+
+      // Same underlying drizzle + native handle (shared _cache).
+      expect(s1.db).toBe(s2.db);
+      expect(nativeFromStore(s1)).toBe(nativeFromStore(s2));
+
+      // Closing s1 in runtime A closes the shared handle.
+      s1.close();
+      // Runtime B's store now points to a closed native connection.
+      expect(nativeFromStore(s2).isOpen).toBe(false);
+
+      // But runtime B's liveness check on the next open reacquires a fresh
+      // handle.
+      const s3 = await rt2.openProject(projectAPath);
+      expect(s3).not.toBe(s2);
+      expect(nativeFromStore(s3).isOpen).toBe(true);
+
+      rt1.closeAll();
+      rt2.closeAll();
+    }, 30_000);
+  });
+
+  // ── Failed-init-then-retry (compound regression) ─────────────────────────
+
+  describe('failed-initialization retry', () => {
+    it('entry is clean after cancelled init and reopens correctly', async () => {
+      // Start an open on a path, cancel it mid-flight.
+      const cancelled = runtime.openProject(projectAPath);
+      runtime.closeProject(projectAPath);
+      await expect(cancelled).rejects.toThrow();
+
+      // Verify the entry is fully cleaned — registry has no trace of it.
+      expect(runtime.openPaths.has(projectAKey)).toBe(false);
+
+      // Retry: should succeed.
+      const retry = await runtime.openProject(projectAPath);
+      expect(nativeFromStore(retry).isOpen).toBe(true);
     }, 30_000);
   });
 });

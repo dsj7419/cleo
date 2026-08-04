@@ -52,7 +52,7 @@
 
 import { existsSync, mkdirSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import type { DatabaseSync } from 'node:sqlite';
 import type { NodeSQLiteDatabase } from 'drizzle-orm/node-sqlite';
 import { getLogger } from '../logger.js';
@@ -895,6 +895,12 @@ export function _resetDualScopeDbCache(scope?: DualScope): void {
  * Each {@link ProjectStore} wraps ONE shared {@link DualScopeDbHandle} — closing
  * it affects only this project; other projects and the global scope are untouched.
  *
+ * ## Lifecycle identity
+ *
+ * Every store carries an opaque identity tag. Its `close()` is stale-safe: it only
+ * evicts the registry entry when that entry still belongs to THIS store (not a
+ * replacement opened after close). An old stale `close()` is a no-op.
+ *
  * @task T12036 (E6-L12)
  * @epic T11249 (E6)
  * @saga T11242
@@ -912,9 +918,10 @@ export interface ProjectStore {
    */
   readonly exodusAbort?: ExodusAbortDetail;
   /**
-   * Close this project's handle and evict it from the runtime registry.
-   * Safe to call multiple times (idempotent). Does NOT affect the global scope
-   * or other open projects.
+   * Close this project's handle and evict it from the runtime registry
+   * if-and-only-if the registry still points to this store. Safe to call
+   * multiple times (idempotent). Does NOT affect the global scope or other
+   * open projects.
    */
   close(): void;
 }
@@ -925,6 +932,11 @@ export interface ProjectStore {
  *
  * The {@link GlobalStore} wraps the shared dual-scope chokepoint handle —
  * closing it only disposes the global entry, never any project.
+ *
+ * ## Lifecycle identity
+ *
+ * Same stale-safe semantics as {@link ProjectStore}: an old `close()` after a
+ * reopen is a no-op.
  *
  * @task T12036 (E6-L12)
  * @epic T11249 (E6)
@@ -943,8 +955,9 @@ export interface GlobalStore {
    */
   readonly exodusAbort?: ExodusAbortDetail;
   /**
-   * Close the global handle and evict it from the runtime registry.
-   * Safe to call multiple times (idempotent).
+   * Close the global handle and evict it from the runtime registry
+   * if-and-only-if the registry still points to this store. Safe to call
+   * multiple times (idempotent).
    */
   close(): void;
 }
@@ -958,12 +971,34 @@ export interface GlobalStore {
  * {@link DualScopeDbHandle} obtained from the dual-scope chokepoint
  * ({@link openDualScopeDbAtPath}). The registry provides:
  *
- * - **Path-keyed identity** — entries are keyed by canonical `cleo.db`
- *   absolute path, not cwd or "last opened project".
+ * - **Path-keyed identity** — entries are keyed by `${scope}::${canonical
+ *   dbPath}` (scoped composite key), not cwd or "last opened project".
+ *   Equivalent path spellings are normalized via `path.resolve` before keying
+ *   so `/path/./to/cleo.db` and `/path/to/cleo.db` single-flight together.
  * - **Single-flight** — concurrent `openProject(p)` or `openGlobal()` calls
- *   for the same path share one initialization.
+ *   for the same key share one initialization. If the entry is closed during
+ *   that initialization, the acquired handle is closed and the openers reject.
  * - **Scoped disposal** — closing a project never closes another project or
- *   the global scope. `closeAll()` disposes every entry.
+ *   the global scope. `closeAll()` disposes every entry. Each store's `close()`
+ *   is stale-safe: only evicts if the registry still references that exact
+ *   store instance.
+ * - **Cache-hit liveness** — when the underlying `DatabaseSync` was externally
+ *   closed, the registry evicts and reopens (mirrors the dual-scope chokepoint
+ *   pattern).
+ *
+ * ## Cross-runtime sharing
+ *
+ * Two separate {@link CleoRuntime} instances (created by independent calls to
+ * {@link createCleoRuntime}) share the **process-global** dual-scope handle
+ * cache (`_cache` in this module). A project opened by runtime A returns a
+ * store whose `close()` closes that shared handle — runtime B's store for the
+ * same path will observe a closed `DatabaseSync` on its next query, and the
+ * **cache-hit liveness** check in this runtime will reacquire a fresh handle
+ * on the next `openProject`/`openGlobal`. This is by design: the runtime
+ * registry owns **entry lifecycle**, not the underlying connection. For true
+ * connection-level isolation between concurrent consumers, use a dedicated
+ * handle via `openDualScopeDbAtPath(scope, dbPath, undefined, { dedicated:
+ * true })`.
  *
  * @task T12036 (E6-L12)
  * @epic T11249 (E6)
@@ -971,14 +1006,18 @@ export interface GlobalStore {
  */
 export interface CleoRuntime {
   /**
-   * Open (or reuse) the project-scope `cleo.db` at the given canonical
-   * database path. The path MUST be the resolved absolute path to the
-   * project's `cleo.db` (use {@link resolveDualScopeDbPath} to compute it).
+   * Open (or reuse) the project-scope `cleo.db` at the given path.
    *
-   * Concurrent calls for the same `dbPath` single-flight — all callers
+   * The path may be relative or absolute — it is normalized via
+   * `path.resolve()` before keying. The path MUST resolve to a project's
+   * canonical `cleo.db` file (use {@link resolveDualScopeDbPath} to compute
+   * it from a project root directory).
+   *
+   * Concurrent calls for the same normalized path single-flight — all callers
    * receive the same {@link ProjectStore} instance.
    *
-   * @param dbPath - Absolute path to the project's `cleo.db`.
+   * @param dbPath - Absolute or relative path to the project's `cleo.db`.
+   *   Normalized via `path.resolve()` before keying.
    * @returns A typed {@link ProjectStore} bound to the requested path.
    */
   openProject(dbPath: string): Promise<ProjectStore>;
@@ -1000,49 +1039,94 @@ export interface CleoRuntime {
    * cache) and this project is removed from the registry map. Other
    * projects and the global scope are unaffected.
    *
+   * If the project is mid-initialization, the in-flight open is cancelled:
+   * its acquired handle is closed and its promise rejects.
+   *
    * Idempotent — a path not in the registry is a no-op.
    *
-   * @param dbPath - The canonical path previously passed to
-   *   {@link openProject}.
+   * @param dbPath - The path previously passed to {@link openProject}.
+   *   Normalized internally.
    */
   closeProject(dbPath: string): void;
 
   /**
    * Close and evict every entry in the registry. Disposes all project
-   * handles and the global handle if open. Safe to call multiple times.
+   * handles and the global handle if open. Cancels any in-flight opens.
+   * Safe to call multiple times.
    */
   closeAll(): void;
 
   /**
-   * The set of canonical database paths currently tracked by this
-   * registry. Read-only snapshot — concurrent opens/closes may race the
-   * snapshot, so it is suitable for polling, not for gating mutations.
+   * The set of composite registry keys (`scope::normalizedDbPath`)
+   * currently tracked by this runtime. The key format matches the
+   * internal scope-qualified cache key and distinguishes a project
+   * path from a global path that happens to share the same spelling.
+   *
+   * Read-only snapshot — concurrent opens/closes may race the snapshot.
    */
   readonly openPaths: ReadonlySet<string>;
 }
 
 /**
+ * Opaque identity tag carried by every store for stale-safe close.
+ */
+type EntryId = number;
+
+/**
  * Internal mutable state for a single runtime entry.
  */
 interface RuntimeEntry {
-  store: ProjectStore | GlobalStore;
+  id: EntryId;
+  store: ProjectStore | GlobalStore | null;
+  nativeDb: DatabaseSync | null;
   initPromise: Promise<ProjectStore | GlobalStore> | null;
+}
+
+/**
+ * Error thrown when a runtime entry is cancelled during initialization
+ * (e.g. {@link CleoRuntime.closeProject} called while an open is in flight).
+ */
+class EntryCancelledError extends Error {
+  constructor(scope: DualScope, dbPath: string) {
+    super(`CleoRuntime entry cancelled during initialization: ${scope}::${dbPath}`);
+    this.name = 'EntryCancelledError';
+  }
 }
 
 /**
  * Concrete implementation of the {@link CleoRuntime} store registry.
  *
- * Maintains a private `Map<string, RuntimeEntry>` keyed by canonical
- * `cleo.db` path. Each call to {@link openProject} or {@link openGlobal}
- * flows through the existing dual-scope chokepoint
+ * Maintains a private `Map<string, RuntimeEntry>` keyed by the scope-qualified
+ * composite `${scope}::${normalizedDbPath}`. Each call to {@link openProject}
+ * or {@link openGlobal} flows through the existing dual-scope chokepoint
  * ({@link openDualScopeDbAtPath}) so migrations, pragmas, and the singleton
- * `_cache` are shared — the runtime adds explicit per-entry wrapping and
- * scoped disposal on top.
+ * `_cache` are shared — the runtime adds explicit per-entry wrapping, identity
+ * tracking, and scoped disposal on top.
+ *
+ * ## Key invariants
+ *
+ * 1. **Scope-qualified keys** — `'project::/abs/path'` and
+ *    `'global::/abs/path'` are distinct keys even when the path is the same
+ *    string. A `GlobalStore` can never be cast to a `ProjectStore` via a
+ *    key collision.
+ * 2. **Entry identity** — every entry carries a monotonically-increasing `id`.
+ *    After `await openDualScopeDbAtPath`, the init publishes ONLY when the
+ *    current entry's `id` still matches. If another call (close/re-open)
+ *    replaced the entry, the acquired handle is closed and the init rejects.
+ * 3. **Stale-safe close** — each store records its entry `id`. `close()` only
+ *    evicts the registry entry when its `id` still matches; an old stale close
+ *    is a no-op.
+ * 4. **Cache-hit liveness** — before returning a cached store, the runtime
+ *    checks the underlying `DatabaseSync.isOpen`. A handle closed externally
+ *    (e.g. `_resetDualScopeDbCache`) is evicted and re-opened.
+ * 5. **Path normalization** — all paths are normalized via `path.resolve()`
+ *    before keying, so `/path/./to/db` and `/path/to/db` share one entry.
  *
  * @task T12036 (E6-L12)
  */
 class CleoRuntimeImpl implements CleoRuntime {
   private readonly _registry = new Map<string, RuntimeEntry>();
+  private _nextId: EntryId = 0;
 
   /** @inheritdoc */
   get openPaths(): ReadonlySet<string> {
@@ -1051,25 +1135,28 @@ class CleoRuntimeImpl implements CleoRuntime {
 
   /** @inheritdoc */
   async openProject(dbPath: string): Promise<ProjectStore> {
-    return this.openEntry('project', dbPath) as Promise<ProjectStore>;
+    const normalized = resolve(dbPath);
+    return this.openEntry('project', normalized) as Promise<ProjectStore>;
   }
 
   /** @inheritdoc */
   async openGlobal(): Promise<GlobalStore> {
     const dbPath = resolveDualScopeDbPath('global');
-    return this.openEntry('global', dbPath) as Promise<GlobalStore>;
+    return this.openEntry('global', resolve(dbPath)) as Promise<GlobalStore>;
   }
 
   /** @inheritdoc */
   closeProject(dbPath: string): void {
-    this.closeEntry(dbPath);
+    const normalized = resolve(dbPath);
+    this.closeEntry('project', normalized);
   }
 
   /** @inheritdoc */
   closeAll(): void {
-    for (const dbPath of this._registry.keys()) {
+    // Snapshot keys: closeEntry mutates the map during iteration.
+    for (const key of [...this._registry.keys()]) {
       try {
-        this.closeEntry(dbPath);
+        this.closeEntryByKey(key);
       } catch {
         // Continue closing remaining entries.
       }
@@ -1079,21 +1166,27 @@ class CleoRuntimeImpl implements CleoRuntime {
   // ── Private helpers ──────────────────────────────────────────────────────
 
   /**
-   * Open (or reuse) a scoped entry. If the registry already has a live entry
-   * for `dbPath`, return it. If an `initPromise` is in flight (single-flight),
-   * await it. Otherwise, open a fresh handle through the dual-scope chokepoint.
+   * Open (or reuse) a scoped entry. All five key invariants are enforced
+   * on this single code path.
    */
   private async openEntry(scope: DualScope, dbPath: string): Promise<ProjectStore | GlobalStore> {
-    // Return cached live entry.
-    const existing = this._registry.get(dbPath);
+    const key = cacheKey(scope, dbPath);
+
+    // ── Cache-hit liveness (invariant 4) ─────────────────────────────────
+    const existing = this._registry.get(key);
     if (existing) {
       if (existing.initPromise) {
         return existing.initPromise;
       }
-      return existing.store;
+      if (existing.store && existing.nativeDb?.isOpen) {
+        return existing.store;
+      }
+      // Handle was closed externally — evict and re-open.
+      this._registry.delete(key);
     }
 
-    // Create an initPromise for single-flight before the first await.
+    // ── Placeholder with identity (invariant 2) ──────────────────────────
+    const entryId = ++this._nextId;
     let initResolve!: (store: ProjectStore | GlobalStore) => void;
     let initReject!: (err: unknown) => void;
     const initPromise = new Promise<ProjectStore | GlobalStore>((resolve, reject) => {
@@ -1101,13 +1194,13 @@ class CleoRuntimeImpl implements CleoRuntime {
       initReject = reject;
     });
 
-    this._registry.set(dbPath, { store: undefined as unknown as ProjectStore, initPromise });
+    this._registry.set(key, { id: entryId, store: null, nativeDb: null, initPromise });
 
     // Evict on failure so a transient error doesn't poison.
     initPromise.catch(() => {
-      const entry = this._registry.get(dbPath);
+      const entry = this._registry.get(key);
       if (entry?.initPromise === initPromise) {
-        this._registry.delete(dbPath);
+        this._registry.delete(key);
       }
     });
 
@@ -1119,12 +1212,23 @@ class CleoRuntimeImpl implements CleoRuntime {
         dualHandle = await openDualScopeDbAtPath('global', dbPath);
       }
 
-      const store = this.buildStore(scope, dualHandle);
-      const entry = this._registry.get(dbPath);
-      if (entry) {
-        entry.store = store;
-        entry.initPromise = null;
+      // ── Publish only if THIS init is still current (invariant 2) ───────
+      const current = this._registry.get(key);
+      if (!current || current.id !== entryId) {
+        // Cancelled during init — close the acquired handle.
+        dualHandle.close();
+        const err = new EntryCancelledError(scope, dbPath);
+        initReject(err);
+        throw err;
       }
+
+      // biome-ignore lint/suspicious/noExplicitAny: $client is untyped on the generic Drizzle handle
+      const nativeDb = (dualHandle.db as unknown as { $client: DatabaseSync }).$client;
+
+      const store = this.buildStore(scope, dualHandle, entryId);
+      current.store = store;
+      current.nativeDb = nativeDb;
+      current.initPromise = null;
       initResolve(store);
       return store;
     } catch (err) {
@@ -1135,12 +1239,18 @@ class CleoRuntimeImpl implements CleoRuntime {
 
   /**
    * Build a typed {@link ProjectStore} or {@link GlobalStore} from a
-   * {@link DualScopeDbHandle}. The store's `close()` both closes the
-   * underlying dual-scope handle AND evicts this entry from the registry.
+   * {@link DualScopeDbHandle}. The store's `close()` is stale-safe
+   * (invariant 3): it only evicts the registry entry when the entry's
+   * identity still matches.
    */
-  private buildStore(scope: DualScope, dualHandle: DualScopeDbHandle): ProjectStore | GlobalStore {
+  private buildStore(
+    scope: DualScope,
+    dualHandle: DualScopeDbHandle,
+    entryId: EntryId,
+  ): ProjectStore | GlobalStore {
     const dbPath = dualHandle.dbPath;
     const exodusAbort = dualHandle.exodusAbort;
+    const key = cacheKey(scope, dbPath);
 
     if (scope === 'project') {
       const store: ProjectStore = {
@@ -1150,7 +1260,7 @@ class CleoRuntimeImpl implements CleoRuntime {
         exodusAbort,
         close: () => {
           dualHandle.close();
-          this._registry.delete(dbPath);
+          this.cleanupEntry(key, entryId);
         },
       };
       return store;
@@ -1163,26 +1273,52 @@ class CleoRuntimeImpl implements CleoRuntime {
       exodusAbort,
       close: () => {
         dualHandle.close();
-        this._registry.delete(dbPath);
+        this.cleanupEntry(key, entryId);
       },
     };
     return store;
   }
 
   /**
-   * Close and evict a single entry from the registry.
+   * Conditionally evict a registry entry. Only deletes when the current
+   * entry's identity still matches `entryId` — an old stale close is a no-op
+   * (invariant 3).
    */
-  private closeEntry(dbPath: string): void {
-    const entry = this._registry.get(dbPath);
+  private cleanupEntry(key: string, entryId: EntryId): void {
+    const entry = this._registry.get(key);
+    if (entry && entry.id === entryId) {
+      this._registry.delete(key);
+    }
+  }
+
+  /**
+   * Close and evict a single scoped entry from the registry by composite
+   * key. Cancels in-flight opens by deleting the placeholder entry — the
+   * in-flight init detects the missing/id-mismatched entry and rejects
+   * after its `await` resolves (invariant 2).
+   */
+  private closeEntry(scope: DualScope, dbPath: string): void {
+    this.closeEntryByKey(cacheKey(scope, dbPath));
+  }
+
+  /**
+   * Close and evict a single entry by composite registry key.
+   */
+  private closeEntryByKey(key: string): void {
+    const entry = this._registry.get(key);
     if (!entry) return;
+    // Delete FIRST so in-flight inits observe a missing entry
+    // (invariant 2 — cancellation). Even if the store close below throws,
+    // the entry is gone — the caller won't get it back and the dual-scope
+    // chokepoint cache still owns the SQLite close.
+    this._registry.delete(key);
     if (entry.store) {
       try {
         entry.store.close();
       } catch {
-        // Close is defensive; the registry entry is removed regardless.
+        // Close is best-effort; the entry is already evicted.
       }
     }
-    this._registry.delete(dbPath);
   }
 }
 
@@ -1194,6 +1330,16 @@ class CleoRuntimeImpl implements CleoRuntime {
  * project's `cleo.db` at a canonical path, and {@link CleoRuntime.openGlobal}
  * for the global scope. Closing a project via {@link CleoRuntime.closeProject}
  * or the store's own `close()` disposes only that entry.
+ *
+ * ## Cross-runtime behavior
+ *
+ * Two separate runtime instances SHARE the **process-global dual-scope
+ * handle cache** (`_cache`). Closing a store in one runtime closes the
+ * shared `DatabaseSync` — another runtime referencing the same path
+ * will observe a closed connection. The **cache-hit liveness** check in
+ * this runtime reacquires a fresh handle on the next `openProject`/
+ * `openGlobal`. This is by design: the runtime owns **entry lifecycle**,
+ * not the underlying connection. Use a dedicated connection for isolation.
  *
  * @returns A fresh {@link CleoRuntime} instance with an empty registry.
  *
