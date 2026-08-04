@@ -18,14 +18,21 @@
  */
 
 import { describe, expect, it, vi } from 'vitest';
+import { resolveDualScopeDbPath } from '../../store/dual-scope-db.js';
+import type { LeaseAcquireOptions, LeaseLane, LeaseScope } from '../../store/writer-lease.js';
 
 // ── Mock the lease: capture (scope, lane, opts) and run fn() inline ──────────────
-const leaseCalls: Array<{ scope: string; lane: string; opts?: unknown }> = [];
+const leaseCalls: Array<{ scope: LeaseScope; lane: LeaseLane; opts?: LeaseAcquireOptions }> = [];
 vi.mock('../../store/writer-lease.js', () => ({
   withWriterLease: vi.fn(
-    async (scope: string, lane: string, fn: (h: unknown) => Promise<unknown>, opts?: unknown) => {
+    async <T>(
+      scope: LeaseScope,
+      lane: LeaseLane,
+      fn: () => Promise<T>,
+      opts?: LeaseAcquireOptions,
+    ): Promise<T> => {
       leaseCalls.push({ scope, lane, opts });
-      return fn({});
+      return fn();
     },
   ),
 }));
@@ -71,13 +78,9 @@ describe('dhq-adapter — lease discipline', () => {
       runId: 'r',
     });
     expect(leaseCalls).toHaveLength(1);
-    expect(leaseCalls[0].scope).toBe('project');
-    expect(leaseCalls[0].lane).toBe('bulk');
-    // T12045 · E6-L12e: explicit canonical dbPath identity must be passed.
-    expect(leaseCalls[0].opts).toBeDefined();
-    expect((leaseCalls[0].opts as Record<string, unknown>).dbPath).toEqual(
-      expect.stringContaining('.cleo/cleo.db'),
-    );
+    expect(leaseCalls[0]?.scope).toBe('project');
+    expect(leaseCalls[0]?.lane).toBe('bulk');
+    expect(leaseCalls[0]?.opts?.dbPath).toBe(resolveDualScopeDbPath('project'));
   });
 
   it('recordPrUrl acquires the (project, bulk) lease exactly once with explicit dbPath', async () => {
@@ -85,13 +88,9 @@ describe('dhq-adapter — lease discipline', () => {
     const adapter = createDhqAdapter({ now: () => 42 });
     await adapter.recordPrUrl('h', 'https://x/pull/1');
     expect(leaseCalls).toHaveLength(1);
-    expect(leaseCalls[0].scope).toBe('project');
-    expect(leaseCalls[0].lane).toBe('bulk');
-    // T12045 · E6-L12e: explicit canonical dbPath identity must be passed.
-    expect(leaseCalls[0].opts).toBeDefined();
-    expect((leaseCalls[0].opts as Record<string, unknown>).dbPath).toEqual(
-      expect.stringContaining('.cleo/cleo.db'),
-    );
+    expect(leaseCalls[0]?.scope).toBe('project');
+    expect(leaseCalls[0]?.lane).toBe('bulk');
+    expect(leaseCalls[0]?.opts?.dbPath).toBe(resolveDualScopeDbPath('project'));
   });
 
   it('readOpen does NOT acquire a lease (reads are lease-free)', async () => {
