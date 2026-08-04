@@ -107,11 +107,11 @@ export const SQLITE_SCHEMA_VERSION = '2.0.0';
 const SCHEMA_VERSION = SQLITE_SCHEMA_VERSION;
 
 /** Singleton state for lazy initialization. */
-let _db: NodeSQLiteDatabase<typeof schema> | null = null;
+let _db: NodeSQLiteDatabase | null = null;
 let _nativeDb: DatabaseSync | null = null;
 let _dbPath: string | null = null;
 /** Guard against concurrent initialization (async migration). */
-let _initPromise: Promise<NodeSQLiteDatabase<typeof schema>> | null = null;
+let _initPromise: Promise<NodeSQLiteDatabase> | null = null;
 
 /**
  * Get the path to the SQLite database file that {@link getDb} opens.
@@ -393,7 +393,7 @@ export async function autoRecoverFromBackup(
         _nativeDb = restoredNativeDb;
 
         // Re-run migrations on restored DB to ensure schema is current
-        const restoredDb = _getDrizzle()({ client: restoredNativeDb, schema });
+        const restoredDb = _getDrizzle()({ client: restoredNativeDb });
         runMigrations(restoredNativeDb, restoredDb);
 
         // Update the singleton drizzle instance
@@ -428,7 +428,7 @@ export async function autoRecoverFromBackup(
  * Uses a promise guard so concurrent callers wait for the same
  * initialization to complete (migrations are async).
  */
-export async function getDb(cwd?: string): Promise<NodeSQLiteDatabase<typeof schema>> {
+export async function getDb(cwd?: string): Promise<NodeSQLiteDatabase> {
   // T9961 / T9806: worktree-isolation guard — defense-in-depth for direct
   // getDb() callers that bypass openCleoDb('project', cwd).
   // Fires before any DB file is touched, matching the openCleoDb chokepoint.
@@ -469,15 +469,39 @@ export async function getDb(cwd?: string): Promise<NodeSQLiteDatabase<typeof sch
     // openDualScopeDb applies pragma SSoT, creates the directory, runs cleo-project
     // migrations, and manages the singleton cache. We extract its native handle
     // so we can re-wrap it with the legacy tasks-schema for caller compatibility.
-    const dualHandle = await openDualScopeDb('project', cwd);
+    //
+    // T12035: bounded reacquisition loop — the shared consolidated DatabaseSync
+    // can be closed after openDualScopeDb checks the cache but before this await
+    // resumes (another domain's closeDb / reset / brain write firing across a
+    // microtask gap). Re-open once; the cache evicts the dead entry and returns
+    // the current live handle. This transitional guard will be removed by T12036's
+    // runtime ownership cutover.
+    let nativeDb: DatabaseSync | null = null;
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const dualHandle = await openDualScopeDb('project', cwd);
 
-    // Extract the underlying DatabaseSync. Drizzle exposes it via `$client`.
-    const nativeDb = (dualHandle.db as { $client?: DatabaseSync }).$client ?? null;
-    if (!nativeDb) {
-      throw new Error(
-        'E6-L1: openDualScopeDb returned a handle without $client — ' +
-          'cannot extract DatabaseSync for legacy tasks-schema wrapping.',
-      );
+      nativeDb = (dualHandle.db as { $client?: DatabaseSync }).$client ?? null;
+      if (!nativeDb) {
+        throw new Error(
+          'E6-L1: openDualScopeDb returned a handle without $client — ' +
+            'cannot extract DatabaseSync for legacy tasks-schema wrapping.',
+        );
+      }
+
+      if (nativeDb.isOpen) break;
+
+      // T12035: handle-liveness reacquisition — the shared consolidated
+      // DatabaseSync can be closed after openDualScopeDb checks the cache but
+      // before this await resumes (another domain's closeDb / reset / brain
+      // write firing across a microtask gap). Close this stale dual-scope
+      // handle — which evicts it from the singleton cache — so the next
+      // attempt opens a fresh, live connection. This transitional guard
+      // will be removed by T12036's runtime ownership cutover.
+      dualHandle.close();
+    }
+
+    if (!nativeDb?.isOpen) {
+      throw new Error('E6-L1: openDualScopeDb repeatedly returned a closed DatabaseSync handle.');
     }
 
     _nativeDb = nativeDb;
@@ -486,7 +510,7 @@ export async function getDb(cwd?: string): Promise<NodeSQLiteDatabase<typeof sch
     // Wrap the native handle with the legacy tasks-schema drizzle instance.
     // This allows all existing callers (using schema.tasks, schema.sessions, etc.)
     // to continue querying the same DatabaseSync without change.
-    const db = _getDrizzle()({ client: nativeDb, schema });
+    const db = _getDrizzle()({ client: nativeDb });
 
     // Run legacy drizzle-tasks migrations against the shared cleo.db handle.
     // During E3→E6 transition these create the old `tasks` table family alongside
@@ -583,7 +607,7 @@ const REQUIRED_SESSION_COLUMNS: RequiredColumn[] = [
  * @task T5185 - Retry+backoff for SQLITE_BUSY during migrations
  * @task T132 - Unified migration system
  */
-function runMigrations(nativeDb: DatabaseSync, db: NodeSQLiteDatabase<typeof schema>): void {
+function runMigrations(nativeDb: DatabaseSync, db: NodeSQLiteDatabase): void {
   const migrationsFolder = resolveMigrationsFolder();
 
   // Safety backup before any migration work

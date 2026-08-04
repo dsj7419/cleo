@@ -17,7 +17,7 @@ import * as schema from './tasks-schema.js';
 const log = getLogger('db-helpers');
 
 /** Drizzle database instance type. */
-type DrizzleDb = NodeSQLiteDatabase<typeof schema>;
+type DrizzleDb = NodeSQLiteDatabase;
 
 /** Archive-specific fields for task upsert. */
 export interface ArchiveFields {

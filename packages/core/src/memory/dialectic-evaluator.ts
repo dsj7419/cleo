@@ -50,8 +50,6 @@ import type { NodeSQLiteDatabase } from 'drizzle-orm/node-sqlite';
 import { z } from 'zod';
 import { getLogger } from '../logger.js';
 import { upsertUserProfileTrait } from '../nexus/user-profile.js';
-import type * as memorySchema from '../store/schema/memory-schema.js';
-import type * as nexusSchema from '../store/schema/nexus-schema.js';
 import { observeBrain } from './brain-retrieval.js';
 import { resolveLlmBackend } from './llm-backend-resolver.js';
 import { appendNarrativeDelta } from './session-narrative.js';
@@ -551,10 +549,10 @@ export function _resetDialecticFailureFingerprintsForTests(): void {
 // ============================================================================
 
 /** Type alias for the Drizzle nexus database instance. */
-type NexusDb = NodeSQLiteDatabase<typeof nexusSchema>;
+type NexusDb = NodeSQLiteDatabase;
 
 /** Type alias for the Drizzle brain (memory) database instance. */
-type BrainDb = NodeSQLiteDatabase<typeof memorySchema>;
+type BrainDb = NodeSQLiteDatabase;
 
 /**
  * Persist extracted dialectic insights to the correct storage backends.

@@ -98,11 +98,11 @@ function _getDrizzle(): typeof drizzleFn {
 export const BRAIN_SCHEMA_VERSION = '1.0.0';
 
 /** Singleton state for lazy initialization. */
-let _db: NodeSQLiteDatabase<typeof brainSchema> | null = null;
+let _db: NodeSQLiteDatabase | null = null;
 let _nativeDb: DatabaseSync | null = null;
 let _dbPath: string | null = null;
 /** Guard against concurrent initialization (async migration). */
-let _initPromise: Promise<NodeSQLiteDatabase<typeof brainSchema>> | null = null;
+let _initPromise: Promise<NodeSQLiteDatabase> | null = null;
 /** Whether sqlite-vec extension loaded successfully. */
 let _vecLoaded = false;
 
@@ -235,10 +235,7 @@ function brainTablesAreConsolidatedShape(nativeDb: DatabaseSync): boolean {
  * @internal
  * @task T11522
  */
-function establishLegacyBrainSchema(
-  nativeDb: DatabaseSync,
-  db: NodeSQLiteDatabase<typeof brainSchema>,
-): void {
+function establishLegacyBrainSchema(nativeDb: DatabaseSync, db: NodeSQLiteDatabase): void {
   const log = getLogger('brain-schema');
 
   if (brainTablesAreConsolidatedShape(nativeDb)) {
@@ -420,7 +417,7 @@ async function initEmbeddingProvider(cwd?: string): Promise<void> {
  * Uses a promise guard so concurrent callers wait for the same initialization to
  * complete (migrations are async).
  */
-export async function getBrainDb(cwd?: string): Promise<NodeSQLiteDatabase<typeof brainSchema>> {
+export async function getBrainDb(cwd?: string): Promise<NodeSQLiteDatabase> {
   const requestedPath = getBrainDbPath(cwd);
 
   // T1906: guard against prod-DB writes in test mode.
@@ -486,7 +483,7 @@ export async function getBrainDb(cwd?: string): Promise<NodeSQLiteDatabase<typeo
 
     // Wrap the native handle with the legacy brain-schema drizzle instance so
     // existing callers (brainSchema.* queries) continue to work unchanged.
-    const db = _getDrizzle()({ client: nativeDb, schema: brainSchema });
+    const db = _getDrizzle()({ client: nativeDb });
 
     // Reconcile the LEGACY brain-domain schema inside the consolidated cleo.db.
     // Since T11647 the consolidated `cleo.db` migration already creates every

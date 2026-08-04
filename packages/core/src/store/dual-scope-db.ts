@@ -63,8 +63,6 @@ import {
   resolveConsolidatedJournalSiblings,
   resolveCorePackageMigrationsFolder,
 } from './resolve-migrations-folder.js';
-import type * as CleoGlobalSchemaTypes from './schema/cleo-global/index.js';
-import type * as CleoProjectSchemaTypes from './schema/cleo-project/index.js';
 import { applyPerfPragmas } from './sqlite-pragmas.js';
 import {
   activeScope,
@@ -84,10 +82,10 @@ import {
 export type DualScope = 'project' | 'global';
 
 /** Typed Drizzle handle for the project-scope `cleo.db`. */
-export type CleoProjectDb = NodeSQLiteDatabase<typeof CleoProjectSchemaTypes>;
+export type CleoProjectDb = NodeSQLiteDatabase;
 
 /** Typed Drizzle handle for the global-scope `cleo.db`. */
-export type CleoGlobalDb = NodeSQLiteDatabase<typeof CleoGlobalSchemaTypes>;
+export type CleoGlobalDb = NodeSQLiteDatabase;
 
 /**
  * Handle returned by {@link openDualScopeDb}.
@@ -322,29 +320,6 @@ function getDatabaseSyncCtor(): DatabaseSyncCtor {
   return _DatabaseSyncCtor;
 }
 
-// ── Schema loading ───────────────────────────────────────────────────────────
-
-// Dynamic imports for schema barrels. Loaded once per scope and cached.
-// We use dynamic import() to avoid loading both schemas at module-init time —
-// only the requested scope's schema is loaded.
-
-let _projectSchema: typeof CleoProjectSchemaTypes | null = null;
-let _globalSchema: typeof CleoGlobalSchemaTypes | null = null;
-
-async function loadProjectSchema(): Promise<typeof CleoProjectSchemaTypes> {
-  if (_projectSchema === null) {
-    _projectSchema = await import('./schema/cleo-project/index.js');
-  }
-  return _projectSchema;
-}
-
-async function loadGlobalSchema(): Promise<typeof CleoGlobalSchemaTypes> {
-  if (_globalSchema === null) {
-    _globalSchema = await import('./schema/cleo-global/index.js');
-  }
-  return _globalSchema;
-}
-
 // ── Existence table for migration reconciliation ──────────────────────────────
 
 /**
@@ -479,10 +454,9 @@ async function openDedicatedDualScopeDb(
   // T11829: bound per-connection memory for one-shot/CLI opens (full SSoT for daemon).
   applyPerfPragmas(nativeDb, memoryBoundedPragmaOverrides());
 
-  const schema = scope === 'project' ? await loadProjectSchema() : await loadGlobalSchema();
   const drizzle = getDrizzle();
-  // biome-ignore lint/suspicious/noExplicitAny: schema type is scope-specific; typed via DualScopeDbHandle<TScope>
-  const db = drizzle({ client: nativeDb, schema }) as NodeSQLiteDatabase<any>;
+  // biome-ignore lint/suspicious/noExplicitAny: dual-scope handle is untyped at construction; typed via DualScopeDbHandle<TScope>
+  const db = drizzle({ client: nativeDb }) as NodeSQLiteDatabase<any>;
 
   const migrationsFolder = resolveCorePackageMigrationsFolder(migrationsSetName(scope));
   // T11829: pass the OTHER lineages that share this scope's consolidated cleo.db
@@ -608,230 +582,17 @@ export async function openDualScopeDbAtPath(
   }
 
   // Create a placeholder entry so concurrent callers wait for the same init.
-  const initPromise: Promise<DualScopeDbHandle> = (async (): Promise<DualScopeDbHandle> => {
-    log.debug({ scope, dbPath }, 'opening dual-scope cleo.db');
+  // MUST run BEFORE the async IIFE is defined: the IIFE starts executing
+  // synchronously, and the cold-open callback inside withColdOpenLease runs
+  // synchronously before the outer IIFE yields — if the placeholder entry
+  // doesn't exist yet, the callback cannot find and update it (T12035).
+  let initResolve: ((h: DualScopeDbHandle) => void) | null = null;
+  let initReject: ((e: unknown) => void) | null = null;
+  const initPromise = new Promise<DualScopeDbHandle>((resolve, reject) => {
+    initResolve = resolve;
+    initReject = reject;
+  });
 
-    // Ensure the directory exists before opening.
-    const dir = dirname(dbPath);
-    if (!existsSync(dir)) {
-      mkdirSync(dir, { recursive: true });
-    }
-
-    // Open the native SQLite handle.
-    //
-    // `allowExtension: true` permits — but does NOT load — SQLite loadable
-    // extensions. The brain domain (E6-L2 · T11522) loads the `sqlite-vec`
-    // extension on this shared handle for vector similarity search; node:sqlite
-    // requires the flag at construction time (it cannot be toggled afterwards
-    // via `enableLoadExtension`). Enabling the flag is harmless for every other
-    // domain — no extension is loaded automatically, and the cache stays
-    // single-keyed regardless of which domain opens the handle first.
-    const DatabaseSyncCtor = getDatabaseSyncCtor();
-    const nativeDb = new DatabaseSyncCtor(dbPath, { allowExtension: true });
-
-    // Apply canonical pragma set (specs/sqlite-pragmas.json SSoT), bounding
-    // per-connection memory for one-shot/CLI opens (full SSoT for daemon) — T11829.
-    applyPerfPragmas(nativeDb, memoryBoundedPragmaOverrides());
-
-    // Load the schema barrel for this scope.
-    const schema = scope === 'project' ? await loadProjectSchema() : await loadGlobalSchema();
-
-    // Create the Drizzle ORM wrapper.
-    // Drizzle v1 RC3 node-sqlite API: pass { client, schema } as a single config object.
-    const drizzle = getDrizzle();
-    // biome-ignore lint/suspicious/noExplicitAny: schema type is scope-specific; typed via DualScopeDbHandle<TScope>
-    const db = drizzle({ client: nativeDb, schema }) as NodeSQLiteDatabase<any>;
-
-    // Resolve the migrations folder for this scope.
-    const migrationsFolder = resolveCorePackageMigrationsFolder(migrationsSetName(scope));
-
-    // ── Seam 0 — cold-open critical section (THE T5158 HEAL · T11627 ST-3) ────
-    // Lease the migrate/reconcile cold-open write-txn against the just-opened
-    // native handle so EXACTLY ONE process per scope runs it while concurrent
-    // cold-open peers BEGIN IMMEDIATE-queue and then observe a ready DB. This heals
-    // the T5158 `E_NOT_INITIALIZED` / `E_INTERNAL` corruption (concurrent cold-open
-    // migrate write-txns racing the consolidated cleo.db's single shared
-    // `__drizzle_migrations` journal) WITH the supervisor daemon disabled (`local`
-    // mode default). `off` mode is a pass-through → byte-identical to pre-lease
-    // behaviour (busy_timeout=30000 still serializes the write-txn).
-    // `withColdOpenLease` also records the scope in the Seam-1 active-scope registry
-    // so chokepoint write primitives lease correctly.
-    //
-    // The lease wraps ONLY reconcileJournal + migrateWithRetry — the precise write-
-    // txn that races in T5158. The exodus-on-open hook runs AFTER the lease releases
-    // (below): it owns its OWN single-flight lock + dedicated migrate connections,
-    // and `runExodusMigrate` CLOSES + re-opens the scope handles, which would
-    // close the very handle the lease row lives on mid-section. Releasing first is
-    // both correct (exodus is already serialized) and necessary (no close-under-lease).
-    const handle = await withColdOpenLease(
-      scope,
-      nativeDb,
-      async (): Promise<DualScopeDbHandle> => {
-        // Reconcile the migration journal (handles WAL/journal divergence across
-        // SQLite version upgrades — same pattern as sqlite.ts / memory-sqlite.ts).
-        // T11829: pass the OTHER lineages that share this scope's consolidated cleo.db
-        // journal so their rows are not deleted as cross-lineage orphans (the confirmed
-        // OOM root cause: each lineage previously deleted the others' rows so the shared
-        // journal never converged).
-        reconcileJournal(
-          nativeDb,
-          migrationsFolder,
-          existenceTable(scope),
-          `dual-scope-db[${scope}]`,
-          resolveConsolidatedJournalSiblings(migrationsSetName(scope)),
-        );
-
-        // Run any pending migrations.
-        migrateWithRetry(
-          db,
-          migrationsFolder,
-          nativeDb,
-          existenceTable(scope),
-          `dual-scope-db[${scope}]`,
-        );
-
-        log.debug({ scope, dbPath }, 'dual-scope cleo.db ready');
-
-        const built: DualScopeDbHandle = {
-          db,
-          scope,
-          dbPath,
-          close() {
-            _cache.delete(key);
-            try {
-              nativeDb.close();
-            } catch {
-              // Idempotent — ignore double-close errors.
-            }
-          },
-        };
-
-        // Update the cache entry to mark init complete.
-        const entry = _cache.get(key);
-        if (entry) {
-          entry.initPromise = null;
-          entry.handle = built;
-          entry.nativeDb = nativeDb;
-        }
-
-        return built;
-      },
-      // Record this open's resolved dbPath in the Seam-1 registry so the chokepoint
-      // write primitives lease their row in THIS file — not the cwd-default — when
-      // more than one project's cleo.db is open in this process (T11627 Finding 1).
-      { dbPath },
-    );
-
-    // ── Exodus-on-open (E6 · T11553) — runs AFTER the cold-open lease releases ──
-    // Data-continuity safety net: on a canonical open where the consolidated
-    // cleo.db is empty but the legacy fleet (tasks.db/brain.db/…) has rows for
-    // THIS scope, lazily auto-migrate ONCE — gated by a parity verify, serialised
-    // by a single-flight lock, rolled back to empty on parity failure (legacy
-    // kept). Re-entrancy/concurrency are handled inside the hook. Lazy `import()`
-    // breaks the cycle (exodus/migrate.ts imports openDualScopeDb from here).
-    //
-    // NOTE: `runExodusMigrate` CLOSES + evicts the dual-scope handles it opened
-    // when it finishes, so after a `migrated`/`aborted` outcome the `handle`
-    // built above (and its `nativeDb`) is CLOSED. We therefore re-open this scope
-    // fresh (cache-miss, NOT armed — no `exodusCwd`) and return the new live
-    // handle. That re-open flows through the cold-open lease again on a FRESH handle
-    // (cheap claim/release — the DB is now migrated), with no contention against the
-    // already-released outer lease.
-    //
-    // Armed ONLY when `exodusCwd` was threaded through the canonical
-    // `openDualScopeDb` AND `dbPath` is the canonical path for that scope+cwd —
-    // never for explicit-path opens (test fixtures / legacy-path domains).
-    if (exodusCwd !== undefined && dbPath === resolveDualScopeDbPath(scope, exodusCwd)) {
-      // ── T12001 (Epic T11992) — db-heavy admission for the exodus auto-migrate ──
-      // The on-open exodus (reconcile + parity verify + migrate) is a heavy DB op;
-      // letting it co-schedule with builds/tests/agents is a historical OOM vector.
-      // Admit it through the governor's `db-heavy` class (machine-wide serialized;
-      // deferred under memory backoff). On a denial we SKIP the migration THIS open
-      // (kill-switch precedent CLEO_DISABLE_EXODUS_ON_OPEN) — NEVER block or defer
-      // the interactive command (interactive-cli is never gated) — and it re-runs
-      // idempotently on a calmer open. Fail-open: ANY governor error proceeds
-      // un-gated, byte-identical to pre-T12001 behaviour.
-      let releaseDbHeavy: (() => Promise<void>) | null = null;
-      let dbHeavyDeferred = false;
-      try {
-        const { governor } = await import('../resources/governor.js');
-        const admit = await governor.tryAcquire('db-heavy');
-        if (admit.deferred) {
-          dbHeavyDeferred = true;
-        } else {
-          releaseDbHeavy = admit.release;
-        }
-      } catch {
-        // Governor unavailable — fail open (proceed un-gated).
-      }
-      if (dbHeavyDeferred) {
-        log.debug(
-          { scope, dbPath },
-          'exodus-on-open skipped this open — db-heavy deferred under memory pressure ' +
-            '(re-runs idempotently on a calmer open)',
-        );
-        return handle;
-      }
-      try {
-        const { maybeRunExodusOnOpen } = await import('./exodus/on-open.js');
-        const result = await maybeRunExodusOnOpen(scope, dbPath, nativeDb, exodusCwd);
-        if (result.outcome === 'migrated' || result.outcome === 'aborted') {
-          // The migrate engine closed our handle — re-open fresh (un-armed) so the
-          // caller receives a valid, live handle bound to the now-(de)populated DB.
-          const reopened =
-            scope === 'project'
-              ? await openDualScopeDbAtPath('project', dbPath)
-              : await openDualScopeDbAtPath('global', dbPath);
-          if (result.outcome === 'aborted') {
-            // T11828 (DHQ-059): the data-continuity gate aborted — the consolidated
-            // DB is empty + consistent, legacy kept as source. Surface this to a
-            // MUTATING caller (read-only callers ignore it) by (a) stamping a
-            // structured marker on the returned handle and (b) broadcasting a typed
-            // event. The non-zero error itself is raised on the write path via
-            // `assertWriteDurable(handle)` — NOT here, so read opens never throw.
-            const abort: ExodusAbortDetail = {
-              scope,
-              dbPath,
-              reason: result.reason,
-              at: Date.now(),
-            };
-            log.warn(
-              { scope, reason: result.reason },
-              'exodus-on-open aborted; consolidated cleo.db left empty, legacy kept as source — ' +
-                'mutating callers must check handle.exodusAbort / call assertWriteDurable (T11828)',
-            );
-            const { emitExodusAbort } = await import('./exodus/abort-events.js');
-            emitExodusAbort(abort);
-            return { ...reopened, exodusAbort: abort };
-          }
-          // A subsequent SUCCESSFUL migration resolves any prior abort recorded
-          // for this scope, so writes are no longer rejected (T11828).
-          const { clearExodusAborts } = await import('./exodus/abort-events.js');
-          clearExodusAborts(scope);
-          return reopened;
-        }
-      } catch (err) {
-        // Best-effort safety net: a hook failure must not make the DB
-        // unopenable. Warn and re-open fresh; `cleo exodus migrate` remains the
-        // manual path. (The handle may have been closed mid-migrate.)
-        log.warn(
-          { err, scope },
-          'exodus-on-open hook failed (non-fatal); re-opening consolidated handle',
-        );
-        return scope === 'project'
-          ? openDualScopeDbAtPath('project', dbPath)
-          : openDualScopeDbAtPath('global', dbPath);
-      } finally {
-        // Release the db-heavy slot on EVERY exit path (early returns above run
-        // `finally` first). Idempotent; release errors are swallowed.
-        if (releaseDbHeavy) await releaseDbHeavy().catch(() => {});
-      }
-    }
-
-    return handle;
-  })();
-
-  // Store a placeholder with the in-flight promise so concurrent callers wait.
   _cache.set(key, {
     handle: null,
     nativeDb: null,
@@ -853,6 +614,236 @@ export async function openDualScopeDbAtPath(
       _cache.delete(key);
     }
   });
+
+  // Start the actual init work. The IIFE is a fire-and-forget callback that
+  // resolves/rejects the externally-created initPromise. Separating promise
+  // creation from the async IIFE ensures the cache placeholder exists before
+  // any synchronous work runs inside withColdOpenLease's fn callback (T12035).
+  (async (): Promise<void> => {
+    try {
+      log.debug({ scope, dbPath }, 'opening dual-scope cleo.db');
+
+      // Ensure the directory exists before opening.
+      const dir = dirname(dbPath);
+      if (!existsSync(dir)) {
+        mkdirSync(dir, { recursive: true });
+      }
+
+      // Open the native SQLite handle.
+      //
+      // `allowExtension: true` permits — but does NOT load — SQLite loadable
+      // extensions. The brain domain (E6-L2 · T11522) loads the `sqlite-vec`
+      // extension on this shared handle for vector similarity search; node:sqlite
+      // requires the flag at construction time (it cannot be toggled afterwards
+      // via `enableLoadExtension`). Enabling the flag is harmless for every other
+      // domain — no extension is loaded automatically, and the cache stays
+      // single-keyed regardless of which domain opens the handle first.
+      const DatabaseSyncCtor = getDatabaseSyncCtor();
+      const nativeDb = new DatabaseSyncCtor(dbPath, { allowExtension: true });
+
+      // Apply canonical pragma set (specs/sqlite-pragmas.json SSoT), bounding
+      // per-connection memory for one-shot/CLI opens (full SSoT for daemon) — T11829.
+      applyPerfPragmas(nativeDb, memoryBoundedPragmaOverrides());
+
+      // Create the Drizzle ORM wrapper.
+      const drizzle = getDrizzle();
+      // biome-ignore lint/suspicious/noExplicitAny: dual-scope handle is untyped at construction; typed via DualScopeDbHandle<TScope>
+      const db = drizzle({ client: nativeDb }) as NodeSQLiteDatabase<any>;
+
+      // Resolve the migrations folder for this scope.
+      const migrationsFolder = resolveCorePackageMigrationsFolder(migrationsSetName(scope));
+
+      // ── Seam 0 — cold-open critical section (THE T5158 HEAL · T11627 ST-3) ────
+      // Lease the migrate/reconcile cold-open write-txn against the just-opened
+      // native handle so EXACTLY ONE process per scope runs it while concurrent
+      // cold-open peers BEGIN IMMEDIATE-queue and then observe a ready DB. This heals
+      // the T5158 `E_NOT_INITIALIZED` / `E_INTERNAL` corruption (concurrent cold-open
+      // migrate write-txns racing the consolidated cleo.db's single shared
+      // `__drizzle_migrations` journal) WITH the supervisor daemon disabled (`local`
+      // mode default). `off` mode is a pass-through → byte-identical to pre-lease
+      // behaviour (busy_timeout=30000 still serializes the write-txn).
+      // `withColdOpenLease` also records the scope in the Seam-1 active-scope registry
+      // so chokepoint write primitives lease correctly.
+      //
+      // The lease wraps ONLY reconcileJournal + migrateWithRetry — the precise write-
+      // txn that races in T5158. The exodus-on-open hook runs AFTER the lease releases
+      // (below): it owns its OWN single-flight lock + dedicated migrate connections,
+      // and `runExodusMigrate` CLOSES + re-opens the scope handles, which would
+      // close the very handle the lease row lives on mid-section. Releasing first is
+      // both correct (exodus is already serialized) and necessary (no close-under-lease).
+      const handle = await withColdOpenLease(
+        scope,
+        nativeDb,
+        async (): Promise<DualScopeDbHandle> => {
+          // Reconcile the migration journal (handles WAL/journal divergence across
+          // SQLite version upgrades — same pattern as sqlite.ts / memory-sqlite.ts).
+          // T11829: pass the OTHER lineages that share this scope's consolidated cleo.db
+          // journal so their rows are not deleted as cross-lineage orphans (the confirmed
+          // OOM root cause: each lineage previously deleted the others' rows so the shared
+          // journal never converged).
+          reconcileJournal(
+            nativeDb,
+            migrationsFolder,
+            existenceTable(scope),
+            `dual-scope-db[${scope}]`,
+            resolveConsolidatedJournalSiblings(migrationsSetName(scope)),
+          );
+
+          // Run any pending migrations.
+          migrateWithRetry(
+            db,
+            migrationsFolder,
+            nativeDb,
+            existenceTable(scope),
+            `dual-scope-db[${scope}]`,
+          );
+
+          log.debug({ scope, dbPath }, 'dual-scope cleo.db ready');
+
+          const built: DualScopeDbHandle = {
+            db,
+            scope,
+            dbPath,
+            close() {
+              _cache.delete(key);
+              try {
+                nativeDb.close();
+              } catch {
+                // Idempotent — ignore double-close errors.
+              }
+            },
+          };
+
+          // Update the cache entry to mark init complete.
+          const entry = _cache.get(key);
+          if (entry) {
+            entry.initPromise = null;
+            entry.handle = built;
+            entry.nativeDb = nativeDb;
+          }
+
+          return built;
+        },
+        // Record this open's resolved dbPath in the Seam-1 registry so the chokepoint
+        // write primitives lease their row in THIS file — not the cwd-default — when
+        // more than one project's cleo.db is open in this process (T11627 Finding 1).
+        { dbPath },
+      );
+
+      // ── Exodus-on-open (E6 · T11553) — runs AFTER the cold-open lease releases ──
+      // Data-continuity safety net: on a canonical open where the consolidated
+      // cleo.db is empty but the legacy fleet (tasks.db/brain.db/…) has rows for
+      // THIS scope, lazily auto-migrate ONCE — gated by a parity verify, serialised
+      // by a single-flight lock, rolled back to empty on parity failure (legacy
+      // kept). Re-entrancy/concurrency are handled inside the hook. Lazy `import()`
+      // breaks the cycle (exodus/migrate.ts imports openDualScopeDb from here).
+      //
+      // NOTE: `runExodusMigrate` CLOSES + evicts the dual-scope handles it opened
+      // when it finishes, so after a `migrated`/`aborted` outcome the `handle`
+      // built above (and its `nativeDb`) is CLOSED. We therefore re-open this scope
+      // fresh (cache-miss, NOT armed — no `exodusCwd`) and return the new live
+      // handle. That re-open flows through the cold-open lease again on a FRESH handle
+      // (cheap claim/release — the DB is now migrated), with no contention against the
+      // already-released outer lease.
+      //
+      // Armed ONLY when `exodusCwd` was threaded through the canonical
+      // `openDualScopeDb` AND `dbPath` is the canonical path for that scope+cwd —
+      // never for explicit-path opens (test fixtures / legacy-path domains).
+      let finalHandle = handle;
+      if (exodusCwd !== undefined && dbPath === resolveDualScopeDbPath(scope, exodusCwd)) {
+        // ── T12001 (Epic T11992) — db-heavy admission for the exodus auto-migrate ──
+        // The on-open exodus (reconcile + parity verify + migrate) is a heavy DB op;
+        // letting it co-schedule with builds/tests/agents is a historical OOM vector.
+        // Admit it through the governor's `db-heavy` class (machine-wide serialized;
+        // deferred under memory backoff). On a denial we SKIP the migration THIS open
+        // (kill-switch precedent CLEO_DISABLE_EXODUS_ON_OPEN) — NEVER block or defer
+        // the interactive command (interactive-cli is never gated) — and it re-runs
+        // idempotently on a calmer open. Fail-open: ANY governor error proceeds
+        // un-gated, byte-identical to pre-T12001 behaviour.
+        let releaseDbHeavy: (() => Promise<void>) | null = null;
+        let dbHeavyDeferred = false;
+        try {
+          const { governor } = await import('../resources/governor.js');
+          const admit = await governor.tryAcquire('db-heavy');
+          if (admit.deferred) {
+            dbHeavyDeferred = true;
+          } else {
+            releaseDbHeavy = admit.release;
+          }
+        } catch {
+          // Governor unavailable — fail open (proceed un-gated).
+        }
+        if (dbHeavyDeferred) {
+          log.debug(
+            { scope, dbPath },
+            'exodus-on-open skipped this open — db-heavy deferred under memory pressure ' +
+              '(re-runs idempotently on a calmer open)',
+          );
+        } else {
+          try {
+            const { maybeRunExodusOnOpen } = await import('./exodus/on-open.js');
+            const result = await maybeRunExodusOnOpen(scope, dbPath, nativeDb, exodusCwd);
+            if (result.outcome === 'migrated' || result.outcome === 'aborted') {
+              // The migrate engine closed our handle — re-open fresh (un-armed) so the
+              // caller receives a valid, live handle bound to the now-(de)populated DB.
+              const reopened =
+                scope === 'project'
+                  ? await openDualScopeDbAtPath('project', dbPath)
+                  : await openDualScopeDbAtPath('global', dbPath);
+              if (result.outcome === 'aborted') {
+                // T11828 (DHQ-059): the data-continuity gate aborted — the consolidated
+                // DB is empty + consistent, legacy kept as source. Surface this to a
+                // MUTATING caller (read-only callers ignore it) by (a) stamping a
+                // structured marker on the returned handle and (b) broadcasting a typed
+                // event. The non-zero error itself is raised on the write path via
+                // `assertWriteDurable(handle)` — NOT here, so read opens never throw.
+                const abort: ExodusAbortDetail = {
+                  scope,
+                  dbPath,
+                  reason: result.reason,
+                  at: Date.now(),
+                };
+                log.warn(
+                  { scope, reason: result.reason },
+                  'exodus-on-open aborted; consolidated cleo.db left empty, legacy kept as source — ' +
+                    'mutating callers must check handle.exodusAbort / call assertWriteDurable (T11828)',
+                );
+                const { emitExodusAbort } = await import('./exodus/abort-events.js');
+                emitExodusAbort(abort);
+                finalHandle = { ...reopened, exodusAbort: abort };
+              } else {
+                // A subsequent SUCCESSFUL migration resolves any prior abort recorded
+                // for this scope, so writes are no longer rejected (T11828).
+                const { clearExodusAborts } = await import('./exodus/abort-events.js');
+                clearExodusAborts(scope);
+                finalHandle = reopened;
+              }
+            }
+          } catch (err) {
+            // Best-effort safety net: a hook failure must not make the DB
+            // unopenable. Warn and re-open fresh; `cleo exodus migrate` remains the
+            // manual path. (The handle may have been closed mid-migrate.)
+            log.warn(
+              { err, scope },
+              'exodus-on-open hook failed (non-fatal); re-opening consolidated handle',
+            );
+            finalHandle =
+              scope === 'project'
+                ? await openDualScopeDbAtPath('project', dbPath)
+                : await openDualScopeDbAtPath('global', dbPath);
+          } finally {
+            // Release the db-heavy slot on EVERY exit path (early returns above run
+            // `finally` first). Idempotent; release errors are swallowed.
+            if (releaseDbHeavy) await releaseDbHeavy().catch(() => {});
+          }
+        }
+      }
+
+      initResolve!(finalHandle);
+    } catch (err) {
+      initReject!(err);
+    }
+  })();
 
   return initPromise;
 }
@@ -892,12 +883,6 @@ export function _resetDualScopeDbCache(scope?: DualScope): void {
     // handle.close() already deletes the key for the targeted entry; delete
     // defensively in case the handle was a mid-init placeholder.
     _cache.delete(key);
-  }
-  // Only reset the schema caches on a full (unscoped) reset — a scoped reset must
-  // not force the OTHER scope to reload its schema barrel mid-flight.
-  if (scope === undefined) {
-    _projectSchema = null;
-    _globalSchema = null;
   }
 }
 

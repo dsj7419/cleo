@@ -170,7 +170,7 @@ describe('session list append via json_insert($[#]) (T11357 AC4)', () => {
       );
       INSERT INTO tasks_sessions (id) VALUES ('ses_1');
     `);
-    const db = drizzle({ client: nativeDb, schema });
+    const db = drizzle({ client: nativeDb });
 
     await appendSessionListItem(db, 'ses_1', 'tasksCompletedJson', 'T100');
     await appendSessionListItem(db, 'ses_1', 'tasksCompletedJson', 'T200');

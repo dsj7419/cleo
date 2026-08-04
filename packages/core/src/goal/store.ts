@@ -29,10 +29,9 @@ import { resolveAgentIdFromEnv, resolveSessionIdFromEnv } from '../sessions/sess
 import { tasksGoal } from '../store/schema/goal.js';
 import { jsonbText } from '../store/schema/jsonb.js';
 import { getDb } from '../store/sqlite.js';
-import type * as schema from '../store/tasks-schema.js';
 
 /** Drizzle handle for `tasks.db` (typed against the tasks schema). */
-type DrizzleTasksDb = NodeSQLiteDatabase<typeof schema>;
+type DrizzleTasksDb = NodeSQLiteDatabase;
 
 /**
  * The resolved per-agent ownership key for a goal row.
