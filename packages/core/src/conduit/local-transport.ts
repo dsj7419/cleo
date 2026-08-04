@@ -695,7 +695,15 @@ export class LocalTransport implements Transport {
    * @param fn - The synchronous write block to run under the lease.
    * @returns The value returned by `fn`.
    */
+  /**
+   * Seam 3 (T11627): conduit.db is now the same file as the project cleo.db
+   * (E6-L3). Pass the exact canonical dbPath from the state so the lease row
+   * lands in THIS project's cleo.db — never in the cwd-default file — ensuring
+   * concurrent projects route to their own rows (T12044 · E6-L12d).
+   */
   private runWrite<T>(fn: () => T): Promise<T> {
-    return withWriterLease('project', 'bulk', async () => fn());
+    return withWriterLease('project', 'bulk', async () => fn(), {
+      dbPath: this.state!.dbPath,
+    });
   }
 }

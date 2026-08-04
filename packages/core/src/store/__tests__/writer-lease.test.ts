@@ -521,6 +521,34 @@ describe('Finding 1 — two project files in one process are distinct lease scop
     expect(countActive(projB, 'project', 'tasks')).toBe(0);
   }, 20_000);
 
+  it('concurrent withWriterLease across two projects writes independent rows (T12044)', async () => {
+    // AC2: two concurrent withWriterLease calls for project-A and project-B
+    // must each claim an independent active row and neither row leaks across.
+    await Promise.all([
+      withWriterLease('project', 'bulk', async () => {}, { dbPath: pathA }),
+      withWriterLease('project', 'bulk', async () => {}, { dbPath: pathB }),
+    ]);
+
+    // After both leases complete, neither file should have a lingering active row.
+    expect(countActive(projA, 'project', 'bulk')).toBe(0);
+    expect(countActive(projB, 'project', 'bulk')).toBe(0);
+  }, 20_000);
+
+  it('release of project-A withWriterLease does NOT free project-B row (T12044)', async () => {
+    // Hold project-A then release it while project-B is still active.
+    const hB = await acquireWriterLease('project', 'bulk', { dbPath: pathB });
+    expect(countActive(projB, 'project', 'bulk')).toBe(1);
+
+    await withWriterLease('project', 'bulk', async () => {}, { dbPath: pathA });
+    // A's lease completed → A's DB should be clean.
+    expect(countActive(projA, 'project', 'bulk')).toBe(0);
+    // B's lease must NOT be freed — independent scope.
+    expect(countActive(projB, 'project', 'bulk')).toBe(1);
+
+    await hB.release();
+    expect(countActive(projB, 'project', 'bulk')).toBe(0);
+  }, 20_000);
+
   it('a nested re-entrant acquire shares the grant ONLY within the same dbPath', async () => {
     const a1 = await acquireWriterLease('project', 'tasks', { dbPath: pathA });
     const a2 = await acquireWriterLease('project', 'tasks', { dbPath: pathA });

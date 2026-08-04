@@ -1411,64 +1411,71 @@ export async function linkConduitMessagesToSymbols(
       // writer-thread chokepoint with a direct `brainNative` handle (project-tier
       // consolidated cleo.db). Hold the project `bulk` lease for the whole write
       // batch so they serialize against other writers. `off` → pass-through.
-      await withWriterLease('project', 'bulk', async () => {
-        // For each message, scan content and attachments for symbol mentions
-        for (const msg of messages) {
-          const corpus = `${msg.content}`;
+      // T12044 (E6-L12d): pin the lease to the exact project cleo.db path resolved
+      // from the projectRoot parameter so concurrent projects route to their own rows.
+      await withWriterLease(
+        'project',
+        'bulk',
+        async () => {
+          // For each message, scan content and attachments for symbol mentions
+          for (const msg of messages) {
+            const corpus = `${msg.content}`;
 
-          for (const [symbolName, nexusNode] of symbolMap.entries()) {
-            // Case-insensitive check: does the symbol name appear in the message?
-            const corpusLower = corpus.toLowerCase();
-            const nameLower = symbolName.toLowerCase();
+            for (const [symbolName, nexusNode] of symbolMap.entries()) {
+              // Case-insensitive check: does the symbol name appear in the message?
+              const corpusLower = corpus.toLowerCase();
+              const nameLower = symbolName.toLowerCase();
 
-            if (corpusLower.includes(nameLower)) {
-              const messageNodeId = `conduit:${msg.id}`;
+              if (corpusLower.includes(nameLower)) {
+                const messageNodeId = `conduit:${msg.id}`;
 
-              try {
-                // Upsert a stub node for the message in brain_page_nodes (idempotent)
-                brainNative
-                  .prepare(`
+                try {
+                  // Upsert a stub node for the message in brain_page_nodes (idempotent)
+                  brainNative
+                    .prepare(`
                   INSERT OR IGNORE INTO brain_page_nodes
                     (id, node_type, label, quality_score, content_hash, metadata_json, last_activity_at, created_at, updated_at)
                   VALUES (?, ?, ?, ?, NULL, NULL, ?, ?, ?)
                 `)
-                  .run(
-                    messageNodeId,
-                    'observation',
-                    `Conduit message: ${msg.id}`,
-                    0.5,
-                    now,
-                    now,
-                    now,
-                  );
+                    .run(
+                      messageNodeId,
+                      'observation',
+                      `Conduit message: ${msg.id}`,
+                      0.5,
+                      now,
+                      now,
+                      now,
+                    );
 
-                // Write the conduit_mentions_symbol edge (idempotent via INSERT OR IGNORE)
-                brainNative
-                  .prepare(`
+                  // Write the conduit_mentions_symbol edge (idempotent via INSERT OR IGNORE)
+                  brainNative
+                    .prepare(`
                   INSERT OR IGNORE INTO brain_page_edges
                     (from_id, to_id, edge_type, weight, provenance, created_at)
                   VALUES (?, ?, ?, ?, ?, ?)
                 `)
-                  .run(
-                    messageNodeId,
-                    nexusNode.id,
-                    'conduit_mentions_symbol',
-                    1.0,
-                    'auto:conduit-fts',
-                    now,
-                  );
+                    .run(
+                      messageNodeId,
+                      nexusNode.id,
+                      'conduit_mentions_symbol',
+                      1.0,
+                      'auto:conduit-fts',
+                      now,
+                    );
 
-                edgesCreated++;
-              } catch (edgeErr) {
-                console.warn('[graph-memory-bridge] conduit edge insert failed:', edgeErr);
+                  edgesCreated++;
+                } catch (edgeErr) {
+                  console.warn('[graph-memory-bridge] conduit edge insert failed:', edgeErr);
+                }
+
+                // Only link once per message per symbol (continue to next symbol)
+                break;
               }
-
-              // Only link once per message per symbol (continue to next symbol)
-              break;
             }
           }
-        }
-      });
+        },
+        { dbPath: conduitDbPath },
+      );
 
       result.linked = edgesCreated;
     } finally {
