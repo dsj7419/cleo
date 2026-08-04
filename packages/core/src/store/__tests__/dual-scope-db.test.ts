@@ -20,7 +20,6 @@ import { join, resolve as resolvePath } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as governorModule from '../../resources/governor.js';
 import {
-  _installPostAcquireHook,
   _resetDualScopeDbCache,
   type CleoRuntime,
   createCleoRuntime,
@@ -28,6 +27,7 @@ import {
   openDualScopeDb,
   openDualScopeDbAtPath,
   resolveDualScopeDbPath,
+  setRuntimeOpenFn,
 } from '../dual-scope-db.js';
 
 // ── Test directory management ─────────────────────────────────────────────────
@@ -767,16 +767,60 @@ describe('CleoRuntime store registry', () => {
 
   // ── F3: post-await liveness before publish ─────────────────────────────
 
-  describe('post-await liveness (F3 · handle closed before publish)', () => {
-    it('reopens via existing store.isOpen check when handle is dead before next open', async () => {
-      const store1 = await runtime.openProject(projectAPath);
-      _resetDualScopeDbCache('project');
+  describe('post-await liveness (F3 · injectable opener seam)', () => {
+    it('one-time reacquisition succeeds when opener returns a dead handle then a live one', async () => {
+      let openCount = 0;
+      setRuntimeOpenFn(runtime, async (scope, path) => {
+        const handle = await openDualScopeDbAtPath(scope, path);
+        openCount++;
+        if (openCount === 1) {
+          handle.close();
+        }
+        return handle;
+      });
+      try {
+        const store = await runtime.openProject(projectAPath);
+        expect(store.isOpen).toBe(true);
+        expect(openCount).toBe(2);
+        store.close();
+      } finally {
+        setRuntimeOpenFn(runtime, undefined);
+      }
+    }, 30_000);
 
-      const store2 = await runtime.openProject(projectAPath);
-      expect(store2).not.toBe(store1);
-      expect(store2.isOpen).toBe(true);
-      expect(store1.isOpen).toBe(false);
-      store2.close();
+    it('throws LivenessExhaustedError when both attempts return dead handles', async () => {
+      setRuntimeOpenFn(runtime, async (scope, path) => {
+        const handle = await openDualScopeDbAtPath(scope, path);
+        handle.close();
+        return handle;
+      });
+      try {
+        await expect(runtime.openProject(projectAPath)).rejects.toThrow(/liveness exhausted/i);
+      } finally {
+        setRuntimeOpenFn(runtime, undefined);
+      }
+    }, 30_000);
+
+    it('preserves original error when retry fails with a non-liveness error', async () => {
+      // Use an opener that succeeds on first call (live handle), then the
+      // second call throws a migration error.
+      let callCount = 0;
+      setRuntimeOpenFn(runtime, async (scope, path) => {
+        callCount++;
+        if (callCount === 1) {
+          const handle = await openDualScopeDbAtPath(scope, path);
+          handle.close();
+          return handle;
+        }
+        throw new Error('injected migration failure');
+      });
+      try {
+        await expect(runtime.openProject(projectAPath)).rejects.toThrow(
+          /injected migration failure/,
+        );
+      } finally {
+        setRuntimeOpenFn(runtime, undefined);
+      }
     }, 30_000);
   });
 

@@ -1175,6 +1175,21 @@ class EntryCancelledError extends Error {
 }
 
 /**
+ * Thrown when the post-await liveness reacquisition exhausts its bounded
+ * retries — two consecutive opens returned a dead handle. The caller can
+ * distinguish a transient liveness loss (one retry succeeds) from a
+ * persistent failure (both handles dead).
+ *
+ * @task T12036 (E6-L12)
+ */
+class LivenessExhaustedError extends Error {
+  constructor(scope: DualScope, dbPath: string) {
+    super(`CleoRuntime liveness exhausted after bounded reacquisition: ${scope}::${dbPath}`);
+    this.name = 'LivenessExhaustedError';
+  }
+}
+
+/**
  * Concrete implementation of the {@link CleoRuntime} store registry.
  *
  * Maintains a private `Map<string, RuntimeEntry>` keyed by the scope-qualified
@@ -1216,16 +1231,12 @@ class CleoRuntimeImpl implements CleoRuntime {
   private _nextId: EntryId = 0;
 
   /**
-   * Internal test seam. When set, invoked after `openDualScopeDbAtPath`
-   * resolves but before the runtime publishes the store. The hook receives
-   * the just-acquired handle and the registry key. Tests use this to close
-   * the handle between chokepoint resolution and publication, exercising
-   * the post-await liveness branch.
-   *
-   * Not part of the public {@link CleoRuntime} interface.
+   * Injectable opener function. Defaults to {@link openDualScopeDbAtPath}.
+   * Tests override this to return a pre-closed handle for exercising the
+   * post-await liveness branch. Not part of the public {@link CleoRuntime}
+   * interface.
    */
-  // biome-ignore lint/style/useNamingConvention: _ prefix convention for test-only internal fields
-  _postAcquireHook: ((handle: DualScopeDbHandle, key: string) => void) | null = null;
+  openDualScopeFn: typeof openDualScopeDbAtPath = openDualScopeDbAtPath;
 
   /** @inheritdoc */
   get openPaths(): ReadonlySet<string> {
@@ -1236,7 +1247,7 @@ class CleoRuntimeImpl implements CleoRuntime {
   async openProject(dbPath: string, options?: CleoRuntimeOpenOptions): Promise<ProjectStore> {
     const normalized = resolve(dbPath);
     if (options?.dedicated) {
-      const handle = await openDualScopeDbAtPath('project', normalized, undefined, {
+      const handle = await this.openDualScopeFn('project', normalized, undefined, {
         dedicated: true,
       });
       return this.buildStore('project', handle, 0) as ProjectStore;
@@ -1249,7 +1260,7 @@ class CleoRuntimeImpl implements CleoRuntime {
     const dbPath = resolveDualScopeDbPath('global');
     const normalized = resolve(dbPath);
     if (options?.dedicated) {
-      const handle = await openDualScopeDbAtPath('global', normalized, undefined, {
+      const handle = await this.openDualScopeFn('global', normalized, undefined, {
         dedicated: true,
       });
       return this.buildStore('global', handle, 0) as GlobalStore;
@@ -1280,8 +1291,17 @@ class CleoRuntimeImpl implements CleoRuntime {
   /**
    * Open (or reuse) a scoped entry. All five key invariants are enforced
    * on this single code path.
+   *
+   * @param depth - Reacquisition depth guard. Starts at 0; capped at 1.
+   *   When the post-await liveness check finds a dead handle, the bounded
+   *   retry calls this with `depth + 1`. A second dead handle at depth 1
+   *   throws {@link LivenessExhaustedError} instead of recursing further.
    */
-  private async openEntry(scope: DualScope, dbPath: string): Promise<ProjectStore | GlobalStore> {
+  private async openEntry(
+    scope: DualScope,
+    dbPath: string,
+    depth = 0,
+  ): Promise<ProjectStore | GlobalStore> {
     const key = cacheKey(scope, dbPath);
 
     // ── Cache-hit liveness (invariant 4) ─────────────────────────────────
@@ -1310,19 +1330,20 @@ class CleoRuntimeImpl implements CleoRuntime {
 
     // Evict on failure so a transient error doesn't poison.
     initPromise.catch(() => {
-      const entry = this._registry.get(key);
-      if (entry?.initPromise === initPromise) {
+      const placeholder = this._registry.get(key);
+      if (placeholder?.initPromise === initPromise) {
         this._registry.delete(key);
       }
     });
 
     try {
-      let dualHandle: DualScopeDbHandle;
-      if (scope === 'project') {
-        dualHandle = await openDualScopeDbAtPath('project', dbPath);
-      } else {
-        dualHandle = await openDualScopeDbAtPath('global', dbPath);
-      }
+      // Dispatch on scope literal so the overloaded opener resolves to the
+      // correct typed return. The union `DualScope` cannot satisfy either
+      // literal overload directly.
+      const dualHandle =
+        scope === 'project'
+          ? await this.openDualScopeFn('project', dbPath)
+          : await this.openDualScopeFn('global', dbPath);
 
       // ── Publish only if THIS init is still current (invariant 2) ───────
       const current = this._registry.get(key);
@@ -1338,31 +1359,30 @@ class CleoRuntimeImpl implements CleoRuntime {
 
       // ── Post-await liveness (invariant 4b) ─────────────────────────
       // The chokepoint resolved with a live handle, but an external close
-      // (e.g. _resetDualScopeDbCache) between the await and this publish
-      // can kill it. If the handle is dead, close it (evict from cache),
-      // delete the placeholder, and perform ONE bounded reacquisition.
-      // An internal test hook (_postAcquireHook) fires here so tests can
-      // inject a close between chokepoint resolution and publication.
-      if (this._postAcquireHook) {
-        this._postAcquireHook(dualHandle, key);
-      }
+      // (e.g. _resetDualScopeDbCache or a test-injected dead-handle opener)
+      // between the await and this publish can kill it. If the handle is
+      // dead, close it (evict from cache), delete the placeholder, and
+      // perform ONE bounded reacquisition.
       if (!dualHandle.isOpen) {
         dualHandle.close();
         this._registry.delete(key);
-        // Perform exactly one reacquisition; if it also dies, throw a
-        // typed exhaustion error rather than recurse unboundedly.
+
+        if (depth >= 1) {
+          const exhausted = new LivenessExhaustedError(scope, dbPath);
+          initReject(exhausted);
+          throw exhausted;
+        }
+
         try {
-          const retryStore = await this.openEntry(scope, dbPath);
+          const retryStore = await this.openEntry(scope, dbPath, depth + 1);
           initResolve(retryStore);
           return retryStore;
         } catch (retryErr) {
-          // If the retry threw EntryCancelledError or another error, wrap
-          // in a descriptive exhaustion error so the caller can distinguish
-          // a transient liveness loss from a permanent failure.
-          const exhausted =
-            retryErr instanceof Error ? new EntryCancelledError(scope, dbPath) : retryErr;
-          initReject(exhausted);
-          throw exhausted;
+          // Preserve the original error from the retry (migration failure,
+          // cancellation, etc.). Only convert to LivenessExhaustedError
+          // when the retry itself tripped the depth guard.
+          initReject(retryErr);
+          throw retryErr;
         }
       }
 
@@ -1469,21 +1489,28 @@ class CleoRuntimeImpl implements CleoRuntime {
 }
 
 /**
- * Install a post-acquire hook on a {@link CleoRuntime} instance for testing
- * the post-await liveness branch. The hook fires after
- * `openDualScopeDbAtPath` resolves but before the runtime publishes the
- * store. Tests use this to close the just-acquired handle, forcing the
- * runtime's liveness check to reacquire.
+ * Override the dual-scope opener function used by the given
+ * {@link CleoRuntime} instance. Tests inject a custom opener to return a
+ * pre-closed handle, exercising the post-await liveness and bounded-
+ * reacquisition code paths.
  *
- * Pass `null` to clear the hook.
+ * The injected function receives the same `(scope, dbPath)` signature as
+ * {@link openDualScopeDbAtPath} and must return a
+ * {@link DualScopeDbHandle}. Only non-dedicated opens are affected;
+ * dedicated opens call `openDualScopeDbAtPath` directly.
  *
- * @internal Test seam only; never called in production.
+ * Pass `undefined` to restore the default (`openDualScopeDbAtPath`).
+ *
+ * @param runtime - The runtime instance to configure.
+ * @param fn - The opener to use, or `undefined` to reset.
+ *
+ * @internal Test seam; imported directly from this module, not the barrel.
  */
-export function _installPostAcquireHook(
+export function setRuntimeOpenFn(
   runtime: CleoRuntime,
-  hook: ((handle: DualScopeDbHandle, key: string) => void) | null,
+  fn: typeof openDualScopeDbAtPath | undefined,
 ): void {
-  (runtime as CleoRuntimeImpl)._postAcquireHook = hook;
+  (runtime as CleoRuntimeImpl).openDualScopeFn = fn ?? openDualScopeDbAtPath;
 }
 
 /**
