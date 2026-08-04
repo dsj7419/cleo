@@ -182,16 +182,23 @@ export async function backfillChildProjections(
       // insertAcRows, deleteAcRowsForTask, appendAcHistory, updateTaskFields).
       // Seam 3 (T11627): this raw tasks.db writer sidesteps the chokepoint, so
       // hold the project `bulk` lease around the write txn. `off` → pass-through.
-      await withWriterLease('project', 'bulk', async () => {
-        db.exec('BEGIN');
-        try {
-          await rebuildChildProjectionAc(tx as any, parentId, children, now);
-          db.exec('COMMIT');
-        } catch (e) {
-          db.exec('ROLLBACK');
-          throw e;
-        }
-      });
+      // T12044 (E6-L12d): pin the lease to the exact project cleo.db path resolved
+      // from the projectRoot parameter so concurrent projects route to their own rows.
+      await withWriterLease(
+        'project',
+        'bulk',
+        async () => {
+          db.exec('BEGIN');
+          try {
+            await rebuildChildProjectionAc(tx as any, parentId, children, now);
+            db.exec('COMMIT');
+          } catch (e) {
+            db.exec('ROLLBACK');
+            throw e;
+          }
+        },
+        { dbPath: resolve(projectRoot, '.cleo', 'cleo.db') },
+      );
 
       // Re-audit
       const rebuiltDbRows = acRowsStmt.all(parentId) as AcDbRow[];
