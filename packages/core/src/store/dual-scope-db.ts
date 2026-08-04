@@ -456,20 +456,23 @@ async function openDedicatedDualScopeDb(
   const DatabaseSyncCtor = getDatabaseSyncCtor();
   const nativeDb = new DatabaseSyncCtor(dbPath, { allowExtension: true });
 
-  // T11829: bound per-connection memory for one-shot/CLI opens (full SSoT for daemon).
-  applyPerfPragmas(nativeDb, memoryBoundedPragmaOverrides());
-
-  const drizzle = getDrizzle();
-  // biome-ignore lint/suspicious/noExplicitAny: dual-scope handle is untyped at construction; typed via DualScopeDbHandle<TScope>
-  const db = drizzle({ client: nativeDb }) as NodeSQLiteDatabase<any>;
-
-  const migrationsFolder = resolveCorePackageMigrationsFolder(migrationsSetName(scope));
-
-  // ── Cold-open lease (F4 · T12036) ──────────────────────────────────────
-  // Dedicated opens also serialize their cold-open migrations through the same
-  // writer-lease so they never race on the `__drizzle_migrations` journal
-  // even when two dedicated opens of a fresh file are concurrent.
+  // Every operation after construction is wrapped so any exception —
+  // pragmas, Drizzle wrapping, migration-folder resolution, lease, or
+  // migration — closes the native handle before rethrow.
   try {
+    // T11829: bound per-connection memory for one-shot/CLI opens (full SSoT for daemon).
+    applyPerfPragmas(nativeDb, memoryBoundedPragmaOverrides());
+
+    const drizzle = getDrizzle();
+    // biome-ignore lint/suspicious/noExplicitAny: dual-scope handle is untyped at construction; typed via DualScopeDbHandle<TScope>
+    const db = drizzle({ client: nativeDb }) as NodeSQLiteDatabase<any>;
+
+    const migrationsFolder = resolveCorePackageMigrationsFolder(migrationsSetName(scope));
+
+    // ── Cold-open lease (F4 · T12036) ──────────────────────────────────────
+    // Dedicated opens also serialize their cold-open migrations through the same
+    // writer-lease so they never race on the `__drizzle_migrations` journal
+    // even when two dedicated opens of a fresh file are concurrent.
     const handle = await withColdOpenLease(
       scope,
       nativeDb,
@@ -513,8 +516,8 @@ async function openDedicatedDualScopeDb(
 
     return handle;
   } catch (err) {
-    // Close the native handle on any failure during lease/migrate to avoid
-    // leaking a file descriptor. The error is rethrown unchanged.
+    // Close the native handle on any failure after construction to avoid
+    // leaking a file descriptor. The primary error is rethrown unchanged.
     try {
       nativeDb.close();
     } catch {
@@ -1247,7 +1250,7 @@ class CleoRuntimeImpl implements CleoRuntime {
   async openProject(dbPath: string, options?: CleoRuntimeOpenOptions): Promise<ProjectStore> {
     const normalized = resolve(dbPath);
     if (options?.dedicated) {
-      const handle = await this.openDualScopeFn('project', normalized, undefined, {
+      const handle = await openDualScopeDbAtPath('project', normalized, undefined, {
         dedicated: true,
       });
       return this.buildStore('project', handle, 0) as ProjectStore;
@@ -1260,7 +1263,7 @@ class CleoRuntimeImpl implements CleoRuntime {
     const dbPath = resolveDualScopeDbPath('global');
     const normalized = resolve(dbPath);
     if (options?.dedicated) {
-      const handle = await this.openDualScopeFn('global', normalized, undefined, {
+      const handle = await openDualScopeDbAtPath('global', normalized, undefined, {
         dedicated: true,
       });
       return this.buildStore('global', handle, 0) as GlobalStore;
@@ -1352,9 +1355,7 @@ class CleoRuntimeImpl implements CleoRuntime {
         // entry for the same scope/key may be awaiting the same in-flight
         // chokepoint promise. The handle stays in the shared cache; the
         // replacement inherits it live.
-        const err = new EntryCancelledError(scope, dbPath);
-        initReject(err);
-        throw err;
+        throw new EntryCancelledError(scope, dbPath);
       }
 
       // ── Post-await liveness (invariant 4b) ─────────────────────────
@@ -1368,22 +1369,12 @@ class CleoRuntimeImpl implements CleoRuntime {
         this._registry.delete(key);
 
         if (depth >= 1) {
-          const exhausted = new LivenessExhaustedError(scope, dbPath);
-          initReject(exhausted);
-          throw exhausted;
+          throw new LivenessExhaustedError(scope, dbPath);
         }
 
-        try {
-          const retryStore = await this.openEntry(scope, dbPath, depth + 1);
-          initResolve(retryStore);
-          return retryStore;
-        } catch (retryErr) {
-          // Preserve the original error from the retry (migration failure,
-          // cancellation, etc.). Only convert to LivenessExhaustedError
-          // when the retry itself tripped the depth guard.
-          initReject(retryErr);
-          throw retryErr;
-        }
+        const retryStore = await this.openEntry(scope, dbPath, depth + 1);
+        initResolve(retryStore);
+        return retryStore;
       }
 
       const store = this.buildStore(scope, dualHandle, entryId);
@@ -1496,8 +1487,11 @@ class CleoRuntimeImpl implements CleoRuntime {
  *
  * The injected function receives the same `(scope, dbPath)` signature as
  * {@link openDualScopeDbAtPath} and must return a
- * {@link DualScopeDbHandle}. Only non-dedicated opens are affected;
- * dedicated opens call `openDualScopeDbAtPath` directly.
+ * {@link DualScopeDbHandle}. Only non-dedicated opens (
+ * {@link CleoRuntime.openProject} and {@link CleoRuntime.openGlobal}
+ * without `{ dedicated: true }`) are affected. Dedicated opens always
+ * call {@link openDualScopeDbAtPath} directly — a custom opener can
+ * never turn a dedicated store into a cached/shared store.
  *
  * Pass `undefined` to restore the default (`openDualScopeDbAtPath`).
  *

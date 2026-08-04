@@ -717,6 +717,22 @@ describe('CleoRuntime store registry', () => {
       d1.close();
       d2.close();
     }, 30_000);
+
+    it('dedicated open bypasses setRuntimeOpenFn and produces an untracked independent store', async () => {
+      // Install a custom opener that always throws — dedicated opens must
+      // bypass it and call openDualScopeDbAtPath directly.
+      setRuntimeOpenFn(runtime, async () => {
+        throw new Error('custom opener must not be called for dedicated');
+      });
+      try {
+        const store = await runtime.openProject(projectAPath, { dedicated: true });
+        expect(store.isOpen).toBe(true);
+        expect(runtime.openPaths.size).toBe(0);
+        store.close();
+      } finally {
+        setRuntimeOpenFn(runtime, undefined);
+      }
+    }, 30_000);
   });
 
   // ── F1: identity-guarded chokepoint close ──────────────────────────────
