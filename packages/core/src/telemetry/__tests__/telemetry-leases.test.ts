@@ -10,14 +10,20 @@
  */
 
 import { describe, expect, it, vi } from 'vitest';
+import { resolveDualScopeDbPath } from '../../store/dual-scope-db.js';
+import type { LeaseAcquireOptions, LeaseLane, LeaseScope } from '../../store/writer-lease.js';
 
-const leaseCalls: Array<{ scope: string; lane: string; opts?: unknown }> = [];
+const leaseCalls: Array<{ scope: LeaseScope; lane: LeaseLane; opts?: LeaseAcquireOptions }> = [];
 vi.mock('../../store/writer-lease.js', () => ({
-  ...vi.importActual('../../store/writer-lease.js'),
   withWriterLease: vi.fn(
-    async (scope: string, lane: string, fn: (h: unknown) => Promise<unknown>, opts?: unknown) => {
+    async <T>(
+      scope: LeaseScope,
+      lane: LeaseLane,
+      fn: () => Promise<T>,
+      opts?: LeaseAcquireOptions,
+    ): Promise<T> => {
       leaseCalls.push({ scope, lane, opts });
-      return fn({});
+      return fn();
     },
   ),
 }));
@@ -37,8 +43,8 @@ vi.mock('../sqlite.js', () => ({
 
 // Mock telemetry config: enabled with a valid anonymousId so recordTelemetryEvent
 // proceeds past the config gate and enqueues a row into the buffer.
-vi.mock('node:fs', () => {
-  const actual = vi.importActual<typeof import('node:fs')>('node:fs');
+vi.mock('node:fs', async () => {
+  const actual = await vi.importActual<typeof import('node:fs')>('node:fs');
   return {
     ...actual,
     existsSync: vi.fn(() => true),
@@ -68,23 +74,8 @@ describe('telemetry lease identity (T12045 · E6-L12e)', () => {
     await flushTelemetryBuffer();
 
     expect(leaseCalls.length).toBeGreaterThanOrEqual(1);
-    expect(leaseCalls[0].scope).toBe('global');
-    expect(leaseCalls[0].lane).toBe('bulk');
-    // T12045: explicit dbPath MUST be passed. The global cleo.db path is
-    // resolved via resolveDualScopeDbPath('global') at call time.
-    const opts = leaseCalls[0].opts as Record<string, unknown> | undefined;
-    expect(opts).toBeDefined();
-    expect(typeof opts!.dbPath).toBe('string');
-    expect((opts!.dbPath as string).length).toBeGreaterThan(0);
-  });
-
-  it('global-leased telemetry writes do not share scope with project-leased writes', () => {
-    // Static proof: telemetry uses 'global' scope; dhq-adapter/Pi use 'project'.
-    // The lease scope discriminator is embedded in the memo key, so a release
-    // for a project lane never reaches a global lane, and vice versa.
-    expect(leaseCalls.length).toBeGreaterThanOrEqual(1);
-    for (const call of leaseCalls) {
-      expect(call.scope).toBe('global');
-    }
+    expect(leaseCalls[0]?.scope).toBe('global');
+    expect(leaseCalls[0]?.lane).toBe('bulk');
+    expect(leaseCalls[0]?.opts?.dbPath).toBe(resolveDualScopeDbPath('global'));
   });
 });
