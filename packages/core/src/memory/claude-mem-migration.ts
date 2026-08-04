@@ -13,6 +13,7 @@ import { createRequire } from 'node:module';
 // underscore-import: node:sqlite type alias is required for createRequire interop.
 import type { DatabaseSync as _DatabaseSyncType } from 'node:sqlite';
 import { getClaudeMemDbPath } from '../paths.js';
+import { resolveDualScopeDbPath } from '../store/dual-scope-db.js';
 import { getBrainDb, getBrainNativeDb } from '../store/memory-sqlite.js';
 import type { BRAIN_OBSERVATION_TYPES } from '../store/schema/memory-schema.js';
 import { applyPerfPragmas } from '../store/sqlite-pragmas.js';
@@ -193,7 +194,12 @@ export async function migrateClaudeMem(
     // lease (acquire-once / write-all-phases / release) so it serializes against
     // other writers. `dryRun` writes nothing; the lease is still held for the
     // read-side BEGIN IMMEDIATE batches' consistency. `off` mode → no-op handle.
-    brainBulkLease = await acquireWriterLease('project', 'bulk', { priority: 50 });
+    // T12046 (E6-L12f): pin the lease to the canonical project cleo.db path so
+    // the lease row lands in THIS project's arbitration file.
+    brainBulkLease = await acquireWriterLease('project', 'bulk', {
+      priority: 50,
+      dbPath: resolveDualScopeDbPath('project', projectRoot),
+    });
 
     // Ensure FTS5 tables exist for the rebuild at the end
     ensureFts5Tables(nativeDb);
