@@ -20,6 +20,7 @@ import { join, resolve as resolvePath } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as governorModule from '../../resources/governor.js';
 import {
+  _installPostAcquireHook,
   _resetDualScopeDbCache,
   type CleoRuntime,
   createCleoRuntime,
@@ -497,14 +498,14 @@ describe('CleoRuntime store registry', () => {
       await expect(openB).rejects.toThrow(/cancelled/i);
     }, 30_000);
 
-    it('acquired handle is closed when init is cancelled', async () => {
+    it('acquired handle is NOT closed when init is cancelled (replacement inherits it)', async () => {
       const openPromise = runtime.openProject(projectAPath);
       runtime.closeProject(projectAPath);
 
       await expect(openPromise).rejects.toThrow();
 
-      // The dual-scope cache should have no live handle for projectAPath now.
-      // A fresh open should work and return a new live store.
+      // The dual-scope cache still has the live handle — the cancellation
+      // intentionally left it intact. A fresh open reuses it.
       const fresh = await runtime.openProject(projectAPath);
       expect(fresh.scope).toBe('project');
       expect(fresh.isOpen).toBe(true);
@@ -768,13 +769,9 @@ describe('CleoRuntime store registry', () => {
 
   describe('post-await liveness (F3 · handle closed before publish)', () => {
     it('reopens via existing store.isOpen check when handle is dead before next open', async () => {
-      // Open, then externally close the dual-scope handle.
       const store1 = await runtime.openProject(projectAPath);
-      // Simulate external close: evict from cache and close native handle.
       _resetDualScopeDbCache('project');
 
-      // The runtime still has the entry but store1.isOpen is now false.
-      // The next openProject detects the dead handle via isOpen and reopens.
       const store2 = await runtime.openProject(projectAPath);
       expect(store2).not.toBe(store1);
       expect(store2.isOpen).toBe(true);
@@ -794,6 +791,19 @@ describe('CleoRuntime store registry', () => {
 
       // Same cache entry (normalized path key).
       expect(h2.db).toBe(h1.db);
+      h1.close();
+    }, 30_000);
+
+    it('cached handle exposes normalized dbPath, not raw alias', async () => {
+      // Open first via canonical path.
+      const h1 = await openDualScopeDbAtPath('project', resolvePath(projectAPath));
+      // Open second via aliased path — hits same cache entry.
+      const aliased = join(join(resolvePath(projectAPath), '..'), '.', 'cleo.db');
+      const h2 = await openDualScopeDbAtPath('project', aliased);
+
+      // Both handles should report the normalized path, not the alias.
+      expect(h2.dbPath).toBe(resolvePath(projectAPath));
+      expect(h2.dbPath).toBe(h1.dbPath);
       h1.close();
     }, 30_000);
   });

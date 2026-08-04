@@ -468,52 +468,60 @@ async function openDedicatedDualScopeDb(
   // ── Cold-open lease (F4 · T12036) ──────────────────────────────────────
   // Dedicated opens also serialize their cold-open migrations through the same
   // writer-lease so they never race on the `__drizzle_migrations` journal
-  // even when two dedicated opens of a fresh file are concurrent. The lease
-  // bootstraps tables if needed, then releases immediately after reconcile +
-  // migrate. On failure the dedicated handle is closed and the error
-  // propagates.
-  const handle = await withColdOpenLease(
-    scope,
-    nativeDb,
-    async (): Promise<DualScopeDbHandle> => {
-      reconcileJournal(
-        nativeDb,
-        migrationsFolder,
-        existenceTable(scope),
-        `dual-scope-db[${scope}]`,
-        resolveConsolidatedJournalSiblings(migrationsSetName(scope)),
-      );
-      migrateWithRetry(
-        db,
-        migrationsFolder,
-        nativeDb,
-        existenceTable(scope),
-        `dual-scope-db[${scope}]`,
-      );
+  // even when two dedicated opens of a fresh file are concurrent.
+  try {
+    const handle = await withColdOpenLease(
+      scope,
+      nativeDb,
+      async (): Promise<DualScopeDbHandle> => {
+        reconcileJournal(
+          nativeDb,
+          migrationsFolder,
+          existenceTable(scope),
+          `dual-scope-db[${scope}]`,
+          resolveConsolidatedJournalSiblings(migrationsSetName(scope)),
+        );
+        migrateWithRetry(
+          db,
+          migrationsFolder,
+          nativeDb,
+          existenceTable(scope),
+          `dual-scope-db[${scope}]`,
+        );
 
-      log.debug({ scope, dbPath }, 'DEDICATED dual-scope cleo.db ready (T11782 FIX D)');
+        log.debug({ scope, dbPath }, 'DEDICATED dual-scope cleo.db ready (T11782 FIX D)');
 
-      return {
-        db,
-        scope,
-        dbPath,
-        get isOpen() {
-          return nativeDb.isOpen;
-        },
-        close() {
-          // Dedicated handles are never cached — close only the native connection.
-          try {
-            nativeDb.close();
-          } catch {
-            // Idempotent — ignore double-close errors.
-          }
-        },
-      };
-    },
-    { dbPath },
-  );
+        return {
+          db,
+          scope,
+          dbPath,
+          get isOpen() {
+            return nativeDb.isOpen;
+          },
+          close() {
+            // Dedicated handles are never cached — close only the native connection.
+            try {
+              nativeDb.close();
+            } catch {
+              // Idempotent — ignore double-close errors.
+            }
+          },
+        };
+      },
+      { dbPath },
+    );
 
-  return handle;
+    return handle;
+  } catch (err) {
+    // Close the native handle on any failure during lease/migrate to avoid
+    // leaking a file descriptor. The error is rethrown unchanged.
+    try {
+      nativeDb.close();
+    } catch {
+      // Already closed or never opened — safe to ignore.
+    }
+    throw err;
+  }
 }
 
 /**
@@ -725,7 +733,7 @@ export async function openDualScopeDbAtPath(
           const built: DualScopeDbHandle = {
             db,
             scope,
-            dbPath,
+            dbPath: normalizedPath,
             get isOpen() {
               return nativeDb.isOpen;
             },
@@ -1207,6 +1215,18 @@ class CleoRuntimeImpl implements CleoRuntime {
   private readonly _registry = new Map<string, RuntimeEntry>();
   private _nextId: EntryId = 0;
 
+  /**
+   * Internal test seam. When set, invoked after `openDualScopeDbAtPath`
+   * resolves but before the runtime publishes the store. The hook receives
+   * the just-acquired handle and the registry key. Tests use this to close
+   * the handle between chokepoint resolution and publication, exercising
+   * the post-await liveness branch.
+   *
+   * Not part of the public {@link CleoRuntime} interface.
+   */
+  // biome-ignore lint/style/useNamingConvention: _ prefix convention for test-only internal fields
+  _postAcquireHook: ((handle: DualScopeDbHandle, key: string) => void) | null = null;
+
   /** @inheritdoc */
   get openPaths(): ReadonlySet<string> {
     return new Set(this._registry.keys());
@@ -1320,17 +1340,29 @@ class CleoRuntimeImpl implements CleoRuntime {
       // The chokepoint resolved with a live handle, but an external close
       // (e.g. _resetDualScopeDbCache) between the await and this publish
       // can kill it. If the handle is dead, close it (evict from cache),
-      // delete the placeholder, and restart openEntry for the same key.
+      // delete the placeholder, and perform ONE bounded reacquisition.
+      // An internal test hook (_postAcquireHook) fires here so tests can
+      // inject a close between chokepoint resolution and publication.
+      if (this._postAcquireHook) {
+        this._postAcquireHook(dualHandle, key);
+      }
       if (!dualHandle.isOpen) {
         dualHandle.close();
         this._registry.delete(key);
+        // Perform exactly one reacquisition; if it also dies, throw a
+        // typed exhaustion error rather than recurse unboundedly.
         try {
           const retryStore = await this.openEntry(scope, dbPath);
           initResolve(retryStore);
           return retryStore;
         } catch (retryErr) {
-          initReject(retryErr);
-          throw retryErr;
+          // If the retry threw EntryCancelledError or another error, wrap
+          // in a descriptive exhaustion error so the caller can distinguish
+          // a transient liveness loss from a permanent failure.
+          const exhausted =
+            retryErr instanceof Error ? new EntryCancelledError(scope, dbPath) : retryErr;
+          initReject(exhausted);
+          throw exhausted;
         }
       }
 
@@ -1434,6 +1466,24 @@ class CleoRuntimeImpl implements CleoRuntime {
       }
     }
   }
+}
+
+/**
+ * Install a post-acquire hook on a {@link CleoRuntime} instance for testing
+ * the post-await liveness branch. The hook fires after
+ * `openDualScopeDbAtPath` resolves but before the runtime publishes the
+ * store. Tests use this to close the just-acquired handle, forcing the
+ * runtime's liveness check to reacquire.
+ *
+ * Pass `null` to clear the hook.
+ *
+ * @internal Test seam only; never called in production.
+ */
+export function _installPostAcquireHook(
+  runtime: CleoRuntime,
+  hook: ((handle: DualScopeDbHandle, key: string) => void) | null,
+): void {
+  (runtime as CleoRuntimeImpl)._postAcquireHook = hook;
 }
 
 /**
