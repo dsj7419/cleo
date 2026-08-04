@@ -35,11 +35,14 @@ import {
   _resetWriterLeaseStateForTest,
   _setNativeDbResolverForTest,
   acquireWriterLease,
+  assertWriterLeaseHeld,
+  hasActiveGrant,
   type LeaseScope,
   type LeaseTarget,
   makeWriterLeaseIdentity,
   registerDbIdentity,
   resolveDbIdentity,
+  WriterLeaseRequiredError,
   withColdOpenLease,
 } from '../writer-lease.js';
 import { WRITER_LEASES_TABLE, WRITER_QUEUE_TABLE } from '../writer-lease-schema.js';
@@ -120,6 +123,42 @@ describe('T12042 Finding 4 — acquireWriterLease normalizes alias dbPath', () =
     await h1.release();
     await h2.release();
     expect(countActive(native, 'project', 'tasks')).toBe(0);
+  }, 20_000);
+
+  it('acquire → hasActiveGrant → assertWriterLeaseHeld → release with aliased filesystem path', async () => {
+    const native = await openTempScope('project', join(testRoot, 'alias2', '.cleo'));
+    const realPath = resolvePath(join(testRoot, 'alias2', '.cleo', 'cleo.db'));
+    const aliasPath = join(testRoot, 'alias2', '.cleo', '.', 'cleo.db');
+
+    _setNativeDbResolverForTest(
+      async (): Promise<LeaseTarget> => ({
+        native,
+        dbPath: realPath,
+      }),
+    );
+
+    // Acquire with alias → memo key uses canonicalized (real) path.
+    const h = await acquireWriterLease('project', 'brain', { dbPath: aliasPath });
+    expect(h.epoch).toBeGreaterThan(0);
+
+    // hasActiveGrant with the canonical path must find the grant.
+    expect(hasActiveGrant('project', 'brain', realPath)).toBe(true);
+    // hasActiveGrant with the alias path must also find it (both normalize to real).
+    expect(hasActiveGrant('project', 'brain', aliasPath)).toBe(true);
+    // assert must pass with either spelling.
+    expect(() => assertWriterLeaseHeld('project', 'brain', realPath)).not.toThrow();
+    expect(() => assertWriterLeaseHeld('project', 'brain', aliasPath)).not.toThrow();
+    // Unrelated path must NOT find the grant.
+    expect(hasActiveGrant('project', 'brain', join(testRoot, 'other', '.cleo', 'cleo.db'))).toBe(
+      false,
+    );
+    expect(() =>
+      assertWriterLeaseHeld('project', 'brain', join(testRoot, 'other', '.cleo', 'cleo.db')),
+    ).toThrow(WriterLeaseRequiredError);
+
+    await h.release();
+    expect(hasActiveGrant('project', 'brain', realPath)).toBe(false);
+    expect(hasActiveGrant('project', 'brain', aliasPath)).toBe(false);
   }, 20_000);
 });
 

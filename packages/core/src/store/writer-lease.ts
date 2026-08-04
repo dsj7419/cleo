@@ -378,9 +378,39 @@ const _inflightAcquire = new Map<string, Promise<LeaseHandle>>();
  * Build the lease-scope memo key. Keyed on `${scope}::${dbPath}::${lane}` — the
  * `${scope}::${dbPath}` prefix is byte-equal to `cacheKey(scope, dbPath)` in
  * `dual-scope-db.ts` so the lease scope and the handle cache agree on identity.
+ *
+ * Every call site MUST pass a canonicalized dbPath — {@link canonicalizeDbPath}
+ * is the single normalization boundary.
  */
 function memoKey(scope: LeaseScope, dbPath: string, lane: LeaseLane): string {
   return `${scope}::${dbPath}::${lane}`;
+}
+
+/**
+ * Normalize a dbPath for memo-key and resolver use before every lease operation.
+ *
+ * This is the SINGLE normalization boundary. Every public API that accepts or
+ * constructs a dbPath (acquire, release, hasActiveGrant, assertWriterLeaseHeld)
+ * runs the path through this function before constructing a memo key, so alias
+ * filesystem paths produce byte-identical keys and test:// sentinels are
+ * preserved as opaque virtual keys.
+ *
+ * Canonicalization rules:
+ * - `test://*` / `sentinel://*` — URI-like test sentinels pass through
+ *   unchanged (they are never filesystem paths).
+ * - Everything else — normalized via `path.resolve()` so `/a/../a/cleo.db`
+ *   and `/a/cleo.db` are byte-identical.
+ *
+ * @param dbPath - A raw dbPath from opts or an explicit parameter.
+ * @returns A canonicalized path ready for memo-key construction.
+ *
+ * @task T12042 (E6-L12b · Finding 4 — alias normalization)
+ */
+function canonicalizeDbPath(dbPath: string): string {
+  if (dbPath.startsWith('test://') || dbPath.startsWith('sentinel://')) {
+    return dbPath;
+  }
+  return resolvePath(dbPath);
 }
 
 /**
@@ -722,7 +752,8 @@ export class WriterLeaseRequiredError extends Error {
  * @task T11627
  */
 export function hasActiveGrant(scope: LeaseScope, lane: LeaseLane, dbPath?: string): boolean {
-  const entry = _grantMemo.get(memoKey(scope, dbPath ?? _dbPathResolver(scope), lane));
+  const normalized = dbPath ? canonicalizeDbPath(dbPath) : _dbPathResolver(scope);
+  const entry = _grantMemo.get(memoKey(scope, normalized, lane));
   return entry !== undefined && entry.refcount > 0;
 }
 
@@ -909,7 +940,7 @@ export async function acquireWriterLease(
   // BEFORE keying and resolver use means alias paths (/a/../a/cleo.db) resolve
   // to the same memo key + grant row as canonical (/a/cleo.db) — a single
   // memoized grant, one active row (T12042 Finding 4).
-  const dbPath = opts?.dbPath ? resolvePath(opts.dbPath) : _dbPathResolver(scope);
+  const dbPath = opts?.dbPath ? canonicalizeDbPath(opts.dbPath) : _dbPathResolver(scope);
   const key = memoKey(scope, dbPath, lane);
 
   // Re-entrant fast path: an existing same-(scope,dbPath,lane) grant is shared
