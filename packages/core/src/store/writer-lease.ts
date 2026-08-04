@@ -64,6 +64,7 @@
  */
 
 import { randomUUID } from 'node:crypto';
+import { resolve as resolvePath } from 'node:path';
 import type { DatabaseSync } from 'node:sqlite';
 import type { LeaseLane, LeaseScope } from '@cleocode/contracts';
 import { getLogger } from '../logger.js';
@@ -128,12 +129,12 @@ export interface LeaseAcquireOptions {
    */
   reentrant?: boolean;
   /**
-   * Pin the lease to a SPECIFIC cleo.db file (its resolved on-disk path) instead
-   * of the cwd-default canonical path the scope→path resolver returns. The
-   * chokepoint write primitives pass the dbPath recorded at cold-open
-   * ({@link activeScopeDbPath}) so the lease row lands in the SAME file the write
-   * targets — correct when more than one project's cleo.db is open in one process
-   * (Finding 1). When omitted, the canonical scope→path resolution is used.
+   * Pin the lease to a SPECIFIC cleo.db file path. When omitted the
+   * canonical scope→path resolver is used. The path is normalized via
+   * `path.resolve()` before memo-keying so alias paths share one grant
+   * row (T12042 Finding 4). The chokepoint write primitives resolve
+   * identity from their exact DB handle via {@link resolveDbIdentity},
+   * not from a process-global registry.
    */
   dbPath?: string;
 }
@@ -239,7 +240,6 @@ export function _resetWriterLeaseStateForTest(): void {
   _inflightAcquire.clear();
   _nativeDbResolver = defaultNativeDbResolver;
   _dbPathResolver = resolveDualScopeDbPath;
-  _activeScope = null;
 }
 
 // ── Native handle resolution (test-injectable) ────────────────────────────────
@@ -378,92 +378,164 @@ const _inflightAcquire = new Map<string, Promise<LeaseHandle>>();
  * Build the lease-scope memo key. Keyed on `${scope}::${dbPath}::${lane}` — the
  * `${scope}::${dbPath}` prefix is byte-equal to `cacheKey(scope, dbPath)` in
  * `dual-scope-db.ts` so the lease scope and the handle cache agree on identity.
+ *
+ * Every call site MUST pass a canonicalized dbPath — {@link canonicalizeDbPath}
+ * is the single normalization boundary.
  */
 function memoKey(scope: LeaseScope, dbPath: string, lane: LeaseLane): string {
   return `${scope}::${dbPath}::${lane}`;
 }
 
-// ── Active-scope registry (ST-3 · Seam 1 — process-local, no signature change) ──
+/**
+ * Normalize a dbPath for memo-key and resolver use before every lease operation.
+ *
+ * This is the SINGLE normalization boundary. Every public API that accepts or
+ * constructs a dbPath (acquire, release, hasActiveGrant, assertWriterLeaseHeld)
+ * runs the path through this function before constructing a memo key, so alias
+ * filesystem paths produce byte-identical keys and test:// sentinels are
+ * preserved as opaque virtual keys.
+ *
+ * Canonicalization rules:
+ * - `test://*` / `sentinel://*` — URI-like test sentinels pass through
+ *   unchanged (they are never filesystem paths).
+ * - Everything else — normalized via `path.resolve()` so `/a/../a/cleo.db`
+ *   and `/a/cleo.db` are byte-identical.
+ *
+ * @param dbPath - A raw dbPath from opts or an explicit parameter.
+ * @returns A canonicalized path ready for memo-key construction.
+ *
+ * @task T12042 (E6-L12b · Finding 4 — alias normalization)
+ */
+function canonicalizeDbPath(dbPath: string): string {
+  if (dbPath.startsWith('test://') || dbPath.startsWith('sentinel://')) {
+    return dbPath;
+  }
+  return resolvePath(dbPath);
+}
 
 /**
- * The scope + resolved dbPath of the most-recent canonical cold-open in this
- * process.
+ * Writer-lease identity: explicit scope and canonical dbPath.
+ *
+ * Replaces the removed process-global last-writer scope with explicit per-call
+ * identity so concurrent project A, project B, and global writers cannot steal,
+ * release, resolve, or close each other's lease identity. Every lease
+ * acquire/release/renew/assert and cold-open path uses this same explicit
+ * identity — a release for A must never affect B/global even when concurrent.
+ *
+ * Identity is IMMUTABLE after construction: it is frozen and bound to the
+ * exact drizzle DB handle at {@link DualScopeDbHandle} construction time via
+ * {@link registerDbIdentity}. Callers resolve it through
+ * {@link resolveDbIdentity} — never construct one by hand.
+ *
+ * @task T12042 (E6-L12b)
+ * @task T11627
+ */
+export interface WriterLeaseIdentity {
+  /** The cleo.db scope this lease arbitrates within. */
+  readonly scope: LeaseScope;
+  /** Absolute canonical on-disk path to this scope's cleo.db (normalized). */
+  readonly dbPath: string;
+}
+
+/**
+ * Build a frozen {@link WriterLeaseIdentity} from scope + dbPath.
+ *
+ * The dbPath is normalized via `path.resolve()` before freezing — so alias paths
+ * (`/a/../a/cleo.db`, `/a/cleo.db`) produce byte-identical identities and a
+ * single memoized grant row. Callers MUST pass the identity through
+ * {@link registerDbIdentity} to bind it to a concrete drizzle DB handle; the
+ * chokepoint write primitives resolve identity from the handle itself.
+ *
+ * @param scope - The cleo.db scope.
+ * @param dbPath - An absolute or relative path to the scope's cleo.db. Normalized
+ *   via `path.resolve()` before freezing.
+ * @returns A frozen, normalized identity.
+ *
+ * @task T12042 (E6-L12b)
+ */
+export function makeWriterLeaseIdentity(scope: LeaseScope, dbPath: string): WriterLeaseIdentity {
+  return Object.freeze({ scope, dbPath: resolvePath(dbPath) });
+}
+
+// ── DB-identity registry (typed WeakMap — immutable, concurrency-safe) ──────
+
+/**
+ * Maps a drizzle DB object to its immutable writer-lease identity. Keyed on the
+ * EXACT drizzle DB object reference so two different projects' drizzle handles
+ * are distinct keys — a caller cannot pair file-A identity with file-B DB.
+ *
+ * Typed `WeakMap<object, …>` because WeakMap keys must be non-primitive; the DB
+ * handles are always objects. Unregistered lookups throw a descriptive error —
+ * there is NO fallback, ambient cwd lookup, or compatibility shim.
+ *
+ * @task T12042 (E6-L12b)
+ */
+const _dbIdentityRegistry = new WeakMap<object, WriterLeaseIdentity>();
+
+/**
+ * Register a drizzle DB handle's immutable writer-lease identity.
+ *
+ * Called at {@link DualScopeDbHandle} construction time (both cached and
+ * dedicated opens). Idempotent when the same DB handle is re-registered with
+ * the SAME canonical identity (same scope AND same `dbPath`). Throws
+ * `E_WRITER_LEASE_IDENTITY_MISMATCH` when the same DB handle is registered
+ * with a DIFFERENT identity — a scope/path mismatch for the same handle is a
+ * programming error.
+ *
+ * @param db - The drizzle DB handle (or any non-primitive key). Must be the
+ *   exact same object reference that {@link resolveDbIdentity} will look up.
+ * @param identity - The frozen identity built by {@link makeWriterLeaseIdentity}.
+ * @throws {Error} When the handle was previously registered with a different
+ *   scope or dbPath.
+ *
+ * @task T12042 (E6-L12b)
+ */
+export function registerDbIdentity(db: object, identity: WriterLeaseIdentity): void {
+  const existing = _dbIdentityRegistry.get(db);
+  if (existing) {
+    if (existing.scope === identity.scope && existing.dbPath === identity.dbPath) {
+      return; // idempotent — same canonical identity
+    }
+    throw new Error(
+      'E_WRITER_LEASE_IDENTITY_MISMATCH: the same drizzle DB handle was ' +
+        `previously registered as ${existing.scope}::${existing.dbPath} ` +
+        `but is being re-registered as ${identity.scope}::${identity.dbPath}. ` +
+        'A DB handle must carry exactly one immutable identity (T12042).',
+    );
+  }
+  _dbIdentityRegistry.set(db, identity);
+}
+
+/**
+ * Resolve the immutable writer-lease identity bound to a drizzle DB handle.
  *
  * The chokepoint write primitives ({@link insertIdempotent} /
- * {@link upsertIdempotent} in `dual-scope-db.ts`) receive only a drizzle handle —
- * NOT the scope or a {@link LeaseHandle}. To gate them through the writer lease
- * (Seam 1) WITHOUT a signature change, the cold-open path records its scope AND
- * dbPath here (mirroring the `getRecordedExodusAbort` registry pattern already
- * used by those primitives) and the primitive reads them back via
- * {@link activeScope} / {@link activeScopeDbPath}.
+ * {@link upsertIdempotent}) call this with their `db` parameter to derive the
+ * correct scope + dbPath for the writer lease. A handle opened through the
+ * dual-scope chokepoint is always registered; a stub or synthetic handle
+ * passed in tests must be registered via {@link registerDbIdentity} before a
+ * write primitive reaches the identity-resolve point.
  *
- * Recording the dbPath (not just the abstract scope LABEL) means the chokepoint
- * leases against the lease ROW in the SAME file the open targeted — so two
- * different projects opened in one process lease in their OWN cleo.db, never the
- * cwd-default file (Finding 1).
+ * @param db - The drizzle DB handle whose identity to look up.
+ * @returns The frozen identity registered at construction time.
+ * @throws {Error} `E_WRITER_LEASE_IDENTITY_UNREGISTERED` when the handle was
+ *   not registered — the caller MUST open the DB through the dual-scope
+ *   chokepoint or call {@link registerDbIdentity} explicitly.
  *
- * `null` until the first canonical cold-open records a scope.
+ * @task T12042 (E6-L12b)
  */
-let _activeScope: LeaseScope | null = null;
-let _activeScopeDbPath: string | null = null;
-
-/**
- * Record the scope (and optionally the resolved dbPath) of the cold-open
- * currently in progress / most recently opened. Called by `dual-scope-db.ts` at
- * the head of its cold-open critical section (Seam 0). Idempotent — last writer
- * wins; a project open after a global open makes `'project'` the active scope,
- * which is correct because the chokepoint write primitives only ever write the
- * project-tier `tasks_*` tables.
- *
- * @param scope - The scope of the in-progress cold-open.
- * @param dbPath - The resolved on-disk path of that scope's cleo.db. When
- *   omitted, the active dbPath is cleared so {@link activeScopeDbPath} falls back
- *   to the canonical scope→path resolver.
- * @internal
- * @task T11627
- */
-export function setActiveScope(scope: LeaseScope, dbPath?: string): void {
-  _activeScope = scope;
-  _activeScopeDbPath = dbPath ?? null;
-}
-
-/**
- * The scope the chokepoint write primitives should lease against. Defaults to
- * `'project'` (the tasks chokepoint is project-tier) when no cold-open has
- * recorded a scope yet — a write before any open is degenerate, but `'project'`
- * is the only correct lease scope for `tasks_*` mutations.
- *
- * @returns The active {@link LeaseScope}.
- * @internal
- * @task T11627
- */
-export function activeScope(): LeaseScope {
-  return _activeScope ?? 'project';
-}
-
-/**
- * The dbPath the chokepoint write primitives should lease their row in. Returns
- * the path recorded by the most-recent cold-open, or — defensively — the
- * canonical scope→path resolution for {@link activeScope} when none was recorded.
- *
- * @returns The active cleo.db on-disk path.
- * @internal
- * @task T11627
- */
-export function activeScopeDbPath(): string {
-  return _activeScopeDbPath ?? _dbPathResolver(activeScope());
-}
-
-/**
- * Clear the recorded active scope + dbPath. Tests only — production records once
- * per cold-open and never clears (the scope of the last canonical open remains
- * the lease target for subsequent writes).
- *
- * @internal
- */
-export function _clearActiveScopeForTest(): void {
-  _activeScope = null;
-  _activeScopeDbPath = null;
+export function resolveDbIdentity(db: object): WriterLeaseIdentity {
+  const identity = _dbIdentityRegistry.get(db);
+  if (!identity) {
+    throw new Error(
+      'E_WRITER_LEASE_IDENTITY_UNREGISTERED: the drizzle DB handle has no ' +
+        'registered writer-lease identity. Open the DB through the dual-scope ' +
+        'chokepoint (openDualScopeDb/openDualScopeDbAtPath) or call ' +
+        'registerDbIdentity(handle, identity) explicitly in tests. ' +
+        '(T12042 — no ambient fallback)',
+    );
+  }
+  return identity;
 }
 
 // ── Small helpers ─────────────────────────────────────────────────────────────
@@ -680,7 +752,8 @@ export class WriterLeaseRequiredError extends Error {
  * @task T11627
  */
 export function hasActiveGrant(scope: LeaseScope, lane: LeaseLane, dbPath?: string): boolean {
-  const entry = _grantMemo.get(memoKey(scope, dbPath ?? _dbPathResolver(scope), lane));
+  const normalized = dbPath ? canonicalizeDbPath(dbPath) : _dbPathResolver(scope);
+  const entry = _grantMemo.get(memoKey(scope, normalized, lane));
   return entry !== undefined && entry.refcount > 0;
 }
 
@@ -863,13 +936,11 @@ export async function acquireWriterLease(
     return makeNoopHandle(scope, lane);
   }
 
-  // Build the lease-scope key up front from the explicit pinned dbPath (when the
-  // chokepoint pins a non-cwd-default file) or the I/O-free path resolver, so the
-  // re-entrant fast path AND the single-flight guard are decided SYNCHRONOUSLY,
-  // before any `await` yields the event loop. Keying on `${scope}::${dbPath}::
-  // ${lane}` means two different project files in one process are distinct lease
-  // scopes (Finding 1) and that the same (scope,dbPath,lane) never double-claims.
-  const dbPath = opts?.dbPath ?? _dbPathResolver(scope);
+  // Build the lease-scope key up front from the normalized dbPath. Normalizing
+  // BEFORE keying and resolver use means alias paths (/a/../a/cleo.db) resolve
+  // to the same memo key + grant row as canonical (/a/cleo.db) — a single
+  // memoized grant, one active row (T12042 Finding 4).
+  const dbPath = opts?.dbPath ? canonicalizeDbPath(opts.dbPath) : _dbPathResolver(scope);
   const key = memoKey(scope, dbPath, lane);
 
   // Re-entrant fast path: an existing same-(scope,dbPath,lane) grant is shared
@@ -878,14 +949,21 @@ export async function acquireWriterLease(
     const existing = _grantMemo.get(key);
     if (existing) {
       existing.refcount += 1;
-      // Reflect the re-entry in the durable row depth (best-effort under epoch guard).
-      const { native } = await _nativeDbResolver(scope, dbPath);
-      native
-        .prepare(
-          `UPDATE ${WRITER_LEASES_TABLE} SET reentrancy_depth = reentrancy_depth + 1 ` +
-            `WHERE scope = ? AND lane = ? AND holder_id = ? AND epoch = ? AND active = 1`,
-        )
-        .run(scope, lane, existing.handle.holderId, existing.handle.epoch);
+      try {
+        const { native } = await _nativeDbResolver(scope, dbPath);
+        native
+          .prepare(
+            `UPDATE ${WRITER_LEASES_TABLE} SET reentrancy_depth = reentrancy_depth + 1 ` +
+              `WHERE scope = ? AND lane = ? AND holder_id = ? AND epoch = ? AND active = 1`,
+          )
+          .run(scope, lane, existing.handle.holderId, existing.handle.epoch);
+      } catch (err) {
+        // Native resolver or depth-update failed — roll back the refcount
+        // increment so the grant is not leaked. The caller receives the
+        // original error; the held grant is intact (single refcount tick).
+        existing.refcount -= 1;
+        throw err;
+      }
       return existing.handle;
     }
 
@@ -902,14 +980,18 @@ export async function acquireWriterLease(
       const entry = _grantMemo.get(key);
       if (entry && entry.handle === shared) {
         entry.refcount += 1;
-        // `entry.handle` is the concrete InternalLeaseHandle (holderId/epoch).
-        const { native } = await _nativeDbResolver(scope, dbPath);
-        native
-          .prepare(
-            `UPDATE ${WRITER_LEASES_TABLE} SET reentrancy_depth = reentrancy_depth + 1 ` +
-              `WHERE scope = ? AND lane = ? AND holder_id = ? AND epoch = ? AND active = 1`,
-          )
-          .run(scope, lane, entry.handle.holderId, entry.handle.epoch);
+        try {
+          const { native } = await _nativeDbResolver(scope, dbPath);
+          native
+            .prepare(
+              `UPDATE ${WRITER_LEASES_TABLE} SET reentrancy_depth = reentrancy_depth + 1 ` +
+                `WHERE scope = ? AND lane = ? AND holder_id = ? AND epoch = ? AND active = 1`,
+            )
+            .run(scope, lane, entry.handle.holderId, entry.handle.epoch);
+        } catch (err) {
+          entry.refcount -= 1;
+          throw err;
+        }
         return entry.handle;
       }
       // The shared acquire is no longer active — fall through to a fresh acquire.
@@ -1205,9 +1287,9 @@ function ensureColdOpenLeaseTables(nativeDb: DatabaseSync): void {
  * Unlike {@link withWriterLease} it operates DIRECTLY on the already-opened native
  * handle — it never routes through the default resolver (which would re-enter
  * `openDualScopeDb` and recurse) and it bootstraps the lease tables first (the full
- * migration that creates them runs inside `fn`). It also records the scope in the
- * Seam-1 active-scope registry ({@link setActiveScope}) so chokepoint write
- * primitives lease against the right scope.
+ * migration that creates them runs inside `fn`). The identity is bound to the
+ * drizzle DB handle at construction via {@link registerDbIdentity} — this function
+ * no longer records a process-global side effect (T12042).
  *
  * Mode semantics mirror {@link withWriterLease}:
  * - `off` → pass-through: runs `fn` under today's `busy_timeout=30000`, byte-
@@ -1220,27 +1302,20 @@ function ensureColdOpenLeaseTables(nativeDb: DatabaseSync): void {
  * @param scope - The cleo.db scope being cold-opened.
  * @param nativeDb - The native handle the cold-open just created (pragmas applied).
  * @param fn - The cold-open body to run while holding the lease.
- * @param opts - Priority / TTL options + the resolved `dbPath` of this cold-open.
- *   `dbPath` is recorded in the Seam-1 active-scope registry so the chokepoint
- *   write primitives lease their row in the SAME file this open targeted (correct
- *   when more than one project is open in one process — Finding 1). Cold-open
- *   defaults to highest priority ({@link SCHEMA_BOOTSTRAP_PRIORITY}) and a 60s TTL
- *   (schema bootstrap can be slow).
+ * @param opts - Priority / TTL options. Cold-open defaults to highest priority
+ *   ({@link SCHEMA_BOOTSTRAP_PRIORITY}) and a 60s TTL (schema bootstrap can be
+ *   slow).
  * @returns The resolved value of `fn`.
  *
  * @task T11627
+ * @task T12042 (E6-L12b — no process-global side effect)
  */
 export async function withColdOpenLease<T>(
   scope: LeaseScope,
   nativeDb: DatabaseSync,
   fn: () => Promise<T>,
-  opts?: { priority?: number; ttlMs?: number; dbPath?: string },
+  opts?: { priority?: number; ttlMs?: number },
 ): Promise<T> {
-  // Seam 1 wiring: record the scope + resolved dbPath of this cold-open so
-  // chokepoint write primitives (insertIdempotent/upsertIdempotent) lease against
-  // the right scope AND the right file.
-  setActiveScope(scope, opts?.dbPath);
-
   const mode = effectiveMode();
 
   // `off` mode — pure pass-through. busy_timeout=30000 on the connection still

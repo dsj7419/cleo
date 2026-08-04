@@ -33,6 +33,7 @@ import {
   exodusAbortEvents,
   getRecordedExodusAbort,
 } from '../exodus/abort-events.js';
+import { makeWriterLeaseIdentity, registerDbIdentity } from '../writer-lease.js';
 
 function makeDetail(over: Partial<ExodusAbortDetail> = {}): ExodusAbortDetail {
   return {
@@ -168,6 +169,7 @@ describe('exodus abort surface (T11828)', () => {
       emitExodusAbort(makeDetail());
       clearExodusAborts();
       const spy = makeInsertSpyDb();
+      registerDbIdentity(spy.db, makeWriterLeaseIdentity('project', '/tmp/cleo.db'));
       const inserted = await insertIdempotent(spy.db, {} as never, {} as never, 'idempotencyKey');
       expect(inserted).toBe(1);
       expect(spy.calls).toBe(1);
