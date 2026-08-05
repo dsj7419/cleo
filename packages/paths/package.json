@@ -1,9 +1,9 @@
 {
   "name": "@cleocode/paths",
-  "version": "2026.5.122",
+  "version": "2026.8.1",
   "private": false,
   "type": "module",
-  "description": "CLEO XDG/env-paths SSoT \u2014 createPlatformPathsResolver factory, cleo-bound platform paths, project hash + worktree root primitives, isAbsolutePath. Zero-dep leaf package consumed by core, worktree, brain, adapters, and caamp.",
+  "description": "CLEO XDG/env-paths SSoT — createPlatformPathsResolver factory, cleo-bound platform paths, project hash + worktree root primitives, isAbsolutePath. Zero-dep leaf package consumed by core, worktree, brain, adapters, and caamp.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {

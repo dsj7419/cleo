@@ -1,5 +1,11 @@
 # Changelog
 
+## [2026.8.1] (2026-08-04)
+
+_No changeset entries parsed for this release._
+
+_Add entries under `.changeset/*.md` and re-run `cleo release plan` to populate this section._
+
 ## [2026.7.2] (2026-07-01)
 
 ### Added

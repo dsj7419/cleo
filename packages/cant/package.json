@@ -1,7 +1,7 @@
 {
   "name": "@cleocode/cant",
-  "version": "2026.5.122",
-  "description": "CANT DSL \u2014 cant-core (SSoT) parser, validator, and pipeline executor via napi-rs; agent identity, message parsing, and migration utilities",
+  "version": "2026.8.1",
+  "description": "CANT DSL — cant-core (SSoT) parser, validator, and pipeline executor via napi-rs; agent identity, message parsing, and migration utilities",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
