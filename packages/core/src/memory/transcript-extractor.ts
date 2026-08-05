@@ -508,7 +508,7 @@ async function checkTombstone(projectRoot: string, sessionId: string): Promise<b
       const { getBrainDb } = await import('../store/memory-sqlite.js');
       await getBrainDb(projectRoot);
     }
-    const nativeDb = getBrainNativeDb();
+    const nativeDb = getBrainNativeDb(projectRoot);
     if (!nativeDb) return false;
 
     const existing = nativeDb

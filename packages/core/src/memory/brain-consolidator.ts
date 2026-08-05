@@ -196,7 +196,7 @@ interface EntryRow {
  */
 export async function detectContradictions(projectRoot: string): Promise<ContradictionResult[]> {
   await getBrainDb(projectRoot);
-  const nativeDb = getBrainNativeDb();
+  const nativeDb = getBrainNativeDb(projectRoot);
   if (!nativeDb) return [];
 
   const results: ContradictionResult[] = [];
@@ -392,7 +392,7 @@ function normalizePatternTitle(title: string): string {
  */
 export async function dedupePatterns(projectRoot: string, windowSeconds = 3600): Promise<number> {
   await getBrainDb(projectRoot);
-  const nativeDb = getBrainNativeDb();
+  const nativeDb = getBrainNativeDb(projectRoot);
   if (!nativeDb) return 0;
 
   // Fetch all currently-valid patterns ordered by (peer_id, normalized title, created_at)

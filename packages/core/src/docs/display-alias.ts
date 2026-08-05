@@ -133,7 +133,7 @@ export async function setDisplayAlias(
   // handle is a shared singleton — do NOT close it here.
   const { getDb, getNativeTasksDb } = await import('../store/sqlite.js');
   await getDb(projectRoot);
-  const db = getNativeTasksDb();
+  const db = getNativeTasksDb(projectRoot);
   if (!db) {
     throw new CleoError(
       ExitCode.GENERAL_ERROR,

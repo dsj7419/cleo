@@ -119,7 +119,7 @@ describe('T759: brain_observations provenance hotfix', () => {
     it('should not throw when running the co_retrieved normalization UPDATE', async () => {
       const { getBrainDb, getBrainNativeDb } = await import('../../store/memory-sqlite.js');
       await getBrainDb(tempDir);
-      const nativeDb = getBrainNativeDb();
+      const nativeDb = getBrainNativeDb(tempDir);
       expect(nativeDb, 'nativeDb should be set after getBrainDb()').not.toBeNull();
       // The T626 guard UPDATE should have already run successfully during getBrainDb().
       // Verify it can run again without error (idempotent).

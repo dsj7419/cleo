@@ -100,7 +100,7 @@ export interface CorrelateOutcomesResult {
 async function ensureUsageLogTable(projectRoot: string): Promise<void> {
   const { getBrainDb, getBrainNativeDb } = await import('../store/memory-sqlite.js');
   await getBrainDb(projectRoot);
-  const nativeDb = getBrainNativeDb();
+  const nativeDb = getBrainNativeDb(projectRoot);
   if (!nativeDb) return;
 
   try {
@@ -144,7 +144,7 @@ async function ensureUsageLogTable(projectRoot: string): Promise<void> {
 async function ensurePruneCandidateColumn(projectRoot: string): Promise<void> {
   const { getBrainDb, getBrainNativeDb } = await import('../store/memory-sqlite.js');
   await getBrainDb(projectRoot);
-  const nativeDb = getBrainNativeDb();
+  const nativeDb = getBrainNativeDb(projectRoot);
   if (!nativeDb) return;
 
   const tables = [
@@ -274,7 +274,7 @@ export async function correlateOutcomes(projectRoot: string): Promise<CorrelateO
 
   const { getBrainDb, getBrainNativeDb } = await import('../store/memory-sqlite.js');
   await getBrainDb(projectRoot);
-  const nativeDb = getBrainNativeDb();
+  const nativeDb = getBrainNativeDb(projectRoot);
 
   const ranAt = new Date().toISOString();
 
@@ -379,7 +379,7 @@ export async function getMemoryQualityReport(projectRoot: string): Promise<Memor
 
   const { getBrainDb, getBrainNativeDb } = await import('../store/memory-sqlite.js');
   await getBrainDb(projectRoot);
-  const nativeDb = getBrainNativeDb();
+  const nativeDb = getBrainNativeDb(projectRoot);
 
   const emptyReport: MemoryQualityReport = {
     totalRetrievals: 0,

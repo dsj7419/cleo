@@ -53,7 +53,7 @@ describe('Memory Quality Feedback', () => {
         trackMemoryUsage(tempDir, 'O-test001', true, 'T100', 'success'),
       ).resolves.toBeUndefined();
 
-      const nativeDb = getBrainNativeDb();
+      const nativeDb = getBrainNativeDb(tempDir);
       expect(nativeDb).toBeTruthy();
 
       const rows = nativeDb!
@@ -72,7 +72,7 @@ describe('Memory Quality Feedback', () => {
       await getBrainDb(tempDir);
       await trackMemoryUsage(tempDir, 'O-test002', false);
 
-      const nativeDb = getBrainNativeDb();
+      const nativeDb = getBrainNativeDb(tempDir);
       const rows = nativeDb!
         .prepare('SELECT * FROM brain_usage_log WHERE entry_id = ?')
         .all('O-test002') as Array<{ used: number; outcome: string }>;
@@ -231,7 +231,7 @@ describe('Memory Quality Feedback', () => {
       const { getBrainAccessor } = await import('../../store/memory-accessor.js');
 
       await getBrainDb(tempDir);
-      const nativeDb = getBrainNativeDb();
+      const nativeDb = getBrainNativeDb(tempDir);
       const accessor = await getBrainAccessor(tempDir);
 
       // Insert observation with a very old date (35 days ago)

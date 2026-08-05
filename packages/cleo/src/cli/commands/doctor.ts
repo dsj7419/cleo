@@ -71,7 +71,7 @@ async function scanTestFixturesInProd(projectRoot: string): Promise<FixtureMatch
   type NativeDb = { prepare: (sql: string) => { all: (arg?: string) => unknown[] } };
   const { getDb, getNativeDb } = await import('@cleocode/core/store/sqlite.js');
   await getDb(projectRoot);
-  const nativeDb = getNativeDb() as NativeDb | null;
+  const nativeDb = getNativeDb(projectRoot) as NativeDb | null;
   if (!nativeDb) return [];
 
   const rows = nativeDb

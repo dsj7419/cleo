@@ -12,7 +12,7 @@ export async function incrementCitationCounts(projectRoot: string, ids: string[]
 
   const { getBrainDb, getBrainNativeDb } = await import('../../store/memory-sqlite.js');
   await getBrainDb(projectRoot);
-  const nativeDb = getBrainNativeDb();
+  const nativeDb = getBrainNativeDb(projectRoot);
   if (!nativeDb) return;
 
   const now = new Date().toISOString().replace('T', ' ').slice(0, 19);

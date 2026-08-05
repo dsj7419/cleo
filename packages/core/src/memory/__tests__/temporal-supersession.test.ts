@@ -114,7 +114,7 @@ describe('temporal-supersession', () => {
 
       // Verify edge in brain_page_edges
       await getBrainDb(tempDir);
-      const nativeDb = getBrainNativeDb();
+      const nativeDb = getBrainNativeDb(tempDir);
       expect(nativeDb).not.toBeNull();
 
       const edge = nativeDb!
@@ -167,7 +167,7 @@ describe('temporal-supersession', () => {
       closeBrainDb();
 
       await getBrainDb(tempDir);
-      const nativeDb = getBrainNativeDb();
+      const nativeDb = getBrainNativeDb(tempDir);
       const edge = nativeDb!
         .prepare(
           `SELECT provenance FROM brain_page_edges
@@ -205,7 +205,7 @@ describe('temporal-supersession', () => {
 
       // Old entry must still exist in the table
       await getBrainDb(tempDir);
-      const nativeDb = getBrainNativeDb();
+      const nativeDb = getBrainNativeDb(tempDir);
       const row = nativeDb!
         .prepare(`SELECT id, insight, invalid_at FROM brain_learnings WHERE id = ?`)
         .get(old.id) as { id: string; insight: string; invalid_at: string | null } | undefined;
@@ -296,7 +296,7 @@ describe('temporal-supersession', () => {
 
       // Store an older learning first with a back-dated timestamp
       await getBrainDb(tempDir);
-      const nativeDb = getBrainNativeDb();
+      const nativeDb = getBrainNativeDb(tempDir);
       const pastDate = '2025-01-01 00:00:00';
       nativeDb!
         .prepare(
@@ -417,7 +417,7 @@ describe('temporal-supersession', () => {
       // Insert graph nodes directly via raw SQL so the chain traversal can find them.
       // This avoids the need to mock the read-only isAutoCaptureEnabled export.
       await getBrainDb(tempDir);
-      const nativeDb2 = getBrainNativeDb()!;
+      const nativeDb2 = getBrainNativeDb(tempDir)!;
       const now = new Date().toISOString().replace('T', ' ').slice(0, 19);
       nativeDb2
         .prepare(

@@ -97,7 +97,7 @@ describe('enqueueBrainWrite — concurrent writes', () => {
     // PRAGMA integrity_check must report 'ok' — the chokepoint's whole point.
     const { getBrainDb, getBrainNativeDb } = await import('../../store/memory-sqlite.js');
     await getBrainDb(tempDir);
-    const nativeDb = getBrainNativeDb();
+    const nativeDb = getBrainNativeDb(tempDir);
     expect(nativeDb).not.toBeNull();
     if (!nativeDb) return;
     const row = nativeDb.prepare('PRAGMA integrity_check').get() as

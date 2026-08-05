@@ -213,7 +213,7 @@ export async function getImpact(
     // For directional filtering, re-query edges to determine which nodes are
     // reachable in the requested direction only.
     await getBrainDb(projectRoot);
-    const nativeDb = getBrainNativeDb();
+    const nativeDb = getBrainNativeDb(projectRoot);
     if (!nativeDb) return all;
 
     // Build the set of nodes reachable in the requested direction via raw SQL.
@@ -310,7 +310,7 @@ export async function getContext(projectRoot: string, nodeId: string): Promise<N
 export async function listEdgeTypes(projectRoot: string): Promise<string[]> {
   try {
     await getBrainDb(projectRoot);
-    const nativeDb = getBrainNativeDb();
+    const nativeDb = getBrainNativeDb(projectRoot);
     if (!nativeDb) return [];
 
     interface RawRow {
@@ -413,7 +413,7 @@ export async function materializeXfkEdges(projectRoot: string): Promise<Material
 
   try {
     await getBrainDb(projectRoot);
-    const nativeDb = getBrainNativeDb();
+    const nativeDb = getBrainNativeDb(projectRoot);
     if (!nativeDb) return result;
 
     const now = new Date().toISOString().replace('T', ' ').slice(0, 19);
@@ -672,7 +672,7 @@ export async function queryGraphNodes(
 
   try {
     await getBrainDb(projectRoot);
-    const nativeDb = getBrainNativeDb();
+    const nativeDb = getBrainNativeDb(projectRoot);
     if (!nativeDb) return empty;
 
     // Build the IN-clause for the sentience node types.

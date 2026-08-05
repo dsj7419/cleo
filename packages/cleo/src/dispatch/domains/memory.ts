@@ -642,7 +642,7 @@ export class MemoryHandler implements DomainHandler {
           let lastExtractionRun: string | null = null;
           try {
             await getBrainDb(projectRoot);
-            const nativeDb = getBrainNativeDb();
+            const nativeDb = getBrainNativeDb(projectRoot);
             if (nativeDb) {
               const row = nativeDb
                 .prepare(
@@ -685,7 +685,7 @@ export class MemoryHandler implements DomainHandler {
 
           try {
             await getBrainDb(projectRoot);
-            const nativeDb = getBrainNativeDb();
+            const nativeDb = getBrainNativeDb(projectRoot);
             if (!nativeDb) {
               return errorResult(
                 'query',
@@ -783,7 +783,7 @@ export class MemoryHandler implements DomainHandler {
 
           try {
             await getBrainDb(projectRoot);
-            const nativeDb = getBrainNativeDb();
+            const nativeDb = getBrainNativeDb(projectRoot);
             if (!nativeDb) {
               return errorResult(
                 'query',
@@ -875,7 +875,7 @@ export class MemoryHandler implements DomainHandler {
 
           try {
             await getBrainDb(projectRoot);
-            const nativeDb = getBrainNativeDb();
+            const nativeDb = getBrainNativeDb(projectRoot);
             if (!nativeDb) {
               return errorResult(
                 'query',
@@ -996,7 +996,7 @@ export class MemoryHandler implements DomainHandler {
 
           try {
             await getBrainDb(projectRoot);
-            const nativeDb = getBrainNativeDb();
+            const nativeDb = getBrainNativeDb(projectRoot);
             if (!nativeDb) {
               return errorResult(
                 'query',
@@ -1074,7 +1074,7 @@ export class MemoryHandler implements DomainHandler {
 
           try {
             await getBrainDb(projectRoot);
-            const nativeDb = getBrainNativeDb();
+            const nativeDb = getBrainNativeDb(projectRoot);
             if (!nativeDb) {
               return errorResult(
                 'query',
@@ -1207,7 +1207,7 @@ export class MemoryHandler implements DomainHandler {
 
           try {
             await getBrainDb(projectRoot);
-            const nativeDb = getBrainNativeDb();
+            const nativeDb = getBrainNativeDb(projectRoot);
             if (!nativeDb) {
               return errorResult(
                 'query',
@@ -1728,7 +1728,7 @@ export class MemoryHandler implements DomainHandler {
 
           try {
             await getBrainDb(projectRoot);
-            const nativeDb = getBrainNativeDb();
+            const nativeDb = getBrainNativeDb(projectRoot);
             if (!nativeDb) {
               return errorResult(
                 'mutate',
@@ -2032,7 +2032,7 @@ export class MemoryHandler implements DomainHandler {
             // duplicates. We search for existing entries by fetching the native
             // brain DB and scanning narratives that contain `"kind":"doc-attachment"`.
             await getBrainDb(projectRoot);
-            const nativeDb = getBrainNativeDb();
+            const nativeDb = getBrainNativeDb(projectRoot);
 
             const existingAttachmentIds = new Set<string>();
             if (nativeDb) {

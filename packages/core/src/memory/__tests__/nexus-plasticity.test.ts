@@ -346,7 +346,7 @@ describe('T998 — NEXUS plasticity', () => {
       );
       closeBrainDb();
       await getBrainDb(tempDir);
-      const brainDb = getBrainNativeDb();
+      const brainDb = getBrainNativeDb(tempDir);
       if (brainDb) {
         // Ensure retrieval log table exists
         brainDb.exec(`
@@ -437,7 +437,7 @@ describe('T998 — NEXUS plasticity', () => {
       );
       closeBrainDb();
       await getBrainDb(tempDir2);
-      const brainDb = getBrainNativeDb();
+      const brainDb = getBrainNativeDb(tempDir2);
 
       try {
         if (brainDb) {
@@ -508,7 +508,7 @@ describe('T998 — NEXUS plasticity', () => {
       );
       closeBrainDb();
       await getBrainDb(tempDir);
-      const brainDb = getBrainNativeDb();
+      const brainDb = getBrainNativeDb(tempDir);
 
       try {
         if (brainDb) {
@@ -554,7 +554,7 @@ describe('T998 — NEXUS plasticity', () => {
       );
       closeBrainDb();
       await getBrainDb(tempDir);
-      const brainDb = getBrainNativeDb();
+      const brainDb = getBrainNativeDb(tempDir);
 
       try {
         if (brainDb) {

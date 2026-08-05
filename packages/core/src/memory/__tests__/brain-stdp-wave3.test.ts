@@ -50,7 +50,7 @@ async function setupDb(dir: string) {
   );
   closeBrainDb();
   await getBrainDb(dir);
-  return getBrainNativeDb()!;
+  return getBrainNativeDb(dir)!;
 }
 
 /** Insert a brain_page_edges co_retrieved row with full plasticity fields. */

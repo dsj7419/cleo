@@ -279,7 +279,7 @@ export async function runProposeTick(options: ProposeTickOptions): Promise<Propo
     try {
       const { getBrainDb, getBrainNativeDb } = await import('@cleocode/core/internal');
       await getBrainDb(projectRoot);
-      brainDb = getBrainNativeDb();
+      brainDb = getBrainNativeDb(projectRoot);
     } catch {
       brainDb = null;
     }
@@ -303,7 +303,7 @@ export async function runProposeTick(options: ProposeTickOptions): Promise<Propo
     const { getNativeDb, getDb } = await import('@cleocode/core/internal');
     // Ensure tasks.db is initialized
     await getDb(projectRoot);
-    tasksNativeDb = getNativeDb();
+    tasksNativeDb = getNativeDb(projectRoot);
   }
 
   // Run all three ingesters in parallel
@@ -695,7 +695,7 @@ export async function runProposalAutoPromoteScan(
   } else {
     const { getNativeDb, getDb } = await import('@cleocode/core/internal');
     await getDb(projectRoot);
-    tasksNativeDb = getNativeDb();
+    tasksNativeDb = getNativeDb(projectRoot);
   }
 
   if (!tasksNativeDb) {

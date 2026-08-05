@@ -479,7 +479,7 @@ export async function loadOwningTaskStatuses(
   try {
     const { getDb, getNativeTasksDb } = await import('../store/sqlite.js');
     await getDb(projectRoot);
-    db = getNativeTasksDb();
+    db = getNativeTasksDb(projectRoot);
   } catch {
     return out;
   }

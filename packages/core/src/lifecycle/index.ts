@@ -814,7 +814,7 @@ async function ensureLifecycleContext(
   const stageId = `stage-${epicId}-${stageName}`;
 
   const { getNativeDb } = await import('../store/sqlite.js');
-  getNativeDb()!
+  getNativeDb(cwd)!
     .prepare(
       `INSERT OR IGNORE INTO tasks_tasks (id, title, status, priority, created_at) VALUES (?, ?, 'pending', 'medium', datetime('now'))`,
     )

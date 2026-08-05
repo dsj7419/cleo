@@ -362,7 +362,7 @@ async function scanMaxSequenceAtomically(
 ): Promise<number> {
   return withScanLock(async () => {
     const db = await getDb(cwd);
-    const nativeDb = getNativeTasksDb();
+    const nativeDb = getNativeTasksDb(cwd);
     if (!nativeDb) throw new Error('Database not initialized');
 
     let max = 0;

@@ -110,8 +110,8 @@ describe('getDb liveness guard (T12020) — shared consolidated handle reset', (
 
     expect(brainDb).toBeDefined();
     expect(staleNative.isOpen).toBe(false);
-    expect(getBrainNativeDb()?.isOpen).toBe(true);
-    expect(Object.is(getBrainNativeDb(), staleNative)).toBe(false);
+    expect(getBrainNativeDb(tempDir)?.isOpen).toBe(true);
+    expect(Object.is(getBrainNativeDb(tempDir), staleNative)).toBe(false);
   });
 
   /**
@@ -143,8 +143,8 @@ describe('getDb liveness guard (T12020) — shared consolidated handle reset', (
 
     expect(db).toBeDefined();
     expect(staleNative.isOpen).toBe(false);
-    expect(getNativeDb()?.isOpen).toBe(true);
-    expect(Object.is(getNativeDb(), staleNative)).toBe(false);
+    expect(getNativeDb(tempDir)?.isOpen).toBe(true);
+    expect(Object.is(getNativeDb(tempDir), staleNative)).toBe(false);
 
     // The live replacement must see the durable seed row from beforeEach.
     const rows = await db

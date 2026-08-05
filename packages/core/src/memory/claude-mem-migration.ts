@@ -183,9 +183,11 @@ export async function migrateClaudeMem(
   try {
     // Initialize brain.db (ensures tables exist via migrations)
     await getBrainDb(projectRoot);
-    const nativeDb = getBrainNativeDb();
+    const nativeDb = getBrainNativeDb(projectRoot);
     if (!nativeDb) {
-      throw new Error('Failed to initialize brain.db — getBrainNativeDb() returned null');
+      throw new Error(
+        'Failed to initialize brain.db — getBrainNativeDb(projectRoot) returned null',
+      );
     }
 
     // Seam 3 (T11627): this one-shot migration writes brain rows directly via the

@@ -143,7 +143,7 @@ async function handleLearning(op: BrainLearningOp): Promise<BrainWriteResult> {
 async function handlePlasticityEvent(op: BrainPlasticityEventOp): Promise<BrainWriteResult> {
   const { getBrainDb, getBrainNativeDb } = await import('../store/memory-sqlite.js');
   await getBrainDb(op.projectRoot);
-  const nativeDb = getBrainNativeDb();
+  const nativeDb = getBrainNativeDb(op.projectRoot);
   if (!nativeDb) {
     throw new Error('brain native DB unavailable for plasticity_event op');
   }
@@ -181,7 +181,7 @@ async function handlePlasticityEvent(op: BrainPlasticityEventOp): Promise<BrainW
 async function handleWeightUpdate(op: BrainWeightUpdateOp): Promise<BrainWriteResult> {
   const { getBrainDb, getBrainNativeDb } = await import('../store/memory-sqlite.js');
   await getBrainDb(op.projectRoot);
-  const nativeDb = getBrainNativeDb();
+  const nativeDb = getBrainNativeDb(op.projectRoot);
   if (!nativeDb) {
     throw new Error('brain native DB unavailable for weight_update op');
   }

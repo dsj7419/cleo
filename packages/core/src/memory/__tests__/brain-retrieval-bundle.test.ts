@@ -115,7 +115,7 @@ async function seedUserProfile(): Promise<void> {
 async function initBrainDb(): Promise<import('node:sqlite').DatabaseSync> {
   const { getBrainDb, getBrainNativeDb } = await import('../../store/memory-sqlite.js');
   await getBrainDb(testDir);
-  const db = getBrainNativeDb();
+  const db = getBrainNativeDb(testDir);
   if (!db) throw new Error('brain.db native handle not available after init');
   return db;
 }
@@ -185,7 +185,7 @@ async function seedObservations(
 async function seedSessionNarrative(sessionId: string, narrative: string): Promise<void> {
   const { getBrainDb, getBrainNativeDb } = await import('../../store/memory-sqlite.js');
   await getBrainDb(testDir);
-  const db = getBrainNativeDb();
+  const db = getBrainNativeDb(testDir);
   if (!db) return;
 
   db.exec(`

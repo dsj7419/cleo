@@ -335,7 +335,7 @@ export async function linkObservationToModifiedFiles(
 
   try {
     await getBrainDb(projectRoot);
-    const brainNative = getBrainNativeDb();
+    const brainNative = getBrainNativeDb(projectRoot);
     if (!brainNative) return 0;
 
     const nexusDb = nexusNative ?? getNexusNativeDb();
@@ -408,7 +408,7 @@ export async function linkObservationToMentionedSymbols(
 
   try {
     await getBrainDb(projectRoot);
-    const brainNative = getBrainNativeDb();
+    const brainNative = getBrainNativeDb(projectRoot);
     if (!brainNative) return 0;
 
     const nexusDb = nexusNative ?? getNexusNativeDb();
@@ -501,7 +501,7 @@ export async function linkDecisionToSymbols(
 
   try {
     await getBrainDb(projectRoot);
-    const brainNative = getBrainNativeDb();
+    const brainNative = getBrainNativeDb(projectRoot);
     if (!brainNative) return 0;
 
     const nexusDb = nexusNative ?? getNexusNativeDb();
@@ -590,7 +590,7 @@ export async function autoLinkMemories(projectRoot: string): Promise<AutoLinkRes
 
   try {
     await getBrainDb(projectRoot);
-    const brainNative = getBrainNativeDb();
+    const brainNative = getBrainNativeDb(projectRoot);
 
     await getNexusDb();
     const nexusNative = getNexusNativeDb();
@@ -879,7 +879,7 @@ export async function queryMemoriesForCode(
 
   try {
     await getBrainDb(projectRoot);
-    const brainNative = getBrainNativeDb();
+    const brainNative = getBrainNativeDb(projectRoot);
 
     if (!brainNative) return result;
 
@@ -943,7 +943,7 @@ export async function queryCodeForMemory(
 
   try {
     await getBrainDb(projectRoot);
-    const brainNative = getBrainNativeDb();
+    const brainNative = getBrainNativeDb(projectRoot);
 
     await getNexusDb();
     const nexusNative = getNexusNativeDb();
@@ -1037,7 +1037,7 @@ export async function listCodeLinks(projectRoot: string, limit = 100): Promise<C
 
   try {
     await getBrainDb(projectRoot);
-    const brainNative = getBrainNativeDb();
+    const brainNative = getBrainNativeDb(projectRoot);
 
     await getNexusDb();
     const nexusNative = getNexusNativeDb();
@@ -1167,7 +1167,7 @@ export async function queryMemoriesForContext(
 
   try {
     await getBrainDb(projectRoot);
-    const brainNative = getBrainNativeDb();
+    const brainNative = getBrainNativeDb(projectRoot);
     if (!brainNative) return hits;
 
     // Build the peer filter clause.
@@ -1319,7 +1319,7 @@ export async function linkConduitMessagesToSymbols(
     try {
       // Ensure brain.db is available for edge writes
       await getBrainDb(projectRoot);
-      const brainNative = getBrainNativeDb();
+      const brainNative = getBrainNativeDb(projectRoot);
 
       // Ensure nexus.db is available for symbol lookup
       await getNexusDb();

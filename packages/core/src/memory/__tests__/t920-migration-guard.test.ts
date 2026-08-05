@@ -150,7 +150,7 @@ describe('T920: T528 duplicate-column migration guard', () => {
       await expect(getBrainDb(tempDir)).resolves.toBeDefined();
 
       const { getBrainNativeDb } = await import('../../store/memory-sqlite.js');
-      const nativeDb = getBrainNativeDb();
+      const nativeDb = getBrainNativeDb(tempDir);
       expect(nativeDb).not.toBeNull();
 
       // brain_page_nodes must have all T528 columns
@@ -209,7 +209,7 @@ describe('T920: T528 duplicate-column migration guard', () => {
       await expect(getBrainDb(tempDir)).resolves.toBeDefined();
 
       const { getBrainNativeDb } = await import('../../store/memory-sqlite.js');
-      const nativeAfter = getBrainNativeDb();
+      const nativeAfter = getBrainNativeDb(tempDir);
       expect(nativeAfter).not.toBeNull();
 
       type PragmaRow = { name: string };
@@ -253,7 +253,7 @@ describe('T920: T528 duplicate-column migration guard', () => {
 
       // After fix: brain_page_edges must have provenance
       const { getBrainNativeDb } = await import('../../store/memory-sqlite.js');
-      const nativeAfter = getBrainNativeDb();
+      const nativeAfter = getBrainNativeDb(tempDir);
       expect(nativeAfter).not.toBeNull();
 
       const edgesAfter = nativeAfter!

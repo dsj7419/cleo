@@ -1061,7 +1061,7 @@ export async function createSqliteDataAccessor(cwd?: string): Promise<DataAccess
       // another async cleanup could close the DB during the await, leaving us
       // with a stale (closed) nativeDb reference. (T1718 flake fix)
       const db = await getDb(cwd);
-      const nativeDb = getNativeTasksDb();
+      const nativeDb = getNativeTasksDb(cwd);
       if (!nativeDb) {
         throw new Error('Native database not initialized');
       }

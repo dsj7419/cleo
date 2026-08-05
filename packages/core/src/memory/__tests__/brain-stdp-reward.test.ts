@@ -149,8 +149,8 @@ describe('backfillRewardSignals — real SQLite, no mocks', () => {
     await getBrainDb(tempDir);
     await getDb(tempDir);
 
-    const nativeBrainDb = getBrainNativeDb()!;
-    const nativeTasksDb = getNativeDb()!;
+    const nativeBrainDb = getBrainNativeDb(tempDir)!;
+    const nativeTasksDb = getNativeDb(tempDir)!;
 
     const sessionId = 'ses_test_verified_done';
     insertTestSession(nativeTasksDb, sessionId);
@@ -189,8 +189,8 @@ describe('backfillRewardSignals — real SQLite, no mocks', () => {
     await getBrainDb(tempDir);
     await getDb(tempDir);
 
-    const nativeBrainDb = getBrainNativeDb()!;
-    const nativeTasksDb = getNativeDb()!;
+    const nativeBrainDb = getBrainNativeDb(tempDir)!;
+    const nativeTasksDb = getNativeDb(tempDir)!;
 
     const sessionId = 'ses_test_done_unverified';
     insertTestSession(nativeTasksDb, sessionId);
@@ -229,8 +229,8 @@ describe('backfillRewardSignals — real SQLite, no mocks', () => {
     await getBrainDb(tempDir);
     await getDb(tempDir);
 
-    const nativeBrainDb = getBrainNativeDb()!;
-    const nativeTasksDb = getNativeDb()!;
+    const nativeBrainDb = getBrainNativeDb(tempDir)!;
+    const nativeTasksDb = getNativeDb(tempDir)!;
 
     const sessionId = 'ses_test_cancelled';
     insertTestSession(nativeTasksDb, sessionId);
@@ -268,7 +268,7 @@ describe('backfillRewardSignals — real SQLite, no mocks', () => {
     await getBrainDb(tempDir);
     await getDb(tempDir);
 
-    const nativeBrainDb = getBrainNativeDb()!;
+    const nativeBrainDb = getBrainNativeDb(tempDir)!;
 
     const sessionId = 'ses_test_no_tasks';
     // No session or tasks inserted — session has no completed/cancelled tasks
@@ -302,8 +302,8 @@ describe('backfillRewardSignals — real SQLite, no mocks', () => {
     await getBrainDb(tempDir);
     await getDb(tempDir);
 
-    const nativeBrainDb = getBrainNativeDb()!;
-    const nativeTasksDb = getNativeDb()!;
+    const nativeBrainDb = getBrainNativeDb(tempDir)!;
+    const nativeTasksDb = getNativeDb(tempDir)!;
 
     const backfillSession = 'ses_backfill_2026-04-13';
     // Insert a task and retrieval row for the synthetic session
@@ -368,8 +368,8 @@ describe('backfillRewardSignals — real SQLite, no mocks', () => {
     await getBrainDb(tempDir);
     await getDb(tempDir);
 
-    const nativeBrainDb = getBrainNativeDb()!;
-    const nativeTasksDb = getNativeDb()!;
+    const nativeBrainDb = getBrainNativeDb(tempDir)!;
+    const nativeTasksDb = getNativeDb(tempDir)!;
 
     const sessionId = 'ses_test_idempotent';
     insertTestSession(nativeTasksDb, sessionId);
@@ -414,8 +414,8 @@ describe('backfillRewardSignals — real SQLite, no mocks', () => {
     await getBrainDb(tempDir);
     await getDb(tempDir);
 
-    const nativeBrainDb = getBrainNativeDb()!;
-    const nativeTasksDb = getNativeDb()!;
+    const nativeBrainDb = getBrainNativeDb(tempDir)!;
+    const nativeTasksDb = getNativeDb(tempDir)!;
 
     const sessionId = 'ses_test_modulator_insert';
     insertTestSession(nativeTasksDb, sessionId);
@@ -467,8 +467,8 @@ describe('backfillRewardSignals — real SQLite, no mocks', () => {
     await getBrainDb(tempDir);
     await getDb(tempDir);
 
-    const nativeBrainDb = getBrainNativeDb()!;
-    const nativeTasksDb = getNativeDb()!;
+    const nativeBrainDb = getBrainNativeDb(tempDir)!;
+    const nativeTasksDb = getNativeDb(tempDir)!;
 
     const sessionId = 'ses_test_max_reward';
     insertTestSession(nativeTasksDb, sessionId);

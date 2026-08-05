@@ -242,7 +242,7 @@ export async function ensureBrainDb(projectRoot: string): Promise<ScaffoldResult
     await getBrainDb(projectRoot);
 
     try {
-      const nativeDb = getBrainNativeDb();
+      const nativeDb = getBrainNativeDb(projectRoot);
       if (nativeDb) {
         const { ensureFts5Tables } = await import('../memory/brain-search.js');
         ensureFts5Tables(nativeDb);

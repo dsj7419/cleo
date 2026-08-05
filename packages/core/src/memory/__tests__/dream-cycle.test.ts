@@ -76,7 +76,7 @@ async function insertObservations(
   );
   closeBrainDb();
   await getBrainDb(dir);
-  const db = getBrainNativeDb();
+  const db = getBrainNativeDb(dir);
   if (!db) throw new Error('brain.db unavailable');
 
   for (let i = 0; i < count; i++) {
@@ -103,7 +103,7 @@ async function insertRetrievalLog(dir: string, minutesAgo: number): Promise<void
   );
   closeBrainDb();
   await getBrainDb(dir);
-  const db = getBrainNativeDb();
+  const db = getBrainNativeDb(dir);
   if (!db) throw new Error('brain.db unavailable');
 
   db.prepare(
@@ -124,7 +124,7 @@ async function countConsolidationEvents(dir: string): Promise<number> {
   );
   closeBrainDb();
   await getBrainDb(dir);
-  const db = getBrainNativeDb();
+  const db = getBrainNativeDb(dir);
   if (!db) return 0;
   const row = db.prepare('SELECT COUNT(*) AS cnt FROM brain_consolidation_events').get() as
     | { cnt: number }

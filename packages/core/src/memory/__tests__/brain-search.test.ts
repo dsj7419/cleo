@@ -40,7 +40,7 @@ describe('Brain Search', () => {
       resetFts5Cache();
 
       await getBrainDb(tempDir);
-      const nativeDb = getBrainNativeDb();
+      const nativeDb = getBrainNativeDb(tempDir);
       expect(nativeDb).not.toBeNull();
 
       const result = ensureFts5Tables(nativeDb!);
@@ -204,7 +204,7 @@ describe('Brain Search', () => {
       resetFts5Cache();
 
       await getBrainDb(tempDir);
-      const nativeDb = getBrainNativeDb()!;
+      const nativeDb = getBrainNativeDb(tempDir)!;
       ensureFts5Tables(nativeDb);
 
       // Should not throw

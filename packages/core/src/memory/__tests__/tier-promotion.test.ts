@@ -74,7 +74,7 @@ interface SeedObservationArgs {
 async function seedObservation(args: SeedObservationArgs): Promise<void> {
   const { getBrainDb, getBrainNativeDb } = await import('../../store/memory-sqlite.js');
   await getBrainDb(tempDir);
-  const db = getBrainNativeDb()!;
+  const db = getBrainNativeDb(tempDir)!;
   db.prepare(`
     INSERT OR REPLACE INTO brain_observations
       (id, type, title, narrative, memory_tier, citation_count, quality_score, verified, created_at, updated_at)
@@ -94,7 +94,7 @@ async function seedObservation(args: SeedObservationArgs): Promise<void> {
 async function seedDecision(args: SeedObservationArgs): Promise<void> {
   const { getBrainDb, getBrainNativeDb } = await import('../../store/memory-sqlite.js');
   await getBrainDb(tempDir);
-  const db = getBrainNativeDb()!;
+  const db = getBrainNativeDb(tempDir)!;
   db.prepare(`
     INSERT OR REPLACE INTO brain_decisions
       (id, type, decision, rationale, confidence, memory_tier, citation_count, quality_score, verified, created_at, updated_at)

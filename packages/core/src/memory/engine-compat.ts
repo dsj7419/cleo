@@ -196,7 +196,7 @@ export async function memoryBrainStats(projectRoot?: string): Promise<EngineResu
     const root = resolveRoot(projectRoot);
     const { getBrainDb, getBrainNativeDb } = await import('../store/memory-sqlite.js');
     await getBrainDb(root);
-    const nativeDb = getBrainNativeDb();
+    const nativeDb = getBrainNativeDb(root);
 
     if (!nativeDb) {
       return {
@@ -285,7 +285,7 @@ export async function memoryDecisionFind(
     if (params.query) {
       const { getBrainDb, getBrainNativeDb } = await import('../store/memory-sqlite.js');
       await getBrainDb(root);
-      const nativeDb = getBrainNativeDb();
+      const nativeDb = getBrainNativeDb(root);
 
       if (!nativeDb) {
         return { success: true, data: { decisions: [], total: 0 } };
@@ -839,7 +839,7 @@ export async function memoryContradictions(projectRoot?: string): Promise<Engine
     const root = resolveRoot(projectRoot);
     const { getBrainDb, getBrainNativeDb } = await import('../store/memory-sqlite.js');
     await getBrainDb(root);
-    const nativeDb = getBrainNativeDb();
+    const nativeDb = getBrainNativeDb(root);
 
     if (!nativeDb) {
       return { success: true, data: { contradictions: [] } };
@@ -1047,7 +1047,7 @@ export async function memorySuperseded(
     const root = resolveRoot(projectRoot);
     const { getBrainDb, getBrainNativeDb } = await import('../store/memory-sqlite.js');
     await getBrainDb(root);
-    const nativeDb = getBrainNativeDb();
+    const nativeDb = getBrainNativeDb(root);
 
     if (!nativeDb) {
       return { success: true, data: { superseded: [] } };

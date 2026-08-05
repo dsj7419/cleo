@@ -102,7 +102,7 @@ export async function scanPendingTranscripts(
   try {
     const { getBrainDb, getBrainNativeDb } = await import('../store/memory-sqlite.js');
     await getBrainDb(projectRoot);
-    const db = getBrainNativeDb();
+    const db = getBrainNativeDb(projectRoot);
     if (!db) return [];
 
     // Find all pending records that don't yet have a corresponding extracted tombstone

@@ -218,7 +218,7 @@ describe('verifyProvenance — Phase 2 (T9529)', () => {
     expect(releaseRow[0]).toBeDefined();
     const releaseId = releaseRow[0]?.id ?? '';
 
-    const native = getNativeDb();
+    const native = getNativeDb(projectRoot);
     if (!native) throw new Error('native db not initialized');
     native.exec('PRAGMA foreign_keys = OFF');
     native.exec(
@@ -259,7 +259,7 @@ describe('verifyProvenance — Phase 2 (T9529)', () => {
     expect(commitRow[0]).toBeDefined();
     const commitSha = commitRow[0]?.sha ?? '';
 
-    const native = getNativeDb();
+    const native = getNativeDb(projectRoot);
     if (!native) throw new Error('native db not initialized');
     native.exec('PRAGMA foreign_keys = OFF');
     native.exec(
@@ -296,7 +296,7 @@ describe('verifyProvenance — Phase 2 (T9529)', () => {
     expect(releaseRow[0]).toBeDefined();
     const releaseId = releaseRow[0]?.id ?? '';
 
-    const native = getNativeDb();
+    const native = getNativeDb(projectRoot);
     if (!native) throw new Error('native db not initialized');
     native.exec('PRAGMA foreign_keys = OFF');
     native.exec(

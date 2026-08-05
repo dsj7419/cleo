@@ -724,7 +724,7 @@ export async function runReflector(
 
   // Fetch ALL recent session observations (both raw and compressed)
   // for reflector to synthesize across
-  const nativeDb = getBrainNativeDb();
+  const nativeDb = getBrainNativeDb(projectRoot);
   if (!nativeDb) return empty;
 
   let observations: RawObservationRow[] = [];

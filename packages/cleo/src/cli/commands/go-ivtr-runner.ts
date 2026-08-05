@@ -95,7 +95,7 @@ const runIvtrPlaybookTurn: go.IvtrRunner = async (taskId, options) => {
   // Acquire the shared node:sqlite handle (ADR-006 WAL safety) — never open a
   // second connection to tasks.db.
   await getDb(projectRoot);
-  const db = getNativeDb();
+  const db = getNativeDb(projectRoot);
   if (!db) {
     throw new Error('cleo go IVTR runner: tasks.db singleton was not initialized by getDb()');
   }

@@ -66,7 +66,7 @@ describe('dedupePatterns', () => {
     closeBrainDb();
 
     await getBrainDb(tempDir);
-    const nativeDb = getBrainNativeDb()!;
+    const nativeDb = getBrainNativeDb(tempDir)!;
 
     // Insert 3 identical patterns within a 21-second window
     const base = '2026-04-24T10:00:00.000Z';
@@ -114,7 +114,7 @@ describe('dedupePatterns', () => {
     closeBrainDb();
 
     await getBrainDb(tempDir);
-    const nativeDb = getBrainNativeDb()!;
+    const nativeDb = getBrainNativeDb(tempDir)!;
 
     // Two identical patterns but 2 hours apart — should NOT be deduped with 1hr window
     nativeDb
@@ -147,7 +147,7 @@ describe('dedupePatterns', () => {
     closeBrainDb();
 
     await getBrainDb(tempDir);
-    const nativeDb = getBrainNativeDb()!;
+    const nativeDb = getBrainNativeDb(tempDir)!;
 
     const ts = '2026-04-24T10:00:00.000Z';
     nativeDb

@@ -406,7 +406,7 @@ export async function getRelations(
 /** Get the dependency chain (blockers) for a task using recursive CTE. */
 export async function getBlockerChain(taskId: string, cwd?: string): Promise<string[]> {
   await getDb(cwd);
-  const nativeDb = getNativeDb();
+  const nativeDb = getNativeDb(cwd);
   if (!nativeDb) return [];
   const result = nativeDb
     .prepare(`
@@ -437,7 +437,7 @@ export async function getChildren(parentId: string, cwd?: string): Promise<Task[
 /** Build a tree from a root task using recursive CTE. */
 export async function getSubtree(rootId: string, cwd?: string): Promise<Task[]> {
   await getDb(cwd);
-  const nativeDb = getNativeDb();
+  const nativeDb = getNativeDb(cwd);
   if (!nativeDb) return [];
   const rows = nativeDb
     .prepare(`

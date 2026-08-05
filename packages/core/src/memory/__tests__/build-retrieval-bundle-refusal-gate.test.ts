@@ -64,7 +64,7 @@ afterEach(async () => {
 async function initBrainDb(): Promise<import('node:sqlite').DatabaseSync> {
   const { getBrainDb, getBrainNativeDb } = await import('../../store/memory-sqlite.js');
   await getBrainDb(testDir);
-  const db = getBrainNativeDb();
+  const db = getBrainNativeDb(testDir);
   if (!db) throw new Error('brain.db native handle unavailable after init');
   return db;
 }

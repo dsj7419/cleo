@@ -48,7 +48,7 @@ describe('T673-M1: brain_retrieval_log schema expansion', () => {
     async () => {
       const { getBrainDb, getBrainNativeDb } = await import('../../store/memory-sqlite.js');
       await getBrainDb(tempDir);
-      const nativeDb = getBrainNativeDb();
+      const nativeDb = getBrainNativeDb(tempDir);
       expect(nativeDb).toBeTruthy();
       if (!nativeDb) return;
 
@@ -74,7 +74,7 @@ describe('T673-M1: brain_retrieval_log schema expansion', () => {
       );
       closeBrainDb();
       await getBrainDb(tempDir);
-      const nativeDb = getBrainNativeDb();
+      const nativeDb = getBrainNativeDb(tempDir);
       expect(nativeDb).toBeTruthy();
       if (!nativeDb) return;
 
@@ -107,7 +107,7 @@ describe('T673-M1: brain_retrieval_log schema expansion', () => {
       );
       closeBrainDb();
       await getBrainDb(tempDir);
-      const nativeDb = getBrainNativeDb();
+      const nativeDb = getBrainNativeDb(tempDir);
       expect(nativeDb).toBeTruthy();
       if (!nativeDb) return;
 
@@ -139,7 +139,7 @@ describe('T673-M1: brain_retrieval_log schema expansion', () => {
       );
       closeBrainDb();
       await getBrainDb(tempDir);
-      const nativeDb = getBrainNativeDb();
+      const nativeDb = getBrainNativeDb(tempDir);
       expect(nativeDb).toBeTruthy();
       if (!nativeDb) return;
 
@@ -181,7 +181,7 @@ describe('T673-M1: brain_retrieval_log schema expansion', () => {
       );
       closeBrainDb();
       await getBrainDb(tempDir);
-      const nativeDb = getBrainNativeDb();
+      const nativeDb = getBrainNativeDb(tempDir);
       expect(nativeDb).toBeTruthy();
       if (!nativeDb) return;
 
@@ -230,7 +230,7 @@ describe('T673-M1: brain_retrieval_log schema expansion', () => {
       );
       closeBrainDb();
       await getBrainDb(tempDir);
-      const nativeDb = getBrainNativeDb();
+      const nativeDb = getBrainNativeDb(tempDir);
       expect(nativeDb).toBeTruthy();
       if (!nativeDb) return;
 

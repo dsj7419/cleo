@@ -23,7 +23,7 @@ export async function logRetrieval(
 
   const { getBrainDb, getBrainNativeDb } = await import('../../store/memory-sqlite.js');
   await getBrainDb(projectRoot);
-  const nativeDb = getBrainNativeDb();
+  const nativeDb = getBrainNativeDb(projectRoot);
   if (!nativeDb) return;
 
   // Self-healing: create table if not exists (includes session_id column)

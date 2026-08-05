@@ -37,7 +37,7 @@ async function setupDb(dir: string) {
   );
   closeBrainDb();
   await getBrainDb(dir);
-  return getBrainNativeDb()!;
+  return getBrainNativeDb(dir)!;
 }
 
 describe('STDP W2 — T679 functional tests (real SQLite, no mocks)', () => {

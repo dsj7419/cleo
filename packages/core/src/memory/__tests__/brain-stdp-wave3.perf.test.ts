@@ -56,7 +56,7 @@ describe.skipIf(!RUN_PERF)('T695 — STDP O(n²) complexity canary (RUN_PERF=1 r
     async function setupDb(dir: string) {
       closeBrainDb();
       await getBrainDb(dir);
-      return getBrainNativeDb()!;
+      return getBrainNativeDb(dir)!;
     }
 
     async function measureRun(

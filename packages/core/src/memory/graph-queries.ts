@@ -160,7 +160,7 @@ export async function traceBrainGraph(
   maxDepth = 3,
 ): Promise<TraceNode[]> {
   await getBrainDb(projectRoot);
-  const nativeDb = getBrainNativeDb();
+  const nativeDb = getBrainNativeDb(projectRoot);
 
   if (!nativeDb) return [];
 
@@ -237,7 +237,7 @@ export async function relatedBrainNodes(
   edgeType?: string,
 ): Promise<RelatedNode[]> {
   await getBrainDb(projectRoot);
-  const nativeDb = getBrainNativeDb();
+  const nativeDb = getBrainNativeDb(projectRoot);
 
   if (!nativeDb) return [];
 
@@ -310,7 +310,7 @@ export async function contextBrainNode(
   nodeId: string,
 ): Promise<NodeContext | null> {
   await getBrainDb(projectRoot);
-  const nativeDb = getBrainNativeDb();
+  const nativeDb = getBrainNativeDb(projectRoot);
 
   if (!nativeDb) return null;
 
@@ -418,7 +418,7 @@ export async function contextBrainNode(
  */
 export async function graphStats(projectRoot: string): Promise<GraphStats> {
   await getBrainDb(projectRoot);
-  const nativeDb = getBrainNativeDb();
+  const nativeDb = getBrainNativeDb(projectRoot);
 
   if (!nativeDb) {
     return { nodesByType: [], edgesByType: [], totalNodes: 0, totalEdges: 0 };

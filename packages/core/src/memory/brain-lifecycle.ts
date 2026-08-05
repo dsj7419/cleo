@@ -53,7 +53,7 @@ export async function applyTemporalDecay(
   // Ensure brain.db is initialized
   const { getBrainDb, getBrainNativeDb } = await import('../store/memory-sqlite.js');
   await getBrainDb(projectRoot);
-  const nativeDb = getBrainNativeDb();
+  const nativeDb = getBrainNativeDb(projectRoot);
 
   if (!nativeDb) {
     return { updated: 0, tablesProcessed: [] };
@@ -246,7 +246,7 @@ export async function consolidateMemories(
 
   const { getBrainDb, getBrainNativeDb } = await import('../store/memory-sqlite.js');
   await getBrainDb(projectRoot);
-  const nativeDb = getBrainNativeDb();
+  const nativeDb = getBrainNativeDb(projectRoot);
 
   if (!nativeDb) {
     return { grouped: 0, merged: 0, archived: 0 };
@@ -406,7 +406,7 @@ export interface PromotionResult {
 export async function runTierPromotion(projectRoot: string): Promise<PromotionResult> {
   const { getBrainDb, getBrainNativeDb } = await import('../store/memory-sqlite.js');
   await getBrainDb(projectRoot);
-  const nativeDb = getBrainNativeDb();
+  const nativeDb = getBrainNativeDb(projectRoot);
 
   if (!nativeDb) {
     return { promoted: [], evicted: [] };
@@ -650,7 +650,7 @@ export async function promoteObservationsToTyped(
 
   const { getBrainDb, getBrainNativeDb } = await import('../store/memory-sqlite.js');
   await getBrainDb(projectRoot);
-  const nativeDb = getBrainNativeDb();
+  const nativeDb = getBrainNativeDb(projectRoot);
 
   if (!nativeDb) {
     return { promoted: [], skippedCount: 0, alreadyPromotedCount: 0 };
@@ -1217,7 +1217,7 @@ export async function runConsolidation(
   try {
     const { getBrainDb, getBrainNativeDb } = await import('../store/memory-sqlite.js');
     await getBrainDb(projectRoot);
-    const nativeDb = getBrainNativeDb();
+    const nativeDb = getBrainNativeDb(projectRoot);
 
     if (nativeDb) {
       // Guard: brain_consolidation_events must exist (M4 migration)
@@ -1314,7 +1314,7 @@ export async function fulfillPromotionLog(projectRoot: string): Promise<AutoExtr
 
   const { getBrainDb, getBrainNativeDb } = await import('../store/memory-sqlite.js');
   await getBrainDb(projectRoot);
-  const nativeDb = getBrainNativeDb();
+  const nativeDb = getBrainNativeDb(projectRoot);
   if (!nativeDb) return metrics;
 
   // Guard: brain_promotion_log must exist
@@ -1491,7 +1491,7 @@ export async function fulfillPromotionLog(projectRoot: string): Promise<AutoExtr
 async function deduplicateByEmbedding(projectRoot: string): Promise<number> {
   const { getBrainDb, getBrainNativeDb } = await import('../store/memory-sqlite.js');
   await getBrainDb(projectRoot);
-  const nativeDb = getBrainNativeDb();
+  const nativeDb = getBrainNativeDb(projectRoot);
   if (!nativeDb) return 0;
 
   let merged = 0;
@@ -1571,7 +1571,7 @@ async function deduplicateByEmbedding(projectRoot: string): Promise<number> {
 async function recomputeQualityScores(projectRoot: string): Promise<number> {
   const { getBrainDb, getBrainNativeDb } = await import('../store/memory-sqlite.js');
   await getBrainDb(projectRoot);
-  const nativeDb = getBrainNativeDb();
+  const nativeDb = getBrainNativeDb(projectRoot);
   if (!nativeDb) return 0;
 
   let updated = 0;
@@ -1629,7 +1629,7 @@ async function recomputeQualityScores(projectRoot: string): Promise<number> {
 async function softEvictLowQualityMedium(projectRoot: string): Promise<number> {
   const { getBrainDb, getBrainNativeDb } = await import('../store/memory-sqlite.js');
   await getBrainDb(projectRoot);
-  const nativeDb = getBrainNativeDb();
+  const nativeDb = getBrainNativeDb(projectRoot);
   if (!nativeDb) return 0;
 
   let evicted = 0;
@@ -1711,7 +1711,7 @@ function parseEntryIds(raw: string): string[] {
 async function strengthenCoRetrievedEdges(projectRoot: string): Promise<number> {
   const { getBrainDb, getBrainNativeDb } = await import('../store/memory-sqlite.js');
   await getBrainDb(projectRoot);
-  const nativeDb = getBrainNativeDb();
+  const nativeDb = getBrainNativeDb(projectRoot);
   if (!nativeDb) return 0;
 
   // Check if retrieval log table exists

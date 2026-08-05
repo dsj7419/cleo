@@ -444,7 +444,7 @@ export async function populateEmbeddings(
 
   const { getBrainDb, getBrainNativeDb } = await import('../../store/memory-sqlite.js');
   await getBrainDb(projectRoot);
-  const nativeDb = getBrainNativeDb();
+  const nativeDb = getBrainNativeDb(projectRoot);
 
   if (!nativeDb) {
     return { processed: 0, skipped: 0, errors: 0 };

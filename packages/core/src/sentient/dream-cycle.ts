@@ -334,7 +334,7 @@ async function defaultCollectObservations(
   try {
     const { getBrainDb, getBrainNativeDb } = await import('../store/memory-sqlite.js');
     await getBrainDb(projectRoot);
-    const db = getBrainNativeDb();
+    const db = getBrainNativeDb(projectRoot);
     if (!db) return [];
 
     const cutoff = new Date(Date.now() - lookbackMs).toISOString().replace('T', ' ').slice(0, 19);

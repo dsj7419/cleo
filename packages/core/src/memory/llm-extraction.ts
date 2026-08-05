@@ -196,7 +196,7 @@ async function storeExtracted(
       const { getBrainNativeDb, getBrainDb } = await import('../store/memory-sqlite.js');
       getBrainDb(projectRoot)
         .then(() => {
-          const db = getBrainNativeDb();
+          const db = getBrainNativeDb(projectRoot);
           db?.prepare(
             'UPDATE brain_decisions SET citation_count = citation_count + 1 WHERE id = ?',
           ).run(dedupResult.id);

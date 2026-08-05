@@ -120,7 +120,7 @@ describe('auditSagaHierarchy (T10119)', () => {
     // the fixtures can seed deliberately invariant-violating rows for the audit.
     const { getDb, getNativeDb } = await import('../../store/sqlite.js');
     await getDb(tempDir);
-    const nativeDb = getNativeDb() as NativeDbForTest | null;
+    const nativeDb = getNativeDb(tempDir) as NativeDbForTest | null;
     if (nativeDb) neutralizeSagaStructuralGuards(nativeDb);
   });
 
