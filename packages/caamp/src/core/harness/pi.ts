@@ -353,7 +353,7 @@ export class PiHarness implements Harness {
       // 'append' preserves Pi's long-standing placement for a file that has
       // no block yet; an existing block is still replaced in place.
       const { content: next } = reconcile(existing, content, 'append');
-      if (next !== existing) await writeFileAtomic(filePath, next);
+      if (next !== existing) await writeFileAtomic({ path: filePath, content: next });
     });
   }
 
@@ -376,7 +376,10 @@ export class PiHarness implements Harness {
         .replace(new RegExp(CAAMP_BLOCK_PATTERN_SOURCE, 'g'), '')
         .replace(/\n{3,}/g, '\n\n')
         .trimEnd();
-      await writeFileAtomic(filePath, stripped.length === 0 ? '' : `${stripped}\n`);
+      await writeFileAtomic({
+        path: filePath,
+        content: stripped.length === 0 ? '' : `${stripped}\n`,
+      });
     });
   }
 

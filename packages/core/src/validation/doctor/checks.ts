@@ -41,6 +41,7 @@ import { getTemplateById } from '../../templates/registry.js';
 import {
   CAAMP_DAMAGED_END_PATTERN_SOURCE,
   CAAMP_DAMAGED_START_PATTERN_SOURCE,
+  CAAMP_MARKER_START,
 } from '@cleocode/contracts/caamp-markers';
 import type { CheckResult } from '@cleocode/contracts/scaffold-diagnostics';
 
@@ -254,14 +255,26 @@ export function checkAgentsMdHub(projectRoot?: string): CheckResult {
     };
   }
 
-  if (!content.includes('CAAMP:START')) {
+  // A *whole-marker* match, not a substring one. `content.includes('CAAMP:START')`
+  // is also satisfied by the damaged literal `!-- CAAMP:START -->`, so this
+  // check reported the corrupt hub as healthy — one of two independent
+  // "detect nothing / fix nothing" loops that let a one-byte defect survive a
+  // month of upgrades (T12051).
+  const hasCanonicalMarker = content.includes(CAAMP_MARKER_START);
+
+  if (!hasCanonicalMarker) {
+    const hasDamagedMarker = new RegExp(CAAMP_DAMAGED_START_PATTERN_SOURCE, 'mi').test(content);
+
     return {
       id: 'agents_md_hub',
       category: 'configuration',
       status: 'warning',
-      message: 'AGENTS.md exists but has no CAAMP:START marker',
-      details: { path: agentsMdPath, hasCaampMarker: false },
-      fix: 'cleo upgrade',
+      message: hasDamagedMarker
+        ? 'AGENTS.md has a damaged CAAMP:START marker'
+        : 'AGENTS.md exists but has no CAAMP:START marker',
+      details: { path: agentsMdPath, hasCaampMarker: false, hasDamagedMarker },
+      // `cleo upgrade` re-runs injection, which cannot repair a damaged marker.
+      fix: hasDamagedMarker ? 'cleo caamp repair' : 'cleo upgrade',
     };
   }
 

@@ -1050,6 +1050,53 @@ export interface FixResult {
  * Returns a list of fix results for each attempted repair.
  */
 // SSoT-EXEMPT:engine-migration-T1571
+/**
+ * Repair damaged or duplicated CAAMP markers across the instruction-file
+ * cascade, including the global hub.
+ *
+ * Registered as the fixer for `caamp_marker_integrity`, `agents_md_hub` and
+ * `injection_health`. Before T12051 none of those checks had a fixer, so
+ * `cleo doctor --fix` skipped them silently while the checks kept reporting —
+ * and the remediation they printed (`cleo upgrade`) re-runs injection, which is
+ * what created the duplicate blocks in the first place.
+ *
+ * `@cleocode/caamp` is imported dynamically because it is an optional peer;
+ * a missing install reports `skipped` rather than failing the whole fix run.
+ *
+ * @param projectRoot - Project whose instruction files should be repaired
+ * @returns A {@link FixResult} describing what was healed
+ *
+ * @example
+ * ```typescript
+ * const result = await repairCaampMarkers("/path/to/project");
+ * // { check: "caamp_marker_integrity", action: "fixed", message: "healed 2 marker(s)…" }
+ * ```
+ */
+async function repairCaampMarkers(projectRoot: string): Promise<FixResult> {
+  const check = 'caamp_marker_integrity';
+  try {
+    const { getInstalledProviders, repairInstructionFiles } = await import('@cleocode/caamp');
+    const result = await repairInstructionFiles(projectRoot, getInstalledProviders());
+
+    if (result.filesModified === 0) {
+      return { check, action: 'skipped', message: 'CAAMP markers already well-formed' };
+    }
+    return {
+      check,
+      action: 'fixed',
+      message:
+        `healed ${result.repaired} damaged marker(s) and removed ` +
+        `${result.removed} duplicate block(s) across ${result.filesModified} file(s)`,
+    };
+  } catch (err) {
+    return {
+      check,
+      action: 'failed',
+      message: err instanceof Error ? err.message : String(err),
+    };
+  }
+}
+
 export async function runDoctorFixes(projectRoot: string): Promise<FixResult[]> {
   const {
     ensureCleoStructure,
@@ -1146,11 +1193,16 @@ export async function runDoctorFixes(projectRoot: string): Promise<FixResult[]> 
       };
     },
     injection_health: async () => {
+      // Heal damaged/duplicated markers BEFORE re-injecting. `ensureInjection`
+      // alone cannot repair a damaged marker — re-running injection is what
+      // produced the duplicate blocks in the first place (T12051).
+      const repair = await repairCaampMarkers(projectRoot);
       const r = await ensureInjection(projectRoot);
+      const details = r.details ?? r.action;
       return {
         check: 'injection_health',
-        action: r.action === 'skipped' ? 'skipped' : 'fixed',
-        message: r.details ?? r.action,
+        action: r.action === 'skipped' && repair.action !== 'fixed' ? 'skipped' : 'fixed',
+        message: repair.action === 'fixed' ? `${repair.message}; ${details}` : details,
       };
     },
     cleo_structure: async () => {
@@ -1186,6 +1238,12 @@ export async function runDoctorFixes(projectRoot: string): Promise<FixResult[]> 
         message: r.details ?? r.action,
       };
     },
+    // T12051: damaged or duplicated CAAMP markers. Registered because the
+    // checks that detect them previously had NO fixer here, so `doctor --fix`
+    // silently skipped them — and the prescription they printed
+    // (`cleo upgrade`) re-runs injection, which is what created the duplicates.
+    caamp_marker_integrity: () => repairCaampMarkers(projectRoot),
+    agents_md_hub: () => repairCaampMarkers(projectRoot),
   };
 
   for (const check of failedChecks) {

@@ -65,15 +65,26 @@ vi.mock('@cleocode/caamp', () => {
       },
     ),
     // inject writes CLEO content into a specific file (AGENTS.md)
+    // Mirrors the real `inject()`: REPLACE an existing block, prepend only when
+    // there is none. The previous mock prepended unconditionally, which encoded
+    // a duplication ratchet production has never had — and, because
+    // `vitest.setup.ts` did not pin AGENTS_HOME until T12051, it ran against
+    // the developer's real ~/.agents/AGENTS.md and drove it to 13 blocks.
     inject: vi.fn(async (filePath: string, content: string) => {
       const { writeFile: wf } = await import('node:fs/promises');
       const { existsSync: exists, readFileSync } = await import('node:fs');
-      let existing = '';
-      if (exists(filePath)) {
-        existing = readFileSync(filePath, 'utf-8');
+      const block = `<!-- CAAMP:START -->\n${content}\n<!-- CAAMP:END -->`;
+      const existing = exists(filePath) ? readFileSync(filePath, 'utf-8') : '';
+      const pattern = /<!-- CAAMP:START -->[\s\S]*?<!-- CAAMP:END -->/;
+
+      if (pattern.test(existing)) {
+        const replaced = existing.replace(pattern, () => block);
+        if (replaced === existing) return 'intact';
+        await wf(filePath, replaced);
+        return 'injected';
       }
-      const newContent = `<!-- CAAMP:START -->\n${content}\n<!-- CAAMP:END -->\n${existing}`;
-      await wf(filePath, newContent);
+
+      await wf(filePath, existing.length > 0 ? `${block}\n${existing}` : `${block}\n`);
       return 'injected';
     }),
     // buildInjectionContent returns the content string passed to injectAll

@@ -6,6 +6,8 @@
  * format-agnostic config read/write operations.
  */
 
+// Canonical atomic write primitive lives in core (tools-vs-skills boundary).
+export { writeFileAtomic } from '@cleocode/core/tools/fs.js';
 // Skills doctor helpers moved to `@cleocode/core` by T9744 (Wave B of T9740).
 // Import from `@cleocode/core` directly:
 //   - runDoctorBridge, AgentsSkillsRealDirError, buildBackupTimestamp,
@@ -43,7 +45,7 @@ export { readConfig, removeConfig, writeConfig } from './core/formats/index.js';
 export { deepMerge, ensureDir, getNestedValue } from './core/formats/utils.js';
 // Atomic write + cross-process file lock primitives (T12051)
 export type { FileLockOptions } from './core/fs/atomic.js';
-export { assertNotTornRead, withFileLock, writeFileAtomic } from './core/fs/atomic.js';
+export { assertNotTornRead, withFileLock } from './core/fs/atomic.js';
 export type {
   Harness,
   HarnessScope,

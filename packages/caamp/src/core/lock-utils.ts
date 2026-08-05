@@ -12,7 +12,7 @@ import { withFileLock, writeFileAtomic } from './fs/atomic.js';
 import { LOCK_FILE_PATH } from './paths/agents.js';
 
 async function writeLockFileUnsafe(lock: CaampLockFile): Promise<void> {
-  await writeFileAtomic(LOCK_FILE_PATH, `${JSON.stringify(lock, null, 2)}\n`);
+  await writeFileAtomic({ path: LOCK_FILE_PATH, content: `${JSON.stringify(lock, null, 2)}\n` });
 }
 
 /**

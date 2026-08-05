@@ -123,7 +123,7 @@ export async function dedupeFile(filePath: string): Promise<DedupeResult> {
 
     if (blocks.length === 0) {
       if (repaired > 0 && healed !== original) {
-        await writeFileAtomic(filePath, healed);
+        await writeFileAtomic({ path: filePath, content: healed });
         return { filePath, removed: 0, kept: 0, modified: true, repaired };
       }
       return { filePath, removed: 0, kept: 0, modified: false, repaired };
@@ -172,7 +172,7 @@ export async function dedupeFile(filePath: string): Promise<DedupeResult> {
       return { filePath, removed: 0, kept: blocks.length, modified: false, repaired };
     }
 
-    await writeFileAtomic(filePath, result);
+    await writeFileAtomic({ path: filePath, content: result });
     return { filePath, removed, kept: keepSet.size, modified: true, repaired };
   });
 }
@@ -310,7 +310,7 @@ export async function repairInstructionFiles(
           return { filePath, removed: 0, kept: blocksBefore, modified: false, repaired };
         }
 
-        await writeFileAtomic(filePath, content);
+        await writeFileAtomic({ path: filePath, content: content });
         return {
           filePath,
           removed,
@@ -433,7 +433,7 @@ export async function inject(filePath: string, content: string): Promise<CaampIn
     // Create new file with injection block. Still atomic + locked so a
     // concurrent creator cannot interleave with us.
     return withFileLock<CaampInjectionAction>(filePath, async () => {
-      await writeFileAtomic(filePath, `${buildBlock(body)}\n`);
+      await writeFileAtomic({ path: filePath, content: `${buildBlock(body)}\n` });
       return 'created';
     });
   }
@@ -454,7 +454,7 @@ export async function inject(filePath: string, content: string): Promise<CaampIn
 
     if (next === existing) return 'intact';
 
-    await writeFileAtomic(filePath, next);
+    await writeFileAtomic({ path: filePath, content: next });
 
     // Report the most significant thing that happened, most invasive first.
     if (blocksBefore === 0) return 'added';
@@ -507,7 +507,7 @@ export async function removeInjection(filePath: string): Promise<boolean> {
       const { rm } = await import('node:fs/promises');
       await rm(filePath);
     } else {
-      await writeFileAtomic(filePath, `${cleaned}\n`);
+      await writeFileAtomic({ path: filePath, content: `${cleaned}\n` });
     }
 
     return true;

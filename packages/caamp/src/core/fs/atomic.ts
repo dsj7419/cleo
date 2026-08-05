@@ -9,25 +9,29 @@
  * a half-written file, and a reader racing a writer can observe a truncated
  * one.
  *
- * The two primitives here remove that class of failure:
+ * Two primitives remove that class of failure:
  *
- * - {@link writeFileAtomic} — write to a unique sibling temp file, then
- *   `rename(2)` it over the target. `rename` within a filesystem is atomic, so
+ * - `writeFileAtomic` — the canonical tmp-then-rename primitive from
+ *   `@cleocode/core/tools/fs.js`. `rename(2)` within a filesystem is atomic, so
  *   a concurrent reader sees either the whole old file or the whole new one,
- *   never a mixture.
+ *   never a mixture. It is re-exported here for callers already importing this
+ *   module; the definition lives in core, per the tools-vs-skills boundary.
  * - {@link withFileLock} — serialise a whole read-modify-write cycle across
  *   processes via an `O_EXCL` guard file, so two writers cannot both read the
- *   pre-state and then clobber each other's result.
- *
- * Extracted from the bespoke implementation that previously lived inline in
- * `lock-utils.ts` (which is now a caller) so the injector does not grow a
- * second copy.
+ *   pre-state and then clobber each other's result. Generalised from the
+ *   bespoke copy that lived inline in `lock-utils.ts` (now a caller).
  *
  * @task T12051
  */
 
-import { mkdir, open, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
+import { mkdir, open, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
+
+// The canonical tmp-then-rename primitive is DEFINED in core
+// (`packages/core/src/tools/fs.ts`) and only re-exported here, per the
+// tools-vs-skills boundary: harness/provider packages consume atomic tool
+// primitives, they never redefine them.
+export { writeFileAtomic } from '@cleocode/core/tools/fs.js';
 
 /**
  * A guard file older than this is assumed to belong to a crashed process.
@@ -80,48 +84,6 @@ export interface FileLockOptions {
    * @defaultValue 30000
    */
   staleMs?: number;
-}
-
-/**
- * Write a file atomically: write to a unique temp sibling, then rename over
- * the target.
- *
- * The rename is atomic within a filesystem, so readers never observe a
- * partially written file. The temp file is created in the same directory as
- * the target precisely so the rename cannot cross a filesystem boundary.
- *
- * If the rename fails the temp file is cleaned up before the error propagates,
- * so a failure does not litter the directory.
- *
- * @param filePath - Absolute path to write
- * @param content - Full file contents
- * @returns Resolves once the content is durably in place at `filePath`
- *
- * @example
- * ```typescript
- * await writeFileAtomic("/home/user/.agents/AGENTS.md", nextContent);
- * ```
- *
- * @public
- */
-export async function writeFileAtomic(filePath: string, content: string): Promise<void> {
-  const dir = dirname(filePath);
-  await mkdir(dir, { recursive: true });
-
-  // Unique per process AND per call — two writes from one process must not
-  // collide on the same temp path.
-  const unique = `${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-  const tmpPath = `${filePath}.tmp-${unique}`;
-
-  try {
-    await writeFile(tmpPath, content, 'utf-8');
-    await rename(tmpPath, filePath);
-  } catch (error) {
-    await rm(tmpPath, { force: true }).catch(() => {
-      // Best-effort cleanup — surface the original failure, not this one.
-    });
-    throw error;
-  }
 }
 
 /**
