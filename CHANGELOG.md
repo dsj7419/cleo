@@ -1,5 +1,33 @@
 # Changelog
 
+## [2026.8.2] (2026-08-05)
+
+### Added
+
+
+
+### Changed
+
+
+
+### Fixed
+
+- Heal damaged CAAMP markers instead of duplicating instruction blocks, and make `cleo doctor` able to repair what it detects _(provenance: [T12051](https://github.com/kryptobaseddev/cleo/search?q=T12051&type=commits))_
+
+### Deprecated
+
+
+
+### Removed
+
+
+
+### Security
+
+
+
+### BREAKING CHANGES
+
 ## [2026.8.1] (2026-08-04)
 
 _No changeset entries parsed for this release._
