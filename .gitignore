@@ -202,3 +202,9 @@ packages/worktree-napi-*/worktree-napi.*.node
 /audit/
 /tmp-doc-source/
 /editors/
+
+# Studio SPA bundle copied into the CLI package by `postbuild`
+# (packages/cleo/scripts/copy-studio-dist.mjs). It ships in the npm tarball via
+# package.json `files`, but it is generated output and must never be committed —
+# it was accidentally staged once (191 files / 5.7k lines) during T12037.
+packages/cleo/studio-dist/
