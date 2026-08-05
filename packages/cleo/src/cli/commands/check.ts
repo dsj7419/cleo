@@ -461,6 +461,7 @@ const checkProvenanceCommand = defineCommand({
  *   Gate 4 (T9837d): lint-no-ssot-exempt.mjs           — no SSoT-EXEMPT without task ID
  *   Gate 5 (T9837e): lint-cli-package-boundary.mjs     — no helper > 30 LOC in CLI commands
  *   Gate 6 (T11640): lint-no-bare-get-active-session.mjs — no NEW bare getActiveSession() callsites
+ *   Gate 7 (T12041): lint-no-domain-db-singleton.mjs    — no NEW per-domain DB singleton cache
  *
  * Each gate is run in --check mode (baseline tolerance). A gate whose script
  * does not yet exist on disk is reported as "skipped" (non-blocking) to allow
@@ -499,7 +500,7 @@ const checkArchCommand = defineCommand({
     const jsonOnly = Boolean(args.json);
     const repoRoot = resolve(process.cwd());
 
-    /** The 5 SG-ARCH-SOLID gates in order. */
+    /** The SG-ARCH-SOLID gates, in order. */
     const gates = [
       {
         id: 'gate-1',
@@ -536,6 +537,13 @@ const checkArchCommand = defineCommand({
         task: 'T11640',
         script: 'scripts/lint-no-bare-get-active-session.mjs',
         description: 'No NEW bare getActiveSession() callsites (use resolveCurrentSession)', // get-active-session-allowed: gate description string, not a callsite
+      },
+      {
+        id: 'gate-7',
+        task: 'T12041',
+        script: 'scripts/lint-no-domain-db-singleton.mjs',
+        description:
+          'No NEW per-domain DB singleton cache (bind via the ProjectStore/GlobalStore ports)',
       },
     ] as const;
 

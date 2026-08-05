@@ -33,6 +33,14 @@ jobs:
       - name: Run lint-node-engine-ssot (T11281)
         run: node scripts/lint-node-engine-ssot.mjs
 
+      # T12041 · E6-L17 — reject re-introducing a per-domain DB singleton cache.
+      # Ownership of every consolidated cleo.db handle belongs to the path-keyed
+      # binding registry (core/src/store/ports/domain-binding.ts). Baseline mode:
+      # fails only on a NET INCREASE, so the remaining pre-port debt (telemetry,
+      # brain, studio) is recorded without blocking.
+      - name: Run lint-no-domain-db-singleton (T12041 · E6-L17)
+        run: node scripts/lint-no-domain-db-singleton.mjs
+
   define-command-ssot:
     # T10072 · Epic T9837 · Saga T9831 SG-ARCH-SOLID
     #
