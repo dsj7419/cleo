@@ -161,6 +161,45 @@ describe('domain binding registry (T12037)', () => {
     expect(Object.is(after.native, before.native)).toBe(false);
   });
 
+  /**
+   * The no-argument contract for the synchronous native getters.
+   *
+   * Callers that pass an explicit `projectRoot` to `getDb()` and then call the
+   * getter with NO argument are widespread (tests, tools operating on another
+   * checkout). Ambient path resolution misses for them, so a strict lookup
+   * would return `null` and break code that is not actually wrong.
+   *
+   * The rule is: no argument means "the project", answered by the ambient path
+   * when it is bound, else by the SOLE bound project when there is exactly one.
+   * Two or more bound projects is genuinely ambiguous and returns `null` —
+   * which is exactly the case where the caller must name a project. That keeps
+   * the convenience without reintroducing "last project wins".
+   */
+  it('resolves a no-arg peek to the sole bound project, and refuses when ambiguous', async () => {
+    const { bindProjectDomain, peekProjectDomain, releaseDomainBindings } = await import(
+      '../ports/domain-binding.js'
+    );
+    releaseDomainBindings({ domain: 'test-sole' });
+
+    const establish = () => ({ ok: true });
+
+    // One project bound, and it is NOT the ambient one (CLEO_DIR is unset and
+    // cwd is the repo). The unambiguous fallback answers.
+    const a = await bindProjectDomain('test-sole', dirA, establish);
+    expect(Object.is(peekProjectDomain('test-sole')?.native, a.native)).toBe(true);
+
+    // An EXPLICIT path that is not bound must still return null — never a
+    // different project's connection.
+    expect(peekProjectDomain('test-sole', dirB)).toBeNull();
+
+    // Two bound projects: no-arg is ambiguous and must refuse rather than guess.
+    await bindProjectDomain('test-sole', dirB, establish);
+    expect(peekProjectDomain('test-sole')).toBeNull();
+
+    // Naming the project still resolves precisely.
+    expect(Object.is(peekProjectDomain('test-sole', dirA)?.native, a.native)).toBe(true);
+  });
+
   it('scopes a release to the requested project only', async () => {
     const { bindProjectDomain, boundDomainKeys, releaseDomainBindings } = await import(
       '../ports/domain-binding.js'

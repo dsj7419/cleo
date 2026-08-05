@@ -489,7 +489,17 @@ export async function bindTasksDomain(
   // is touched, matching the openCleoDb chokepoint.
   assertDbPathIsNotWorktreeResident('tasks', cwd);
 
-  const binding = await bindProjectDomain('tasks', cwd, establishTasksSchema);
+  // `establish` runs ONLY on a cold bind (first open, or after an eviction).
+  // Capturing that here keeps auto-recovery a first-open concern: on a warm
+  // cache hit we must not re-probe `tasks_tasks` and re-scan the backup
+  // directory, which `getDb` does hundreds of times per process.
+  let coldBind = false;
+  const binding = await bindProjectDomain('tasks', cwd, (nativeDb, store) => {
+    coldBind = true;
+    return establishTasksSchema(nativeDb, store);
+  });
+
+  if (!coldBind) return binding;
 
   // ── T5188 auto-recovery (runs OUTSIDE establish) ──────────────────────────
   // Recovery may REPLACE the `cleo.db` file, which invalidates every domain

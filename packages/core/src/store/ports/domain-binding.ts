@@ -553,8 +553,28 @@ export function peekProjectDomain<TDb>(
 ): DomainBinding<TDb, ProjectStore> | null {
   const dbPath = resolve(resolveDualScopeDbPath('project', cwd));
   const row = _bindings.get(bindingKey('project', dbPath, domain));
-  if (!row || !row.native.isOpen) return null;
-  return row as DomainBinding<TDb, ProjectStore>;
+  if (row?.native.isOpen) return row as DomainBinding<TDb, ProjectStore>;
+
+  // An EXPLICIT `cwd` is a precise request: if that project is not bound, say
+  // so. Never silently answer with a different project's connection — that is
+  // the cross-project hazard this cutover exists to remove.
+  if (cwd !== undefined) return null;
+
+  // No `cwd` means "the project". Ambient resolution can still miss when the
+  // caller bound an EXPLICIT project root that differs from the ambient one
+  // (a test fixture, a tool operating on another checkout). Fall back ONLY
+  // when the answer is unambiguous — exactly one project bound for this
+  // domain. With two or more we return null, forcing the caller to pass a
+  // `cwd`, which is precisely the situation where it must.
+  const suffix = `::${domain}`;
+  let sole: BindingRow | undefined;
+  for (const [key, candidate] of _bindings) {
+    if (!key.startsWith('project::') || !key.endsWith(suffix)) continue;
+    if (!candidate.native.isOpen) continue;
+    if (sole) return null; // ambiguous — the caller must disambiguate
+    sole = candidate;
+  }
+  return (sole as DomainBinding<TDb, ProjectStore> | undefined) ?? null;
 }
 
 /**
