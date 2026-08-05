@@ -8,6 +8,7 @@
  */
 
 import { defineConfig } from 'vitest/config';
+import { withWorkspaceSubpathAliases } from '../../vitest-workspace-resolver.js';
 
 export default defineConfig({
   test: {
@@ -23,7 +24,7 @@ export default defineConfig({
       'tests/**/*.test.ts',
     ],
     exclude: ['node_modules', 'dist', '**/node_modules/**', '**/e2e/**', '**/*.integration.test.ts', '**/*-integration.test.ts'],
-    alias: {
+    alias: withWorkspaceSubpathAliases({
       // T11762 (T11900): the harness-interop test resolves @cleocode/playbooks to
       // source, and the ST-2 runtime now imports @cleocode/core, which drags the
       // store/schema layer (tasks.ts / provenance/commits.ts / memory-schema.ts)
@@ -64,6 +65,6 @@ export default defineConfig({
       // SDK imports leak into the runtime source).
       '@cleocode/playbooks': new URL('../../packages/playbooks/src/index.ts', import.meta.url)
         .pathname,
-    },
+    }),
   },
 });
