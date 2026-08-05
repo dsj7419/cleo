@@ -228,7 +228,21 @@ describe('SQLite store', () => {
   });
 
   describe('path validation', () => {
-    it('getDb resets singleton when cwd parameter differs', async () => {
+    /**
+     * E6-L13 (T12037) — contract change, deliberately asserted here.
+     *
+     * This case previously locked in the SINGLETON behaviour: one module-global
+     * `_dbPath`, so opening project B *reset* project A and going back to A
+     * produced a THIRD distinct handle. That made alternating between two
+     * projects in one process re-open and re-migrate on every switch, and it
+     * is exactly the "last-project-wins" defect the ProjectStore cutover
+     * removes.
+     *
+     * The binding registry is keyed by canonical `cleo.db` path, so the
+     * invariant is now stronger: distinct projects get distinct handles AND
+     * each project's handle is stable across alternation.
+     */
+    it('getDb serves two projects concurrently, keyed by path (T12037)', async () => {
       const { getDb, getNativeDb, closeDb: close } = await import('../sqlite.js');
       close();
 
@@ -245,22 +259,28 @@ describe('SQLite store', () => {
       await mkdir(join(tempDir2, '.cleo'), { recursive: true });
 
       try {
-        // Get db for first directory
         await getDb(tempDir1);
-        const nativeDb1 = getNativeDb();
+        const nativeDb1 = getNativeDb(tempDir1);
 
-        // Get db for second directory - should create new instance
         await getDb(tempDir2);
-        const nativeDb2 = getNativeDb();
+        const nativeDb2 = getNativeDb(tempDir2);
 
+        // Distinct projects → distinct connections.
         // Use Object.is() to compare — avoids Vitest serializing closed DatabaseSync objects
         // which throws "database is not open" during pretty-print of assertion diffs.
+        expect(nativeDb1).toBeTruthy();
+        expect(nativeDb2).toBeTruthy();
         expect(Object.is(nativeDb2, nativeDb1)).toBe(false);
 
-        // Going back to first directory should create another new instance
+        // Opening project 2 must NOT have evicted project 1 — its handle is
+        // still live and still the same object (no reset, no re-migrate).
+        expect(nativeDb1?.isOpen).toBe(true);
+        expect(Object.is(getNativeDb(tempDir1), nativeDb1)).toBe(true);
+
+        // Going back to project 1 returns the SAME handle, not a third one.
         await getDb(tempDir1);
-        const nativeDb3 = getNativeDb();
-        expect(Object.is(nativeDb3, nativeDb2)).toBe(false);
+        expect(Object.is(getNativeDb(tempDir1), nativeDb1)).toBe(true);
+        expect(Object.is(getNativeDb(tempDir2), nativeDb2)).toBe(true);
       } finally {
         close();
         await rm(tempDir1, { recursive: true, force: true });

@@ -85,8 +85,17 @@ import type { drizzle as drizzleFn } from 'drizzle-orm/node-sqlite';
 // DatabaseSync lifecycle, pragmas, and consolidated migrations. We extract the
 // native handle and re-wrap it with the legacy conduit-schema drizzle instance so
 // existing callers compile and run without change.
-import { openDualScopeDb, resolveDualScopeDbPath } from './dual-scope-db.js';
+import { type ProjectStore, resolveDualScopeDbPath } from './dual-scope-db.js';
 import { migrateSanitized, reconcileJournal } from './migration-manager.js';
+// T12038: the conduit domain no longer owns a singleton — the path-keyed binding
+// registry does. This module contributes only its schema reconciliation.
+import {
+  bindProjectDomain,
+  boundProjectNative,
+  type DomainBinding,
+  peekProjectDomain,
+  releaseDomainBindings,
+} from './ports/domain-binding.js';
 import {
   resolveConsolidatedJournalSiblings,
   resolveCorePackageMigrationsFolder,
@@ -146,13 +155,12 @@ export const CONDUIT_DB_FILENAME = 'conduit.db';
 export const CONDUIT_SCHEMA_VERSION = '2026.4.23';
 
 // ---------------------------------------------------------------------------
-// Singleton state
+// No singleton state (E6-L14 · T12038)
 // ---------------------------------------------------------------------------
-
-let _conduitNativeDb: DatabaseSync | null = null;
-let _conduitDbPath: string | null = null;
-/** Guard against concurrent initialization (async dual-scope open). */
-let _initPromise: Promise<{ action: 'created' | 'exists'; path: string }> | null = null;
+// `_conduitNativeDb` / `_conduitDbPath` / `_initPromise` are gone. Caching, path
+// keying, single-flight, and handle liveness belong to the path-keyed binding
+// registry in `ports/domain-binding.ts`. This module contributes only the
+// conduit domain's schema reconciliation.
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -305,43 +313,36 @@ export async function ensureConduitDb(
 ): Promise<{ action: 'created' | 'exists'; path: string }> {
   const dbPath = getConduitDbPath(projectRoot);
 
-  // Liveness guard (T11523): the conduit domain SHARES the consolidated cleo.db
-  // handle with the tasks + brain domains. Another domain may have closed +
-  // re-opened the shared `DatabaseSync` (e.g. its reset / auto-recovery path)
-  // while our conduit singleton still references the now-closed handle. Detect a
-  // stale (closed) handle, or a singleton bound to a different path, and drop it
-  // so we re-derive from the live openDualScopeDb cache below.
-  if (_conduitNativeDb && (!_conduitNativeDb.isOpen || _conduitDbPath !== dbPath)) {
-    resetConduitDbState();
-  }
+  // Capture existence BEFORE the open — the chokepoint creates the file.
+  // A binding that is already live means the file necessarily exists.
+  const alreadyExists = peekProjectDomain('conduit', projectRoot) !== null || existsSync(dbPath);
 
-  // If singleton already open at the same path and live, skip re-initialization.
-  if (_conduitNativeDb && _conduitDbPath === dbPath) {
-    return { action: 'exists', path: dbPath };
-  }
+  await bindConduitDomain(projectRoot);
 
-  // If already initializing, wait for the in-flight init.
-  if (_initPromise) return _initPromise;
+  return { action: alreadyExists ? 'exists' : 'created', path: dbPath };
+}
 
-  _initPromise = (async (): Promise<{ action: 'created' | 'exists'; path: string }> => {
-    const alreadyExists = existsSync(dbPath);
-
-    // ── Dual-scope chokepoint delegation (T11523 · E6-L3) ──────────────────
-    // openDualScopeDb applies the pragma SSoT, creates the directory, runs the
-    // consolidated cleo-project migrations (which create the `conduit_*` tables),
-    // and manages the singleton cache. We extract its native handle so we can run
-    // the legacy `drizzle-conduit` migrations for caller compatibility.
-    const dualHandle = await openDualScopeDb('project', projectRoot);
-
-    // Extract the underlying DatabaseSync. Drizzle exposes it via `$client`.
-    const nativeDb = (dualHandle.db as { $client?: DatabaseSync }).$client ?? null;
-    if (!nativeDb) {
-      throw new Error(
-        'E6-L3: openDualScopeDb returned a handle without $client — ' +
-          'cannot extract DatabaseSync for legacy conduit-schema wrapping.',
-      );
-    }
-
+/**
+ * Bind the conduit domain to the {@link ProjectStore} for `projectRoot`.
+ *
+ * ## E6-L14 cutover (T12038)
+ *
+ * Replaces this module's singleton trio (`_conduitNativeDb` / `_conduitDbPath`
+ * / `_initPromise`). The conduit domain shares ONE `DatabaseSync` with the
+ * tasks and brain domains (all three are table families inside the same
+ * consolidated `cleo.db`); binding them to the same store instance makes that
+ * sharing explicit, so an eviction invalidates all three together instead of
+ * leaving conduit holding a closed handle.
+ *
+ * @param projectRoot - Absolute path to the project root directory.
+ * @returns The live conduit-domain binding.
+ *
+ * @task T12038 (E6-L14)
+ */
+export async function bindConduitDomain(
+  projectRoot: string,
+): Promise<DomainBinding<DatabaseSync, ProjectStore>> {
+  return bindProjectDomain('conduit', projectRoot, (nativeDb) => {
     // Establish the FTS5 index over the consolidated `conduit_messages` table.
     // The consolidated migrations already created the prefixed `conduit_*` tables;
     // running the `drizzle-conduit` set adds the `conduit_messages_fts` virtual
@@ -359,17 +360,8 @@ export async function ensureConduitDb(
        VALUES ('schema_version', '${CONDUIT_SCHEMA_VERSION}', strftime('%s', 'now'))`,
     );
 
-    _conduitNativeDb = nativeDb;
-    _conduitDbPath = dbPath;
-
-    return { action: alreadyExists ? 'exists' : 'created', path: dbPath };
-  })();
-
-  try {
-    return await _initPromise;
-  } finally {
-    _initPromise = null;
-  }
+    return nativeDb;
+  });
 }
 
 /**
@@ -382,8 +374,8 @@ export async function ensureConduitDb(
  * @epic T310
  * @returns The open DatabaseSync instance, or `null` if not initialized.
  */
-export function getConduitNativeDb(): DatabaseSync | null {
-  return _conduitNativeDb;
+export function getConduitNativeDb(projectRoot?: string): DatabaseSync | null {
+  return boundProjectNative('conduit', projectRoot);
 }
 
 /**
@@ -406,11 +398,9 @@ export function getConduitNativeDb(): DatabaseSync | null {
  * @epic T310
  */
 export function closeConduitDb(): void {
-  // Drop only the conduit singleton references. Do NOT close `_conduitNativeDb`
-  // — it is the shared dual-scope handle, possibly still in use by tasks/brain.
-  _conduitNativeDb = null;
-  _conduitDbPath = null;
-  _initPromise = null;
+  // Drop only the conduit-domain binding. Do NOT close the connection — it is
+  // the shared dual-scope handle, possibly still in use by tasks/brain.
+  releaseDomainBindings({ scope: 'project', domain: 'conduit' });
 }
 
 /**
@@ -426,9 +416,7 @@ export function closeConduitDb(): void {
  * @epic T310
  */
 export function resetConduitDbState(): void {
-  _conduitNativeDb = null;
-  _conduitDbPath = null;
-  _initPromise = null;
+  releaseDomainBindings({ scope: 'project', domain: 'conduit' });
 }
 
 // ---------------------------------------------------------------------------

@@ -23,11 +23,21 @@ async function getDb(cwd?: string): ReturnType<typeof import('../store/sqlite.js
   return _getDb(cwd);
 }
 
-async function getNativeDb(): Promise<
-  ReturnType<typeof import('../store/sqlite.js')['getNativeDb']>
-> {
+/**
+ * Resolve the project's native `DatabaseSync` handle.
+ *
+ * T12037: `getNativeDb` is path-keyed, so the caller's `cwd` MUST be forwarded.
+ * The bare call used to return whichever project was opened LAST in the
+ * process — under test isolation (or any multi-project run) that silently
+ * pointed manifest archiving at the wrong database.
+ *
+ * @param cwd - Project working directory.
+ */
+async function getNativeDb(
+  cwd?: string,
+): Promise<ReturnType<typeof import('../store/sqlite.js')['getNativeDb']>> {
   const { getNativeDb: _getNativeDb } = await import('../store/sqlite.js');
-  return _getNativeDb();
+  return _getNativeDb(cwd);
 }
 
 import { createPage } from '../pagination.js';
@@ -622,7 +632,7 @@ export async function pipelineManifestArchive(
 
   try {
     const db = await getDb(projectRoot);
-    const nativeDb = await getNativeDb();
+    const nativeDb = await getNativeDb(projectRoot);
 
     if (!nativeDb) {
       return {

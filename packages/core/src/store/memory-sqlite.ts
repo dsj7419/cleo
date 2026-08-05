@@ -55,7 +55,7 @@ import type { drizzle as drizzleFn, NodeSQLiteDatabase } from 'drizzle-orm/node-
 // native handle and re-wrap it with the legacy brain-schema drizzle instance so
 // existing callers (brainSchema.* queries) compile and run without change.
 import { getLogger } from '../logger.js';
-import { openDualScopeDb, resolveDualScopeDbPath } from './dual-scope-db.js';
+import { type ProjectStore, resolveDualScopeDbPath } from './dual-scope-db.js';
 import {
   createSafetyBackup,
   migrateWithRetry,
@@ -63,6 +63,15 @@ import {
   reconcileJournal,
   tableExists,
 } from './migration-manager.js';
+// T12038: the brain domain no longer owns a singleton — the path-keyed binding
+// registry does. This module contributes only its schema reconciliation.
+import {
+  bindProjectDomain,
+  boundProjectNative,
+  type DomainBinding,
+  peekProjectDomain,
+  releaseDomainBindings,
+} from './ports/domain-binding.js';
 import { resolveCorePackageMigrationsFolder } from './resolve-migrations-folder.js';
 import * as brainSchema from './schema/memory-schema.js';
 
@@ -97,14 +106,26 @@ function _getDrizzle(): typeof drizzleFn {
 /** Schema version for newly created brain databases. Single source of truth. */
 export const BRAIN_SCHEMA_VERSION = '1.0.0';
 
-/** Singleton state for lazy initialization. */
-let _db: NodeSQLiteDatabase | null = null;
-let _nativeDb: DatabaseSync | null = null;
-let _dbPath: string | null = null;
-/** Guard against concurrent initialization (async migration). */
-let _initPromise: Promise<NodeSQLiteDatabase> | null = null;
-/** Whether sqlite-vec extension loaded successfully. */
-let _vecLoaded = false;
+// ── No singleton state (E6-L14 · T12038) ─────────────────────────────────────
+// This module used to own `_db` / `_nativeDb` / `_dbPath` / `_initPromise` /
+// `_vecLoaded`. All five are gone. Caching, path keying, single-flight, and
+// handle liveness belong to the path-keyed binding registry in
+// `ports/domain-binding.ts`; `_vecLoaded` is now per-binding state on
+// {@link BrainDomainHandle}, so two projects can differ on vec availability
+// instead of racing one process-wide boolean.
+
+/**
+ * The brain domain's bound value: its Drizzle handle plus the per-database
+ * `sqlite-vec` availability flag.
+ *
+ * @task T12038 (E6-L14)
+ */
+export interface BrainDomainHandle {
+  /** Drizzle instance typed against the legacy brain schema. */
+  readonly drizzle: NodeSQLiteDatabase;
+  /** Whether the `sqlite-vec` extension loaded for THIS database. */
+  readonly vecLoaded: boolean;
+}
 
 /**
  * Get the path to the brain-domain SQLite database file.
@@ -235,7 +256,11 @@ function brainTablesAreConsolidatedShape(nativeDb: DatabaseSync): boolean {
  * @internal
  * @task T11522
  */
-function establishLegacyBrainSchema(nativeDb: DatabaseSync, db: NodeSQLiteDatabase): void {
+function establishLegacyBrainSchema(
+  nativeDb: DatabaseSync,
+  db: NodeSQLiteDatabase,
+  dbPath: string,
+): void {
   const log = getLogger('brain-schema');
 
   if (brainTablesAreConsolidatedShape(nativeDb)) {
@@ -312,8 +337,12 @@ function establishLegacyBrainSchema(nativeDb: DatabaseSync, db: NodeSQLiteDataba
   // pre-created, so run the full `drizzle-brain` migrate via the generic
   // reconcile (its Scenario-2 orphan-delete is safe here — a standalone brain.db
   // journal contains only brain hashes).
-  if (tableExists(nativeDb, 'brain_decisions') && _dbPath) {
-    createSafetyBackup(_dbPath);
+  // `dbPath` is passed explicitly (T12038) — it used to be read from the
+  // module-global `_dbPath`, which was still `null` on the first open because
+  // it was assigned AFTER this reconcile ran, so the safety backup never fired
+  // on the very path that needed it.
+  if (tableExists(nativeDb, 'brain_decisions')) {
+    createSafetyBackup(dbPath);
   }
   reconcileJournal(nativeDb, migrationsFolder, 'brain_decisions', 'brain');
   migrateWithRetry(db, migrationsFolder, nativeDb, 'brain_decisions', 'brain');
@@ -361,10 +390,22 @@ function initializeBrainVec(nativeDb: DatabaseSync): void {
 }
 
 /**
- * Check whether the sqlite-vec extension is loaded for the current brain.db.
+ * Check whether the `sqlite-vec` extension is loaded for a project's brain
+ * database.
+ *
+ * ## E6-L14 (T12038) — now per-database
+ *
+ * This used to read a single process-wide boolean, so a project whose vec
+ * extension failed to load could report `true` because a DIFFERENT project
+ * had loaded it. The flag is now per-binding.
+ *
+ * Returns `false` when the brain domain is not bound for `cwd` yet — callers
+ * must `await getBrainDb(cwd)` / {@link bindBrainDomain} first.
+ *
+ * @param cwd - Project working directory. Defaults to the ambient project.
  */
-export function isBrainVecLoaded(): boolean {
-  return _vecLoaded;
+export function isBrainVecLoaded(cwd?: string): boolean {
+  return peekProjectDomain<BrainDomainHandle>('brain', cwd)?.db.vecLoaded ?? false;
 }
 
 /**
@@ -418,72 +459,52 @@ async function initEmbeddingProvider(cwd?: string): Promise<void> {
  * complete (migrations are async).
  */
 export async function getBrainDb(cwd?: string): Promise<NodeSQLiteDatabase> {
-  const requestedPath = getBrainDbPath(cwd);
+  return (await bindBrainDomain(cwd)).db.drizzle;
+}
 
+/**
+ * Bind the legacy brain schema to the {@link ProjectStore} for `cwd` and
+ * return the full binding (store + native handle + {@link BrainDomainHandle}).
+ *
+ * ## E6-L14 cutover (T12038)
+ *
+ * The ProjectStore-bound typed port that replaces this module's singleton
+ * quintet (`_db` / `_nativeDb` / `_dbPath` / `_initPromise` / `_vecLoaded`).
+ *
+ * The brain domain shares ONE `DatabaseSync` with the tasks domain (both are
+ * tables inside the same consolidated `cleo.db`). Under the old design that
+ * sharing was implicit and fragile: the tasks side could close the connection
+ * while the brain singleton still referenced it, and `observeBrain`'s
+ * cross-domain write-guard swallowed the resulting `database is not open` as
+ * "session absent" — silently nulling `sourceSessionId` (T12019/T12020).
+ * Binding both domains to the SAME store instance makes the sharing explicit:
+ * an eviction invalidates both bindings at once, by identity.
+ *
+ * Prefer this over {@link getBrainDb} when you also need the native handle,
+ * the per-database vec flag, or an explicit store for a cross-domain
+ * transaction with the tasks domain.
+ *
+ * @param cwd - Project working directory.
+ * @returns The live brain-domain binding.
+ *
+ * @task T12038 (E6-L14)
+ */
+export async function bindBrainDomain(
+  cwd?: string,
+): Promise<DomainBinding<BrainDomainHandle, ProjectStore>> {
   // T1906: guard against prod-DB writes in test mode.
   const { assertTestEnv } = await import('./data-accessor.js');
-  assertTestEnv(requestedPath);
+  assertTestEnv(getBrainDbPath(cwd));
 
-  // If singleton exists but points to different path, reset it.
-  if (_db && _dbPath !== requestedPath) {
-    resetBrainDbState();
-  }
-
-  // Liveness guard (T11522): the brain domain shares the consolidated cleo.db
-  // handle with the tasks domain. The tasks side may have closed + re-opened the
-  // shared `DatabaseSync` (e.g. its `resetDbState()` / auto-recovery path) while
-  // our brain singleton still references the now-closed handle. Detect a stale
-  // (closed) handle and drop the singleton so we re-derive from the live
-  // openDualScopeDb cache below.
-  if (_db && (_nativeDb === null || !_nativeDb.isOpen)) {
-    resetBrainDbState();
-  }
-
-  if (_db) return _db;
-
-  // If already initializing, wait for the in-flight init.
-  if (_initPromise) return _initPromise;
-
-  _initPromise = (async () => {
-    // ── Dual-scope chokepoint delegation (T11522 · E6-L2) ─────────────────
-    // openDualScopeDb applies the pragma SSoT, creates the directory, runs the
-    // consolidated cleo-project migrations (which create the `brain_*` tables),
-    // and manages the singleton cache. We extract its native handle so we can
-    // re-wrap it with the legacy brain-schema for caller compatibility.
-    let nativeDb: DatabaseSync | null = null;
-    for (let attempt = 0; attempt < 2; attempt += 1) {
-      const dualHandle = await openDualScopeDb('project', cwd);
-
-      // Extract the underlying DatabaseSync. Drizzle exposes it via `$client`.
-      nativeDb = (dualHandle.db as { $client?: DatabaseSync }).$client ?? null;
-      if (!nativeDb) {
-        throw new Error(
-          'E6-L2: openDualScopeDb returned a handle without $client — ' +
-            'cannot extract DatabaseSync for legacy brain-schema wrapping.',
-        );
-      }
-
-      // A shared handle can be closed after the dual-scope cache checks it but
-      // before this await resumes. Re-open once; the cache then evicts the dead
-      // entry and returns the current live handle.
-      if (nativeDb.isOpen) break;
-    }
-
-    if (!nativeDb?.isOpen) {
-      throw new Error('E6-L2: openDualScopeDb repeatedly returned a closed DatabaseSync handle.');
-    }
-
-    _nativeDb = nativeDb;
-    _dbPath = requestedPath;
-
+  return bindProjectDomain('brain', cwd, (nativeDb, store) => {
     // Load the sqlite-vec extension for vector similarity search (T5157). The
     // dual-scope handle is opened with `allowExtension: true`, so loading is
     // permitted. Non-fatal if unavailable — vec0 tables simply won't be created.
-    _vecLoaded = loadBrainVecExtension(nativeDb);
+    const vecLoaded = loadBrainVecExtension(nativeDb);
 
     // Wrap the native handle with the legacy brain-schema drizzle instance so
     // existing callers (brainSchema.* queries) continue to work unchanged.
-    const db = _getDrizzle()({ client: nativeDb });
+    const drizzle = _getDrizzle()({ client: nativeDb });
 
     // Reconcile the LEGACY brain-domain schema inside the consolidated cleo.db.
     // Since T11647 the consolidated `cleo.db` migration already creates every
@@ -496,11 +517,11 @@ export async function getBrainDb(cwd?: string): Promise<NodeSQLiteDatabase> {
     // `drizzle-brain` migrate. The pre-T11647 DROP+recreate path is retained as
     // a defensive fallback for any DB still carrying the old consolidated shape.
     // (T11522 · T11647)
-    establishLegacyBrainSchema(nativeDb, db);
+    establishLegacyBrainSchema(nativeDb, drizzle, store.dbPath);
 
     // Create the vec0 virtual table for embeddings if the extension is loaded
     // (T5157). Must run after migrations so the schema is consistent.
-    if (_vecLoaded) {
+    if (vecLoaded) {
       initializeBrainVec(nativeDb);
     }
 
@@ -511,12 +532,9 @@ export async function getBrainDb(cwd?: string): Promise<NodeSQLiteDatabase> {
       )
       .run();
 
-    // Set singleton only after migrations complete.
-    _db = db;
-
     // Wire the default embedding provider when vec is loaded and embedding is
     // enabled. Best-effort, async, never blocks DB access. (T539)
-    if (_vecLoaded) {
+    if (vecLoaded) {
       setImmediate(() => {
         initEmbeddingProvider(cwd).catch(() => {
           // Non-fatal — embedding will be unavailable until next startup.
@@ -524,14 +542,8 @@ export async function getBrainDb(cwd?: string): Promise<NodeSQLiteDatabase> {
       });
     }
 
-    return db;
-  })();
-
-  try {
-    return await _initPromise;
-  } finally {
-    _initPromise = null;
-  }
+    return { drizzle, vecLoaded };
+  });
 }
 
 /**
@@ -548,13 +560,9 @@ export async function getBrainDb(cwd?: string): Promise<NodeSQLiteDatabase> {
  * coordinated reset (`closeAllDatabases` → `closeDb` → `_resetDualScopeDbCache`).
  */
 export function closeBrainDb(): void {
-  // Drop only the brain singleton references. Do NOT close `_nativeDb` — it is
+  // Drop only the brain-domain binding. Do NOT close the connection — it is
   // the shared dual-scope handle, possibly still in use by the tasks domain.
-  _nativeDb = null;
-  _db = null;
-  _dbPath = null;
-  _initPromise = null;
-  _vecLoaded = false;
+  releaseDomainBindings({ scope: 'project', domain: 'brain' });
 }
 
 /**
@@ -569,11 +577,7 @@ export function closeBrainDb(): void {
  * shared with the tasks domain). Mirrors {@link closeBrainDb}.
  */
 export function resetBrainDbState(): void {
-  _nativeDb = null;
-  _db = null;
-  _dbPath = null;
-  _initPromise = null;
-  _vecLoaded = false;
+  releaseDomainBindings({ scope: 'project', domain: 'brain' });
 }
 
 /**
@@ -581,8 +585,8 @@ export function resetBrainDbState(): void {
  * Useful for direct PRAGMA calls or raw SQL operations.
  * Returns null if the database hasn't been initialized.
  */
-export function getBrainNativeDb(): DatabaseSync | null {
-  return _nativeDb;
+export function getBrainNativeDb(cwd?: string): DatabaseSync | null {
+  return boundProjectNative('brain', cwd);
 }
 
 export type { NodeSQLiteDatabase };

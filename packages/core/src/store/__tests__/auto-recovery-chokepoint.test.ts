@@ -146,7 +146,8 @@ describe('brain-domain open chokepoint — dual-scope cleo.db routing (T11522)',
     // The native handle serves the brain domain: the consolidated brain_*
     // tables AND the runtime-legacy tables added by the T11522 forward
     // migration (brain_task_observations, unprefixed deriver_queue) exist.
-    const nativeDb = getBrainNativeDb();
+    // T12038: the native getter is path-keyed — pass the project it was bound for.
+    const nativeDb = getBrainNativeDb(projectRoot);
     expect(nativeDb).toBeTruthy();
     for (const table of [
       'brain_decisions',

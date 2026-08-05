@@ -69,3 +69,41 @@ export {
   upsertIdempotent,
 } from '../store/dual-scope-db.js';
 export { type ExodusAbortDetail, exodusAbortEvents } from '../store/exodus/abort-events.js';
+
+/**
+ * Path-keyed domain binding registry (E6-L13…L16 · T12037–T12040).
+ *
+ * The ProjectStore/GlobalStore-bound typed ports that replaced the five
+ * per-domain singleton caches. Domain code binds its schema through these
+ * rather than owning a module-global handle.
+ */
+export {
+  bindGlobalDomain,
+  bindGlobalDomainAtPath,
+  bindProjectDomain,
+  bindProjectDomainAtPath,
+  boundDomainKeys,
+  boundGlobalNative,
+  boundProjectNative,
+  type DomainBinding,
+  getCleoRuntime,
+  peekDomainAtPath,
+  peekGlobalDomain,
+  peekProjectDomain,
+  releaseAllDomainBindings,
+  releaseDomainBindings,
+  resetCleoRuntime,
+} from '../store/ports/domain-binding.js';
+
+/**
+ * Foreign-key integrity verification for the consolidated dual-scope
+ * databases (E6-L10 · T11530).
+ */
+export {
+  checkForeignKeys,
+  type ForeignKeyIntegrityReport,
+  type ForeignKeyRepairReport,
+  type ForeignKeyViolation,
+  repairForeignKeyViolations,
+  verifyForeignKeyIntegrity,
+} from '../store/ports/fk-integrity.js';

@@ -53,7 +53,17 @@ import { getCurrentWriteOrigin } from '../sentient/skill-provenance.js';
 // DatabaseSync lifecycle, pragmas, and consolidated migrations (which create the
 // prefixed `skills_*` tables). We extract the native handle and re-wrap it with
 // the prefix-renamed skills schema so existing callers compile unchanged.
-import { _resetDualScopeDbCache, openDualScopeDb, openDualScopeDbAtPath } from './dual-scope-db.js';
+import { _resetDualScopeDbCache, type GlobalStore } from './dual-scope-db.js';
+// T12039: the skills registry no longer owns a singleton — the path-keyed
+// binding registry does. This module contributes only its schema wrapping.
+import {
+  bindGlobalDomain,
+  bindGlobalDomainAtPath,
+  type DomainBinding,
+  peekDomainAtPath,
+  peekGlobalDomain,
+  releaseDomainBindings,
+} from './ports/domain-binding.js';
 import * as skillsSchema from './schema/skills-schema.js';
 import {
   type NewSkillRow,
@@ -75,13 +85,23 @@ export const SKILLS_DB_FILENAME = 'skills.db';
 export const SKILLS_SCHEMA_VERSION = '2026.5.81';
 
 // ---------------------------------------------------------------------------
-// Singleton state — one open handle per process, reset across tests.
+// No singleton state (E6-L15 · T12039)
 // ---------------------------------------------------------------------------
+// `_skillsDb` / `_skillsNativeDb` / `_skillsInitPromise` are gone. Caching, path
+// keying, single-flight, and handle liveness belong to the path-keyed binding
+// registry in `ports/domain-binding.ts`.
 
-let _skillsDb: NodeSQLiteDatabase | null = null;
-let _skillsNativeDb: DatabaseSync | null = null;
-let _skillsDbPath: string | null = null;
-let _skillsInitPromise: Promise<NodeSQLiteDatabase> | null = null;
+/**
+ * The path an explicit `{ path }` open redirected this domain to, if any.
+ *
+ * This is NOT a cache — it holds no handle and no schema. It is the sandbox
+ * REDIRECTION that tests rely on: after opening the registry at a `mkdtemp`
+ * file, a later bare `openSkillsDb()` from a helper must resolve back to that
+ * sandbox rather than swapping to the real consolidated `cleo.db` and leaking
+ * writes outside the test. Cleared by {@link closeSkillsDb} /
+ * {@link resetSkillsDbState}.
+ */
+let _skillsOverridePath: string | null = null;
 
 // ---------------------------------------------------------------------------
 // Path resolution
@@ -168,70 +188,62 @@ export interface OpenSkillsDbOptions {
  * @task T11525
  */
 export async function openSkillsDb(options?: OpenSkillsDbOptions): Promise<NodeSQLiteDatabase> {
-  // Fast-path: if no explicit override was requested AND a singleton already
-  // exists, return it without re-resolving `getDefaultSkillsDbPath()`. This
-  // is important for tests that open the DB at a tmpdir via `{path:...}` and
-  // then exercise helpers that call `openSkillsDb()` with no args; without
-  // this guard the helper call would swap the singleton over to the real
-  // consolidated cleo.db path and leak writes outside the test sandbox.
-  if (_skillsDb && !options?.path) return _skillsDb;
+  return (await bindSkillsDomain(options)).db;
+}
 
-  const requestedPath = options?.path ?? getDefaultSkillsDbPath();
-
-  // If singleton points at a different file, reset cleanly.
-  if (_skillsDb && _skillsDbPath !== requestedPath) {
-    resetSkillsDbState();
+/**
+ * Resolve which file the skills registry should bind to.
+ *
+ * An explicit `{ path }` wins and becomes the sticky sandbox redirection; a
+ * bare call honours a previously-set redirection before falling back to the
+ * canonical consolidated `cleo.db` under `getCleoHome()`.
+ *
+ * @param options - The caller's open options.
+ * @returns The absolute path to bind, and whether it is the canonical global.
+ *
+ * @task T12039 (E6-L15)
+ */
+function resolveSkillsBindPath(options?: OpenSkillsDbOptions): {
+  path: string;
+  canonical: boolean;
+} {
+  if (options?.path) {
+    _skillsOverridePath = options.path;
+    return { path: options.path, canonical: false };
   }
+  if (_skillsOverridePath) return { path: _skillsOverridePath, canonical: false };
+  return { path: getDefaultSkillsDbPath(), canonical: true };
+}
 
-  // Liveness guard (T11525): the skills registry SHARES the consolidated GLOBAL
-  // `cleo.db` handle with the nexus / signaldock domains. A sibling may have
-  // closed + re-opened the shared handle while our singleton still references the
-  // now-closed one. Detect a stale (closed) handle and drop the singleton so we
-  // re-derive from the live dual-scope cache below.
-  if (_skillsDb && (_skillsNativeDb === null || !_skillsNativeDb.isOpen)) {
-    resetSkillsDbState();
-  }
+/**
+ * Bind the skills registry schema to a {@link GlobalStore}.
+ *
+ * ## E6-L15 cutover (T12039)
+ *
+ * Replaces this module's singleton quartet. The skills registry shares ONE
+ * `DatabaseSync` with the other global-tier domains (nexus registry,
+ * agent registry) — binding them all to the same store makes that explicit,
+ * so a sibling's reset invalidates every global binding together instead of
+ * leaving skills holding a closed handle.
+ *
+ * @param options - Open options; `{ path }` redirects to a sandbox file.
+ * @returns The live skills-domain binding.
+ *
+ * @task T12039 (E6-L15)
+ */
+export async function bindSkillsDomain(
+  options?: OpenSkillsDbOptions,
+): Promise<DomainBinding<NodeSQLiteDatabase, GlobalStore>> {
+  const { path, canonical } = resolveSkillsBindPath(options);
 
-  if (_skillsDb) return _skillsDb;
+  // Wrap the native handle with the prefix-renamed skills schema so existing
+  // callers (skillsSchema.* queries) bind to the consolidated `skills_*`
+  // tables the dual-scope migration already created.
+  const establish = (nativeDb: DatabaseSync): NodeSQLiteDatabase => drizzle({ client: nativeDb });
 
-  if (_skillsInitPromise) return _skillsInitPromise;
-
-  _skillsInitPromise = (async () => {
-    _skillsDbPath = requestedPath;
-
-    // ── Dual-scope chokepoint delegation (T11525 · E6-L5) ───────────────────
-    // openDualScopeDb('global') applies the pragma SSoT, creates the directory,
-    // runs the consolidated cleo-global migrations (which create the prefixed
-    // `skills_*` tables), and manages the singleton cache. The `{ path }` test
-    // override routes through the path-aware sibling against an isolated file.
-    const dualHandle = options?.path
-      ? await openDualScopeDbAtPath('global', options.path)
-      : await openDualScopeDb('global');
-
-    // Extract the underlying DatabaseSync. Drizzle exposes it via `$client`.
-    const nativeDb = (dualHandle.db as { $client?: DatabaseSync }).$client ?? null;
-    if (!nativeDb) {
-      throw new Error(
-        'E6-L5: openDualScopeDb returned a handle without $client — ' +
-          'cannot extract DatabaseSync for the skills-schema wrapping.',
-      );
-    }
-    _skillsNativeDb = nativeDb;
-
-    // Wrap the native handle with the prefix-renamed skills schema so existing
-    // callers (skillsSchema.* queries) bind to the consolidated `skills_*`
-    // tables the dual-scope migration already created.
-    const db = drizzle({ client: nativeDb });
-
-    _skillsDb = db;
-    return db;
-  })();
-
-  try {
-    return await _skillsInitPromise;
-  } finally {
-    _skillsInitPromise = null;
-  }
+  return canonical
+    ? bindGlobalDomain('skills', establish)
+    : bindGlobalDomainAtPath('skills', path, establish);
 }
 
 /**
@@ -254,12 +266,10 @@ export async function openSkillsDb(options?: OpenSkillsDbOptions): Promise<NodeS
  * @task T11525
  */
 export function closeSkillsDb(): void {
-  // Drop only the local references. The scope-filtered cache reset performs the
-  // single coordinated close of the shared GLOBAL handle.
-  _skillsNativeDb = null;
-  _skillsDb = null;
-  _skillsDbPath = null;
-  _skillsInitPromise = null;
+  // Drop the bindings + the sandbox redirection. The scope-filtered cache reset
+  // performs the single coordinated close of the shared GLOBAL handle.
+  _skillsOverridePath = null;
+  releaseDomainBindings({ scope: 'global', domain: 'skills' });
   _resetDualScopeDbCache('global');
 }
 
@@ -273,10 +283,8 @@ export function closeSkillsDb(): void {
  * @task T11525
  */
 export function resetSkillsDbState(): void {
-  _skillsNativeDb = null;
-  _skillsDb = null;
-  _skillsDbPath = null;
-  _skillsInitPromise = null;
+  _skillsOverridePath = null;
+  releaseDomainBindings({ scope: 'global', domain: 'skills' });
   _resetDualScopeDbCache('global');
 }
 
@@ -285,7 +293,10 @@ export function resetSkillsDbState(): void {
  * not yet initialised). Exposed for the backup/restore pipeline.
  */
 export function getSkillsNativeDb(): DatabaseSync | null {
-  return _skillsNativeDb;
+  const bound = _skillsOverridePath
+    ? peekDomainAtPath<NodeSQLiteDatabase>('global', _skillsOverridePath, 'skills')
+    : peekGlobalDomain<NodeSQLiteDatabase>('skills');
+  return bound?.native ?? null;
 }
 
 /**
@@ -299,7 +310,10 @@ export function getSkillsNativeDb(): DatabaseSync | null {
  * @task T9693
  */
 export function getOpenSkillsDbPath(): string | null {
-  return _skillsDbPath;
+  const bound = _skillsOverridePath
+    ? peekDomainAtPath<NodeSQLiteDatabase>('global', _skillsOverridePath, 'skills')
+    : peekGlobalDomain<NodeSQLiteDatabase>('skills');
+  return bound?.store.dbPath ?? null;
 }
 
 // ---------------------------------------------------------------------------
