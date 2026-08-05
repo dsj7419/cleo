@@ -34,6 +34,10 @@ import { resolveBridgeMode } from './system/bridge-mode.js';
 // addresses it by its narrower name. Consolidation with CheckResult is
 // deferred to a follow-up cleanup task.
 
+import {
+  CAAMP_DAMAGED_END_PATTERN_SOURCE,
+  CAAMP_DAMAGED_START_PATTERN_SOURCE,
+} from '@cleocode/contracts/caamp-markers';
 import type { ScaffoldResult } from '@cleocode/contracts/scaffold-diagnostics';
 
 export type { ScaffoldResult } from '@cleocode/contracts/scaffold-diagnostics';
@@ -366,7 +370,27 @@ export function checkInjection(projectRoot: string): InjectionCheckResult {
   const startCount = (content.match(/<!-- CAAMP:START -->/g) || []).length;
   const endCount = (content.match(/<!-- CAAMP:END -->/g) || []).length;
 
-  if (startCount === 0) {
+  // Damaged markers (e.g. a lost leading `<`) are invisible to the strict
+  // counts above but still delimit a block the injector will duplicate, so
+  // they are detected explicitly and repaired rather than re-injected (T12051).
+  const tolerantStart = (content.match(new RegExp(CAAMP_DAMAGED_START_PATTERN_SOURCE, 'gmi')) ?? [])
+    .length;
+  const tolerantEnd = (content.match(new RegExp(CAAMP_DAMAGED_END_PATTERN_SOURCE, 'gmi')) ?? [])
+    .length;
+  const damagedCount = tolerantStart - startCount + (tolerantEnd - endCount);
+
+  if (damagedCount > 0) {
+    return {
+      id: 'injection_health',
+      category: 'configuration',
+      status: 'warning',
+      message: `AGENTS.md has ${damagedCount} damaged CAAMP marker(s)`,
+      details: { path: agentsMdPath, damagedCount, startCount, endCount },
+      fix: 'cleo caamp repair',
+    };
+  }
+
+  if (tolerantStart === 0) {
     return {
       id: 'injection_health',
       category: 'configuration',
@@ -385,7 +409,20 @@ export function checkInjection(projectRoot: string): InjectionCheckResult {
       status: 'warning',
       message: `CAAMP markers unbalanced: ${startCount} START vs ${endCount} END`,
       details: { path: agentsMdPath, startCount, endCount },
-      fix: 'cleo upgrade',
+      fix: 'cleo caamp repair',
+    };
+  }
+
+  // Check 4b: Exactly one block. More than one means the referenced protocol
+  // text is loaded into every agent's context more than once.
+  if (startCount > 1) {
+    return {
+      id: 'injection_health',
+      category: 'configuration',
+      status: 'warning',
+      message: `AGENTS.md has ${startCount} CAAMP blocks (expected 1) — protocol injected ${startCount}×`,
+      details: { path: agentsMdPath, startCount, endCount },
+      fix: 'cleo caamp repair',
     };
   }
 
@@ -435,7 +472,7 @@ export function checkInjection(projectRoot: string): InjectionCheckResult {
           status: 'warning',
           message: `CLAUDE.md CAAMP markers unbalanced: ${cStartCount} START vs ${cEndCount} END`,
           details: { file: 'CLAUDE.md', startCount: cStartCount, endCount: cEndCount },
-          fix: 'cleo upgrade',
+          fix: 'cleo caamp repair',
         };
       }
 

@@ -107,6 +107,90 @@ const dedupeCommand = defineCommand({
 });
 
 /**
+ * `cleo caamp repair` — heal damaged CAAMP markers and collapse duplicate blocks
+ * across the whole instruction-file cascade.
+ *
+ * This is the repair `cleo doctor` prescribes when it reports unbalanced or
+ * damaged markers. Unlike `dedupe`, it covers the global hub
+ * `~/.agents/AGENTS.md` and every detected provider's global instruction file,
+ * not just the project — and it heals markers whose delimiters were damaged,
+ * which the strict block pattern cannot even see.
+ *
+ * @task T12051
+ */
+const repairCommand = defineCommand({
+  meta: {
+    name: 'repair',
+    description:
+      'Heal damaged CAAMP markers and remove duplicate blocks across all instruction files',
+  },
+  args: {
+    'dry-run': {
+      type: 'boolean',
+      description: 'Report what would change without writing',
+      default: false,
+    },
+  },
+  async run({ args }) {
+    const { getInstalledProviders, instructionFileCascade, normalizeMarkers, parseBlocks } =
+      await import('@cleocode/caamp');
+    const { existsSync } = await import('node:fs');
+    const { readFile } = await import('node:fs/promises');
+
+    const providers = getInstalledProviders();
+    const paths = instructionFileCascade(process.cwd(), providers).filter((p) => existsSync(p));
+
+    if (args['dry-run']) {
+      const preview: Array<{
+        filePath: string;
+        blocks: number;
+        damagedMarkers: number;
+        duplicateBlocks: number;
+      }> = [];
+
+      for (const filePath of paths) {
+        const raw = await readFile(filePath, 'utf-8');
+        const { content, repaired } = normalizeMarkers(raw);
+        const blocks = parseBlocks(content);
+        const distinct = new Set(blocks.map((b) => b.content)).size;
+        preview.push({
+          filePath,
+          blocks: blocks.length,
+          damagedMarkers: repaired,
+          duplicateBlocks: blocks.length - distinct,
+        });
+      }
+
+      cliOutput(
+        {
+          dryRun: true,
+          filesScanned: preview.length,
+          needsRepair: preview.filter((p) => p.damagedMarkers > 0 || p.duplicateBlocks > 0).length,
+          files: preview,
+        },
+        { command: 'caamp', operation: 'caamp.repair' },
+      );
+      return;
+    }
+
+    const { repairInstructionFiles } = await import('@cleocode/caamp');
+    const result = await repairInstructionFiles(process.cwd(), providers);
+
+    cliOutput(
+      {
+        dryRun: false,
+        filesScanned: result.files.length,
+        filesModified: result.filesModified,
+        markersHealed: result.repaired,
+        duplicatesRemoved: result.removed,
+        files: result.files,
+      },
+      { command: 'caamp', operation: 'caamp.repair' },
+    );
+  },
+});
+
+/**
  * Root caamp command group — CAAMP injection management.
  *
  * Provides utilities for managing CAAMP injection blocks in
@@ -114,9 +198,9 @@ const dedupeCommand = defineCommand({
  *
  * @example
  * ```bash
- * cleo caamp dedupe
+ * cleo caamp repair
+ * cleo caamp repair --dry-run
  * cleo caamp dedupe --file /home/user/.agents/AGENTS.md
- * cleo caamp dedupe --dry-run
  * ```
  *
  * @public
@@ -124,10 +208,11 @@ const dedupeCommand = defineCommand({
 export const caampCommand = defineCommand({
   meta: {
     name: 'caamp',
-    description: 'CAAMP injection management: deduplicate blocks, inspect injection state',
+    description: 'CAAMP injection management: repair markers, deduplicate blocks',
   },
   subCommands: {
     dedupe: dedupeCommand,
+    repair: repairCommand,
   },
   async run({ cmd, rawArgs }) {
     if (isSubCommandDispatch(rawArgs, cmd.subCommands)) return;
@@ -135,6 +220,7 @@ export const caampCommand = defineCommand({
     humanLine('Usage: cleo caamp <subcommand>');
     humanLine('');
     humanLine('Subcommands:');
+    humanLine('  repair   Heal damaged CAAMP markers and remove duplicate blocks');
     humanLine('  dedupe   Remove duplicate CAAMP injection blocks from AGENTS.md files');
   },
 });

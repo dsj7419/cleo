@@ -9,6 +9,7 @@ import { existsSync, lstatSync } from 'node:fs';
 import { cp, mkdir, readlink, rm, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
+import type { CaampInjectionAction } from '@cleocode/contracts/caamp-markers';
 import { resolveSkillsRoot } from '@cleocode/core/skills/skill-root.js';
 import type { ConfigFormat, Provider, ProviderPriority } from '../../types.js';
 import { injectAll } from '../instructions/injector.js';
@@ -383,7 +384,7 @@ export interface InstructionUpdateSummary {
   /** Detailed action log per instruction file. */
   actions: Array<{
     file: string;
-    action: 'created' | 'added' | 'consolidated' | 'updated' | 'intact';
+    action: CaampInjectionAction;
     providers: string[];
     configFormats: ConfigFormat[];
   }>;

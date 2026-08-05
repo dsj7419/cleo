@@ -2653,4 +2653,16 @@ export {
   workGraphSliceParamsSchema,
   workGraphSliceSchema,
 } from './workgraph.js';
+
 // === WASM SDK (Rust crate bindings) ===
+
+export type { CaampInjectionAction } from './caamp-markers.js';
+// === CAAMP instruction-block marker grammar (T12051) ===
+export {
+  CAAMP_BLOCK_PATTERN_SOURCE,
+  CAAMP_DAMAGED_END_PATTERN_SOURCE,
+  CAAMP_DAMAGED_START_PATTERN_SOURCE,
+  CAAMP_INJECTION_ACTIONS,
+  CAAMP_MARKER_END,
+  CAAMP_MARKER_START,
+} from './caamp-markers.js';

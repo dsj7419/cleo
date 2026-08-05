@@ -41,6 +41,9 @@ export {
 // Formats
 export { readConfig, removeConfig, writeConfig } from './core/formats/index.js';
 export { deepMerge, ensureDir, getNestedValue } from './core/formats/utils.js';
+// Atomic write + cross-process file lock primitives (T12051)
+export type { FileLockOptions } from './core/fs/atomic.js';
+export { assertNotTornRead, withFileLock, writeFileAtomic } from './core/fs/atomic.js';
 export type {
   Harness,
   HarnessScope,
@@ -110,6 +113,7 @@ export type {
   EnsureProviderInstructionFileOptions,
   EnsureProviderInstructionFileResult,
   KnownProviderAgentFolderId,
+  RepairResult,
   WriteAgentFileOptions,
   WriteAgentFileResult,
 } from './core/instructions/injector.js';
@@ -124,10 +128,27 @@ export {
   getProviderAgentFolder,
   inject,
   injectAll,
+  instructionFileCascade,
   parseCaampBlocks,
   removeInjection,
+  repairInstructionFiles,
   writeAgentFileToAllProviders,
 } from './core/instructions/injector.js';
+// Marker engine — parsing, damage repair, canonical reconciliation (T12051)
+export type {
+  BlockInsertPosition,
+  NormalizeResult,
+  ReconcileResult,
+} from './core/instructions/markers.js';
+export {
+  blockPattern,
+  buildBlock,
+  mergeBlockBodies,
+  normalizeMarkers,
+  parseBlocks,
+  reconcile,
+  repairContent,
+} from './core/instructions/markers.js';
 export type { InjectionTemplate } from './core/instructions/templates.js';
 export {
   buildInjectionContent,

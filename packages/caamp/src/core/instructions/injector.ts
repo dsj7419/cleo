@@ -7,35 +7,28 @@
  */
 
 import { existsSync } from 'node:fs';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { readFile, stat } from 'node:fs/promises';
 import { homedir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { join } from 'node:path';
+import type { CaampInjectionAction } from '@cleocode/contracts/caamp-markers';
 import type { InjectionCheckResult, InjectionStatus, Provider } from '../../types.js';
+import { assertNotTornRead, withFileLock, writeFileAtomic } from '../fs/atomic.js';
+import { getAgentsHome } from '../paths/standard.js';
 import { getProvider, getProviderInstructionReferences } from '../registry/providers.js';
+import {
+  blockPattern,
+  buildBlock,
+  type CaampBlock,
+  normalizeMarkers,
+  parseBlocks,
+  reconcile,
+  repairContent,
+} from './markers.js';
 import { buildInjectionContent, type InjectionTemplate } from './templates.js';
 
-const MARKER_START = '<!-- CAAMP:START -->';
-const MARKER_END = '<!-- CAAMP:END -->';
-const MARKER_PATTERN = /<!-- CAAMP:START -->[\s\S]*?<!-- CAAMP:END -->/g;
-const MARKER_PATTERN_SINGLE = /<!-- CAAMP:START -->[\s\S]*?<!-- CAAMP:END -->/;
+export type { CaampBlock } from './markers.js';
 
 // ── Block parsing ──────────────────────────────────────────────────────────
-
-/**
- * A single parsed CAAMP block extracted from a file.
- *
- * @public
- */
-export interface CaampBlock {
-  /** Raw text of the entire block including markers. */
-  raw: string;
-  /** Trimmed content between the markers. */
-  content: string;
-  /** Zero-based character offset of the start of the block in the file. */
-  startIndex: number;
-  /** Zero-based character offset immediately after the block in the file. */
-  endIndex: number;
-}
 
 /**
  * Parse all CAAMP blocks from a file's content string.
@@ -47,24 +40,19 @@ export interface CaampBlock {
  * @param fileContent - Raw text content of the file
  * @returns Array of parsed CAAMP blocks
  *
+ * @remarks
+ * Strict: a block whose marker has been damaged (for example a lost `<`) is
+ * not seen. Run {@link normalizeMarkers} first when the input may be corrupt.
+ *
+ * @example
+ * ```typescript
+ * const blocks = parseCaampBlocks(await readFile(agentsMd, "utf-8"));
+ * ```
+ *
  * @public
  */
 export function parseCaampBlocks(fileContent: string): CaampBlock[] {
-  const blocks: CaampBlock[] = [];
-  const pattern = /<!-- CAAMP:START -->([\s\S]*?)<!-- CAAMP:END -->/g;
-
-  for (let match = pattern.exec(fileContent); match !== null; match = pattern.exec(fileContent)) {
-    const raw = match[0];
-    const innerContent = match[1] ?? '';
-    blocks.push({
-      raw,
-      content: innerContent.trim(),
-      startIndex: match.index,
-      endIndex: match.index + raw.length,
-    });
-  }
-
-  return blocks;
+  return parseBlocks(fileContent);
 }
 
 /**
@@ -81,6 +69,13 @@ export interface DedupeResult {
   kept: number;
   /** `true` if the file was modified on disk; `false` if it was already clean. */
   modified: boolean;
+  /**
+   * Number of damaged marker lines healed back to canonical form.
+   *
+   * Non-zero means the file had corruption that the strict block pattern could
+   * not see — the condition that used to make duplicates accumulate invisibly.
+   */
+  repaired: number;
 }
 
 /**
@@ -114,56 +109,72 @@ export interface DedupeResult {
  */
 export async function dedupeFile(filePath: string): Promise<DedupeResult> {
   if (!existsSync(filePath)) {
-    return { filePath, removed: 0, kept: 0, modified: false };
+    return { filePath, removed: 0, kept: 0, modified: false, repaired: 0 };
   }
 
-  const fileContent = await readFile(filePath, 'utf-8');
-  const blocks = parseCaampBlocks(fileContent);
+  return withFileLock(filePath, async () => {
+    const original = await readFile(filePath, 'utf-8');
 
-  if (blocks.length === 0) {
-    return { filePath, removed: 0, kept: 0, modified: false };
-  }
+    // Heal damaged markers FIRST. A block whose marker lost a character is
+    // invisible to the strict pattern, so without this step the duplicates it
+    // caused would be reported as "already clean" (T12051).
+    const { content: healed, repaired } = normalizeMarkers(original);
+    const blocks = parseBlocks(healed);
 
-  // Group by trimmed content — last occurrence wins
-  const lastByContent = new Map<string, CaampBlock>();
-  for (const block of blocks) {
-    lastByContent.set(block.content, block);
-  }
-
-  const keepSet = new Set<CaampBlock>(lastByContent.values());
-  const removed = blocks.length - keepSet.size;
-
-  if (removed === 0) {
-    // Already clean
-    return { filePath, removed: 0, kept: blocks.length, modified: false };
-  }
-
-  // Rebuild file content: walk through original text, emit blocks that are
-  // in keepSet and skip duplicates. Non-block text between blocks is preserved.
-  let result = '';
-  let cursor = 0;
-
-  for (const block of blocks) {
-    // Emit any non-block text before this block
-    result += fileContent.slice(cursor, block.startIndex);
-    cursor = block.endIndex;
-
-    if (keepSet.has(block)) {
-      result += block.raw;
+    if (blocks.length === 0) {
+      if (repaired > 0 && healed !== original) {
+        await writeFileAtomic(filePath, healed);
+        return { filePath, removed: 0, kept: 0, modified: true, repaired };
+      }
+      return { filePath, removed: 0, kept: 0, modified: false, repaired };
     }
-    // Removed duplicates contribute nothing — surrounding whitespace is
-    // normalized by the final collapse step below.
-  }
 
-  // Emit any trailing text after the last block
-  result += fileContent.slice(cursor);
+    // Group by trimmed content — last occurrence wins
+    const lastByContent = new Map<string, CaampBlock>();
+    for (const block of blocks) {
+      lastByContent.set(block.content, block);
+    }
 
-  // Normalize: collapse 3+ consecutive newlines → 2, trim trailing whitespace
-  result = result.replace(/\n{3,}/g, '\n\n').trimEnd() + '\n';
+    const keepSet = new Set<CaampBlock>(lastByContent.values());
+    const removed = blocks.length - keepSet.size;
 
-  await writeFile(filePath, result, 'utf-8');
+    // Rebuild file content: walk through the healed text, emit blocks that are
+    // in keepSet and skip duplicates. Non-block text between blocks is preserved.
+    let result = '';
+    let cursor = 0;
 
-  return { filePath, removed, kept: keepSet.size, modified: true };
+    for (const block of blocks) {
+      // Emit any non-block text before this block
+      result += healed.slice(cursor, block.startIndex);
+      cursor = block.endIndex;
+
+      if (keepSet.has(block)) {
+        result += block.raw;
+      }
+      // Removed duplicates contribute nothing — surrounding whitespace is
+      // normalized by the final collapse step below.
+    }
+
+    // Emit any trailing text after the last block
+    result += healed.slice(cursor);
+
+    // Normalize: collapse 3+ consecutive newlines → 2, trim trailing whitespace
+    result = `${result.replace(/\n{3,}/g, '\n\n').trimEnd()}\n`;
+
+    // Only rewrite when there is real work to do. Cosmetic differences alone
+    // (a missing trailing newline, say) must not cause a write — callers batch
+    // this across files they do not own.
+    if (removed === 0 && repaired === 0) {
+      return { filePath, removed: 0, kept: blocks.length, modified: false, repaired };
+    }
+
+    if (result === original) {
+      return { filePath, removed: 0, kept: blocks.length, modified: false, repaired };
+    }
+
+    await writeFileAtomic(filePath, result);
+    return { filePath, removed, kept: keepSet.size, modified: true, repaired };
+  });
 }
 
 /**
@@ -193,6 +204,130 @@ export async function dedupeFiles(filePaths: string[]): Promise<DedupeResult[]> 
     results.push(await dedupeFile(filePath));
   }
   return results;
+}
+
+/**
+ * Every instruction file CAAMP may have written to, for a given project.
+ *
+ * Covers three tiers, because corruption in any one of them affects every
+ * agent session:
+ *
+ * 1. The **global hub** `~/.agents/AGENTS.md` — the highest-risk file in the
+ *    system. Every `cleo init`, `cleo upgrade` and `cleo doctor` run rewrites
+ *    it regardless of which project invoked them, and until T12051 no health
+ *    check looked at it at all.
+ * 2. The project's own `AGENTS.md`, `CLAUDE.md` and `GEMINI.md`.
+ * 3. Each detected provider's global instruction file.
+ *
+ * Paths are de-duplicated and returned whether or not they exist; callers skip
+ * missing ones.
+ *
+ * @param projectDir - Absolute path to the project directory
+ * @param providers - Detected providers whose global files should be included
+ * @returns De-duplicated absolute paths, global hub first
+ *
+ * @example
+ * ```typescript
+ * const paths = instructionFileCascade("/project", getInstalledProviders());
+ * const results = await dedupeFiles(paths);
+ * ```
+ *
+ * @public
+ */
+export function instructionFileCascade(projectDir: string, providers: Provider[]): string[] {
+  const paths: string[] = [
+    join(getAgentsHome(), 'AGENTS.md'),
+    join(projectDir, 'AGENTS.md'),
+    join(projectDir, 'CLAUDE.md'),
+    join(projectDir, 'GEMINI.md'),
+  ];
+
+  for (const provider of providers) {
+    paths.push(join(provider.pathGlobal, provider.instructFile));
+  }
+
+  return [...new Set(paths)];
+}
+
+/**
+ * Summary of a repair sweep across instruction files.
+ *
+ * @public
+ */
+export interface RepairResult {
+  /** Per-file outcomes, in cascade order. Files that do not exist are omitted. */
+  files: DedupeResult[];
+  /** Total damaged marker lines healed across all files. */
+  repaired: number;
+  /** Total duplicate blocks removed across all files. */
+  removed: number;
+  /** How many files were actually rewritten. */
+  filesModified: number;
+}
+
+/**
+ * Heal damaged CAAMP markers and collapse duplicate blocks across a project's
+ * whole instruction-file cascade.
+ *
+ * This is the repair that `cleo doctor` prescribes. It is deliberately
+ * content-agnostic — it does not need to know what *should* be inside the
+ * block, so it can restore a file to a well-formed single-block state without
+ * a provider registry lookup or a template refresh.
+ *
+ * Safe to run repeatedly: a healthy cascade reports `repaired: 0`,
+ * `removed: 0`, `filesModified: 0` and performs no writes.
+ *
+ * @param projectDir - Absolute path to the project directory
+ * @param providers - Detected providers whose global files should be included
+ * @returns Aggregate repair summary
+ *
+ * @example
+ * ```typescript
+ * const result = await repairInstructionFiles("/project", getInstalledProviders());
+ * console.log(`healed ${result.repaired} marker(s), removed ${result.removed} duplicate(s)`);
+ * ```
+ *
+ * @public
+ */
+export async function repairInstructionFiles(
+  projectDir: string,
+  providers: Provider[],
+): Promise<RepairResult> {
+  const paths = instructionFileCascade(projectDir, providers).filter((p) => existsSync(p));
+  const files: DedupeResult[] = [];
+
+  for (const filePath of paths) {
+    files.push(
+      await withFileLock(filePath, async (): Promise<DedupeResult> => {
+        const original = await readFile(filePath, 'utf-8');
+        const { content, blocksBefore, repaired } = repairContent(original);
+        const removed = Math.max(0, blocksBefore - 1);
+
+        if (removed === 0 && repaired === 0) {
+          return { filePath, removed: 0, kept: blocksBefore, modified: false, repaired: 0 };
+        }
+        if (content === original) {
+          return { filePath, removed: 0, kept: blocksBefore, modified: false, repaired };
+        }
+
+        await writeFileAtomic(filePath, content);
+        return {
+          filePath,
+          removed,
+          kept: blocksBefore > 0 ? 1 : 0,
+          modified: true,
+          repaired,
+        };
+      }),
+    );
+  }
+
+  return {
+    files,
+    repaired: files.reduce((n, r) => n + r.repaired, 0),
+    removed: files.reduce((n, r) => n + r.removed, 0),
+    filesModified: files.filter((r) => r.modified).length,
+  };
 }
 
 /**
@@ -227,32 +362,25 @@ export async function checkInjection(
 ): Promise<InjectionStatus> {
   if (!existsSync(filePath)) return 'missing';
 
-  const content = await readFile(filePath, 'utf-8');
+  const raw = await readFile(filePath, 'utf-8');
 
-  if (!MARKER_PATTERN_SINGLE.test(content)) return 'none';
+  // Damaged markers are healed in memory before the check so a corrupted file
+  // reports `outdated` (which the caller repairs) instead of `none` (which
+  // used to make the caller prepend a second block). No write happens here.
+  const { content, repaired } = normalizeMarkers(raw);
+  const blocks = parseBlocks(content);
+
+  if (blocks.length === 0) return 'none';
+
+  // More than one block, or a marker that had to be healed, means the file is
+  // not in its canonical state regardless of what the block body says.
+  if (blocks.length > 1 || repaired > 0) return 'outdated';
 
   if (expectedContent) {
-    const blockContent = extractBlock(content);
-    if (blockContent && blockContent.trim() === expectedContent.trim()) {
-      return 'current';
-    }
-    return 'outdated';
+    return blocks[0]?.content === expectedContent.trim() ? 'current' : 'outdated';
   }
 
   return 'current';
-}
-
-/** Extract the content between CAAMP markers */
-function extractBlock(content: string): string | null {
-  const match = content.match(MARKER_PATTERN_SINGLE);
-  if (!match) return null;
-
-  return match[0].replace(MARKER_START, '').replace(MARKER_END, '').trim();
-}
-
-/** Build the injection block */
-function buildBlock(content: string): string {
-  return `${MARKER_START}\n${content}\n${MARKER_END}`;
 }
 
 /**
@@ -261,7 +389,8 @@ function buildBlock(content: string): string {
  * Behavior depends on the file state:
  * - File does not exist: creates the file with the injection block → `"created"`
  * - File exists without markers: prepends the injection block → `"added"`
- * - File exists with multiple markers (duplicates): consolidates into single block → `"consolidated"`
+ * - File exists with a damaged marker: heals it and replaces in place → `"repaired"`
+ * - File exists with multiple markers (duplicates): consolidates into a single block → `"consolidated"`
  * - File exists with markers, content differs: replaces the block → `"updated"`
  * - File exists with markers, content matches: no-op → `"intact"`
  *
@@ -270,11 +399,21 @@ function buildBlock(content: string): string {
  *
  * @param filePath - Absolute path to the instruction file
  * @param content - Content to inject between CAAMP markers
- * @returns Action taken: `"created"`, `"added"`, `"consolidated"`, `"updated"`, or `"intact"`
+ * @returns The {@link CaampInjectionAction} describing what was done
  *
  * @remarks
- * Handles duplicate marker consolidation automatically. When multiple CAAMP
- * blocks are detected (from manual edits or bugs), they are merged into one.
+ * Damaged markers are healed *before* the file is classified. This is what
+ * stops a single lost character from ratcheting into duplicate blocks: prior
+ * to T12051 a marker that lost its leading `<` was invisible to the block
+ * pattern, so this function concluded the file had no block and prepended a
+ * second one — permanently doubling the injected protocol text, and doubling
+ * again on the next mishap.
+ *
+ * The whole read-modify-write cycle runs under a cross-process lock and the
+ * write itself is atomic, because the busiest target — `~/.agents/AGENTS.md` —
+ * is rewritten by every project on the machine.
+ *
+ * All text outside the CAAMP markers is preserved verbatim.
  *
  * @example
  * ```typescript
@@ -284,57 +423,45 @@ function buildBlock(content: string): string {
  *
  * @public
  */
-export async function inject(
-  filePath: string,
-  content: string,
-): Promise<'created' | 'added' | 'consolidated' | 'updated' | 'intact'> {
-  const block = buildBlock(content);
-
-  // Ensure parent directory exists
-  await mkdir(dirname(filePath), { recursive: true });
+export async function inject(filePath: string, content: string): Promise<CaampInjectionAction> {
+  // Canonicalise the body once, at the entry, so the create path and the
+  // reconcile path agree on what "the same content" means. Without this a
+  // whitespace-only difference reported `updated` forever.
+  const body = content.trim();
 
   if (!existsSync(filePath)) {
-    // Create new file with injection block
-    await writeFile(filePath, `${block}\n`, 'utf-8');
-    return 'created';
+    // Create new file with injection block. Still atomic + locked so a
+    // concurrent creator cannot interleave with us.
+    return withFileLock<CaampInjectionAction>(filePath, async () => {
+      await writeFileAtomic(filePath, `${buildBlock(body)}\n`);
+      return 'created';
+    });
   }
 
-  const existing = await readFile(filePath, 'utf-8');
+  return withFileLock<CaampInjectionAction>(filePath, async () => {
+    const existing = await readFile(filePath, 'utf-8');
 
-  // Find all CAAMP blocks in the file
-  const matches = existing.match(MARKER_PATTERN);
-
-  if (matches && matches.length > 0) {
-    // Check if there are multiple duplicate blocks
-    if (matches.length > 1) {
-      // Consolidate all blocks into a single clean block
-      const updated = existing
-        .replace(MARKER_PATTERN, '')
-        .replace(/^\n{2,}/, '\n')
-        .trim();
-
-      // Write the clean content with a single block
-      const finalContent = updated ? `${block}\n\n${updated}` : `${block}\n`;
-      await writeFile(filePath, finalContent, 'utf-8');
-      return 'consolidated';
+    // Fail closed on a torn read. Our own writes are atomic, but callers
+    // outside this package still rewrite instruction files with a plain
+    // `writeFile` (truncate-then-write), and a read landing inside that window
+    // returns empty for a file that is not empty on disk. Reconciling from
+    // that would replace every byte of the user's content with a lone block.
+    if (existing.length === 0) {
+      assertNotTornRead(filePath, existing, (await stat(filePath)).size);
     }
 
-    // Check if existing content already matches (idempotency)
-    const existingBlock = extractBlock(existing);
-    if (existingBlock !== null && existingBlock.trim() === content.trim()) {
-      return 'intact';
-    }
+    const { content: next, blocksBefore, repaired } = reconcile(existing, body);
 
-    // Replace existing block with new content
-    const updated = existing.replace(MARKER_PATTERN_SINGLE, block);
-    await writeFile(filePath, updated, 'utf-8');
+    if (next === existing) return 'intact';
+
+    await writeFileAtomic(filePath, next);
+
+    // Report the most significant thing that happened, most invasive first.
+    if (blocksBefore === 0) return 'added';
+    if (repaired > 0) return 'repaired';
+    if (blocksBefore > 1) return 'consolidated';
     return 'updated';
-  }
-
-  // Prepend block to existing content
-  const updated = `${block}\n\n${existing}`;
-  await writeFile(filePath, updated, 'utf-8');
-  return 'added';
+  });
 }
 
 /**
@@ -349,6 +476,9 @@ export async function inject(
  * Cleans up any leftover blank lines after removing the block. If the file
  * would be entirely empty after removal, the file itself is deleted.
  *
+ * Blocks whose markers are damaged are healed first, so uninstall removes them
+ * too rather than leaving orphaned fragments behind.
+ *
  * @example
  * ```typescript
  * const removed = await removeInjection("/project/CLAUDE.md");
@@ -359,23 +489,29 @@ export async function inject(
 export async function removeInjection(filePath: string): Promise<boolean> {
   if (!existsSync(filePath)) return false;
 
-  const content = await readFile(filePath, 'utf-8');
-  if (!MARKER_PATTERN.test(content)) return false;
+  return withFileLock(filePath, async () => {
+    const original = await readFile(filePath, 'utf-8');
+    const { content } = normalizeMarkers(original);
 
-  const cleaned = content
-    .replace(MARKER_PATTERN, '')
-    .replace(/^\n{2,}/, '\n')
-    .trim();
+    // A fresh pattern per call: a shared /g RegExp carries `lastIndex`, so the
+    // previous `MARKER_PATTERN.test()` here skipped matches on alternate calls.
+    if (parseBlocks(content).length === 0) return false;
 
-  if (!cleaned) {
-    // File would be empty - remove it entirely
-    const { rm } = await import('node:fs/promises');
-    await rm(filePath);
-  } else {
-    await writeFile(filePath, `${cleaned}\n`, 'utf-8');
-  }
+    const cleaned = content
+      .replace(blockPattern(), '')
+      .replace(/^\n{2,}/, '\n')
+      .trim();
 
-  return true;
+    if (!cleaned) {
+      // File would be empty - remove it entirely
+      const { rm } = await import('node:fs/promises');
+      await rm(filePath);
+    } else {
+      await writeFileAtomic(filePath, `${cleaned}\n`);
+    }
+
+    return true;
+  });
 }
 
 /**
@@ -464,8 +600,8 @@ export async function injectAll(
   projectDir: string,
   scope: 'project' | 'global',
   content: string,
-): Promise<Map<string, 'created' | 'added' | 'consolidated' | 'updated' | 'intact'>> {
-  const results = new Map<string, 'created' | 'added' | 'consolidated' | 'updated' | 'intact'>();
+): Promise<Map<string, CaampInjectionAction>> {
+  const results = new Map<string, CaampInjectionAction>();
   const injected = new Set<string>();
 
   for (const provider of providers) {
@@ -520,7 +656,7 @@ export interface EnsureProviderInstructionFileResult {
   /** Instruction file name from the provider registry. */
   instructFile: string;
   /** Action taken. */
-  action: 'created' | 'added' | 'consolidated' | 'updated' | 'intact';
+  action: CaampInjectionAction;
   /** Provider ID. */
   providerId: string;
 }
@@ -751,7 +887,7 @@ export interface WriteAgentFileResult {
   /** Absolute path to the written agent-definition file. */
   filePath: string;
   /** Action taken. */
-  action: 'created' | 'added' | 'consolidated' | 'updated' | 'intact';
+  action: CaampInjectionAction;
 }
 
 /**

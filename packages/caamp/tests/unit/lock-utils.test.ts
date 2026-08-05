@@ -151,9 +151,10 @@ describe("lock-utils", () => {
       const lockGuardPath = `${mockedPaths.LOCK_FILE_PATH}.lock`;
       await writeFile(lockGuardPath, "", "utf-8");
 
-      // Backdate the file's mtime to make it stale (>5 seconds old)
+      // Backdate the mtime well past the staleness threshold so this does not
+      // encode the exact constant.
       const { utimes } = await import("node:fs/promises");
-      const oldTime = new Date(Date.now() - 10_000);
+      const oldTime = new Date(Date.now() - 120_000);
       await utimes(lockGuardPath, oldTime, oldTime);
 
       // Now updateLockFile should succeed because it detects the stale lock and removes it

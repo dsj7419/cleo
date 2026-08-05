@@ -33,10 +33,21 @@ describe("coverage: lock-utils.ts lock guard branches", () => {
     vi.clearAllMocks();
     mockMkdir.mockResolvedValue(undefined);
     mockRm.mockResolvedValue(undefined);
-    mockWriteFile.mockResolvedValue(undefined);
     mockRename.mockResolvedValue(undefined);
     mockExistsSync.mockReturnValue(false);
-    mockReadFile.mockResolvedValue(JSON.stringify({ version: 1, skills: {}, mcpServers: {} }));
+
+    // Echo writes back on read. withFileLock writes a fencing token into the
+    // `.lock` guard and, on release, only removes the guard if it still holds
+    // that token — so a mock that returns the same canned string for every
+    // path would make release look like someone else's guard and skip the rm.
+    const written = new Map<string, string>();
+    mockWriteFile.mockImplementation(async (path: string, data: string) => {
+      written.set(String(path), String(data));
+    });
+    mockReadFile.mockImplementation(async (path: string) => {
+      const key = String(path);
+      return written.get(key) ?? JSON.stringify({ version: 1, skills: {}, mcpServers: {} });
+    });
   });
 
   it("rethrows non-EEXIST error (EACCES) - lines 28-29", async () => {
@@ -81,7 +92,7 @@ describe("coverage: lock-utils.ts lock guard branches", () => {
     mockOpen.mockRejectedValue(eexistError);
 
     const { writeLockFile } = await import("../../src/core/lock-utils.js");
-    await expect(writeLockFile({ version: 1, skills: {}, mcpServers: {} })).rejects.toThrow("Timed out waiting for lock file guard");
+    await expect(writeLockFile({ version: 1, skills: {}, mcpServers: {} })).rejects.toThrow(/Timed out acquiring lock for .* after \d+ attempts/);
   }, 30000);
 
   it("readLockFile returns default on non-existent file", async () => {

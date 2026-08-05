@@ -14,7 +14,12 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { CORE_PROTECTED_FILES } from '../../constants.js';
 import { detectLegacyAgentOutputs } from '../../migration/agent-outputs.js';
-import { getCleoHome, getCleoTemplatesTildePath, getProjectRoot } from '../../paths.js';
+import {
+  getAgentsHome,
+  getCleoHome,
+  getCleoTemplatesTildePath,
+  getProjectRoot,
+} from '../../paths.js';
 import {
   getNodeUpgradeInstructions,
   getNodeVersionInfo,
@@ -33,6 +38,10 @@ import { getTemplateById } from '../../templates/registry.js';
 // E-CONTRACTS-FOUNDATION T9832 Phase 0a). Re-exported here to preserve
 // the public surface of `@cleocode/core/validation/doctor/checks`.
 
+import {
+  CAAMP_DAMAGED_END_PATTERN_SOURCE,
+  CAAMP_DAMAGED_START_PATTERN_SOURCE,
+} from '@cleocode/contracts/caamp-markers';
 import type { CheckResult } from '@cleocode/contracts/scaffold-diagnostics';
 
 export type {
@@ -793,16 +802,42 @@ export function checkCanonicalRcasdPaths(projectRoot?: string): CheckResult {
 // ============================================================================
 
 /**
- * Verify balanced CAAMP:START/END markers in CLAUDE.md and AGENTS.md.
+ * Verify CAAMP marker integrity across the instruction-file cascade.
+ *
+ * Checks three distinct failure modes:
+ *
+ * - **Damaged markers** — a marker whose delimiters were mangled (for example
+ *   `!-- CAAMP:START -->`, having lost its leading `<`). The strict block
+ *   pattern cannot see these, so before T12051 they were invisible here while
+ *   causing `inject()` to prepend duplicate blocks on every run.
+ * - **Unbalanced markers** — START and END counts differ.
+ * - **Duplicate blocks** — more than one block in a file, which means the
+ *   referenced protocol text is loaded into every agent's context more than
+ *   once.
+ *
+ * The **global hub** `~/.agents/AGENTS.md` is included deliberately. It is the
+ * most-written file in the system — every `cleo init`, `cleo upgrade` and
+ * `cleo doctor` run rewrites it no matter which project invoked them — and it
+ * was previously the one file no health check inspected. The corruption this
+ * check now catches was found there.
+ *
+ * @param projectRoot - Project directory to check; defaults to the resolved project root
+ * @returns Check result naming each offending file
+ *
  * @task T5153
+ * @task T12051
  */
 export function checkCaampMarkerIntegrity(projectRoot?: string): CheckResult {
   const root = getProjectRoot(projectRoot);
-  const files = ['CLAUDE.md', 'AGENTS.md'];
+  const files = [
+    join(getAgentsHome(), 'AGENTS.md'),
+    join(root, 'CLAUDE.md'),
+    join(root, 'AGENTS.md'),
+  ];
   const issues: string[] = [];
+  const checked: string[] = [];
 
-  for (const file of files) {
-    const filePath = join(root, file);
+  for (const filePath of files) {
     if (!existsSync(filePath)) continue;
 
     let content: string;
@@ -811,15 +846,29 @@ export function checkCaampMarkerIntegrity(projectRoot?: string): CheckResult {
     } catch {
       continue;
     }
+    checked.push(filePath);
+    const label = filePath.replace(homedir(), '~');
 
-    const startCount = (content.match(/<!-- CAAMP:START -->/g) || []).length;
-    const endCount = (content.match(/<!-- CAAMP:END -->/g) || []).length;
+    // Fresh RegExp per use — a shared /g pattern carries a mutable lastIndex.
+    const canonicalStart = (content.match(/<!-- CAAMP:START -->/g) ?? []).length;
+    const canonicalEnd = (content.match(/<!-- CAAMP:END -->/g) ?? []).length;
+    const tolerantStart = (
+      content.match(new RegExp(CAAMP_DAMAGED_START_PATTERN_SOURCE, 'gmi')) ?? []
+    ).length;
+    const tolerantEnd = (content.match(new RegExp(CAAMP_DAMAGED_END_PATTERN_SOURCE, 'gmi')) ?? [])
+      .length;
 
-    if (startCount !== endCount) {
-      issues.push(`${file}: ${startCount} CAAMP:START vs ${endCount} CAAMP:END`);
+    const damaged = tolerantStart - canonicalStart + (tolerantEnd - canonicalEnd);
+    if (damaged > 0) {
+      issues.push(`${label}: ${damaged} damaged CAAMP marker(s)`);
     }
-    if (startCount === 0) {
-      issues.push(`${file}: no CAAMP markers found`);
+    if (canonicalStart !== canonicalEnd) {
+      issues.push(`${label}: ${canonicalStart} CAAMP:START vs ${canonicalEnd} CAAMP:END`);
+    }
+    if (tolerantStart === 0) {
+      issues.push(`${label}: no CAAMP markers found`);
+    } else if (tolerantStart > 1) {
+      issues.push(`${label}: ${tolerantStart} CAAMP blocks (expected 1)`);
     }
   }
 
@@ -829,8 +878,10 @@ export function checkCaampMarkerIntegrity(projectRoot?: string): CheckResult {
       category: 'configuration',
       status: 'warning',
       message: `CAAMP marker issues: ${issues.join('; ')}`,
-      details: { issues },
-      fix: 'cleo upgrade',
+      details: { issues, checkedFiles: checked },
+      // `cleo upgrade` cannot repair a damaged marker — it re-runs injection,
+      // which is what created the duplicates. `cleo caamp repair` heals them.
+      fix: 'cleo caamp repair',
     };
   }
 
@@ -838,8 +889,8 @@ export function checkCaampMarkerIntegrity(projectRoot?: string): CheckResult {
     id: 'caamp_marker_integrity',
     category: 'configuration',
     status: 'passed',
-    message: 'CAAMP markers balanced in all config files',
-    details: { checkedFiles: files },
+    message: 'CAAMP markers well-formed and unique in all instruction files',
+    details: { checkedFiles: checked },
     fix: null,
   };
 }

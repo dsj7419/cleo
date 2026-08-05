@@ -98,6 +98,79 @@ describe('checkCaampMarkerIntegrity', () => {
     const result = checkCaampMarkerIntegrity(tempDir);
     expect(result.status).toBe('passed');
   });
+
+  // ── T12051: the global hub, and damaged markers ───────────────────────────
+
+  describe('global hub ~/.agents/AGENTS.md (T12051)', () => {
+    let hubDir: string;
+    let originalAgentsHome: string | undefined;
+
+    beforeEach(() => {
+      originalAgentsHome = process.env['AGENTS_HOME'];
+      hubDir = join(makeTempDir(), '.agents');
+      mkdirSync(hubDir, { recursive: true });
+      process.env['AGENTS_HOME'] = hubDir;
+    });
+
+    afterEach(() => {
+      if (originalAgentsHome === undefined) delete process.env['AGENTS_HOME'];
+      else process.env['AGENTS_HOME'] = originalAgentsHome;
+      try {
+        rmSync(hubDir, { recursive: true, force: true });
+      } catch {
+        /* ignore */
+      }
+    });
+
+    it('inspects the global hub at all', () => {
+      // Before T12051 this check only ever looked at the project's own files,
+      // which is why corruption in the most-written file in the system — the
+      // one every project rewrites — went undetected indefinitely.
+      writeFileSync(join(hubDir, 'AGENTS.md'), '# no markers\n');
+
+      const result = checkCaampMarkerIntegrity(tempDir);
+      expect(result.status).toBe('warning');
+      expect((result.details.checkedFiles as string[]).some((f) => f.includes('.agents'))).toBe(
+        true,
+      );
+    });
+
+    it('detects a damaged marker and prescribes a repair that can actually fix it', () => {
+      // `cleo upgrade` — the previous prescription — re-runs injection, which
+      // is what created the duplicates in the first place.
+      writeFileSync(
+        join(hubDir, 'AGENTS.md'),
+        '!-- CAAMP:START -->\n@~/.cleo/templates/CLEO-INJECTION.md\n<!-- CAAMP:END -->\n',
+      );
+
+      const result = checkCaampMarkerIntegrity(tempDir);
+      expect(result.status).toBe('warning');
+      expect(result.details.issues as string[]).toContainEqual(
+        expect.stringContaining('damaged CAAMP marker'),
+      );
+      expect(result.fix).toBe('cleo caamp repair');
+    });
+
+    it('flags duplicate blocks — the protocol loaded more than once per session', () => {
+      const block = '<!-- CAAMP:START -->\n@x\n<!-- CAAMP:END -->';
+      writeFileSync(join(hubDir, 'AGENTS.md'), `${block}\n\n${block}\n`);
+
+      const result = checkCaampMarkerIntegrity(tempDir);
+      expect(result.status).toBe('warning');
+      expect(result.details.issues as string[]).toContainEqual(
+        expect.stringContaining('2 CAAMP blocks (expected 1)'),
+      );
+      expect(result.fix).toBe('cleo caamp repair');
+    });
+
+    it('passes on a well-formed single-block hub', () => {
+      writeFileSync(
+        join(hubDir, 'AGENTS.md'),
+        '<!-- CAAMP:START -->\n@~/.cleo/templates/CLEO-INJECTION.md\n<!-- CAAMP:END -->\n',
+      );
+      expect(checkCaampMarkerIntegrity(tempDir).status).toBe('passed');
+    });
+  });
 });
 
 // ============================================================================

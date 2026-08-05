@@ -6,66 +6,13 @@
  */
 
 import { existsSync } from 'node:fs';
-import { mkdir, open, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
 import type { CaampLockFile } from '../types.js';
-import { AGENTS_HOME, LOCK_FILE_PATH } from './paths/agents.js';
-
-const LOCK_GUARD_PATH = `${LOCK_FILE_PATH}.lock`;
-const STALE_LOCK_MS = 5_000;
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-async function removeStaleLock(): Promise<boolean> {
-  try {
-    const info = await stat(LOCK_GUARD_PATH);
-    if (Date.now() - info.mtimeMs > STALE_LOCK_MS) {
-      await rm(LOCK_GUARD_PATH, { force: true });
-      return true;
-    }
-  } catch {
-    // Lock file doesn't exist or can't be stat'd — not stale
-  }
-  return false;
-}
-
-async function acquireLockGuard(retries = 40, delayMs = 25): Promise<void> {
-  await mkdir(AGENTS_HOME, { recursive: true });
-
-  for (let attempt = 0; attempt < retries; attempt += 1) {
-    try {
-      const handle = await open(LOCK_GUARD_PATH, 'wx');
-      await handle.close();
-      return;
-    } catch (error) {
-      if (
-        !(error instanceof Error) ||
-        !('code' in error) ||
-        (error as NodeJS.ErrnoException).code !== 'EEXIST'
-      ) {
-        throw error;
-      }
-      // On first retry failure, check for stale lock from a crashed process
-      if (attempt === 0) {
-        const removed = await removeStaleLock();
-        if (removed) continue;
-      }
-      await sleep(delayMs);
-    }
-  }
-
-  throw new Error('Timed out waiting for lock file guard');
-}
-
-async function releaseLockGuard(): Promise<void> {
-  await rm(LOCK_GUARD_PATH, { force: true });
-}
+import { withFileLock, writeFileAtomic } from './fs/atomic.js';
+import { LOCK_FILE_PATH } from './paths/agents.js';
 
 async function writeLockFileUnsafe(lock: CaampLockFile): Promise<void> {
-  const tmpPath = `${LOCK_FILE_PATH}.tmp-${process.pid}-${Date.now()}`;
-  await writeFile(tmpPath, JSON.stringify(lock, null, 2) + '\n', 'utf-8');
-  await rename(tmpPath, LOCK_FILE_PATH);
+  await writeFileAtomic(LOCK_FILE_PATH, `${JSON.stringify(lock, null, 2)}\n`);
 }
 
 /**
@@ -116,12 +63,7 @@ export async function readLockFile(): Promise<CaampLockFile> {
  * @public
  */
 export async function writeLockFile(lock: CaampLockFile): Promise<void> {
-  await acquireLockGuard();
-  try {
-    await writeLockFileUnsafe(lock);
-  } finally {
-    await releaseLockGuard();
-  }
+  await withFileLock(LOCK_FILE_PATH, () => writeLockFileUnsafe(lock));
 }
 
 /**
@@ -147,13 +89,10 @@ export async function writeLockFile(lock: CaampLockFile): Promise<void> {
 export async function updateLockFile(
   updater: (lock: CaampLockFile) => void | Promise<void>,
 ): Promise<CaampLockFile> {
-  await acquireLockGuard();
-  try {
+  return withFileLock(LOCK_FILE_PATH, async () => {
     const lock = await readLockFile();
     await updater(lock);
     await writeLockFileUnsafe(lock);
     return lock;
-  } finally {
-    await releaseLockGuard();
-  }
+  });
 }
