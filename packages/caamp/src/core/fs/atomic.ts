@@ -27,12 +27,6 @@
 import { mkdir, open, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 
-// The canonical tmp-then-rename primitive is DEFINED in core
-// (`packages/core/src/tools/fs.ts`) and only re-exported here, per the
-// tools-vs-skills boundary: harness/provider packages consume atomic tool
-// primitives, they never redefine them.
-export { writeFileAtomic } from '@cleocode/core/tools/fs.js';
-
 /**
  * A guard file older than this is assumed to belong to a crashed process.
  *

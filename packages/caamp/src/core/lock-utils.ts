@@ -7,8 +7,9 @@
 
 import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
+import { writeFileAtomic } from '@cleocode/core/tools/fs.js';
 import type { CaampLockFile } from '../types.js';
-import { withFileLock, writeFileAtomic } from './fs/atomic.js';
+import { withFileLock } from './fs/atomic.js';
 import { LOCK_FILE_PATH } from './paths/agents.js';
 
 async function writeLockFileUnsafe(lock: CaampLockFile): Promise<void> {

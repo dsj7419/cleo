@@ -7,7 +7,6 @@
  */
 
 // Canonical atomic write primitive lives in core (tools-vs-skills boundary).
-export { writeFileAtomic } from '@cleocode/core/tools/fs.js';
 // Skills doctor helpers moved to `@cleocode/core` by T9744 (Wave B of T9740).
 // Import from `@cleocode/core` directly:
 //   - runDoctorBridge, AgentsSkillsRealDirError, buildBackupTimestamp,

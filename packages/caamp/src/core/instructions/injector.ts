@@ -11,8 +11,9 @@ import { readFile, stat } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import type { CaampInjectionAction } from '@cleocode/contracts/caamp-markers';
+import { writeFileAtomic } from '@cleocode/core/tools/fs.js';
 import type { InjectionCheckResult, InjectionStatus, Provider } from '../../types.js';
-import { assertNotTornRead, withFileLock, writeFileAtomic } from '../fs/atomic.js';
+import { assertNotTornRead, withFileLock } from '../fs/atomic.js';
 import { getAgentsHome } from '../paths/standard.js';
 import { getProvider, getProviderInstructionReferences } from '../registry/providers.js';
 import {

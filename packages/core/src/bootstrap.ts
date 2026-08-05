@@ -32,6 +32,7 @@ import {
 } from './paths.js';
 import { ensureGlobalHome, getPackageRoot } from './scaffold.js';
 import { getTemplateById } from './templates/registry.js';
+import { writeFileAtomic } from './tools/fs.js';
 
 /**
  * Resolve the absolute path to the installed `CLEO-INJECTION.md` under the
@@ -351,14 +352,8 @@ async function injectAgentsHub(ctx: BootstrapContext): Promise<void> {
   const globalAgentsMd = join(globalAgentsDir, 'AGENTS.md');
 
   try {
-    const {
-      inject,
-      getInstalledProviders,
-      injectAll,
-      buildInjectionContent,
-      withFileLock,
-      writeFileAtomic,
-    } = await import('@cleocode/caamp');
+    const { inject, getInstalledProviders, injectAll, buildInjectionContent, withFileLock } =
+      await import('@cleocode/caamp');
 
     if (!ctx.isDryRun) {
       await mkdir(globalAgentsDir, { recursive: true });
@@ -386,7 +381,7 @@ async function injectAgentsHub(ctx: BootstrapContext): Promise<void> {
 
           if (sanitized !== content) {
             // T10368-audit-ok: bootstrap.global-agents-md
-            await writeFileAtomic(globalAgentsMd, sanitized);
+            await writeFileAtomic({ path: globalAgentsMd, content: sanitized });
             ctx.created.push('~/.agents/AGENTS.md (healed CAAMP markers)');
           }
         });

@@ -1049,7 +1049,6 @@ export interface FixResult {
  * Run auto-fix for failed doctor checks by calling the corresponding ensure* functions.
  * Returns a list of fix results for each attempted repair.
  */
-// SSoT-EXEMPT:engine-migration-T1571
 /**
  * Repair damaged or duplicated CAAMP markers across the instruction-file
  * cascade, including the global hub.
@@ -1097,6 +1096,7 @@ async function repairCaampMarkers(projectRoot: string): Promise<FixResult> {
   }
 }
 
+// SSoT-EXEMPT:engine-migration-T1571
 export async function runDoctorFixes(projectRoot: string): Promise<FixResult[]> {
   const {
     ensureCleoStructure,

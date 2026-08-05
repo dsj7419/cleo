@@ -51,6 +51,13 @@ packages/*/src/**/*.js.map
 packages/*/src/**/*.d.ts
 packages/*/src/**/*.d.ts.map
 
+# Exception: hand-authored ambient module declarations. These are SOURCE, not
+# emit. TypeScript only permits `declare module '<specifier>'` at the top level
+# of a .d.ts, so a package that must describe a module it cannot resolve at
+# typecheck time has no other file type available. Scoped to one directory per
+# package so the broad rules above still catch stray emit. (T12051)
+!packages/*/src/types/*.d.ts
+
 # Test artifacts anywhere in the monorepo
 **/__tests__/**/*.js
 **/__tests__/**/*.js.map
