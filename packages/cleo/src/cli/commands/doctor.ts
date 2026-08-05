@@ -32,6 +32,7 @@ import { cliError, cliOutput, humanLine } from '../renderers/index.js';
 import { doctorDbSubstrateCommand } from './doctor-db-substrate.js';
 import { doctorExodusCommand } from './doctor-exodus.js';
 import { doctorExodusResidueCommand } from './doctor-exodus-residue.js';
+import { doctorFkCheckCommand } from './doctor-fk-check.js';
 import { doctorLegacyBackupsCommand } from './doctor-legacy-backups.js';
 import { runDoctorProjects } from './doctor-projects.js';
 import { doctorReleaseReadinessCommand } from './doctor-release-readiness.js';
@@ -70,7 +71,7 @@ async function scanTestFixturesInProd(projectRoot: string): Promise<FixtureMatch
   type NativeDb = { prepare: (sql: string) => { all: (arg?: string) => unknown[] } };
   const { getDb, getNativeDb } = await import('@cleocode/core/store/sqlite.js');
   await getDb(projectRoot);
-  const nativeDb = getNativeDb() as NativeDb | null;
+  const nativeDb = getNativeDb(projectRoot) as NativeDb | null;
   if (!nativeDb) return [];
 
   const rows = nativeDb
@@ -238,6 +239,8 @@ export const doctorCommand = defineCommand({
     'exodus-residue': doctorExodusResidueCommand,
     // T11837 / Saga T11242 / Epic T11833 — read-only exodus health report
     'exodus-health': doctorExodusCommand,
+    // T11530 / Saga T11242 / Epic T11249 — consolidated FK integrity check
+    'fk-check': doctorFkCheckCommand,
     // T11829 / Saga T11242 / Epic T11833 — DHQ-060 malformed-DB repair entry point
     repair: doctorRepairCommand,
     // T10458 / Saga T10431 / Epic T10436 — Release-readiness preflight

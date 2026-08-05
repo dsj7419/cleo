@@ -313,7 +313,7 @@ export async function allocateNextTaskId(cwd?: string, retryCount = 0): Promise<
   // Ensure DB is initialized (triggers migrations, seeds sequence counter)
   const { getDb, getNativeDb } = await import('../store/sqlite.js');
   await getDb(cwd);
-  const nativeDb = getNativeDb();
+  const nativeDb = getNativeDb(cwd);
   if (!nativeDb) {
     throw new CleoError(
       ExitCode.FILE_ERROR,

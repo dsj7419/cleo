@@ -95,7 +95,7 @@ describe('auditInvariantRegistry (T10340)', () => {
 
     const { getDb, getNativeDb } = await import('../../store/sqlite.js');
     await getDb(tempDir);
-    const nativeDb = getNativeDb() as NativeDbForTest | null;
+    const nativeDb = getNativeDb(tempDir) as NativeDbForTest | null;
     if (nativeDb) neutralizeSagaStructuralGuards(nativeDb);
   });
 

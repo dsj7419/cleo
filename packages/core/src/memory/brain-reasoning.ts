@@ -217,7 +217,7 @@ export async function reasonWhySymbol(
 
   try {
     await getBrainDb(projectRoot);
-    const brainNative = getBrainNativeDb();
+    const brainNative = getBrainNativeDb(projectRoot);
     if (!brainNative) return emptyResult;
 
     // Edge types that connect brain nodes to code symbols

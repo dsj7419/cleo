@@ -49,7 +49,7 @@ afterEach(async () => {
 async function insertLowQualityObservations(count: number): Promise<string[]> {
   const { getBrainDb, getBrainNativeDb } = await import('../../store/memory-sqlite.js');
   await getBrainDb(tempDir);
-  const nativeDb = getBrainNativeDb();
+  const nativeDb = getBrainNativeDb(tempDir);
   if (!nativeDb) throw new Error('Native DB not available');
 
   const ids: string[] = [];

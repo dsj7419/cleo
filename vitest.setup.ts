@@ -52,6 +52,20 @@ if (!process.env.XDG_CONFIG_HOME) {
 if (!process.env.XDG_CACHE_HOME) {
   process.env.XDG_CACHE_HOME = join(sandbox, 'cache-home');
 }
+// T12051: `getAgentsHome()` resolves the GLOBAL agent-instruction hub
+// (`~/.agents/AGENTS.md`) — the file every provider's CLAUDE.md/AGENTS.md
+// @-references. `ensureInjection()` and `injectAgentsHub()` write it
+// unconditionally, and until now no test overrode it, so every run of the
+// injection suites appended a CAAMP block to the developer's REAL hub.
+//
+// T9020 addressed the *content* of those stray blocks (pinning the canonical
+// tilde path so dedup-by-content could collapse them) but never stopped the
+// write itself, which is why the pollution kept recurring: the moment a marker
+// was damaged, dedup-by-content stopped matching and the blocks accumulated
+// again. Pinning the directory removes the write vector entirely.
+if (!process.env.AGENTS_HOME) {
+  process.env.AGENTS_HOME = join(sandbox, 'agents');
+}
 if (!process.env.NEXUS_HOME) {
   process.env.NEXUS_HOME = join(sandbox, 'nexus');
 }

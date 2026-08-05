@@ -140,7 +140,7 @@ export async function supersedeDoc(
   // native handle is a shared singleton — do NOT close it here.
   const { getDb, getNativeTasksDb } = await import('../store/sqlite.js');
   await getDb(cwd);
-  const db = getNativeTasksDb();
+  const db = getNativeTasksDb(cwd);
   if (!db) {
     throw new CleoError(
       ExitCode.GENERAL_ERROR,

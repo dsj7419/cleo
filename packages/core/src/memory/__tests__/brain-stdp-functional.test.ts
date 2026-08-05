@@ -141,7 +141,7 @@ async function setupBrainDb(dir: string) {
   // Set CLEO_DIR so getBrainDb writes to our tmpdir.
   process.env['CLEO_DIR'] = join(dir, '.cleo');
   await getBrainDb(dir);
-  return { nativeDb: getBrainNativeDb()!, closeBrainDb };
+  return { nativeDb: getBrainNativeDb(dir)!, closeBrainDb };
 }
 
 /**

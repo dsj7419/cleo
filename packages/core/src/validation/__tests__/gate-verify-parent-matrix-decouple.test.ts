@@ -117,7 +117,7 @@ describe('validateGateVerify — parent-type-matrix decoupling (T11907)', () => 
   it('records an evidence gate on a task parented directly under a saga (repro)', async () => {
     const { getDb, getNativeDb } = await import('../../store/sqlite.js');
     await getDb(TEST_ROOT);
-    const db = getNativeDb() as NativeDbForTest | null;
+    const db = getNativeDb(TEST_ROOT) as NativeDbForTest | null;
     if (!db) throw new Error('nativeDb not initialized');
 
     // Materialize the pre-existing violation: T1738 (task) parented DIRECTLY
@@ -165,7 +165,7 @@ describe('validateGateVerify — parent-type-matrix decoupling (T11907)', () => 
   it('keeps the parent-type-matrix UPDATE trigger enforcing genuine mis-parents (structural-repair path intact)', async () => {
     const { getDb, getNativeDb } = await import('../../store/sqlite.js');
     await getDb(TEST_ROOT);
-    const db = getNativeDb() as NativeDbForTest | null;
+    const db = getNativeDb(TEST_ROOT) as NativeDbForTest | null;
     if (!db) throw new Error('nativeDb not initialized');
 
     dropMatrixInsertGuard(db);

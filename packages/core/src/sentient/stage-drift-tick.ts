@@ -340,7 +340,7 @@ export async function runStageDriftScan(options: StageDriftOptions): Promise<Sta
     try {
       const { getNativeDb, getDb } = await import('../store/sqlite.js');
       await getDb(projectRoot);
-      db = getNativeDb();
+      db = getNativeDb(projectRoot);
     } catch {
       db = null;
     }

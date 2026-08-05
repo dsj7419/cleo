@@ -194,7 +194,7 @@ export async function executeSweep(options: SweepExecutorOptions): Promise<Sweep
   const { projectRoot, runId, approvedBy = 'autonomous' } = options;
 
   const db = await getBrainDb(projectRoot);
-  const nativeDb = getBrainNativeDb();
+  const nativeDb = getBrainNativeDb(projectRoot);
 
   // ── Step 1: Verify the run exists and is in staged status ─────────────────
 

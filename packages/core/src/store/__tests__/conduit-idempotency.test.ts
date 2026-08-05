@@ -77,7 +77,7 @@ describe('conduit.db idempotency contract (T10314)', () => {
 
   it('identical agent attach writes do not duplicate rows', async () => {
     await ensureConduitDb(tempDir);
-    const dbFirst = getConduitNativeDb();
+    const dbFirst = getConduitNativeDb(tempDir);
     expect(dbFirst).not.toBeNull();
 
     const attachedAt = '2026-05-23T00:00:00.000Z';
@@ -100,7 +100,7 @@ describe('conduit.db idempotency contract (T10314)', () => {
     const reopen = await ensureConduitDb(tempDir);
     expect(reopen.action).toBe('exists');
 
-    const dbSecond = getConduitNativeDb();
+    const dbSecond = getConduitNativeDb(tempDir);
     expect(dbSecond).not.toBeNull();
 
     // Re-run the SAME insert. ON CONFLICT must keep row count at 1.
@@ -122,7 +122,7 @@ describe('conduit.db idempotency contract (T10314)', () => {
 
   it('schema version sentinel does not double-write on second open', async () => {
     await ensureConduitDb(tempDir);
-    const dbFirst = getConduitNativeDb();
+    const dbFirst = getConduitNativeDb(tempDir);
     expect(dbFirst).not.toBeNull();
 
     const metaCountFirst = dbFirst!.prepare('SELECT count(*) AS n FROM _conduit_meta').get() as {
@@ -132,7 +132,7 @@ describe('conduit.db idempotency contract (T10314)', () => {
     closeConduitDb();
     await ensureConduitDb(tempDir);
 
-    const dbSecond = getConduitNativeDb();
+    const dbSecond = getConduitNativeDb(tempDir);
     expect(dbSecond).not.toBeNull();
 
     const metaCountSecond = dbSecond!.prepare('SELECT count(*) AS n FROM _conduit_meta').get() as {
@@ -146,7 +146,7 @@ describe('conduit.db idempotency contract (T10314)', () => {
 
   it('PRAGMAs are stable across opens (WAL + foreign_keys)', async () => {
     await ensureConduitDb(tempDir);
-    const dbFirst = getConduitNativeDb();
+    const dbFirst = getConduitNativeDb(tempDir);
     expect(dbFirst).not.toBeNull();
 
     const journalFirst = dbFirst!.prepare('PRAGMA journal_mode').get() as {
@@ -158,7 +158,7 @@ describe('conduit.db idempotency contract (T10314)', () => {
 
     closeConduitDb();
     await ensureConduitDb(tempDir);
-    const dbSecond = getConduitNativeDb();
+    const dbSecond = getConduitNativeDb(tempDir);
     expect(dbSecond).not.toBeNull();
 
     const journalSecond = dbSecond!.prepare('PRAGMA journal_mode').get() as {

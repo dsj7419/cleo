@@ -53,7 +53,7 @@ async function setupDb(dir: string) {
   await mkdir(cleoDir, { recursive: true }).catch(() => {});
   process.env['CLEO_DIR'] = cleoDir;
   await getBrainDb(dir);
-  return getBrainNativeDb()!;
+  return getBrainNativeDb(dir)!;
 }
 
 // ---------------------------------------------------------------------------
@@ -169,7 +169,7 @@ describe('T994 — trackMemoryUsage per-task memory usage capture', () => {
       trackMemoryUsage(tempDir2, 'T994', true, 'T994', 'success'),
     ).resolves.toBeUndefined();
 
-    const nativeDb = getBrainNativeDb();
+    const nativeDb = getBrainNativeDb(tempDir2);
     expect(nativeDb).toBeTruthy();
 
     const rows = nativeDb!
@@ -194,7 +194,7 @@ describe('T994 — trackMemoryUsage per-task memory usage capture', () => {
       trackMemoryUsage(tempDir2, 'T994-verify', true, 'T994', 'verified'),
     ).resolves.toBeUndefined();
 
-    const nativeDb = getBrainNativeDb();
+    const nativeDb = getBrainNativeDb(tempDir2);
     expect(nativeDb).toBeTruthy();
 
     const rows = nativeDb!

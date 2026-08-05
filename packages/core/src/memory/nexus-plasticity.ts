@@ -313,7 +313,7 @@ export async function extractNexusPairsFromRetrievalLog(
 ): Promise<NexusEdgePair[]> {
   const { getBrainDb, getBrainNativeDb } = await import('../store/memory-sqlite.js');
   await getBrainDb(projectRoot);
-  const nativeDb = getBrainNativeDb();
+  const nativeDb = getBrainNativeDb(projectRoot);
   if (!nativeDb) return [];
 
   // Check if retrieval log table exists.

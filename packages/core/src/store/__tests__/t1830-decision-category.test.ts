@@ -57,7 +57,8 @@ describe('T1830 decision_category schema + filter', () => {
     it('decision_category column exists with NOT NULL DEFAULT architectural', async () => {
       const { getBrainNativeDb, getBrainDb } = await import('../memory-sqlite.js');
       await getBrainDb(tempDir);
-      const nativeDb = getBrainNativeDb();
+      // T12038: the native getter is path-keyed — pass the project it was bound for.
+      const nativeDb = getBrainNativeDb(tempDir);
       expect(nativeDb).toBeTruthy();
 
       // Query PRAGMA table_info to inspect column metadata
@@ -78,7 +79,8 @@ describe('T1830 decision_category schema + filter', () => {
     it('idx_brain_decisions_decision_category index exists', async () => {
       const { getBrainNativeDb, getBrainDb } = await import('../memory-sqlite.js');
       await getBrainDb(tempDir);
-      const nativeDb = getBrainNativeDb();
+      // T12038: the native getter is path-keyed — pass the project it was bound for.
+      const nativeDb = getBrainNativeDb(tempDir);
       expect(nativeDb).toBeTruthy();
 
       const indexes = nativeDb!

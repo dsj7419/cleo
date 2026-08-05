@@ -91,7 +91,7 @@ describe('brain-reasoning-symbol', () => {
   ): Promise<void> {
     const { getBrainNativeDb, getBrainDb } = await import('../../store/memory-sqlite.js');
     await getBrainDb(tempDir);
-    const native = getBrainNativeDb();
+    const native = getBrainNativeDb(tempDir);
     if (!native) throw new Error('brain native db not available');
     const now = new Date().toISOString().replace('T', ' ').slice(0, 19);
     native
@@ -135,7 +135,7 @@ describe('brain-reasoning-symbol', () => {
   ): Promise<void> {
     const { getBrainNativeDb, getBrainDb } = await import('../../store/memory-sqlite.js');
     await getBrainDb(tempDir);
-    const native = getBrainNativeDb();
+    const native = getBrainNativeDb(tempDir);
     if (!native) throw new Error('brain native db not available');
     const now = new Date().toISOString().replace('T', ' ').slice(0, 19);
     // Include all NOT NULL columns: type, rationale, confidence
@@ -157,7 +157,7 @@ describe('brain-reasoning-symbol', () => {
   ): Promise<void> {
     const { getBrainNativeDb, getBrainDb } = await import('../../store/memory-sqlite.js');
     await getBrainDb(tempDir);
-    const native = getBrainNativeDb();
+    const native = getBrainNativeDb(tempDir);
     if (!native) throw new Error('brain native db not available');
     const now = new Date().toISOString().replace('T', ' ').slice(0, 19);
     native

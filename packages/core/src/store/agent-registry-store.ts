@@ -62,8 +62,16 @@ import { getCleoHome } from '../paths.js';
 // the prefixed `agent_registry_*` tables). T11622 routes the runtime read/write
 // path onto those prefixed tables; this module only reconciles the legacy
 // health-probe ledger via the drizzle-agent-registry forward migration.
-import { _resetDualScopeDbCache, openDualScopeDbAtPath } from './dual-scope-db.js';
+import { _resetDualScopeDbCache } from './dual-scope-db.js';
 import { migrateSanitized, reconcileJournal } from './migration-manager.js';
+// T12039: the Agent Registry no longer caches the shared global handle — the
+// path-keyed binding registry owns it. This module contributes only its
+// health-probe ledger reconcile.
+import {
+  bindGlobalDomainAtPath,
+  peekDomainAtPath,
+  releaseDomainBindings,
+} from './ports/domain-binding.js';
 import {
   resolveConsolidatedJournalSiblings,
   resolveCorePackageMigrationsFolder,
@@ -234,15 +242,29 @@ function runAgentRegistryMigrations(nativeDb: DatabaseSync): void {
 // Database lifecycle
 // ---------------------------------------------------------------------------
 
+// ── No singleton state (E6-L15 · T12039) ────────────────────────────────────
+// `_globalAgentRegistryNativeDb` is gone. The Agent Registry shares the
+// consolidated GLOBAL `cleo.db` handle with the nexus registry and skills
+// domains; holding a private reference to it meant this domain decided
+// independently whether that shared handle was still alive. The path-keyed
+// binding registry now owns that, so an eviction invalidates every global
+// domain together.
+
+/** Domain id under which the Agent Registry binds to the GlobalStore. */
+const AGENT_REGISTRY_DOMAIN = 'agents';
+
 /**
- * Singleton native DatabaseSync handle for the current process.
+ * The live Agent Registry native handle, or `null` when not yet bound.
  *
- * E6-L5 (T11525): this is the SHARED consolidated GLOBAL `cleo.db` handle owned
- * by {@link openDualScopeDb}('global') and co-owned by the nexus / skills global
- * domains. The Agent Registry domain MUST NOT close it directly (see
- * {@link _resetGlobalAgentRegistryDb_TESTING_ONLY}).
+ * Reads the path-keyed binding rather than a module-global cache, so it can
+ * never return a connection another global domain has already closed.
  */
-let _globalAgentRegistryNativeDb: DatabaseSync | null = null;
+function boundAgentRegistryNative(): DatabaseSync | null {
+  return (
+    peekDomainAtPath<DatabaseSync>('global', getGlobalAgentRegistryDbPath(), AGENT_REGISTRY_DOMAIN)
+      ?.native ?? null
+  );
+}
 
 /**
  * Read the `schema_version` row from `_agent_registry_meta` if it exists.
@@ -301,6 +323,47 @@ function writeAgentRegistrySchemaVersionSentinel(db: DatabaseSync): void {
 }
 
 /**
+ * Reconcile the Agent Registry health-probe ledger against an open global
+ * `cleo.db` handle.
+ *
+ * Idempotent by contract — {@link bindGlobalDomainAtPath} re-runs it whenever
+ * the underlying store is evicted and re-opened.
+ *
+ * Takes the T9027 fast path when the consolidated schema is present AND
+ * `_agent_registry_meta.schema_version` already equals the in-process
+ * constant, so the reconcile/migrate pass is skipped on every CLI invocation.
+ *
+ * @param native - The shared consolidated GLOBAL connection.
+ * @returns `true` when migrations actually ran (a cold or out-of-date DB).
+ *
+ * @task T12039 (E6-L15)
+ */
+function establishAgentRegistrySchema(native: DatabaseSync): boolean {
+  const hasSchema = (() => {
+    try {
+      return !!(native
+        .prepare(
+          "SELECT name FROM sqlite_master WHERE type='table' AND name='agent_registry_agents'",
+        )
+        .get() as { name: string } | undefined);
+    } catch {
+      return false;
+    }
+  })();
+
+  if (
+    hasSchema &&
+    readAgentRegistrySchemaVersionSentinel(native) === GLOBAL_AGENT_REGISTRY_SCHEMA_VERSION
+  ) {
+    return false;
+  }
+
+  runAgentRegistryMigrations(native);
+  writeAgentRegistrySchemaVersionSentinel(native);
+  return true;
+}
+
+/**
  * Ensure the global Agent Registry tables exist inside the consolidated GLOBAL
  * `cleo.db`. Creates the global cleo home directory if it doesn't exist.
  * Idempotent — safe to call multiple times.
@@ -343,16 +406,22 @@ export async function ensureGlobalAgentRegistryDb(): Promise<{
   // caches per (scope, dbPath) exactly like `openDualScopeDb`. Behaviour is
   // byte-identical in production, where `getCleoHome()` is stable and both bindings
   // already agree.
-  const dualHandle = await openDualScopeDbAtPath('global', dbPath);
-
-  // Extract the underlying DatabaseSync. Drizzle exposes it via `$client`.
-  const nativeDb = (dualHandle.db as { $client?: DatabaseSync }).$client ?? null;
-  if (!nativeDb) {
-    throw new Error(
-      'E6-L5: openDualScopeDb returned a handle without $client — ' +
-        'cannot extract DatabaseSync for the Agent Registry ledger reconcile.',
-    );
-  }
+  // T12039: bind through the path-keyed registry rather than caching the
+  // extracted handle in module state. `establish` runs once per (path, store)
+  // and carries the reconcile the domain owns.
+  let created = false;
+  const { native: nativeDb } = await bindGlobalDomainAtPath(
+    AGENT_REGISTRY_DOMAIN,
+    dbPath,
+    (native) => {
+      // Reconcile + apply the drizzle-agent-registry health-probe ledger
+      // migration, unless the schema-version sentinel says we are current
+      // (T9027 — CLI startup tax).
+      const applied = establishAgentRegistrySchema(native);
+      created = created || applied;
+      return native;
+    },
+  );
 
   // Sentinel: the prefixed `agent_registry_agents` table (created by the
   // consolidated migration) — the table this domain's runtime now reads/writes.
@@ -372,23 +441,6 @@ export async function ensureGlobalAgentRegistryDb(): Promise<{
   // T9027 — Schema-version sentinel fast path (epic T9026, CLI startup tax).
   // If the consolidated schema is applied AND `_agent_registry_meta.schema_version`
   // equals the in-process constant, skip the reconcile/migrate pass.
-  if (
-    hasSchema &&
-    readAgentRegistrySchemaVersionSentinel(nativeDb) === GLOBAL_AGENT_REGISTRY_SCHEMA_VERSION
-  ) {
-    _globalAgentRegistryNativeDb = nativeDb;
-    return { action: 'exists', path: dbPath };
-  }
-
-  // Reconcile + apply the drizzle-agent-registry health-probe ledger migration.
-  runAgentRegistryMigrations(nativeDb);
-
-  // Stamp schema_version sentinel so the next process can take the fast path.
-  writeAgentRegistrySchemaVersionSentinel(nativeDb);
-
-  // Store native handle for backup integration (getGlobalAgentRegistryNativeDb).
-  _globalAgentRegistryNativeDb = nativeDb;
-
   return {
     action: alreadyExists && hasSchema ? 'exists' : 'created',
     path: dbPath,
@@ -466,7 +518,7 @@ export async function checkGlobalAgentRegistryDbHealth(): Promise<{
   // consolidated `cleo.db` handle. ensureGlobalAgentRegistryDb() is idempotent and
   // stores the handle in _globalAgentRegistryNativeDb.
   await ensureGlobalAgentRegistryDb();
-  const nativeDb = _globalAgentRegistryNativeDb;
+  const nativeDb = boundAgentRegistryNative();
   if (!nativeDb) {
     /* c8 ignore next */
     return {
@@ -567,7 +619,7 @@ export async function checkAgentRegistryDbHealth(cwd?: string): Promise<{
  * @epic T310
  */
 export function getGlobalAgentRegistryNativeDb(): DatabaseSync | null {
-  return _globalAgentRegistryNativeDb;
+  return boundAgentRegistryNative();
 }
 
 /**
@@ -590,6 +642,6 @@ export function getGlobalAgentRegistryNativeDb(): DatabaseSync | null {
  * @epic T11249
  */
 export function _resetGlobalAgentRegistryDb_TESTING_ONLY(): void {
-  _globalAgentRegistryNativeDb = null;
+  releaseDomainBindings({ scope: 'global', domain: AGENT_REGISTRY_DOMAIN });
   _resetDualScopeDbCache('global');
 }

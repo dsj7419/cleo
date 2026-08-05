@@ -616,7 +616,7 @@ export async function approveBackfillRun(
   backfillResult?: BrainBackfillResult;
 }> {
   await getBrainDb(projectRoot);
-  const nativeDb = getBrainNativeDb();
+  const nativeDb = getBrainNativeDb(projectRoot);
   if (!nativeDb) {
     throw new Error('brain.db native handle unavailable');
   }
@@ -701,7 +701,7 @@ export async function rollbackBackfillRun(
   deletedRows: number;
 }> {
   await getBrainDb(projectRoot);
-  const nativeDb = getBrainNativeDb();
+  const nativeDb = getBrainNativeDb(projectRoot);
   if (!nativeDb) {
     throw new Error('brain.db native handle unavailable');
   }
@@ -793,7 +793,7 @@ export async function listBackfillRuns(
   opts?: { status?: string; limit?: number },
 ): Promise<BrainBackfillRunRow[]> {
   await getBrainDb(projectRoot);
-  const nativeDb = getBrainNativeDb();
+  const nativeDb = getBrainNativeDb(projectRoot);
   if (!nativeDb) {
     throw new Error('brain.db native handle unavailable');
   }

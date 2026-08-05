@@ -219,7 +219,7 @@ export async function ingestEvents(
 ): Promise<{ inserted: number; skipped: number }> {
   // Ensure DB is initialised (creates tables if first run)
   await getBrainDb(cwd);
-  const nativeDb = getBrainNativeDb();
+  const nativeDb = getBrainNativeDb(cwd);
   if (!nativeDb) throw new Error('brain.db not initialised');
 
   const stmt = nativeDb.prepare(

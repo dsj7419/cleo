@@ -98,7 +98,7 @@ interface ObservationProvenanceRow {
 async function readPromotedObservations(projectRoot: string): Promise<ObservationProvenanceRow[]> {
   const { getBrainDb, getBrainNativeDb } = await import('../../store/memory-sqlite.js');
   await getBrainDb(projectRoot);
-  const db = getBrainNativeDb();
+  const db = getBrainNativeDb(projectRoot);
   if (!db) return [];
   return db
     .prepare(

@@ -203,7 +203,7 @@ interface SnapshotTarget {
 async function openBrainDbForSnapshot(cwd?: string): Promise<SnapshotDbHandle | null> {
   await getBrainDb(cwd);
   // After getBrainDb resolves, the native singleton MUST be populated.
-  return getBrainNativeDb();
+  return getBrainNativeDb(cwd);
 }
 
 /**
@@ -212,7 +212,7 @@ async function openBrainDbForSnapshot(cwd?: string): Promise<SnapshotDbHandle | 
  */
 async function openTasksDbForSnapshot(cwd?: string): Promise<SnapshotDbHandle | null> {
   await getDb(cwd);
-  return getNativeDb();
+  return getNativeDb(cwd);
 }
 
 /**

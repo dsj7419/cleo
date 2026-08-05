@@ -15,6 +15,12 @@ import { existsSync, lstatSync, readdirSync, readFileSync } from 'node:fs';
 import { copyFile, mkdir, readFile, readlink, rename, symlink, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join, normalize } from 'node:path';
+import {
+  CAAMP_DAMAGED_END_PATTERN_SOURCE,
+  CAAMP_DAMAGED_START_PATTERN_SOURCE,
+  CAAMP_MARKER_END,
+  CAAMP_MARKER_START,
+} from '@cleocode/contracts/caamp-markers';
 import { resolveLegacyCleoDir } from '@cleocode/paths';
 import {
   getAgentsHome,
@@ -26,6 +32,7 @@ import {
 } from './paths.js';
 import { ensureGlobalHome, getPackageRoot } from './scaffold.js';
 import { getTemplateById } from './templates/registry.js';
+import { writeFileAtomic } from './tools/fs.js';
 
 /**
  * Resolve the absolute path to the installed `CLEO-INJECTION.md` under the
@@ -296,32 +303,48 @@ async function ensureGlobalTemplatesBootstrap(
 // ── Step 2: CAAMP injection into ~/.agents/AGENTS.md ─────────────────
 
 /**
- * Sanitize a CAAMP-managed file by removing orphaned content outside
- * CAAMP blocks. This fixes corruption from failed CAAMP consolidation
- * (e.g. partial old block removal leaving `TION.md` fragments).
+ * Normalise a CAAMP-managed file so the injector that runs next sees a
+ * well-formed document.
  *
- * Strategy: keep ONLY content inside valid CAAMP blocks + any non-CAAMP
- * user content that doesn't look like an orphaned reference fragment.
+ * Scope is deliberately narrow: heal damaged marker delimiters, drop a
+ * repeated closing marker, collapse runs of blank lines. **Nothing outside the
+ * CAAMP markers is removed.**
+ *
+ * @remarks
+ * This function used to also delete "orphaned reference fragments" with two
+ * heuristics — `/^[A-Z][A-Za-z-]*\.md\s*$/gm` and a variant anchored after an
+ * END marker. Both were unsound: they matched *any* line consisting of a
+ * capitalised filename, so a user whose `~/.agents/AGENTS.md` contained a line
+ * reading `CONTRIBUTING.md` had it silently deleted on every bootstrap and
+ * every `npm postinstall`. Because `\s*$` under `/m` also consumes the
+ * following blank lines, the deletion ran wider than the matched line.
+ *
+ * They were also solving a problem that no longer exists. The fragments came
+ * from partially-completed block rewrites; CAAMP now writes through
+ * `writeFileAtomic` (tmp-then-rename) under a cross-process lock, so a partial
+ * rewrite cannot be observed. Healing the markers — which is what actually
+ * fixes the corruption seen in the wild — makes the guesswork unnecessary.
+ *
+ * @param content - Raw file contents
+ * @returns Normalised contents with exactly one trailing newline
+ *
+ * @task T12051
  */
 function sanitizeCaampFile(content: string): string {
-  // Remove any duplicate <!-- CAAMP:END --> markers
-  let cleaned = content.replace(/(<!-- CAAMP:END -->)\s*(<!-- CAAMP:END -->)/g, '$1');
+  // Heal damaged marker delimiters FIRST. A marker that lost a character is
+  // invisible to the injector, which then prepends a duplicate block instead
+  // of replacing the damaged one.
+  let cleaned = content
+    .replace(new RegExp(CAAMP_DAMAGED_START_PATTERN_SOURCE, 'gmi'), CAAMP_MARKER_START)
+    .replace(new RegExp(CAAMP_DAMAGED_END_PATTERN_SOURCE, 'gmi'), CAAMP_MARKER_END);
 
-  // Remove orphaned content between CAAMP:END and the next CAAMP:START (or EOF)
-  // that looks like a fragment of a CLEO reference (e.g. "TION.md", "INJECTION.md")
-  cleaned = cleaned.replace(
-    /<!-- CAAMP:END -->\s*[A-Z][A-Za-z-]*\.md\s*(?:<!-- CAAMP:END -->)?/g,
-    '<!-- CAAMP:END -->',
-  );
-
-  // Remove any lines that are just orphaned .md filename fragments
-  // (leftover from partial CAAMP block removal)
-  cleaned = cleaned.replace(/^[A-Z][A-Za-z-]*\.md\s*$/gm, '');
+  // Collapse a doubled closing marker into one.
+  cleaned = cleaned.replace(/(<!-- CAAMP:END -->)\s*(?:<!-- CAAMP:END -->)+/g, '$1');
 
   // Collapse multiple blank lines
   cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
 
-  return cleaned.trim() + '\n';
+  return `${cleaned.trim()}\n`;
 }
 
 async function injectAgentsHub(ctx: BootstrapContext): Promise<void> {
@@ -329,32 +352,39 @@ async function injectAgentsHub(ctx: BootstrapContext): Promise<void> {
   const globalAgentsMd = join(globalAgentsDir, 'AGENTS.md');
 
   try {
-    const { inject, getInstalledProviders, injectAll, buildInjectionContent } = await import(
-      '@cleocode/caamp'
-    );
+    const { inject, getInstalledProviders, injectAll, buildInjectionContent, withFileLock } =
+      await import('@cleocode/caamp');
 
     if (!ctx.isDryRun) {
       await mkdir(globalAgentsDir, { recursive: true });
 
-      // Strip legacy CLEO blocks (versioned markers from pre-CAAMP era)
-      // AND sanitize CAAMP corruption (orphaned fragments from bad consolidation)
+      // Strip legacy CLEO blocks (versioned markers from pre-CAAMP era) and
+      // normalise CAAMP markers.
+      //
+      // This runs under the SAME cross-process lock and through the same
+      // atomic write that `inject()` uses. Previously it was a bare
+      // read-modify-writeFile on the single most contended path in the system
+      // — every project's bootstrap and every npm postinstall targets it — so
+      // it raced `inject()` and could be observed half-written (T12051).
       if (existsSync(globalAgentsMd)) {
-        const content = await readFile(globalAgentsMd, 'utf8');
+        await withFileLock(globalAgentsMd, async () => {
+          const content = await readFile(globalAgentsMd, 'utf8');
 
-        // Step A: Remove legacy <!-- CLEO:START -->...<!-- CLEO:END --> blocks
-        const stripped = content.replace(
-          /\n?<!-- CLEO:START[^>]*-->[\s\S]*?<!-- CLEO:END -->\n?/g,
-          '',
-        );
+          // Step A: Remove legacy <!-- CLEO:START -->...<!-- CLEO:END --> blocks
+          const stripped = content.replace(
+            /\n?<!-- CLEO:START[^>]*-->[\s\S]*?<!-- CLEO:END -->\n?/g,
+            '',
+          );
 
-        // Step B: Sanitize CAAMP corruption (orphaned fragments, duplicate markers)
-        const sanitized = sanitizeCaampFile(stripped);
+          // Step B: Heal damaged CAAMP markers and collapse doubled ENDs
+          const sanitized = sanitizeCaampFile(stripped);
 
-        if (sanitized !== content) {
-          // T10368-audit-ok: bootstrap.global-agents-md
-          await writeFile(globalAgentsMd, sanitized, 'utf8');
-          ctx.created.push('~/.agents/AGENTS.md (sanitized CAAMP corruption)');
-        }
+          if (sanitized !== content) {
+            // T10368-audit-ok: bootstrap.global-agents-md
+            await writeFileAtomic({ path: globalAgentsMd, content: sanitized });
+            ctx.created.push('~/.agents/AGENTS.md (healed CAAMP markers)');
+          }
+        });
       }
 
       // Use the canonical symlink path (@~/.cleo/templates) rather than the

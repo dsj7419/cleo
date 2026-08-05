@@ -238,7 +238,7 @@ async function locateEntry(
   entryId: string,
 ): Promise<{ tableConfig: TableConfig; nodeId: string } | null> {
   await getBrainDb(projectRoot);
-  const nativeDb = getBrainNativeDb();
+  const nativeDb = getBrainNativeDb(projectRoot);
   if (!nativeDb) return null;
 
   for (const tc of SUPERSEDABLE_TABLES) {
@@ -288,7 +288,7 @@ export async function supersedeMemory(
   if (oldId === newId) throw new Error('oldId and newId must be different entries');
 
   await getBrainDb(projectRoot);
-  const nativeDb = getBrainNativeDb();
+  const nativeDb = getBrainNativeDb(projectRoot);
   if (!nativeDb) throw new Error('brain.db is unavailable');
 
   const now = new Date().toISOString().replace('T', ' ').slice(0, 19);
@@ -374,7 +374,7 @@ export async function detectSupersession(
 ): Promise<SupersessionCandidate[]> {
   try {
     await getBrainDb(projectRoot);
-    const nativeDb = getBrainNativeDb();
+    const nativeDb = getBrainNativeDb(projectRoot);
     if (!nativeDb) return [];
 
     const newLocation = await locateEntry(projectRoot, newEntry.id);
@@ -494,7 +494,7 @@ export async function getSupersessionChain(
   entryId: string,
 ): Promise<SupersessionChain> {
   await getBrainDb(projectRoot);
-  const nativeDb = getBrainNativeDb();
+  const nativeDb = getBrainNativeDb(projectRoot);
 
   if (!nativeDb) {
     return { entryId, chain: [] };
@@ -610,7 +610,7 @@ export async function getSupersessionChain(
  */
 export async function isLatest(projectRoot: string, entryId: string): Promise<boolean> {
   await getBrainDb(projectRoot);
-  const nativeDb = getBrainNativeDb();
+  const nativeDb = getBrainNativeDb(projectRoot);
   if (!nativeDb) return false;
 
   for (const tc of SUPERSEDABLE_TABLES) {

@@ -117,7 +117,7 @@ export async function generateMemoryBridgeContent(
   // Ensure brain.db is initialized
   const { getBrainDb, getBrainNativeDb } = await import('../store/memory-sqlite.js');
   await getBrainDb(projectRoot);
-  const nativeDb = getBrainNativeDb();
+  const nativeDb = getBrainNativeDb(projectRoot);
 
   if (!nativeDb) {
     return buildEmptyBridge();

@@ -80,8 +80,18 @@ import { getCleoHome } from '../paths.js';
 // DatabaseSync lifecycle, pragmas, and consolidated migrations. We extract the
 // native handle and re-wrap it with the legacy nexus-schema drizzle instance so
 // existing callers (nexusSchema.* queries) compile and run without change.
-import { openDualScopeDb, resolveDualScopeDbPath } from './dual-scope-db.js';
+import { openDualScopeDb, type ProjectStore, resolveDualScopeDbPath } from './dual-scope-db.js';
 import { ensureColumns, migrateWithRetry, reconcileJournal } from './migration-manager.js';
+// T12039: the nexus domain no longer owns a singleton — the path-keyed binding
+// registry does. This module contributes only its schema reconciliation + the
+// GLOBAL registry ATTACH.
+import {
+  bindProjectDomain,
+  boundProjectNative,
+  type DomainBinding,
+  peekProjectDomain,
+  releaseDomainBindings,
+} from './ports/domain-binding.js';
 import {
   resolveConsolidatedJournalSiblings,
   resolveCorePackageMigrationsFolder,
@@ -95,20 +105,32 @@ import { isSqliteBusy } from './with-retry.js';
 /** Schema version for newly created nexus databases. Single source of truth. */
 export const NEXUS_SCHEMA_VERSION = '1.0.0';
 
-/** Singleton state for lazy initialization. */
-let _nexusDb: NodeSQLiteDatabase | null = null;
-let _nexusNativeDb: DatabaseSync | null = null;
-let _nexusDbPath: string | null = null;
+// ── No singleton state (E6-L15 · T12039) ────────────────────────────────────
+// `_nexusDb` / `_nexusNativeDb` / `_nexusDbPath` / `_nexusRegistryPath` /
+// `_nexusInitPromise` are gone. Caching, path keying, single-flight, and handle
+// liveness belong to the path-keyed binding registry in
+// `ports/domain-binding.ts`; the registry path travels in the bound value
+// ({@link NexusDomainHandle}) so a `CLEO_HOME` change invalidates exactly this
+// binding instead of a process-wide singleton.
+
 /**
- * The GLOBAL registry path the current singleton's ATTACH targets (ADR-090 ·
- * T11648). When `getCleoHome()` changes (e.g. tests mutating `CLEO_HOME`), the
- * attached global differs AND must be migrated via `openDualScopeDb('global')` —
- * which only runs on the init path. So a registry-path change forces a full
- * singleton reset rather than a cheap re-attach to an unmigrated file.
+ * The nexus domain's bound value: its Drizzle handle plus the GLOBAL registry
+ * path its ATTACH targets.
+ *
+ * The registry home (`getCleoHome()`) can change between calls. Carrying it in
+ * the binding lets {@link bindNexusDomain} detect the change and re-establish —
+ * which re-runs the GLOBAL consolidated migration before re-attaching, where a
+ * bare re-attach would bind an unmigrated file (→ "no such table:
+ * nexus_project_registry"). ADR-090 · T11648.
+ *
+ * @task T12039 (E6-L15)
  */
-let _nexusRegistryPath: string | null = null;
-/** Guard against concurrent initialization (async migration). */
-let _nexusInitPromise: Promise<NodeSQLiteDatabase> | null = null;
+export interface NexusDomainHandle {
+  /** Drizzle instance typed against the nexus schema. */
+  readonly drizzle: NodeSQLiteDatabase;
+  /** Absolute path of the GLOBAL `cleo.db` currently ATTACHed. */
+  readonly registryPath: string;
+}
 
 /**
  * SQLite ATTACH alias under which the GLOBAL consolidated `cleo.db` is mounted
@@ -615,18 +637,20 @@ function ensureNexusRelationWeights(nativeDb: DatabaseSync): void {
  * @task T11578
  * @task T11648
  */
-function runNexusMigrations(nativeDb: DatabaseSync, db: NodeSQLiteDatabase): void {
+function runNexusMigrations(nativeDb: DatabaseSync, db: NodeSQLiteDatabase, dbPath: string): void {
   const migrationsFolder = resolveNexusMigrationsFolder();
 
   // If existing DB with populated graph, create a safety backup (cleo compat).
   // Sentinel is `nexus_nodes` — the canonical project-scope graph table in
   // `main` (ADR-090 · T11648); the former `nexus_project_registry` sentinel now
   // lives in the attached GLOBAL db, not this project handle.
-  if (tableExists(nativeDb, 'nexus_nodes') && _nexusDbPath) {
-    const backupPath = _nexusDbPath.replace(/\.db$/, '-pre-cleo.db.bak');
+  // `dbPath` is passed explicitly (T12039) — it used to be read from the
+  // module-global `_nexusDbPath`.
+  if (tableExists(nativeDb, 'nexus_nodes')) {
+    const backupPath = dbPath.replace(/\.db$/, '-pre-cleo.db.bak');
     if (!existsSync(backupPath)) {
       try {
-        copyFileSync(_nexusDbPath, backupPath);
+        copyFileSync(dbPath, backupPath);
       } catch {
         /* non-fatal */
       }
@@ -722,94 +746,63 @@ function runNexusMigrations(nativeDb: DatabaseSync, db: NodeSQLiteDatabase): voi
  * @task T11648 (ADR-090 runtime read half — project-scope graph + global attach)
  */
 export async function getNexusDb(): Promise<NodeSQLiteDatabase> {
-  const requestedPath = getNexusDbPath();
+  return (await bindNexusDomain()).db.drizzle;
+}
+
+/**
+ * Bind the nexus schema to the {@link ProjectStore} holding the code graph,
+ * with the GLOBAL `cleo.db` ATTACHed for registry/identity reads.
+ *
+ * ## E6-L15 cutover (T12039)
+ *
+ * Replaces this module's singleton quintet (`_nexusDb` / `_nexusNativeDb` /
+ * `_nexusDbPath` / `_nexusRegistryPath` / `_nexusInitPromise`). Path keying,
+ * single-flight, and handle liveness move to the binding registry; this
+ * function keeps only what is genuinely nexus-specific — the two-scope open
+ * order and the registry ATTACH.
+ *
+ * The GLOBAL registry path is captured in the bound value rather than a
+ * separate module-global, so a `CLEO_HOME` change invalidates exactly this
+ * binding (and re-runs the global migration before re-attaching) instead of
+ * resetting a process-wide singleton that other projects also depended on.
+ *
+ * @returns The live nexus-domain binding.
+ *
+ * @task T12039 (E6-L15)
+ */
+export async function bindNexusDomain(): Promise<DomainBinding<NexusDomainHandle, ProjectStore>> {
   const requestedRegistryPath = getNexusRegistryDbPath();
 
-  // If singleton exists but points to a different PROJECT graph path (e.g.
-  // CLEO_DIR changed between tests), reset it.
-  if (_nexusDb && _nexusDbPath !== requestedPath) {
-    resetNexusDbState();
+  // The registry home (`getCleoHome()`) can change between calls — tests that
+  // mutate `CLEO_HOME`, or a re-homed install. A stale binding would keep the
+  // OLD global ATTACHed, so drop it and re-establish (which re-runs the global
+  // consolidated migration before re-attaching; a bare re-attach would bind an
+  // unmigrated global → "no such table: nexus_project_registry"). ADR-090 · T11648.
+  const bound = peekProjectDomain<NexusDomainHandle>('nexus');
+  if (bound && bound.db.registryPath !== requestedRegistryPath) {
+    releaseDomainBindings({ scope: 'project', domain: 'nexus' });
   }
 
-  // If the GLOBAL registry path changed (e.g. CLEO_HOME changed), reset fully so
-  // the init path runs `openDualScopeDb('global')` to MIGRATE the new registry
-  // file before the ATTACH — a cheap re-attach alone would bind an unmigrated
-  // global (→ "no such table: nexus_project_registry"). (ADR-090 · T11648)
-  if (_nexusDb && _nexusRegistryPath !== requestedRegistryPath) {
-    resetNexusDbState();
-  }
+  // ADR-086 / T10321 — warn (one-shot, non-blocking) if the install still
+  // carries the nested-nexus migration debris. Does not alter the open.
+  detectAndWarnOnNestedNexus();
 
-  // Liveness guard (T11524): nexus shares the consolidated PROJECT `cleo.db`
-  // handle with the other project-tier domains (tasks/brain/conduit). Another
-  // domain may have closed + re-opened the shared `DatabaseSync` while our nexus
-  // singleton still references the now-closed handle. Detect a stale (closed)
-  // handle and drop the singleton so we re-derive from the live openDualScopeDb
-  // cache below.
-  if (_nexusDb && (_nexusNativeDb === null || !_nexusNativeDb.isOpen)) {
-    resetNexusDbState();
-  }
+  // ── Registry home: open GLOBAL first (T11648) ────────────────────────────
+  // The registry/identity tables are global (ADR-090 §2.2). Opening the GLOBAL
+  // scope through the dual-scope chokepoint runs its consolidated migration,
+  // guaranteeing those tables (and their schema) physically exist before we
+  // ATTACH the global file into the project handle below. This is the same
+  // shared handle the global-tier siblings (skills/agent-registry) hold; we do
+  // NOT keep a reference to it — we only need its schema materialised on disk.
+  await openDualScopeDb('global');
 
-  if (_nexusDb) {
-    // Re-validate the GLOBAL registry ATTACH on every singleton hit (ADR-090 ·
-    // T11648). The registry home (`getCleoHome()`) can change between calls —
-    // tests that mutate `CLEO_HOME` while the cwd-keyed project handle stays
-    // cached, or a sibling domain that re-opened the shared project handle and
-    // dropped the attach. `ensureGlobalRegistryAttached` early-returns when the
-    // current attach already points at the right file, so this is cheap.
-    if (_nexusNativeDb) {
-      try {
-        ensureGlobalRegistryAttached(_nexusNativeDb);
-      } catch {
-        // A failed re-attach means the shared handle is unusable — drop the
-        // singleton so the next call re-derives a fresh handle + attach.
-        resetNexusDbState();
-      }
-    }
-    if (_nexusDb) return _nexusDb;
-  }
-
-  // If already initializing, wait for the in-flight init
-  if (_nexusInitPromise) return _nexusInitPromise;
-
-  _nexusInitPromise = (async () => {
-    const dbPath = requestedPath;
-    _nexusDbPath = dbPath;
-    _nexusRegistryPath = requestedRegistryPath;
-
-    // ADR-086 / T10321 — warn (one-shot, non-blocking) if the install still
-    // carries the nested-nexus migration debris. Does not alter the open.
-    detectAndWarnOnNestedNexus();
-
-    // ── Registry home: open GLOBAL first (T11648) ──────────────────────────
-    // The registry/identity tables are global (ADR-090 §2.2). Opening the GLOBAL
-    // scope through the dual-scope chokepoint runs its consolidated migration,
-    // guaranteeing those tables (and their schema) physically exist before we
-    // ATTACH the global file into the project handle below. This is the same
-    // shared handle the global-tier siblings (skills/agent-registry) hold; we do
-    // NOT keep a reference to it — we only need its schema materialised on disk.
-    await openDualScopeDb('global');
-
-    // ── Graph home: open PROJECT scope as `main` (T11648 · ADR-090 §2.1/§2.4) ─
-    // openDualScopeDb('project') applies the pragma SSoT, creates the directory,
-    // runs the consolidated cleo-project migrations (which OWN the five PREFIXED
-    // graph tables), and manages the singleton cache. We pass NO cwd: the
-    // dual-scope resolver resolves the canonical project root via the
-    // `resolveCleoDir()` SSoT (CWD-walk / CLEO_DIR / worktree scope) — never a
-    // bare `process.cwd()` (T9584). Omitting the cwd also keeps the exodus-on-open
-    // hook un-armed, which is correct for the runtime READ path (exodus is a
-    // separate explicit step).
-    const dualHandle = await openDualScopeDb('project');
-
-    // Extract the underlying DatabaseSync. Drizzle exposes it via `$client`.
-    const nativeDb = (dualHandle.db as { $client?: DatabaseSync }).$client ?? null;
-    if (!nativeDb) {
-      throw new Error(
-        'T11648: openDualScopeDb returned a handle without $client — ' +
-          'cannot extract DatabaseSync for the nexus-schema drizzle wrapping.',
-      );
-    }
-    _nexusNativeDb = nativeDb;
-
+  // ── Graph home: open PROJECT scope as `main` (T11648 · ADR-090 §2.1/§2.4) ──
+  // We pass NO cwd: the dual-scope resolver resolves the canonical project root
+  // via the `resolveCleoDir()` SSoT (CWD-walk / CLEO_DIR / worktree scope) —
+  // never a bare `process.cwd()` (T9584). Omitting the cwd also keeps the
+  // exodus-on-open hook un-armed, which is correct for the runtime READ path
+  // (exodus is a separate explicit step).
+  const binding = await bindProjectDomain('nexus', undefined, (nativeDb, store) => {
     // ATTACH the GLOBAL `cleo.db` so the registry/identity tables resolve by
     // their bare names via SQLite's fall-through (ADR-090 · T11648). Idempotent.
     ensureGlobalRegistryAttached(nativeDb);
@@ -825,7 +818,7 @@ export async function getNexusDb(): Promise<NodeSQLiteDatabase> {
     // inline-column DROP), and the `_nexus_meta` health-probe sentinel. The
     // legacy drop/rebuild (`establishLegacyNexusSchema`) is GONE — the
     // consolidated migration is the single SSoT for the base tables (T11578 · AC3).
-    runNexusMigrations(nativeDb, db);
+    runNexusMigrations(nativeDb, db, store.dbPath);
 
     // Seed schema version for new databases (no-op if already set)
     nativeDb
@@ -834,16 +827,25 @@ export async function getNexusDb(): Promise<NodeSQLiteDatabase> {
       )
       .run();
 
-    // Set singleton only after migrations complete
-    _nexusDb = db;
-    return db;
-  })();
+    return { drizzle: db, registryPath: requestedRegistryPath };
+  });
 
+  // Re-validate the GLOBAL registry ATTACH on every bind, including cache hits.
+  // A sibling domain that re-opened the shared project handle drops the attach
+  // without invalidating our binding. `ensureGlobalRegistryAttached` early-returns
+  // when the current attach already points at the right file, so this is cheap.
   try {
-    return await _nexusInitPromise;
-  } finally {
-    _nexusInitPromise = null;
+    ensureGlobalRegistryAttached(binding.native);
+  } catch {
+    // A failed re-attach means this handle is unusable — drop the binding so the
+    // next call re-derives a fresh handle + attach.
+    releaseDomainBindings({ scope: 'project', domain: 'nexus' });
+    throw new Error(
+      'T12039: nexus binding lost its GLOBAL registry ATTACH and could not re-attach.',
+    );
   }
+
+  return binding;
 }
 
 /**
@@ -862,13 +864,9 @@ export async function getNexusDb(): Promise<NodeSQLiteDatabase> {
  * coordinated reset (`closeAllDatabases` → `_resetDualScopeDbCache`).
  */
 export function closeNexusDb(): void {
-  // Drop only the nexus singleton references. Do NOT close `_nexusNativeDb` — it
-  // is the shared dual-scope project handle, possibly still in use by siblings.
-  _nexusNativeDb = null;
-  _nexusDb = null;
-  _nexusDbPath = null;
-  _nexusRegistryPath = null;
-  _nexusInitPromise = null;
+  // Drop only the nexus-domain binding. Do NOT close the connection — it is the
+  // shared dual-scope project handle, possibly still in use by siblings.
+  releaseDomainBindings({ scope: 'project', domain: 'nexus' });
 }
 
 /**
@@ -883,11 +881,7 @@ export function closeNexusDb(): void {
  * is shared with the other project-tier domains). Mirrors {@link closeNexusDb}.
  */
 export function resetNexusDbState(): void {
-  _nexusNativeDb = null;
-  _nexusDb = null;
-  _nexusDbPath = null;
-  _nexusRegistryPath = null;
-  _nexusInitPromise = null;
+  releaseDomainBindings({ scope: 'project', domain: 'nexus' });
 }
 
 /**
@@ -896,7 +890,7 @@ export function resetNexusDbState(): void {
  * Returns null if the database hasn't been initialized.
  */
 export function getNexusNativeDb(): DatabaseSync | null {
-  return _nexusNativeDb;
+  return boundProjectNative('nexus');
 }
 
 export type { NodeSQLiteDatabase };

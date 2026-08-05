@@ -1248,7 +1248,11 @@ async function emitBrainObservation(
  * existing pattern in `queue-manager.ts` (T1145).
  */
 function withTransaction<T>(fn: () => Promise<T>, projectRoot: string): Promise<T> {
-  const nativeDb = getNativeDb();
+  // T12037: `getNativeDb` is path-keyed — pass the project this reconcile is
+  // for. Before the ProjectStore cutover the bare call returned whichever
+  // project was opened LAST in the process, so a reconcile against project A
+  // could open its BEGIN IMMEDIATE on project B's connection.
+  const nativeDb = getNativeDb(projectRoot);
   if (!nativeDb) {
     throw new Error(
       `withTransaction: native SQLite handle not initialized for ${projectRoot}; call getDb() first`,

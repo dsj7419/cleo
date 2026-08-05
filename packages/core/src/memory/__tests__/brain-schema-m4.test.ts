@@ -50,7 +50,7 @@ describe('Brain Schema M4 — plasticity aux tables (real SQLite, no mocks)', ()
       await getBrainDb(tempDir);
 
       const { getBrainNativeDb } = await import('../../store/memory-sqlite.js');
-      const nativeDb = getBrainNativeDb();
+      const nativeDb = getBrainNativeDb(tempDir);
       const row = nativeDb
         ?.prepare(
           `SELECT name FROM sqlite_master WHERE type='table' AND name='brain_weight_history'`,
@@ -167,7 +167,7 @@ describe('Brain Schema M4 — plasticity aux tables (real SQLite, no mocks)', ()
       await getBrainDb(tempDir);
 
       const { getBrainNativeDb } = await import('../../store/memory-sqlite.js');
-      const nativeDb = getBrainNativeDb();
+      const nativeDb = getBrainNativeDb(tempDir);
       const indexes = nativeDb
         ?.prepare(
           `SELECT name FROM sqlite_master
@@ -198,7 +198,7 @@ describe('Brain Schema M4 — plasticity aux tables (real SQLite, no mocks)', ()
       await getBrainDb(tempDir);
 
       const { getBrainNativeDb } = await import('../../store/memory-sqlite.js');
-      const nativeDb = getBrainNativeDb();
+      const nativeDb = getBrainNativeDb(tempDir);
       const row = nativeDb
         ?.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='brain_modulators'`)
         .get() as { name: string } | undefined;
@@ -271,7 +271,7 @@ describe('Brain Schema M4 — plasticity aux tables (real SQLite, no mocks)', ()
       await getBrainDb(tempDir);
 
       const { getBrainNativeDb } = await import('../../store/memory-sqlite.js');
-      const nativeDb = getBrainNativeDb();
+      const nativeDb = getBrainNativeDb(tempDir);
       const indexes = nativeDb
         ?.prepare(
           `SELECT name FROM sqlite_master
@@ -301,7 +301,7 @@ describe('Brain Schema M4 — plasticity aux tables (real SQLite, no mocks)', ()
       await getBrainDb(tempDir);
 
       const { getBrainNativeDb } = await import('../../store/memory-sqlite.js');
-      const nativeDb = getBrainNativeDb();
+      const nativeDb = getBrainNativeDb(tempDir);
       const row = nativeDb
         ?.prepare(
           `SELECT name FROM sqlite_master
@@ -408,7 +408,7 @@ describe('Brain Schema M4 — plasticity aux tables (real SQLite, no mocks)', ()
       await getBrainDb(tempDir);
 
       const { getBrainNativeDb } = await import('../../store/memory-sqlite.js');
-      const nativeDb = getBrainNativeDb();
+      const nativeDb = getBrainNativeDb(tempDir);
       const indexes = nativeDb
         ?.prepare(
           `SELECT name FROM sqlite_master

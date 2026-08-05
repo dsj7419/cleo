@@ -40,7 +40,11 @@ import { homedir } from 'node:os';
 import { basename, dirname, extname, join } from 'node:path';
 import { parseDocument, validateDocument } from '@cleocode/cant';
 import { provisionIsolatedShell } from '@cleocode/contracts';
+import { CAAMP_BLOCK_PATTERN_SOURCE } from '@cleocode/contracts/caamp-markers';
+import { writeFileAtomic } from '@cleocode/core/tools/fs.js';
 import type { Provider } from '../../types.js';
+import { withFileLock } from '../fs/atomic.js';
+import { normalizeMarkers, parseBlocks, reconcile } from '../instructions/markers.js';
 import type { HarnessTier } from './scope.js';
 import { resolveAllTiers, resolveTierDir } from './scope.js';
 import type {
@@ -69,13 +73,10 @@ import type {
 } from './types.js';
 
 // ── Marker constants ──────────────────────────────────────────────────
-
-/** Start marker for CAAMP-managed AGENTS.md injection blocks. */
-const MARKER_START = '<!-- CAAMP:START -->';
-/** End marker for CAAMP-managed AGENTS.md injection blocks. */
-const MARKER_END = '<!-- CAAMP:END -->';
-/** Matches an entire CAAMP-managed block including its markers. */
-const MARKER_PATTERN = /<!-- CAAMP:START -->[\s\S]*?<!-- CAAMP:END -->/;
+//
+// The grammar itself is owned by `@cleocode/contracts/caamp-markers` (T12051);
+// the parsing and repair behaviour lives in `../instructions/markers.ts`. This
+// module only needs the block pattern, for stripping on uninstall.
 
 // ── Private helpers ───────────────────────────────────────────────────
 
@@ -341,23 +342,20 @@ export class PiHarness implements Harness {
     const filePath = this.agentsMdPath(scope);
     await mkdir(dirname(filePath), { recursive: true });
 
-    const block = `${MARKER_START}\n${content.trim()}\n${MARKER_END}`;
-
-    let existing = '';
-    if (existsSync(filePath)) {
-      existing = await readFile(filePath, 'utf8');
-    }
-
-    let updated: string;
-    if (MARKER_PATTERN.test(existing)) {
-      updated = existing.replace(MARKER_PATTERN, block);
-    } else if (existing.length === 0) {
-      updated = `${block}\n`;
-    } else {
-      const separator = existing.endsWith('\n') ? '\n' : '\n\n';
-      updated = `${existing}${separator}${block}\n`;
-    }
-    await writeFile(filePath, updated, 'utf8');
+    // Delegates to the shared marker engine rather than re-implementing the
+    // state machine (T12051). The previous local version carried the same
+    // duplication ratchet as the injector: it matched with the STRICT pattern,
+    // so a marker that had lost a delimiter character was invisible and the
+    // `else` branch **appended** a whole new block — permanently doubling the
+    // instructions for every subsequent Pi session. `reconcile` heals damaged
+    // markers first, replaces the first block in place, and drops the rest.
+    await withFileLock(filePath, async () => {
+      const existing = existsSync(filePath) ? await readFile(filePath, 'utf8') : '';
+      // 'append' preserves Pi's long-standing placement for a file that has
+      // no block yet; an existing block is still replaced in place.
+      const { content: next } = reconcile(existing, content, 'append');
+      if (next !== existing) await writeFileAtomic({ path: filePath, content: next });
+    });
   }
 
   /**
@@ -367,13 +365,23 @@ export class PiHarness implements Harness {
   async removeInstructions(scope: HarnessScope): Promise<void> {
     const filePath = this.agentsMdPath(scope);
     if (!existsSync(filePath)) return;
-    const existing = await readFile(filePath, 'utf8');
-    if (!MARKER_PATTERN.test(existing)) return;
-    const stripped = existing
-      .replace(MARKER_PATTERN, '')
-      .replace(/\n{3,}/g, '\n\n')
-      .trimEnd();
-    await writeFile(filePath, stripped.length === 0 ? '' : `${stripped}\n`, 'utf8');
+
+    await withFileLock(filePath, async () => {
+      const existing = await readFile(filePath, 'utf8');
+      // Heal first so a block with a damaged marker is removed too, instead of
+      // being left behind as an orphan fragment.
+      const { content: healed } = normalizeMarkers(existing);
+      if (parseBlocks(healed).length === 0) return;
+
+      const stripped = healed
+        .replace(new RegExp(CAAMP_BLOCK_PATTERN_SOURCE, 'g'), '')
+        .replace(/\n{3,}/g, '\n\n')
+        .trimEnd();
+      await writeFileAtomic({
+        path: filePath,
+        content: stripped.length === 0 ? '' : `${stripped}\n`,
+      });
+    });
   }
 
   // ── Subagent spawn (ADR-035 §D6) ────────────────────────────────────

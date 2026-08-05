@@ -2,6 +2,7 @@
  * instructions inject command - LAFS-compliant with JSON-first output
  */
 
+import type { CaampInjectionAction } from '@cleocode/contracts/caamp-markers';
 import type { Command } from 'commander';
 import pc from 'picocolors';
 import {
@@ -160,8 +161,7 @@ export function registerInstructionsInject(parent: Command): void {
           }
         }
 
-        const results: Map<string, 'created' | 'added' | 'consolidated' | 'updated' | 'intact'> =
-          new Map();
+        const results: Map<string, CaampInjectionAction> = new Map();
         const harnessScope: HarnessScope =
           scope === 'global' ? { kind: 'global' } : { kind: 'project', projectDir: process.cwd() };
         for (const provider of harnessProviders) {

@@ -351,7 +351,7 @@ function cosineSimilarity(a: Buffer | null, b: Buffer | null): number {
 async function stepMergeDuplicates(projectRoot: string): Promise<MergeDuplicatesResult> {
   const { getBrainDb } = await import('../store/memory-sqlite.js');
   await getBrainDb(projectRoot);
-  const nativeDb = getBrainNativeDb();
+  const nativeDb = getBrainNativeDb(projectRoot);
   if (!nativeDb) return { merged: 0, llmDecisions: 0 };
 
   let merged = 0;
@@ -490,7 +490,7 @@ async function stepMergeDuplicates(projectRoot: string): Promise<MergeDuplicates
 async function stepPruneStale(projectRoot: string): Promise<PruneStaleResult> {
   const { getBrainDb } = await import('../store/memory-sqlite.js');
   await getBrainDb(projectRoot);
-  const nativeDb = getBrainNativeDb();
+  const nativeDb = getBrainNativeDb(projectRoot);
   if (!nativeDb) return { pruned: 0, preserved: 0 };
 
   const staleCutoff = new Date(Date.now() - STALE_AGE_DAYS * 24 * 60 * 60 * 1000)
@@ -605,7 +605,7 @@ async function stepStrengthenPatterns(
 ): Promise<StrengthenPatternsResult> {
   const { getBrainDb } = await import('../store/memory-sqlite.js');
   await getBrainDb(projectRoot);
-  const nativeDb = getBrainNativeDb();
+  const nativeDb = getBrainNativeDb(projectRoot);
   if (!nativeDb) return { synthesized: 0, patternsGenerated: 0 };
 
   let candidates: RawLearningRow[];
@@ -728,7 +728,7 @@ async function stepGenerateInsights(
 ): Promise<GenerateInsightsResult> {
   const { getBrainDb } = await import('../store/memory-sqlite.js');
   await getBrainDb(projectRoot);
-  const nativeDb = getBrainNativeDb();
+  const nativeDb = getBrainNativeDb(projectRoot);
   if (!nativeDb) return { clustersProcessed: 0, insightsStored: 0 };
 
   // Fetch recent non-sleep observations (last 14 days)

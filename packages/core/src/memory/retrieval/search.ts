@@ -89,7 +89,7 @@ export async function searchBrainCompact(
   if (mode === 'recency' && !agentFilter) {
     const { getBrainDb, getBrainNativeDb } = await import('../../store/memory-sqlite.js');
     await getBrainDb(projectRoot);
-    const nativeDb = getBrainNativeDb();
+    const nativeDb = getBrainNativeDb(projectRoot);
 
     if (!nativeDb) {
       return { results: [], total: 0, tokensEstimated: 0 };

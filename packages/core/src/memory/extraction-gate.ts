@@ -195,7 +195,7 @@ async function invalidateEntry(projectRoot: string, entryId: string): Promise<vo
   try {
     const { getBrainNativeDb, getBrainDb } = await import('../store/memory-sqlite.js');
     await getBrainDb(projectRoot);
-    const nativeDb = getBrainNativeDb();
+    const nativeDb = getBrainNativeDb(projectRoot);
     if (!nativeDb) return;
 
     // Route by ID prefix to correct table
@@ -230,7 +230,7 @@ async function incrementCitationCount(projectRoot: string, entryId: string): Pro
   try {
     const { getBrainNativeDb, getBrainDb } = await import('../store/memory-sqlite.js');
     await getBrainDb(projectRoot);
-    const nativeDb = getBrainNativeDb();
+    const nativeDb = getBrainNativeDb(projectRoot);
     if (!nativeDb) return;
 
     if (entryId.startsWith('D-') || /^D\d/.test(entryId)) {
@@ -291,7 +291,7 @@ async function hashDedupCheck(
   try {
     const { getBrainNativeDb, getBrainDb } = await import('../store/memory-sqlite.js');
     await getBrainDb(projectRoot);
-    const nativeDb = getBrainNativeDb();
+    const nativeDb = getBrainNativeDb(projectRoot);
     if (!nativeDb) return { matched: false };
 
     const hash = contentHashPrefix(text);

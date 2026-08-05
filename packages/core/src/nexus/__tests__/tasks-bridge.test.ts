@@ -45,7 +45,7 @@ describe('tasks-bridge', () => {
     await getBrainDb(projectRoot);
     await getNexusDb();
 
-    brainDb = getBrainNativeDb()!;
+    brainDb = getBrainNativeDb(projectRoot)!;
     nexusDb = getNexusNativeDb()!;
 
     // Verify DBs were initialized

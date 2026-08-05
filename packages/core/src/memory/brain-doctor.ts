@@ -177,7 +177,7 @@ function sampleIds(rows: readonly { id?: string | null }[]): string[] {
 export async function scanBrainNoise(projectRoot: string): Promise<BrainDoctorResult> {
   // Initialize brain.db connection (required before getBrainNativeDb() is callable)
   await getBrainDb(projectRoot);
-  const db = getBrainNativeDb();
+  const db = getBrainNativeDb(projectRoot);
   const findings: BrainNoiseEntry[] = [];
 
   if (!db) {

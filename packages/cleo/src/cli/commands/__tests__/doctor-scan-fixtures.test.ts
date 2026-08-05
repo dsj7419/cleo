@@ -47,7 +47,7 @@ describe('doctor --scan-test-fixtures-in-prod (T1909)', () => {
     type NativeDbInsert = {
       prepare: (sql: string) => { run: (...args: (string | number | null)[]) => void };
     };
-    const nativeDb = getNativeDb() as NativeDbInsert | null;
+    const nativeDb = getNativeDb(tempDir) as NativeDbInsert | null;
     if (!nativeDb) throw new Error('nativeDb not initialized');
 
     // Insert fixture-shaped rows

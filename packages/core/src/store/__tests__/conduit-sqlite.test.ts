@@ -132,7 +132,7 @@ describe('conduit-sqlite', () => {
   // TC-002 continued — all legacy messaging tables + 2 tracking tables present
   it('ensureConduitDb creates all expected legacy tables on fresh install', async () => {
     await ensureConduitDb(tmpRoot);
-    const db = getConduitNativeDb();
+    const db = getConduitNativeDb(tmpRoot);
     expect(db).not.toBeNull();
 
     const rows = db!
@@ -150,7 +150,7 @@ describe('conduit-sqlite', () => {
   // TC-011 — conduit_messages_fts virtual table created (T11578 · AC4)
   it('ensureConduitDb creates conduit_messages_fts virtual table', async () => {
     await ensureConduitDb(tmpRoot);
-    const db = getConduitNativeDb();
+    const db = getConduitNativeDb(tmpRoot);
     expect(db).not.toBeNull();
 
     const row = db!
@@ -162,7 +162,7 @@ describe('conduit-sqlite', () => {
   // TC-012 — FTS5 triggers created and functional (T11578 · AC4)
   it('conduit_messages_fts triggers are created and FTS search works after insert', async () => {
     await ensureConduitDb(tmpRoot);
-    const db = getConduitNativeDb();
+    const db = getConduitNativeDb(tmpRoot);
     expect(db).not.toBeNull();
 
     // Verify all three triggers exist.
@@ -208,14 +208,14 @@ describe('conduit-sqlite', () => {
 
   it('ensureConduitDb is idempotent: data survives across two opens', async () => {
     await ensureConduitDb(tmpRoot);
-    const db1 = getConduitNativeDb()!;
+    const db1 = getConduitNativeDb(tmpRoot)!;
     db1.exec(`INSERT INTO conduit_project_agent_refs (agent_id, attached_at)
               VALUES ('test-agent', '2026-04-12T00:00:00Z')`);
     closeConduitDb();
     _resetDualScopeDbCache();
 
     await ensureConduitDb(tmpRoot);
-    const db2 = getConduitNativeDb()!;
+    const db2 = getConduitNativeDb(tmpRoot)!;
     const row = db2
       .prepare('SELECT agent_id FROM conduit_project_agent_refs WHERE agent_id = ?')
       .get('test-agent') as { agent_id: string } | undefined;
@@ -230,7 +230,7 @@ describe('conduit-sqlite', () => {
   // getConduitNativeDb — returns live handle after init
   it('getConduitNativeDb returns the live DatabaseSync handle after ensureConduitDb', async () => {
     await ensureConduitDb(tmpRoot);
-    const db = getConduitNativeDb();
+    const db = getConduitNativeDb(tmpRoot);
     expect(db).not.toBeNull();
     expect(db!.isOpen).toBe(true);
   });
@@ -239,13 +239,13 @@ describe('conduit-sqlite', () => {
   it('getConduitNativeDb returns null after closeConduitDb', async () => {
     await ensureConduitDb(tmpRoot);
     closeConduitDb();
-    expect(getConduitNativeDb()).toBeNull();
+    expect(getConduitNativeDb(tmpRoot)).toBeNull();
   });
 
   // integrity_check
   it('cleo.db passes PRAGMA integrity_check after conduit creation', async () => {
     await ensureConduitDb(tmpRoot);
-    const db = getConduitNativeDb()!;
+    const db = getConduitNativeDb(tmpRoot)!;
     const result = db.prepare('PRAGMA integrity_check').get() as { integrity_check: string };
     expect(result.integrity_check).toBe('ok');
   });
@@ -253,7 +253,7 @@ describe('conduit-sqlite', () => {
   // conduit_project_agent_refs schema (T11578 · AC4 — prefixed, consolidated)
   it('conduit_project_agent_refs has expected columns with correct constraints', async () => {
     await ensureConduitDb(tmpRoot);
-    const db = getConduitNativeDb()!;
+    const db = getConduitNativeDb(tmpRoot)!;
 
     const cols = db.prepare('PRAGMA table_info(conduit_project_agent_refs)').all() as Array<{
       cid: number;
@@ -290,7 +290,7 @@ describe('conduit-sqlite', () => {
   // the consolidated migration has already populated — not a bare manual file.
   it('applyConduitSchema is idempotent when called twice on the conduit db', async () => {
     await ensureConduitDb(tmpRoot);
-    const db = getConduitNativeDb()!;
+    const db = getConduitNativeDb(tmpRoot)!;
     expect(() => applyConduitSchema(db)).not.toThrow();
     expect(() => applyConduitSchema(db)).not.toThrow();
   });
@@ -298,7 +298,7 @@ describe('conduit-sqlite', () => {
   // schema version recorded in _conduit_meta
   it('ensureConduitDb records CONDUIT_SCHEMA_VERSION in _conduit_meta', async () => {
     await ensureConduitDb(tmpRoot);
-    const db = getConduitNativeDb()!;
+    const db = getConduitNativeDb(tmpRoot)!;
     const meta = db.prepare("SELECT value FROM _conduit_meta WHERE key = 'schema_version'").get() as
       | { value: string }
       | undefined;
@@ -308,7 +308,7 @@ describe('conduit-sqlite', () => {
   // migration row recorded in __drizzle_migrations (T1407 baseline marker)
   it('ensureConduitDb records the conduit baseline in __drizzle_migrations', async () => {
     await ensureConduitDb(tmpRoot);
-    const db = getConduitNativeDb()!;
+    const db = getConduitNativeDb(tmpRoot)!;
     const mig = db
       .prepare('SELECT name FROM "__drizzle_migrations" WHERE name = ?')
       .get('20260425000000_initial-conduit') as { name: string } | undefined;
@@ -318,7 +318,7 @@ describe('conduit-sqlite', () => {
   // forward migration row recorded (E6-L3 conduit inline-schema migration)
   it('ensureConduitDb records the E6-L3 conduit inline-schema migration', async () => {
     await ensureConduitDb(tmpRoot);
-    const db = getConduitNativeDb()!;
+    const db = getConduitNativeDb(tmpRoot)!;
     const mig = db
       .prepare('SELECT name FROM "__drizzle_migrations" WHERE name = ?')
       .get('20260601000003_t11523-conduit-inline-schema') as { name: string } | undefined;
@@ -328,7 +328,7 @@ describe('conduit-sqlite', () => {
   // re-stamp on stale sentinel (no longer a fast-path, but ensure() re-stamps)
   it('ensureConduitDb re-stamps CONDUIT_SCHEMA_VERSION on a stale _conduit_meta sentinel', async () => {
     await ensureConduitDb(tmpRoot);
-    let db = getConduitNativeDb()!;
+    let db = getConduitNativeDb(tmpRoot)!;
     // Corrupt the sentinel to an older version.
     db.exec("UPDATE _conduit_meta SET value = '1900.0.0' WHERE key = 'schema_version'");
     closeConduitDb();
@@ -336,7 +336,7 @@ describe('conduit-sqlite', () => {
 
     const result = await ensureConduitDb(tmpRoot);
     expect(result.action).toBe('exists');
-    db = getConduitNativeDb()!;
+    db = getConduitNativeDb(tmpRoot)!;
     const after = db
       .prepare("SELECT value FROM _conduit_meta WHERE key = 'schema_version'")
       .get() as { value: string };
@@ -382,7 +382,7 @@ describe('conduit-sqlite', () => {
   describe('project_agent_refs CRUD (T353)', () => {
     it('TC-004: attachAgentToProject inserts a new row with enabled=1', async () => {
       await ensureConduitDb(tmpRoot);
-      const db = getConduitNativeDb()!;
+      const db = getConduitNativeDb(tmpRoot)!;
       attachAgentToProject(db, 'agent-1');
       const ref = getProjectAgentRef(db, 'agent-1');
       expect(ref).not.toBeNull();
@@ -395,7 +395,7 @@ describe('conduit-sqlite', () => {
 
     it('TC-005: attachAgentToProject re-enables an existing enabled=0 row without duplicate', async () => {
       await ensureConduitDb(tmpRoot);
-      const db = getConduitNativeDb()!;
+      const db = getConduitNativeDb(tmpRoot)!;
       attachAgentToProject(db, 'agent-1');
       detachAgentFromProject(db, 'agent-1');
       const detached = getProjectAgentRef(db, 'agent-1');
@@ -416,7 +416,7 @@ describe('conduit-sqlite', () => {
 
     it('TC-006: detachAgentFromProject sets enabled=0 without deleting', async () => {
       await ensureConduitDb(tmpRoot);
-      const db = getConduitNativeDb()!;
+      const db = getConduitNativeDb(tmpRoot)!;
       attachAgentToProject(db, 'agent-1');
       detachAgentFromProject(db, 'agent-1');
       const ref = getProjectAgentRef(db, 'agent-1');
@@ -426,7 +426,7 @@ describe('conduit-sqlite', () => {
 
     it('TC-007: listProjectAgentRefs returns only enabled=1 rows by default', async () => {
       await ensureConduitDb(tmpRoot);
-      const db = getConduitNativeDb()!;
+      const db = getConduitNativeDb(tmpRoot)!;
       attachAgentToProject(db, 'agent-1');
       attachAgentToProject(db, 'agent-2');
       attachAgentToProject(db, 'agent-3');
@@ -438,7 +438,7 @@ describe('conduit-sqlite', () => {
 
     it('TC-008: listProjectAgentRefs returns all rows when enabledOnly=false', async () => {
       await ensureConduitDb(tmpRoot);
-      const db = getConduitNativeDb()!;
+      const db = getConduitNativeDb(tmpRoot)!;
       attachAgentToProject(db, 'agent-1');
       attachAgentToProject(db, 'agent-2');
       detachAgentFromProject(db, 'agent-2');
@@ -448,14 +448,14 @@ describe('conduit-sqlite', () => {
 
     it('TC-009: getProjectAgentRef returns null for unknown agent', async () => {
       await ensureConduitDb(tmpRoot);
-      const db = getConduitNativeDb()!;
+      const db = getConduitNativeDb(tmpRoot)!;
       const ref = getProjectAgentRef(db, 'nonexistent');
       expect(ref).toBeNull();
     });
 
     it('TC-010: updateProjectAgentLastUsed sets last_used_at to current ISO timestamp', async () => {
       await ensureConduitDb(tmpRoot);
-      const db = getConduitNativeDb()!;
+      const db = getConduitNativeDb(tmpRoot)!;
       attachAgentToProject(db, 'agent-1');
       const before = new Date().toISOString();
       updateProjectAgentLastUsed(db, 'agent-1');

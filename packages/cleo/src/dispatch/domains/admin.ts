@@ -196,7 +196,7 @@ async function runSystemSmoke(): Promise<SmokeResult> {
       const { getDb, getNativeDb } = await import('@cleocode/core/internal');
       const projectRoot = getProjectRoot();
       await getDb(projectRoot);
-      const nativeDb = getNativeDb();
+      const nativeDb = getNativeDb(projectRoot);
       if (nativeDb) {
         const result = nativeDb.prepare('PRAGMA integrity_check').get() as
           | Record<string, unknown>

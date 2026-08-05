@@ -309,7 +309,7 @@ export async function searchBrain(
   // Ensure brain.db is initialized
   const { getBrainDb, getBrainNativeDb } = await import('../store/memory-sqlite.js');
   await getBrainDb(projectRoot);
-  const nativeDb = getBrainNativeDb();
+  const nativeDb = getBrainNativeDb(projectRoot);
 
   if (!nativeDb) {
     return { decisions: [], patterns: [], learnings: [], observations: [] };

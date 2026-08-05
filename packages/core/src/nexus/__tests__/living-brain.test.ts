@@ -175,7 +175,7 @@ describe('living-brain SDK', () => {
     await getBrainDb(projectRoot);
     await getNexusDb();
 
-    const brainNative = getBrainNativeDb();
+    const brainNative = getBrainNativeDb(projectRoot);
     const nexusNative = getNexusNativeDb();
 
     expect(brainNative).toBeDefined();

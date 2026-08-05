@@ -189,7 +189,7 @@ describe.skipIf(!isSqliteVecAvailable())('brain_embeddings vec0 table', () => {
     closeBrainDb();
 
     await getBrainDb(tempDir);
-    const nativeDb = getBrainNativeDb();
+    const nativeDb = getBrainNativeDb(tempDir);
     expect(nativeDb).toBeTruthy();
 
     const row = nativeDb!
@@ -206,7 +206,7 @@ describe.skipIf(!isSqliteVecAvailable())('brain_embeddings vec0 table', () => {
     closeBrainDb();
 
     await getBrainDb(tempDir);
-    const nativeDb = getBrainNativeDb();
+    const nativeDb = getBrainNativeDb(tempDir);
     const result = nativeDb!.prepare('SELECT vec_version()').get() as Record<string, string>;
     const version = Object.values(result)[0];
     expect(version).toMatch(/^v?\d+\.\d+/);
@@ -219,7 +219,7 @@ describe.skipIf(!isSqliteVecAvailable())('brain_embeddings vec0 table', () => {
     closeBrainDb();
 
     await getBrainDb(tempDir);
-    const nativeDb = getBrainNativeDb()!;
+    const nativeDb = getBrainNativeDb(tempDir)!;
 
     const vec = new Float32Array(EMBEDDING_DIMENSIONS);
     vec[0] = 1.0;
@@ -258,7 +258,7 @@ describe.skipIf(!isSqliteVecAvailable())('searchSimilar with mock provider', () 
     );
     closeBrainDb();
     await getBrainDb(tempDir);
-    const nativeDb = getBrainNativeDb()!;
+    const nativeDb = getBrainNativeDb(tempDir)!;
 
     // Insert test observation into brain_observations
     const obsId = 'O-test001-0';
@@ -312,7 +312,7 @@ describe.skipIf(!isSqliteVecAvailable())('populateEmbeddings backfill', () => {
     );
     closeBrainDb();
     await getBrainDb(tempDir);
-    const nativeDb = getBrainNativeDb()!;
+    const nativeDb = getBrainNativeDb(tempDir)!;
 
     // Insert test observations without embeddings
     const now = new Date().toISOString().replace('T', ' ').slice(0, 19);
@@ -359,7 +359,7 @@ describe.skipIf(!isSqliteVecAvailable())('populateEmbeddings backfill', () => {
     );
     closeBrainDb();
     await getBrainDb(tempDir);
-    const nativeDb = getBrainNativeDb()!;
+    const nativeDb = getBrainNativeDb(tempDir)!;
 
     const now = new Date().toISOString().replace('T', ' ').slice(0, 19);
     // Observation with NULL narrative — should be skipped by populateEmbeddings

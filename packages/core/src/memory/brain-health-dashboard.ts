@@ -63,7 +63,7 @@ export async function computeBrainHealthDashboard(
   try {
     // Initialise the brain DB so getBrainNativeDb() is populated.
     await getBrainDb(projectRoot);
-    const ndb = getBrainNativeDb();
+    const ndb = getBrainNativeDb(projectRoot);
     if (!ndb) throw new Error('brain.db not initialised');
 
     // 1. Row counts

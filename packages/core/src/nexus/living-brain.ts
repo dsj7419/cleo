@@ -315,7 +315,7 @@ export async function getSymbolFullContext(
   // ---- BRAIN substrate ----
   try {
     await getBrainDb(projectRoot);
-    const brainNative = getBrainNativeDb();
+    const brainNative = getBrainNativeDb(projectRoot);
     if (brainNative) {
       // Query brain_page_edges for all edges connecting to this symbol
       // Covers: code_reference (memory→symbol), documents (decision→symbol),
@@ -423,7 +423,7 @@ export async function getSymbolFullContext(
   // ---- SENTIENT substrate ----
   try {
     await getBrainDb(projectRoot);
-    const brainNative = getBrainNativeDb();
+    const brainNative = getBrainNativeDb(projectRoot);
     if (brainNative) {
       // Query proposed tasks in tasks.db is not directly accessible here,
       // so we query the brain_page_nodes for sentient-tier2 nodes whose
@@ -544,7 +544,7 @@ export async function getTaskCodeImpact(
     // Try to infer from task_touches_symbol edges
     try {
       await getBrainDb(projectRoot);
-      const brainNative = getBrainNativeDb();
+      const brainNative = getBrainNativeDb(projectRoot);
       await getNexusDb();
       const nexusNative = getNexusNativeDb();
 
@@ -708,7 +708,7 @@ export async function getTaskCodeImpact(
   // ---- Brain observations with modified_by edges to task files ----
   try {
     await getBrainDb(projectRoot);
-    const brainNative = getBrainNativeDb();
+    const brainNative = getBrainNativeDb(projectRoot);
     await getNexusDb();
     const nexusNative = getNexusNativeDb();
 
@@ -779,7 +779,7 @@ export async function getTaskCodeImpact(
   // ---- Decisions from brain_memory_links ----
   try {
     await getBrainDb(projectRoot);
-    const brainNative = getBrainNativeDb();
+    const brainNative = getBrainNativeDb(projectRoot);
 
     if (brainNative) {
       const linkRows = typedAll<RawMemoryLink>(
@@ -855,7 +855,7 @@ export async function getBrainEntryCodeAnchors(
 
   try {
     await getBrainDb(projectRoot);
-    const brainNative = getBrainNativeDb();
+    const brainNative = getBrainNativeDb(projectRoot);
     await getNexusDb();
     const nexusNative = getNexusNativeDb();
 
@@ -1113,7 +1113,7 @@ export async function reasonImpactOfChange(
   // ---- Brain risk notes via code_reference / documents / modified_by edges ----
   try {
     await getBrainDb(projectRoot);
-    const brainNative = getBrainNativeDb();
+    const brainNative = getBrainNativeDb(projectRoot);
 
     if (brainNative) {
       const riskEdgeTypes = [

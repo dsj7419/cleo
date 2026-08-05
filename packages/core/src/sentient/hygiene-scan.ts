@@ -1275,7 +1275,7 @@ export async function runHygieneScan(options: HygieneScanOptions): Promise<Hygie
     try {
       const { getNativeDb, getDb } = await import('../store/sqlite.js');
       await getDb(projectRoot);
-      db = getNativeDb();
+      db = getNativeDb(projectRoot);
     } catch {
       db = null;
     }

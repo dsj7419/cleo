@@ -634,7 +634,7 @@ export function createAttachmentStore(): AttachmentStore {
 
       return withWriteLock(async () => {
         const db = await getDb(cwd);
-        const nativeDb = getNativeTasksDb();
+        const nativeDb = getNativeTasksDb(cwd);
         if (!nativeDb) throw new Error('Database not initialized');
 
         // Allocator chokepoint runtime assert (T10392) — every writer with
@@ -948,7 +948,7 @@ export function createAttachmentStore(): AttachmentStore {
     async ref(attachmentId, ownerType, ownerId, attachedBy, cwd) {
       return withWriteLock(async () => {
         const db = await getDb(cwd);
-        const nativeDb = getNativeTasksDb();
+        const nativeDb = getNativeTasksDb(cwd);
         if (!nativeDb) throw new Error('Database not initialized');
 
         try {
@@ -997,7 +997,7 @@ export function createAttachmentStore(): AttachmentStore {
     async deref(attachmentId, ownerType, ownerId, cwd): Promise<DerefResult> {
       return withWriteLock(async () => {
         const db = await getDb(cwd);
-        const nativeDb = getNativeTasksDb();
+        const nativeDb = getNativeTasksDb(cwd);
         if (!nativeDb) throw new Error('Database not initialized');
 
         // Verify attachment exists (inside the lock so read is consistent).

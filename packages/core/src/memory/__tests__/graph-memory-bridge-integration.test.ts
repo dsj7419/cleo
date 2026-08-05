@@ -420,7 +420,7 @@ describe('graph-memory-bridge', () => {
 
       // Initialize conduit.db and insert a test message
       await ensureConduitDb(tempDir);
-      const conduitDb = getConduitNativeDb();
+      const conduitDb = getConduitNativeDb(tempDir);
 
       // T11578 (AC4): prefixed conduit_* tables + TEXT ISO-8601 timestamps.
       const nowIso = new Date().toISOString();
@@ -481,7 +481,7 @@ describe('graph-memory-bridge', () => {
       const { getBrainNativeDb } = await import('../../store/memory-sqlite.js');
 
       await ensureConduitDb(tempDir);
-      const conduitDb = getConduitNativeDb();
+      const conduitDb = getConduitNativeDb(tempDir);
 
       // T11578 (AC4): prefixed conduit_* tables + TEXT ISO-8601 timestamps.
       const nowIso = new Date().toISOString();

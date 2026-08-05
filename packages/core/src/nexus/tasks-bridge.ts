@@ -100,7 +100,7 @@ export async function linkTaskToSymbols(
     await getBrainDb(projectRoot);
     await getNexusDb();
 
-    const brainNative = getBrainNativeDb();
+    const brainNative = getBrainNativeDb(projectRoot);
     const nexusNative = getNexusNativeDb();
 
     if (!brainNative || !nexusNative) {
@@ -200,7 +200,7 @@ export async function getTasksForSymbol(
 ): Promise<TaskReference[]> {
   try {
     await getBrainDb(projectRoot);
-    const brainNative = getBrainNativeDb();
+    const brainNative = getBrainNativeDb(projectRoot);
 
     if (!brainNative) return [];
 
@@ -260,7 +260,7 @@ export async function getSymbolsForTask(
     await getBrainDb(projectRoot);
     await getNexusDb();
 
-    const brainNative = getBrainNativeDb();
+    const brainNative = getBrainNativeDb(projectRoot);
     const nexusNative = getNexusNativeDb();
 
     if (!brainNative || !nexusNative) return [];
@@ -342,7 +342,7 @@ export async function runGitLogTaskLinker(
     await getBrainDb(projectRoot);
     await getNexusDb();
 
-    const brainNative = getBrainNativeDb();
+    const brainNative = getBrainNativeDb(projectRoot);
     const nexusNative = getNexusNativeDb();
 
     if (!brainNative || !nexusNative) {

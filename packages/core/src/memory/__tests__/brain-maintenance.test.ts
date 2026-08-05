@@ -22,7 +22,7 @@ let cleoDir: string;
 async function openBrainDb(root: string) {
   const { getBrainDb, getBrainNativeDb } = await import('../../store/memory-sqlite.js');
   await getBrainDb(root);
-  const db = getBrainNativeDb();
+  const db = getBrainNativeDb(root);
   if (!db) throw new Error('brain.db unavailable');
   return db;
 }

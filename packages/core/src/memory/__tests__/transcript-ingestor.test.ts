@@ -116,7 +116,7 @@ describe('transcript-ingestor: block type preservation', () => {
 
     // Verify rows in DB
     await getBrainDb(tempDir);
-    const nativeDb = getBrainNativeDb();
+    const nativeDb = getBrainNativeDb(tempDir);
     const rows = nativeDb!
       .prepare(`SELECT DISTINCT block_type FROM brain_transcript_events WHERE session_id = ?`)
       .all(FIXTURE_SESSION_ID) as Array<{ block_type: string }>;
@@ -204,7 +204,7 @@ describe('auto-research: thrash detection', () => {
 
     closeBrainDb();
     await getBrainDb(tempDir);
-    const nativeDb = getBrainNativeDb()!;
+    const nativeDb = getBrainNativeDb(tempDir)!;
 
     // Seed 3 sessions with the same error message
     const sessions = ['ses_a', 'ses_b', 'ses_c'];
@@ -285,7 +285,7 @@ describe('brain_transcript_events: table migration', () => {
     );
     closeBrainDb();
     await getBrainDb(tempDir);
-    const nativeDb = getBrainNativeDb()!;
+    const nativeDb = getBrainNativeDb(tempDir)!;
 
     const row = nativeDb
       .prepare(
@@ -303,7 +303,7 @@ describe('brain_transcript_events: table migration', () => {
     );
     closeBrainDb();
     await getBrainDb(tempDir);
-    const nativeDb = getBrainNativeDb()!;
+    const nativeDb = getBrainNativeDb(tempDir)!;
 
     const cols = nativeDb.prepare(`PRAGMA table_info(brain_transcript_events)`).all() as Array<{
       name: string;
@@ -368,7 +368,7 @@ describe('transcript-ingestor: idempotency on re-ingest', () => {
 
     // Verify row count in DB
     await getBrainDb(tempDir);
-    const nativeDb = getBrainNativeDb()!;
+    const nativeDb = getBrainNativeDb(tempDir)!;
     const { count } = nativeDb
       .prepare(`SELECT COUNT(*) as count FROM brain_transcript_events WHERE session_id = ?`)
       .get(FIXTURE_SESSION_ID) as { count: number };

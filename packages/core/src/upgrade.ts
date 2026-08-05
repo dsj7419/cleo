@@ -1313,7 +1313,7 @@ export async function diagnoseUpgrade(options: { cwd?: string } = {}): Promise<D
       const { getNativeDb, getDb } = await import('./store/sqlite.js');
       const projectRoot = getProjectRoot(options.cwd);
       await getDb(projectRoot);
-      const nativeDb = getNativeDb();
+      const nativeDb = getNativeDb(projectRoot);
 
       if (nativeDb) {
         // Check required columns
@@ -1430,7 +1430,7 @@ export async function diagnoseUpgrade(options: { cwd?: string } = {}): Promise<D
     try {
       const { getBrainNativeDb, getBrainDb } = await import('./store/memory-sqlite.js');
       await getBrainDb(options.cwd);
-      const nativeDb = getBrainNativeDb();
+      const nativeDb = getBrainNativeDb(options.cwd);
 
       if (nativeDb) {
         // Check expected tables

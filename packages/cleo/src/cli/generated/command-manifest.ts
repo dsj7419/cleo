@@ -378,6 +378,13 @@ export const COMMAND_MANIFEST: readonly CommandManifestEntry[] = [
       (await import('../commands/doctor-exodus.js')).doctorExodusCommand as CommandDef,
   },
   {
+    exportName: 'doctorFkCheckCommand',
+    name: 'fk-check',
+    description: 'Verify foreign-key integrity of the consolidated project + global cleo.db ',
+    load: async () =>
+      (await import('../commands/doctor-fk-check.js')).doctorFkCheckCommand as CommandDef,
+  },
+  {
     exportName: 'doctorLegacyBackupsCommand',
     name: 'legacy-backups',
     description:

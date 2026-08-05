@@ -68,7 +68,7 @@ describe('lifecycle FK integrity under foreign_keys=ON (gh#1107 / T12017)', () =
   async function openWithFkOn() {
     const { getDb, getNativeDb } = await import('../../store/sqlite.js');
     const db = await getDb(testDir);
-    const native = getNativeDb();
+    const native = getNativeDb(testDir);
     if (!native) throw new Error('native db not initialized');
     native.exec('PRAGMA foreign_keys = ON');
     return { db, native };

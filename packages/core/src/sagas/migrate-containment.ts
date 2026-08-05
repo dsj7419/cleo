@@ -113,9 +113,11 @@ export async function migrateSagaContainment(
   params: MigrateSagaContainmentParams = {},
 ): Promise<EngineResult<MigrateSagaContainmentResult>> {
   const { sagaId, dryRun = false } = params;
-  // Open (or reuse) the tasks.db singleton so the native handle is available.
+  // Open (or reuse) the project's tasks binding so the native handle is available.
+  // T12037: `getNativeTasksDb` is path-keyed — pass the project this migration
+  // targets. The bare call used to return whichever project was opened LAST.
   await getTaskAccessor(projectRoot);
-  const nativeDb = getNativeTasksDb();
+  const nativeDb = getNativeTasksDb(projectRoot);
 
   if (!nativeDb) {
     return engineError('E_GENERAL', 'Database handle not available from accessor');

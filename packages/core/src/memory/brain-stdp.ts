@@ -565,7 +565,7 @@ export async function shouldRunPlasticity(
 ): Promise<boolean> {
   const { getBrainDb, getBrainNativeDb } = await import('../store/memory-sqlite.js');
   await getBrainDb(projectRoot);
-  const nativeDb = getBrainNativeDb();
+  const nativeDb = getBrainNativeDb(projectRoot);
 
   if (!nativeDb) return true; // Err on the side of running
 
@@ -731,7 +731,7 @@ async function applyStdpPlasticityImpl(
 
   const { getBrainDb, getBrainNativeDb } = await import('../store/memory-sqlite.js');
   await getBrainDb(projectRoot);
-  const nativeDb = getBrainNativeDb();
+  const nativeDb = getBrainNativeDb(projectRoot);
 
   const result: StdpPlasticityResult = {
     ltpEvents: 0,
@@ -1315,7 +1315,7 @@ export async function getPlasticityStats(
 ): Promise<PlasticityStatsSummary> {
   const { getBrainDb, getBrainNativeDb } = await import('../store/memory-sqlite.js');
   await getBrainDb(projectRoot);
-  const nativeDb = getBrainNativeDb();
+  const nativeDb = getBrainNativeDb(projectRoot);
 
   const empty: PlasticityStatsSummary = {
     totalEvents: 0,
@@ -1580,7 +1580,7 @@ export async function backfillRewardSignals(
   try {
     const { getBrainDb, getBrainNativeDb } = await import('../store/memory-sqlite.js');
     await getBrainDb(projectRoot);
-    const nativeDb = getBrainNativeDb();
+    const nativeDb = getBrainNativeDb(projectRoot);
 
     if (!nativeDb) return result;
 
@@ -1750,7 +1750,7 @@ export async function applyHomeostaticDecay(
 
   const { getBrainDb, getBrainNativeDb } = await import('../store/memory-sqlite.js');
   await getBrainDb(projectRoot);
-  const nativeDb = getBrainNativeDb();
+  const nativeDb = getBrainNativeDb(projectRoot);
 
   if (!nativeDb) return result;
 
@@ -2010,7 +2010,7 @@ export async function pruneStaleHistory(
 
   const { getBrainDb, getBrainNativeDb } = await import('../store/memory-sqlite.js');
   await getBrainDb(projectRoot);
-  const nativeDb = getBrainNativeDb();
+  const nativeDb = getBrainNativeDb(projectRoot);
   if (!nativeDb) return result;
 
   // ── Compute cutoff timestamp ──────────────────────────────────────────────

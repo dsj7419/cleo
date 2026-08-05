@@ -289,7 +289,7 @@ describe('Brain Retrieval', () => {
 
       // Backdate the stale row directly so we control the timestamp
       await getBrainDb(tempDir);
-      const nativeDb = getBrainNativeDb();
+      const nativeDb = getBrainNativeDb(tempDir);
       if (nativeDb) {
         nativeDb
           .prepare(

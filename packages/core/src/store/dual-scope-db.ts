@@ -1108,6 +1108,25 @@ export interface CleoRuntimeOpenOptions {
    * @default false
    */
   readonly dedicated?: boolean;
+
+  /**
+   * The project working directory that this open was resolved FROM.
+   *
+   * Forwarded verbatim to {@link openDualScopeDbAtPath} as its `exodusCwd`
+   * argument, which is what arms the exodus-on-open legacy-fleet
+   * auto-migration (E6 · T11553). {@link openDualScopeDb} passes its own
+   * `cwd` for exactly this reason; a runtime open that omits it would
+   * silently DISABLE auto-migration for users still carrying legacy
+   * standalone `tasks.db` / `brain.db` files.
+   *
+   * Domain ports that replace a `getDb(cwd)`-style facade MUST forward the
+   * caller's `cwd` here so behaviour is identical to the facade they retire.
+   * Leave `undefined` for explicit-path opens (test fixtures, snapshots)
+   * that must never auto-migrate.
+   *
+   * @task T12037 (E6-L13)
+   */
+  readonly exodusCwd?: string;
 }
 
 export interface CleoRuntime {
@@ -1141,6 +1160,28 @@ export interface CleoRuntime {
    * @returns A typed {@link GlobalStore} bound to the global scope.
    */
   openGlobal(options?: CleoRuntimeOpenOptions): Promise<GlobalStore>;
+
+  /**
+   * Open (or reuse) a global-scope `cleo.db` at an EXPLICIT path, bypassing the
+   * `getCleoHome()` resolver.
+   *
+   * The path-aware sibling of {@link openGlobal}, mirroring
+   * {@link openProject}. Exists for domains whose lifecycle API accepts an
+   * explicit on-disk path — notably the skills registry's test-sandbox
+   * `{ path }` override — so those opens still flow through ONE registry
+   * instead of a private cache.
+   *
+   * Keyed as `global::<normalized path>`, so a sandbox file and the canonical
+   * global `cleo.db` are distinct entries that never collide.
+   *
+   * @param dbPath - Absolute or relative path to a global-scope `cleo.db`.
+   *   Normalized via `path.resolve()` before keying.
+   * @param options - Optional open mode (e.g. `{ dedicated: true }`).
+   * @returns A typed {@link GlobalStore} bound to the requested path.
+   *
+   * @task T12039 (E6-L15)
+   */
+  openGlobalAt(dbPath: string, options?: CleoRuntimeOpenOptions): Promise<GlobalStore>;
 
   /**
    * Close and evict a single project entry from the registry. The
@@ -1274,12 +1315,12 @@ class CleoRuntimeImpl implements CleoRuntime {
   async openProject(dbPath: string, options?: CleoRuntimeOpenOptions): Promise<ProjectStore> {
     const normalized = resolve(dbPath);
     if (options?.dedicated) {
-      const handle = await openDualScopeDbAtPath('project', normalized, undefined, {
+      const handle = await openDualScopeDbAtPath('project', normalized, options?.exodusCwd, {
         dedicated: true,
       });
       return this.buildStore('project', handle, 0) as ProjectStore;
     }
-    return this.openEntry('project', normalized) as Promise<ProjectStore>;
+    return this.openEntry('project', normalized, 0, options?.exodusCwd) as Promise<ProjectStore>;
   }
 
   /** @inheritdoc */
@@ -1287,12 +1328,24 @@ class CleoRuntimeImpl implements CleoRuntime {
     const dbPath = resolveDualScopeDbPath('global');
     const normalized = resolve(dbPath);
     if (options?.dedicated) {
-      const handle = await openDualScopeDbAtPath('global', normalized, undefined, {
+      const handle = await openDualScopeDbAtPath('global', normalized, options?.exodusCwd, {
         dedicated: true,
       });
       return this.buildStore('global', handle, 0) as GlobalStore;
     }
-    return this.openEntry('global', normalized) as Promise<GlobalStore>;
+    return this.openEntry('global', normalized, 0, options?.exodusCwd) as Promise<GlobalStore>;
+  }
+
+  /** @inheritdoc */
+  async openGlobalAt(dbPath: string, options?: CleoRuntimeOpenOptions): Promise<GlobalStore> {
+    const normalized = resolve(dbPath);
+    if (options?.dedicated) {
+      const handle = await openDualScopeDbAtPath('global', normalized, options?.exodusCwd, {
+        dedicated: true,
+      });
+      return this.buildStore('global', handle, 0) as GlobalStore;
+    }
+    return this.openEntry('global', normalized, 0, options?.exodusCwd) as Promise<GlobalStore>;
   }
 
   /** @inheritdoc */
@@ -1328,6 +1381,13 @@ class CleoRuntimeImpl implements CleoRuntime {
     scope: DualScope,
     dbPath: string,
     depth = 0,
+    /**
+     * Forwarded to the chokepoint as `exodusCwd` so a runtime open arms the
+     * exodus-on-open legacy-fleet auto-migration exactly like
+     * {@link openDualScopeDb} does. NOT part of the registry key — the key is
+     * the canonical path this cwd already resolved to (T12037).
+     */
+    exodusCwd?: string,
   ): Promise<ProjectStore | GlobalStore> {
     const key = cacheKey(scope, dbPath);
 
@@ -1369,8 +1429,8 @@ class CleoRuntimeImpl implements CleoRuntime {
       // literal overload directly.
       const dualHandle =
         scope === 'project'
-          ? await this.openDualScopeFn('project', dbPath)
-          : await this.openDualScopeFn('global', dbPath);
+          ? await this.openDualScopeFn('project', dbPath, exodusCwd)
+          : await this.openDualScopeFn('global', dbPath, exodusCwd);
 
       // ── Publish only if THIS init is still current (invariant 2) ───────
       const current = this._registry.get(key);
@@ -1396,7 +1456,7 @@ class CleoRuntimeImpl implements CleoRuntime {
           throw new LivenessExhaustedError(scope, dbPath);
         }
 
-        const retryStore = await this.openEntry(scope, dbPath, depth + 1);
+        const retryStore = await this.openEntry(scope, dbPath, depth + 1, exodusCwd);
         initResolve(retryStore);
         return retryStore;
       }

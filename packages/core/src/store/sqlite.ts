@@ -39,7 +39,7 @@ import { getLogger } from '../logger.js';
 // with the legacy tasks-schema drizzle instance for E6 caller compatibility.
 import {
   _resetDualScopeDbCache,
-  openDualScopeDb,
+  type ProjectStore,
   resolveDualScopeDbPath,
 } from './dual-scope-db.js';
 import { withLock } from './lock.js';
@@ -51,6 +51,15 @@ import {
   reconcileJournal,
   tableExists,
 } from './migration-manager.js';
+// T12037: the tasks domain no longer owns a singleton — the path-keyed binding
+// registry does. This module contributes only `establishTasksSchema`.
+import {
+  bindProjectDomain,
+  boundProjectNative,
+  type DomainBinding,
+  releaseDomainBindings,
+  resetCleoRuntime,
+} from './ports/domain-binding.js';
 import {
   resolveConsolidatedJournalSiblings,
   resolveCorePackageMigrationsFolder,
@@ -106,12 +115,12 @@ function _getDrizzle(): typeof drizzleFn {
 export const SQLITE_SCHEMA_VERSION = '2.0.0';
 const SCHEMA_VERSION = SQLITE_SCHEMA_VERSION;
 
-/** Singleton state for lazy initialization. */
-let _db: NodeSQLiteDatabase | null = null;
-let _nativeDb: DatabaseSync | null = null;
-let _dbPath: string | null = null;
-/** Guard against concurrent initialization (async migration). */
-let _initPromise: Promise<NodeSQLiteDatabase> | null = null;
+// ── No singleton state (E6-L13 · T12037) ─────────────────────────────────────
+// This module used to own `_db` / `_nativeDb` / `_dbPath` / `_initPromise`.
+// All four are gone: caching, path keying, single-flight, and handle liveness
+// belong to the path-keyed binding registry in `ports/domain-binding.ts`,
+// layered on the CleoRuntime store registry (T12036). This module now owns
+// only the tasks domain's schema reconciliation.
 
 /**
  * Get the path to the SQLite database file that {@link getDb} opens.
@@ -262,23 +271,37 @@ function countBackupTasks(backupDb: DatabaseSync): number {
  * assert exactly one restore occurs under the shared first-open lock. Production
  * code MUST reach this solely via {@link getDb}.
  *
+ * ## E6-L13 (T12037) — restore signals, it does not re-point
+ *
+ * Before the ProjectStore cutover this function re-opened the restored file
+ * and re-pointed the module-global `_db` / `_nativeDb` singletons itself.
+ * With those singletons gone it now performs ONLY the file-level restore and
+ * returns `true`, and {@link bindTasksDomain} re-binds every project domain
+ * against the restored file. That is strictly safer: the brain/conduit
+ * bindings sharing the same `cleo.db` are invalidated too, where the old
+ * singleton re-point left them holding a closed handle.
+ *
  * @param nativeDb - The freshly-opened consolidated handle (its `tasks_tasks` is
  *   probed for emptiness; closed before the file is overwritten on the restore path).
  * @param dbPath - Absolute path to the consolidated project `cleo.db`.
  * @param cwd - Working directory used to resolve the `.cleo/backups/sqlite/` dir.
+ * @returns `true` when the DB file was replaced from a backup (callers MUST
+ *   re-bind); `false` when no recovery was needed or possible.
  * @internal
  * @task T5188
  * @task T11662
+ * @task T12037
  */
 export async function autoRecoverFromBackup(
   nativeDb: DatabaseSync,
   dbPath: string,
   cwd: string | undefined,
-): Promise<void> {
+): Promise<boolean> {
   // Lazy import openNativeDatabase at runtime to avoid any static-import
   // binding on sqlite-native.ts at module-init time.
   const { openNativeDatabase } = await import('./sqlite-native.js');
   const log = getLogger('sqlite');
+  let restored = false;
 
   try {
     // Count tasks in current database.
@@ -290,13 +313,13 @@ export async function autoRecoverFromBackup(
       | undefined;
     const taskCount = countResult?.cnt ?? 0;
 
-    if (taskCount > 0) return; // Database has data, no recovery needed
+    if (taskCount > 0) return false; // Database has data, no recovery needed
 
     // Database is empty — check for backups
     const backups = listSqliteBackups(cwd);
     if (backups.length === 0) {
       // No backups available — this is a genuinely new database
-      return;
+      return false;
     }
 
     // Check the newest backup for task count
@@ -317,7 +340,7 @@ export async function autoRecoverFromBackup(
 
     if (backupTaskCount < MIN_BACKUP_TASK_COUNT) {
       // Backup also has very few tasks — not a reliable recovery source
-      return;
+      return false;
     }
 
     // ── Destructive restore under the shared first-open lock (T11662) ─────────
@@ -385,19 +408,12 @@ export async function autoRecoverFromBackup(
           'Database auto-recovered from backup successfully.',
         );
 
-        // Re-open the restored database — update the native singleton.
-        // The dual-scope cache is now stale (its nativeDb was closed above);
-        // reset it so the singleton is re-established on next getDb().
+        // The dual-scope cache is now stale — its `DatabaseSync` was closed
+        // above and the file underneath it has been replaced. Evict it so the
+        // caller's re-bind opens a fresh connection to the restored file and
+        // re-runs migrations through the normal chokepoint path (T12037).
         _resetDualScopeDbCache();
-        const restoredNativeDb = openNativeDatabase(dbPath);
-        _nativeDb = restoredNativeDb;
-
-        // Re-run migrations on restored DB to ensure schema is current
-        const restoredDb = _getDrizzle()({ client: restoredNativeDb });
-        runMigrations(restoredNativeDb, restoredDb);
-
-        // Update the singleton drizzle instance
-        _db = restoredDb;
+        restored = true;
       },
       // Allow a generous stale window + retries: an exodus migration holding this
       // lock can take a while on a large fleet (matches on-open.ts), so a blocked
@@ -408,6 +424,7 @@ export async function autoRecoverFromBackup(
     // Auto-recovery failure is non-fatal — log and continue with empty DB
     log.error({ err, dbPath }, 'Auto-recovery from backup failed. Continuing with empty database.');
   }
+  return restored;
 }
 
 /**
@@ -429,124 +446,116 @@ export async function autoRecoverFromBackup(
  * initialization to complete (migrations are async).
  */
 export async function getDb(cwd?: string): Promise<NodeSQLiteDatabase> {
+  return (await bindTasksDomain(cwd)).db;
+}
+
+/**
+ * Bind the legacy tasks-schema to the {@link ProjectStore} for `cwd` and
+ * return the full binding (store + native handle + typed Drizzle instance).
+ *
+ * ## E6-L13 cutover (T12037)
+ *
+ * This is the ProjectStore-bound typed port that replaces the module-global
+ * singleton quartet (`_db` / `_nativeDb` / `_dbPath` / `_initPromise`) this
+ * facade used to own. Caching, path keying, single-flight, and handle
+ * liveness are now owned by {@link bindProjectDomain}; this function owns
+ * only the tasks domain's schema reconciliation.
+ *
+ * Three defect classes disappear with the singleton:
+ *
+ * - **Last-project-wins** — `_dbPath` tracked ONE project, so alternating
+ *   between two projects reset and re-migrated on every switch. Bindings are
+ *   now keyed by canonical `cleo.db` path.
+ * - **Cross-domain staleness** (T12019 / T12020) — the tasks singleton could
+ *   hold a `DatabaseSync` the brain domain had already closed. A binding is
+ *   valid only while the store instance it was established against is still
+ *   the live one, so an eviction invalidates it by identity.
+ * - **Band-aid reacquisition** (T12035) — the bounded retry loop that papered
+ *   over the above is deleted; the runtime registry handles liveness.
+ *
+ * Prefer this over {@link getDb} when you also need the native handle or an
+ * explicit store for a cross-domain transaction.
+ *
+ * @param cwd - Project working directory.
+ * @returns The live tasks-domain binding.
+ *
+ * @task T12037 (E6-L13)
+ */
+export async function bindTasksDomain(
+  cwd?: string,
+): Promise<DomainBinding<NodeSQLiteDatabase, ProjectStore>> {
   // T9961 / T9806: worktree-isolation guard — defense-in-depth for direct
-  // getDb() callers that bypass openCleoDb('project', cwd).
-  // Fires before any DB file is touched, matching the openCleoDb chokepoint.
+  // callers that bypass openCleoDb('project', cwd). Fires before any DB file
+  // is touched, matching the openCleoDb chokepoint.
   assertDbPathIsNotWorktreeResident('tasks', cwd);
 
-  // Resolve the cleo.db path via the dual-scope helper (same logic as
-  // openDualScopeDb uses internally) to drive the singleton key.
-  const requestedPath = resolveDualScopeDbPath('project', cwd);
+  // `establish` runs ONLY on a cold bind (first open, or after an eviction).
+  // Capturing that here keeps auto-recovery a first-open concern: on a warm
+  // cache hit we must not re-probe `tasks_tasks` and re-scan the backup
+  // directory, which `getDb` does hundreds of times per process.
+  let coldBind = false;
+  const binding = await bindProjectDomain('tasks', cwd, (nativeDb, store) => {
+    coldBind = true;
+    return establishTasksSchema(nativeDb, store);
+  });
 
-  // If singleton exists but points to different path, reset it
-  if (_db && _dbPath !== requestedPath) {
-    resetDbState();
+  if (!coldBind) return binding;
+
+  // ── T5188 auto-recovery (runs OUTSIDE establish) ──────────────────────────
+  // Recovery may REPLACE the `cleo.db` file, which invalidates every domain
+  // bound to it — not just this one. Running it here (rather than inside
+  // `establish`) lets us drop all project-domain bindings for the path and
+  // re-bind through the normal chokepoint, so brain/conduit never keep a
+  // handle to the pre-restore file. The re-bind cannot recurse: the restored
+  // DB is non-empty, so the emptiness probe short-circuits.
+  if (await autoRecoverFromBackup(binding.native, binding.store.dbPath, cwd)) {
+    releaseDomainBindings({ scope: 'project', dbPath: binding.store.dbPath });
+    return bindProjectDomain('tasks', cwd, establishTasksSchema);
   }
 
-  // Liveness guard (T12020): the tasks domain shares the consolidated project
-  // `cleo.db` `DatabaseSync` with the brain domain (both extract `$client` from
-  // the same `openDualScopeDb('project')` cache entry). A concurrent or deferred
-  // reset on the shared handle — e.g. another domain's `closeDb()` /
-  // `_resetDualScopeDbCache('project')`, or a fire-and-forget brain write firing
-  // across a test boundary — can close the underlying connection while THIS
-  // singleton still references it. Returning that stale (closed) handle makes
-  // the next query throw `database is not open`, which `observeBrain`'s cross-db
-  // session write-guard swallows and mistakes for "session absent" — silently
-  // nulling `sourceSessionId`. Detect the closed handle and re-derive from the
-  // live `openDualScopeDb` cache below. Mirrors the brain-domain guard in
-  // `getBrainDb` (memory-sqlite.ts, T11522).
-  if (_db && (_nativeDb === null || !_nativeDb.isOpen)) {
-    resetDbState();
+  return binding;
+}
+
+/**
+ * Reconcile the legacy tasks-domain schema against a consolidated `cleo.db`
+ * native handle and return the tasks-typed Drizzle instance.
+ *
+ * Idempotent by contract — {@link bindProjectDomain} re-runs it whenever the
+ * underlying store is evicted and re-opened.
+ *
+ * @param nativeDb - The shared consolidated connection.
+ * @param store - The {@link ProjectStore} that owns `nativeDb`.
+ * @returns The tasks-schema Drizzle handle.
+ *
+ * @task T12037 (E6-L13)
+ */
+function establishTasksSchema(nativeDb: DatabaseSync, store: ProjectStore): NodeSQLiteDatabase {
+  // Wrap the shared native handle with the legacy tasks-schema drizzle
+  // instance so all existing callers (schema.tasks, schema.sessions, …)
+  // query the consolidated cleo.db unchanged.
+  const db = _getDrizzle()({ client: nativeDb });
+
+  // Run legacy drizzle-tasks migrations against the shared cleo.db handle.
+  // During the E3→E6 transition these create the old `tasks` table family
+  // alongside the consolidated `tasks_tasks` tables.
+  runMigrations(nativeDb, db, store.dbPath);
+
+  // Migration SQL contains PRAGMA foreign_keys=ON statements. In test
+  // environments, disable FKs after migration so fixtures can insert
+  // without full referential integrity.
+  if (process.env.VITEST) {
+    nativeDb.exec('PRAGMA foreign_keys=OFF');
   }
 
-  if (_db) return _db;
+  // Seed schema version for new databases (no-op if already set).
+  nativeDb.exec(
+    `INSERT OR IGNORE INTO schema_meta (key, value) VALUES ('schemaVersion', '${SCHEMA_VERSION}')`,
+  );
+  nativeDb.exec(
+    `INSERT OR IGNORE INTO schema_meta (key, value) VALUES ('task_id_sequence', '{"counter":0,"lastId":"T000","checksum":"seed"}')`,
+  );
 
-  // If already initializing, wait for the in-flight init
-  if (_initPromise) return _initPromise;
-
-  _initPromise = (async () => {
-    // ── Dual-scope chokepoint delegation (T11521 · E6-L1) ─────────────────
-    // openDualScopeDb applies pragma SSoT, creates the directory, runs cleo-project
-    // migrations, and manages the singleton cache. We extract its native handle
-    // so we can re-wrap it with the legacy tasks-schema for caller compatibility.
-    //
-    // T12035: bounded reacquisition loop — the shared consolidated DatabaseSync
-    // can be closed after openDualScopeDb checks the cache but before this await
-    // resumes (another domain's closeDb / reset / brain write firing across a
-    // microtask gap). Re-open once; the cache evicts the dead entry and returns
-    // the current live handle. This transitional guard will be removed by T12036's
-    // runtime ownership cutover.
-    let nativeDb: DatabaseSync | null = null;
-    for (let attempt = 0; attempt < 2; attempt += 1) {
-      const dualHandle = await openDualScopeDb('project', cwd);
-
-      nativeDb = (dualHandle.db as { $client?: DatabaseSync }).$client ?? null;
-      if (!nativeDb) {
-        throw new Error(
-          'E6-L1: openDualScopeDb returned a handle without $client — ' +
-            'cannot extract DatabaseSync for legacy tasks-schema wrapping.',
-        );
-      }
-
-      if (nativeDb.isOpen) break;
-
-      // T12035: handle-liveness reacquisition — the shared consolidated
-      // DatabaseSync can be closed after openDualScopeDb checks the cache but
-      // before this await resumes (another domain's closeDb / reset / brain
-      // write firing across a microtask gap). Close this stale dual-scope
-      // handle — which evicts it from the singleton cache — so the next
-      // attempt opens a fresh, live connection. This transitional guard
-      // will be removed by T12036's runtime ownership cutover.
-      dualHandle.close();
-    }
-
-    if (!nativeDb?.isOpen) {
-      throw new Error('E6-L1: openDualScopeDb repeatedly returned a closed DatabaseSync handle.');
-    }
-
-    _nativeDb = nativeDb;
-    _dbPath = requestedPath;
-
-    // Wrap the native handle with the legacy tasks-schema drizzle instance.
-    // This allows all existing callers (using schema.tasks, schema.sessions, etc.)
-    // to continue querying the same DatabaseSync without change.
-    const db = _getDrizzle()({ client: nativeDb });
-
-    // Run legacy drizzle-tasks migrations against the shared cleo.db handle.
-    // During E3→E6 transition these create the old `tasks` table family alongside
-    // the new `tasks_tasks` tables from the consolidated schema migration.
-    runMigrations(nativeDb, db);
-
-    // Migration SQL contains PRAGMA foreign_keys=ON statements.
-    // In test environments, disable FKs after migration to allow test
-    // fixtures to insert data without full referential integrity.
-    if (process.env.VITEST) {
-      nativeDb.exec('PRAGMA foreign_keys=OFF');
-    }
-
-    // Seed schema version for new databases (no-op if already set)
-    nativeDb.exec(
-      `INSERT OR IGNORE INTO schema_meta (key, value) VALUES ('schemaVersion', '${SCHEMA_VERSION}')`,
-    );
-    nativeDb.exec(
-      `INSERT OR IGNORE INTO schema_meta (key, value) VALUES ('task_id_sequence', '{"counter":0,"lastId":"T000","checksum":"seed"}')`,
-    );
-
-    // Auto-recovery: detect empty database with available backups (T5188)
-    // Root cause: git-tracked WAL/SHM files get overwritten on branch switch,
-    // causing data loss when the WAL contained uncommitted writes.
-    await autoRecoverFromBackup(nativeDb, requestedPath, cwd);
-
-    // Set singleton only after migrations complete
-    _db = db;
-    return db;
-  })();
-
-  try {
-    return await _initPromise;
-  } finally {
-    _initPromise = null;
-  }
+  return db;
 }
 
 /**
@@ -607,12 +616,15 @@ const REQUIRED_SESSION_COLUMNS: RequiredColumn[] = [
  * @task T5185 - Retry+backoff for SQLITE_BUSY during migrations
  * @task T132 - Unified migration system
  */
-function runMigrations(nativeDb: DatabaseSync, db: NodeSQLiteDatabase): void {
+function runMigrations(nativeDb: DatabaseSync, db: NodeSQLiteDatabase, dbPath: string): void {
   const migrationsFolder = resolveMigrationsFolder();
 
-  // Safety backup before any migration work
-  if (tableExists(nativeDb, 'tasks') && _dbPath) {
-    createSafetyBackup(_dbPath);
+  // Safety backup before any migration work. `dbPath` is passed explicitly
+  // (T12037) — it used to be read from the module-global `_dbPath`, which was
+  // `null` on the auto-recovery re-migrate path and silently skipped the
+  // backup there.
+  if (tableExists(nativeDb, 'tasks')) {
+    createSafetyBackup(dbPath);
   }
 
   // Bootstrap baseline + reconcile stale journal entries.
@@ -672,29 +684,22 @@ function runMigrations(nativeDb: DatabaseSync, db: NodeSQLiteDatabase): void {
  * in `runMigrations → tableExists` for the very next `getDb()` caller.
  */
 export function closeDb(): void {
-  // Evict the PROJECT-scope dual-scope cache entries so the next openDualScopeDb()
-  // call opens a fresh DatabaseSync. Without this, the cache would return the
-  // stale handle whose nativeDb we're about to close below.
+  // Evict the PROJECT-scope dual-scope cache entries so the next bind opens a
+  // fresh DatabaseSync.
   //
   // E6-L4 (T11524): scope the eviction to `'project'`. The GLOBAL `cleo.db`
   // handle (nexus/signaldock/skills) now shares this same cache; an unscoped
   // reset here would close the global handle out from under an in-flight nexus
   // query (e.g. nexusSyncAll holding a handle while readProjectMeta opens + closes
   // a project accessor). Global teardown is the job of closeAllDatabases().
+  //
+  // E6-L13 (T12037): with the module-global singletons gone there is no
+  // private handle left to close here — the connection belongs to the
+  // dual-scope chokepoint, which `_resetDualScopeDbCache` closes. Dropping
+  // the project-domain bindings forces the next bind to re-establish the
+  // schema against whatever handle the chokepoint hands back.
   _resetDualScopeDbCache('project');
-  if (_nativeDb) {
-    try {
-      if (_nativeDb.isOpen) {
-        _nativeDb.close();
-      }
-    } catch {
-      // Ignore close errors — _resetDualScopeDbCache already closed it
-    }
-    _nativeDb = null;
-  }
-  _db = null;
-  _dbPath = null;
-  _initPromise = null;
+  releaseDomainBindings({ scope: 'project' });
 }
 
 /**
@@ -713,19 +718,7 @@ export function closeDb(): void {
  */
 export function resetDbState(): void {
   _resetDualScopeDbCache('project');
-  if (_nativeDb) {
-    try {
-      if (_nativeDb.isOpen) {
-        _nativeDb.close();
-      }
-    } catch {
-      // Ignore close errors — _resetDualScopeDbCache already closed it
-    }
-    _nativeDb = null;
-  }
-  _db = null;
-  _dbPath = null;
-  _initPromise = null;
+  releaseDomainBindings({ scope: 'project' });
 }
 
 /**
@@ -759,25 +752,39 @@ export function dbExists(cwd?: string): boolean {
 }
 
 /**
- * Get the underlying node:sqlite DatabaseSync instance.
+ * Get the underlying `node:sqlite` `DatabaseSync` for the tasks domain.
  * Useful for direct PRAGMA calls or raw SQL operations.
- * Returns null if the database hasn't been initialized.
+ *
+ * ## E6-L13 (T12037) — now path-keyed
+ *
+ * This used to return a module-global that tracked whichever project was
+ * opened LAST. It now resolves the binding for `cwd`, so two projects live in
+ * one process without clobbering each other. Returns `null` when the tasks
+ * domain has not been bound for that project yet (or its connection has since
+ * closed) — callers must `await` {@link getDb} / {@link bindTasksDomain} first,
+ * which every existing call site already does.
+ *
+ * @param cwd - Project working directory. Defaults to the ambient project.
+ *
+ * @deprecated Read `.native` from {@link bindTasksDomain} instead — it cannot
+ *   return `null` and needs no prior await. Removed in T12040 (E6-L16).
  */
-export function getNativeDb(): DatabaseSync | null {
-  return _nativeDb;
+export function getNativeDb(cwd?: string): DatabaseSync | null {
+  return boundProjectNative('tasks', cwd);
 }
 
 /**
- * Get the underlying node:sqlite DatabaseSync instance for tasks.db.
+ * Get the underlying `node:sqlite` `DatabaseSync` for the tasks domain.
  *
- * ## E6-L1 façade (T11521)
+ * Thin alias of {@link getNativeDb} retained for call-site clarity in code
+ * that predates the consolidated `cleo.db`.
  *
- * Thin facade delegating to {@link getNativeDb}. After the chokepoint
- * migration the native handle originates from {@link openDualScopeDb} —
- * callers receive the same `DatabaseSync` from `cleo.db`.
+ * @param cwd - Project working directory. Defaults to the ambient project.
+ *
+ * @deprecated See {@link getNativeDb}.
  */
-export function getNativeTasksDb(): DatabaseSync | null {
-  return _nativeDb;
+export function getNativeTasksDb(cwd?: string): DatabaseSync | null {
+  return boundProjectNative('tasks', cwd);
 }
 
 export type { NodeSQLiteDatabase };
@@ -814,4 +821,12 @@ export async function closeAllDatabases(): Promise<void> {
   } catch {
     /* module may not be loaded */
   }
+
+  // E6-L16 (T12040): the per-domain closers above drop bindings but each is
+  // scoped to its own domain (and `closeDb` only to the project scope). Full
+  // teardown means the runtime registry too — every project entry AND the
+  // global entry — otherwise a Windows temp-dir removal fails on a global
+  // `cleo.db` handle no domain closer owns. This is the ONLY caller that may
+  // tear down the whole runtime.
+  resetCleoRuntime();
 }

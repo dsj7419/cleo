@@ -75,7 +75,7 @@ export async function searchSimilar(
     '../store/memory-sqlite.js'
   );
   await getBrainDb(projectRoot);
-  const nativeDb = getBrainNativeDb();
+  const nativeDb = getBrainNativeDb(projectRoot);
   if (!nativeDb) return [];
 
   // Require sqlite-vec for KNN queries
