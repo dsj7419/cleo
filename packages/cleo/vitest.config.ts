@@ -13,8 +13,10 @@
  * @task T566
  */
 
+import { resolve } from 'node:path';
 import { defineConfig } from 'vitest/config';
 import { withWorkspaceSubpathAliases } from '../../vitest-workspace-resolver.js';
+import { CLEO_TEST_QUARANTINE } from './vitest.quarantine.js';
 
 export default defineConfig({
   test: {
@@ -24,6 +26,30 @@ export default defineConfig({
     environment: 'node',
     testTimeout: 60_000,
     hookTimeout: 60_000,
+    // T12067: pin the project root to the MONOREPO root.
+    //
+    // Vitest resolves a project's `include` (and each test's `process.cwd()`)
+    // against the project root, which defaults to the directory holding this
+    // config — `packages/cleo/`. The root-relative globs below then expanded to
+    // `packages/cleo/packages/cleo/src/**` and matched NOTHING, so the
+    // `@cleocode/cleo` project contributed ZERO test files to `pnpm test`,
+    // `pnpm test:pkg`, and the sharded CI job (`vitest run --shard=N/2`).
+    // 281 test files were silently skipped while CI reported green.
+    //
+    // The globs are not the bug — the missing `root` is. This package's tests
+    // are WRITTEN against the monorepo root, exactly as the header note says:
+    // they mock `/src/dispatch/engines/*.js`, call `join(process.cwd(),
+    // 'packages', 'cleo', …)`, and expect to be inside a CLEO project. Running
+    // them from `packages/cleo/` fails 74 files for reasons that have nothing
+    // to do with the code under test. Restoring the intended root fixes the
+    // discovery hole AND keeps every one of those tests valid.
+    //
+    // Third occurrence of the silent-skip class — cf. T10177 (`scripts`) and
+    // T11414 (`@cleocode/utils`). Those were a missing `projects:` entry; this
+    // one had the entry and still ran nothing, so
+    // `scripts/__tests__/vitest-project-include.test.mjs` now asserts every
+    // project resolves at least one file.
+    root: resolve(import.meta.dirname, '../..'),
     include: [
       'packages/cleo/src/**/*.test.ts',
       'packages/cleo/src/**/__tests__/*.test.ts',
@@ -47,6 +73,11 @@ export default defineConfig({
       '**/e2e/**',
       '**/*.integration.test.ts',
       '**/*-integration.test.ts',
+      // T12067: 73 files that were already failing when discovery was fixed —
+      // they had never run, so they had never gated a PR. Excluding them lets
+      // the other 199 files / 3428 tests start protecting the repo now.
+      // The list may only shrink; burn-down is T12072.
+      ...CLEO_TEST_QUARANTINE,
     ],
     // T11953 / DHQ-070: `withWorkspaceSubpathAliases` PREPENDS a generic
     // `@cleocode/<pkg>/<subpath>` → source resolver so cleo tests resolve any
@@ -399,6 +430,16 @@ export default defineConfig({
         import.meta.url,
       ).pathname,
       '@cleocode/core': new URL('../../packages/core/src/index.ts', import.meta.url).pathname,
+      // T12067: `cli/animation-bridge.ts` imports @cleocode/animations, which
+      // ships no root `main`/`exports` entry — so without this alias vitest
+      // fails to resolve the package and TEN test files fail to LOAD (not to
+      // assert) on a fresh checkout where `packages/animations/dist` has not
+      // been built. Invisible until now only because this project's tests
+      // never ran; locally it resolves via a dist left over from a full build.
+      '@cleocode/animations': new URL(
+        '../../packages/animations/src/index.ts',
+        import.meta.url,
+      ).pathname,
       '@cleocode/lafs': new URL('../../packages/lafs/src/index.ts', import.meta.url).pathname,
       // T9965: js-yaml + @iarna/toml are deps of @cleocode/caamp; in worktrees
       // they resolve through caamp/node_modules rather than root node_modules.
