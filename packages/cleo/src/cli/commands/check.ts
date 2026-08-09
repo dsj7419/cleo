@@ -463,6 +463,7 @@ const checkProvenanceCommand = defineCommand({
  *   Gate 6 (T11640): lint-no-bare-get-active-session.mjs — no NEW bare getActiveSession() callsites
  *   Gate 7 (T12041): lint-no-domain-db-singleton.mjs    — no NEW per-domain DB singleton cache
  *   Gate 8 (T12087): lint-vitest-memory-safe.mjs       — every vitest config bounds fork count + heap
+ *   Gate 9 (T12093): lint-workflow-cleo-commands.mjs   — no workflow invokes a nonexistent cleo verb
  *
  * Each gate is run in --check mode (baseline tolerance). A gate whose script
  * does not yet exist on disk is reported as "skipped" (non-blocking) to allow
@@ -555,6 +556,17 @@ const checkArchCommand = defineCommand({
         script: 'scripts/lint-vitest-memory-safe.mjs',
         description: 'Every vitest config spreads the memory-safe fork bounds (workers + heap cap)',
       },
+      {
+        // T12093: zero-tolerance. `release-prepare.yml` invoked two commands
+        // that never existed (`cleo version-bump`, `cleo release changelog`),
+        // each discovered only after a full ~20-minute green preflight — and
+        // the same break shipped in the template every consuming project
+        // renders. A manifest read answers it in 200 ms.
+        id: 'gate-9',
+        task: 'T12093',
+        script: 'scripts/lint-workflow-cleo-commands.mjs',
+        description: 'Every `cleo` command invoked by a workflow (or its template) exists',
+      },
     ] as const;
 
     const scriptArgs = strict ? ['--strict'] : ['--check'];
@@ -633,11 +645,12 @@ const checkArchCommand = defineCommand({
       },
     };
 
-    if (jsonOnly) {
-      process.stdout.write(`${JSON.stringify(envelope)}\n`);
-    } else {
-      process.stdout.write(`${JSON.stringify(envelope)}\n`);
+    // ADR-086: exactly one LAFS envelope on stdout, always — the `jsonOnly`
+    // branch used to duplicate this identical write, differing only in whether
+    // the human summary followed on stderr.
+    process.stdout.write(`${JSON.stringify(envelope)}\n`); // stdout-write-allowed: the single ADR-086 envelope for `check arch` // stdout-discipline-allowed: raw JSON envelope, not rendered output
 
+    if (!jsonOnly) {
       // Human-readable summary to stderr so JSON envelope stays clean on stdout
       process.stderr.write(`\n`);
       process.stderr.write(`SG-ARCH-SOLID Architectural Boundary Check (T9837)\n`);
