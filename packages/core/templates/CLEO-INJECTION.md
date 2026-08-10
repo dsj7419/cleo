@@ -148,6 +148,24 @@ CLEO has **three distinct relationship systems**. Do not conflate them.
 Memory context: `cleo memory digest --brief` gives a live project memory summary (default mode). Legacy file mode: set `brain.memoryBridge.mode = "file"` in config to restore `@.cleo/memory-bridge.md` injection.
 <!-- /CLEO-INJECTION:section=memory -->
 
+<!-- CLEO-INJECTION:section=data-location -->
+## Where the data lives — never read `.cleo/*.db` directly
+
+Store = **`.cleo/cleo.db`**; task rows are in PREFIXED tables (`tasks_tasks`, …).
+Three decoys make a HEALTHY project look corrupt:
+
+| Decoy | Reality |
+|-------|---------|
+| `.cleo/tasks.db`, small + months old | The pre-migration store, left under the old live name |
+| `.cleo/backups/sqlite/tasks-<ts>.db`, ~100× bigger | Snapshots **of `cleo.db`**; `tasks-` is a legacy label |
+| bare `tasks` table, 0 rows | Empty relic beside the populated `tasks_tasks` |
+
+A 400 KB `tasks.db` beside 58 MB `tasks-*.db` is the NORMAL migrated layout — not
+truncation, not rotation, not `llmtxt.db`. `cleo doctor superseded-store` proves
+which DB is real by counting rows in both; `briefing`/`focus` read it already.
+<!-- /CLEO-INJECTION:section=data-location -->
+
+
 <!-- CLEO-INJECTION:section=nexus -->
 ## Nexus — when to use which scope
 
