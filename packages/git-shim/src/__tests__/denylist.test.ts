@@ -13,6 +13,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   findDeniedOp,
+  porcelainDestinations,
   protectedPorcelainDestinations,
   protectedPushRefspec,
   RESTRICTED_ROLES,
@@ -246,6 +247,11 @@ describe('every-ref pushes and global options (T13533)', () => {
       'Done',
     ].join('\n');
     expect(protectedPorcelainDestinations(out)).toEqual(['refs/heads/main', 'refs/heads/master']);
+    expect(porcelainDestinations(out)).toEqual([
+      'refs/heads/task/T1',
+      'refs/heads/main',
+      'refs/heads/master',
+    ]);
     expect(
       protectedPorcelainDestinations('To /r\n*\trefs/heads/a:refs/heads/a\t[new branch]\n'),
     ).toEqual([]);

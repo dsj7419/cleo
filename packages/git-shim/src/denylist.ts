@@ -360,12 +360,24 @@ const GLOBAL_FLAGS = new Set([
  * @task T13535
  */
 export function protectedPorcelainDestinations(porcelain: string): string[] {
-  const hits: string[] = [];
+  return porcelainDestinations(porcelain).filter((dst) =>
+    PROTECTED_PUSH_BRANCHES.has(dst.replace(/^refs\/heads\//, '')),
+  );
+}
+
+/**
+ * Every destination ref in `git push --porcelain` output.
+ *
+ * @param porcelain - The dry run's stdout.
+ * @returns The destination refs, in order.
+ * @task T13535
+ */
+export function porcelainDestinations(porcelain: string): string[] {
+  const out: string[] = [];
   for (const line of porcelain.split('\n')) {
     const ref = line.split('\t')[1];
     if (ref === undefined || !ref.includes(':')) continue;
-    const dst = ref.slice(ref.lastIndexOf(':') + 1);
-    if (PROTECTED_PUSH_BRANCHES.has(dst.replace(/^refs\/heads\//, ''))) hits.push(dst);
+    out.push(ref.slice(ref.lastIndexOf(':') + 1));
   }
-  return hits;
+  return out;
 }

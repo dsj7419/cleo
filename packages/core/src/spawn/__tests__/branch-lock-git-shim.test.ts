@@ -115,6 +115,26 @@ describe('ensureGitShimDir (T13522)', () => {
         encoding: 'utf-8',
       });
       expect(ok.status, ok.stderr).toBe(0);
+      // A non-fast-forward task push reaches git's own rejection, not a shim refusal.
+      git(['reset', '-q', '--hard', 'HEAD~1']);
+      git([
+        '-c',
+        'user.email=t@t',
+        '-c',
+        'user.name=t',
+        'commit',
+        '-q',
+        '--allow-empty',
+        '-m',
+        'T1 other',
+      ]);
+      const nff = spawnSync(launcher, ['push', 'origin', 'task/T1'], {
+        cwd: root,
+        env,
+        encoding: 'utf-8',
+      });
+      expect(nff.status).not.toBe(77);
+      expect(nff.stderr).not.toContain('[git-shim]');
       // A harmless command still reaches the real git.
       const status = spawnSync(launcher, ['status', '--short'], {
         cwd: root,

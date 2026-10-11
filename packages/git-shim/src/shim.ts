@@ -59,6 +59,7 @@ import {
 } from './boundary.js';
 import {
   findDeniedOp,
+  porcelainDestinations,
   protectedPorcelainDestinations,
   RESTRICTED_ROLES,
   splitGitArgv,
@@ -367,7 +368,8 @@ function dryRunPushDenial(
     [...globalArgs, 'push', '--dry-run', '--porcelain', '--no-verify', ...args],
     { encoding: 'utf8', env: { ...process.env, GIT_TERMINAL_PROMPT: '0' } },
   );
-  const hits = protectedPorcelainDestinations(r.stdout ?? '');
+  const stdout = r.stdout ?? '';
+  const hits = protectedPorcelainDestinations(stdout);
   if (hits.length > 0) {
     return {
       subcommand: 'push',
@@ -375,7 +377,10 @@ function dryRunPushDenial(
       reason: `the push would update the protected branch ${hits.join(', ')} — push your task branch only`,
     };
   }
-  if (r.status !== 0) {
+  // A dry run that resolved its refs but failed (e.g. non-fast-forward) touches
+  // no protected branch: let the real push fail with git's own message. Only a
+  // dry run that resolved nothing is refused (fail closed).
+  if (r.status !== 0 && porcelainDestinations(stdout).length === 0) {
     const detail = (r.stderr ?? '').trim().split('\n').pop() ?? '';
     return {
       subcommand: 'push',
@@ -486,7 +491,8 @@ function main(): void {
   // ---------------------------------------------------------------------------
   const denied =
     findDeniedOp(subcommand, remainingArgs) ??
-    dryRunPushDenial(subcommand, remainingArgs, globalArgs);
+    // An audited override skips the dry run's extra network round trip.
+    (allowBranchOps || allowGit ? null : dryRunPushDenial(subcommand, remainingArgs, globalArgs));
   if (denied && !allowBranchOps && !allowGit) {
     const worktreeRoot = process.env['CLEO_WORKTREE_ROOT'] ?? '(unknown)';
     emitBlockedError(
