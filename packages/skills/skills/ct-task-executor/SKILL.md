@@ -135,7 +135,12 @@ A database or service started for a test run must not outlive it. A `docker run`
 
 ### Post-Execution
 
-1. **Verify against criteria** - Check each acceptance criterion
+1. **Verify against criteria** - Check each acceptance criterion. `cleo verify <id> --run`
+   executes the typed gates; `--run --req REQ-A,REQ-B` runs only those gates and leaves
+   the other gates' cached passes as they are. A typed gate whose command is wrong (an
+   absolute path into a removed worktree, say) is fixed in place with
+   `cleo req replace <id> <REQ-ID> --gate '<json>'`. Prefer a repo-relative command and
+   `cwd`; a locked stage also needs `--reason`. Then verify that gate again.
 2. **Document completion** - Write detailed output file
 3. **Update manifest** - Append summary entry
 4. **Complete task** - Mark task done in task system

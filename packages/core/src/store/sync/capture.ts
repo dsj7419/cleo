@@ -46,7 +46,7 @@
 
 import { randomUUID } from 'node:crypto';
 import type { DatabaseSync, StatementSync } from 'node:sqlite';
-import type { RowIdentityRef, TableScope } from '@cleocode/contracts';
+import type { RowIdentityRef, RowIdentitySpec, TableScope } from '@cleocode/contracts';
 import {
   BIRTH_FP_COLUMN,
   rowIdentityColumns,
@@ -82,6 +82,14 @@ export interface CaptureTableDef {
   readonly refs: ReadonlyMap<string, { table: string; key: string }>;
   /** Rows never change: undo keeps only `rk` and `uid`. */
   readonly appendOnly: boolean;
+  /**
+   * The table's INTEGER PRIMARY KEY (a rowid alias numbered from 1 on every
+   * device, T12896), when it is a local key: kept out of {@link columns}, so
+   * it is never captured, sealed, hashed or written from the wire, and a
+   * received row gets the next local id. Absent when the table has none, or
+   * when it is part of a natural key.
+   */
+  readonly localRowid?: string;
 }
 
 /** One generated trigger. */
@@ -127,9 +135,15 @@ export function captureTableDef(
   const spec = rowIdentitySpec(scope, table);
   const cls = classifyTable(scope, table);
   if (!spec || cls.kind !== 'entry' || !hasTable(db, table)) return undefined;
-  const info = db.prepare(`PRAGMA main.table_info(${q(table)})`).all() as Array<{ name: string }>;
+  const info = db.prepare(`PRAGMA main.table_info(${q(table)})`).all() as Array<{
+    name: string;
+    type: string;
+    pk: number;
+  }>;
   const overrides = cls.entry.columns ?? [];
   const localOnly = new Set(overrides.filter((o) => o.class === 'local-only').map((o) => o.column));
+  const localRowid = localRowidColumn(info, spec);
+  if (localRowid) localOnly.add(localRowid);
   const wholeSecret = cls.class === 'portable-secret';
   const secret = new Set(
     wholeSecret
@@ -155,7 +169,25 @@ export function captureTableDef(
     secret,
     refs,
     appendOnly: (spec.content?.length ?? 0) > 0,
+    ...(localRowid ? { localRowid } : {}),
   };
+}
+
+/**
+ * The table's INTEGER PRIMARY KEY column when it is a local key (T12896): a
+ * single-column primary key declared `INTEGER` (a rowid alias, so AUTOINCREMENT
+ * or not it numbers from 1 on every device), unless a natural key hashes it.
+ */
+function localRowidColumn(
+  info: ReadonlyArray<{ name: string; type: string; pk: number }>,
+  spec: RowIdentitySpec,
+): string | undefined {
+  const pk = info.filter((c) => c.pk > 0);
+  if (pk.length !== 1) return undefined;
+  const col = pk[0] as { name: string; type: string };
+  if (col.type.toUpperCase() !== 'INTEGER') return undefined;
+  if (spec.kind === 'natural' && spec.key.includes(col.name)) return undefined;
+  return col.name;
 }
 
 /**
@@ -234,13 +266,18 @@ function fullImage(def: CaptureTableDef, row: string, liveIdentity: boolean): st
  * - `update`: a U image of every updatable column, `[null, after]`. The
  *   before slot is JSON null because only the content hash was kept; a
  *   trigger's before is always an `enc()` text, so null marks a repair.
- *   Secret columns are left out (their `shash` is a follow-up).
+ *   Secret columns are left out (their `shash` is a follow-up). With
+ *   `columns`, only those of them (the rebind reconcile's touched fields).
  */
 export function repairImageSql(
   def: CaptureTableDef,
   row: string,
+  columns?: ReadonlySet<string>,
 ): { readonly rk: string; readonly insert: string; readonly update: string } {
-  const updatable = def.columns.filter((c) => !def.identity.includes(c) && !def.secret.has(c));
+  const updatable = def.columns.filter(
+    (c) =>
+      !def.identity.includes(c) && !def.secret.has(c) && (columns === undefined || columns.has(c)),
+  );
   return {
     rk: rkExpr(def, row),
     insert: fullImage(def, row, false),
@@ -640,7 +677,9 @@ export type FrameKind =
   | 'exodus'
   | 'import'
   | 'remint'
-  | 'rekey';
+  | 'rekey'
+  /** The rebind reconcile's re-emitted fields (§1.5 N7): sealed as `repair`, `via: 'rebind'` (T13278). */
+  | 'rebind';
 
 /** Frames whose undo is dropped at once (D1). */
 const NO_UNDO_KINDS: ReadonlySet<string> = new Set(['apply', 'rebase']);
