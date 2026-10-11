@@ -25,7 +25,7 @@
  */
 
 import { execFileSync } from 'node:child_process';
-import { createHash } from 'node:crypto';
+import { join, resolve } from 'node:path';
 import type {
   AcRow,
   DoneNextStep,
@@ -45,11 +45,10 @@ import { type EngineResult, engineSuccess } from '../engine-result.js';
 import { CleoError } from '../errors.js';
 import { cleoErrorToEngineResult } from '../errors-to-engine.js';
 import { getProjectRoot } from '../paths.js';
+import { readProjectInfoAtDirectorySync } from '../project-scope.js';
 import { isCiDocumentPath, readCiChecks, readCiSatisfies } from '../release/ci-evidence.js';
 
 import { getTaskAccessor } from '../store/data-accessor.js';
-import { acTextHash } from './ac-identity.js';
-import { acItemToText } from './ac-table.js';
 import {
   changedPathsSinceDefault,
   planScopedTestRun,
@@ -68,7 +67,7 @@ import {
   classifyEvidenceTask,
   extractTaskAcFilesWithProvenance,
 } from './evidence.js';
-import { extractTypedGates } from './gate-runner.js';
+import { extractTypedGates, typedResultStaleReason } from './gate-runner.js';
 import { changedTestFiles } from './test-run-binding.js';
 import { captureTreeHash, computeCacheKey, readCacheEntry } from './tool-cache.js';
 import { captureEnvFingerprint, captureResourceEnv } from './tool-cache-env.js';
@@ -389,20 +388,27 @@ function normaliseRepoPath(path: string): string {
 }
 
 /** Stored typed-gate results, aligned with criteria by acceptance index. */
-function planTypedGates(task: Task, rows: readonly AcRow[]): DonePlanTypedGate[] {
+function planTypedGates(
+  task: Task,
+  rows: readonly AcRow[],
+  storeRoot: string,
+): DonePlanTypedGate[] {
   const results = task.verification?.gateResults ?? [];
+  const projectRoot = resolve(storeRoot);
+  const projectId = readProjectInfoAtDirectorySync(
+    projectRoot,
+    join(projectRoot, '.cleo'),
+  ).projectId;
+  const owner = projectId ? { projectId, projectRoot } : undefined;
   return extractTypedGates(task.acceptance ?? []).map(({ gate, originalIndex }) => {
     const stored = results.find((r) => r.index === originalIndex);
     const row = rows[originalIndex];
-    // A pass bound to an older criterion or gate definition (`cleo req
-    // replace`, `update --acceptance`) is refused by `cleo complete` as stale
-    // (gate-runner revalidation), so the plan must not read it as a pass.
+    // A pass `cleo complete` would refuse as stale (an older criterion or gate
+    // definition, another task, owner or criterion id) is not a pass in the
+    // plan: the one predicate completion's revalidation uses (T13502).
     const stale =
       stored?.result === 'pass' &&
-      (!stored.binding ||
-        row === undefined ||
-        stored.binding.criterionHash !== acTextHash(row.text) ||
-        stored.binding.gateHash !== createHash('sha256').update(acItemToText(gate)).digest('hex'));
+      (row === undefined || typedResultStaleReason(stored, task, gate, row, owner) !== null);
     const status: DonePlanTypedGate['status'] =
       stored === undefined || stored.result === 'skipped' || stale
         ? 'not-run'
@@ -884,7 +890,7 @@ export async function deriveTaskEvidence(
   if (qaRunChecks.length > 0) {
     testRunBlockers.push(qaRunNeededBlocker(taskId, root, qaRunChecks));
   }
-  const typedGates = planTypedGates(task, rows);
+  const typedGates = planTypedGates(task, rows, storeRoot);
   const acMapping = mapCriteria(task, rows, typedGates, changeSet, pending, satisfies);
 
   const gates: DonePlanGate[] = policy.requiredGates.map((gate) => {

@@ -872,6 +872,51 @@ export function createTaskGateReceipt(
 }
 
 /**
+ * Why a stored typed result no longer stands for `gate` on `task`, or null
+ * when its result, kind, REQ-ID and binding (task, owner, criterion id,
+ * criterion text hash, gate definition hash) all match. The one predicate
+ * `cleo complete`'s revalidation and `cleo done --plan` share (T13502), so
+ * the plan never reads as a pass what completion refuses.
+ *
+ * @param result - The stored typed result for the gate's index.
+ * @param task - The task (its id).
+ * @param gate - The gate at that index now.
+ * @param row - The AC row at that index now.
+ * @param owner - The project identity and root completing; omitted, the owner is not compared.
+ * @param requirePassing - True when only a pass may stand (completion, planning).
+ * @returns The reason, worded to follow "Typed requirement <id> ", or null.
+ * @task T13502
+ */
+export function typedResultStaleReason(
+  result: AcceptanceGateResult,
+  task: Pick<Task, 'id'>,
+  gate: AcceptanceGate,
+  row: Pick<AcRow, 'id' | 'text'>,
+  owner?: { projectId: string; projectRoot: string },
+  requirePassing = true,
+): string | null {
+  const binding = result.binding;
+  if (
+    (requirePassing && result.result !== 'pass') ||
+    !binding ||
+    result.kind !== gate.kind ||
+    result.req !== gate.req
+  )
+    return 'lacks a passing bound result';
+  if (
+    binding.taskId !== task.id ||
+    (owner !== undefined &&
+      (binding.identity.projectId !== owner.projectId ||
+        binding.identity.projectRoot !== owner.projectRoot)) ||
+    binding.criterionId !== row.id ||
+    binding.criterionHash !== acTextHash(row.text) ||
+    binding.gateHash !== createHash('sha256').update(acItemToText(gate)).digest('hex')
+  )
+    return 'binding is stale or belongs to another owner';
+  return null;
+}
+
+/**
  * Revalidate persisted typed results against current canonical task and input state.
  * @param task - Current task read under the caller's transaction ownership.
  * @param criteria - Current normalized AC rows from that transaction.
@@ -913,25 +958,16 @@ export async function revalidateTaskGateResults(
       if (matches.length !== 1)
         throw new Error(`Typed requirement ${gate.req ?? index} has no unique verified result`);
       const result = acceptanceGateResultSchema.parse(matches[0]);
-      const binding = result.binding;
-      if (
-        (requirePassing && result.result !== 'pass') ||
-        !binding ||
-        result.kind !== gate.kind ||
-        result.req !== gate.req
-      )
-        throw new Error(`Typed requirement ${gate.req ?? index} lacks a passing bound result`);
-      if (
-        binding.taskId !== task.id ||
-        binding.identity.projectId !== execution.identity.projectId ||
-        binding.identity.projectRoot !== root ||
-        binding.criterionId !== rows[index]!.id ||
-        binding.criterionHash !== acTextHash(rows[index]!.text) ||
-        binding.gateHash !== createHash('sha256').update(acItemToText(gate)).digest('hex')
-      )
-        throw new Error(
-          `Typed requirement ${gate.req ?? index} binding is stale or belongs to another owner`,
-        );
+      const stale = typedResultStaleReason(
+        result,
+        task,
+        gate,
+        rows[index]!,
+        { projectId: execution.identity.projectId, projectRoot: root },
+        requirePassing,
+      );
+      if (stale) throw new Error(`Typed requirement ${gate.req ?? index} ${stale}`);
+      const binding = result.binding!;
       // A refused command is bound without an invocation (T12718 review), so it
       // revalidates as the unmet `error` it was recorded as.
       const { invocation } = resolveInvocation(gate, tree, env);
