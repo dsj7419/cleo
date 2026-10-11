@@ -488,7 +488,7 @@ export async function validateGateVerify(
     if (typedWrite && !executeTyped && !allowCachedGates)
       return engineError(
         'E_GATE_CACHE_DISABLED',
-        `this project sets evidence.allowCachedGates to false, so typed gates cannot be read from the cache; pass --run-typed to execute them on this write (${params.gateEvidence ? `cleo done ${taskId} --run-typed` : `cleo verify ${taskId} --gate <g> --evidence <atoms> --run-typed`})`,
+        `this project sets evidence.allowCachedGates to false, so typed gates cannot be read from the cache; re-run the same command with --run-typed to execute them on this write`,
       );
     const initialAcRows = typedWrite ? await accessor.getAcRows(taskId) : [];
     let typedExecution: OperationExecutionContext | undefined;

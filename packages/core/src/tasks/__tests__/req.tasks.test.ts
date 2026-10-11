@@ -1220,15 +1220,15 @@ describe('typed requirement persistence', () => {
       expect(noRun.success).toBe(false);
       if (noRun.success) throw new Error('expected a refusal');
       expect(noRun.error.code).toBe('E_GATE_CACHE_DISABLED');
-      expect(noRun.error.message).toContain(
-        'cleo verify T121 --gate <g> --evidence <atoms> --run-typed',
-      );
-      // The `cleo done` path names its own flag.
+      expect(noRun.error.message).toContain('re-run the same command with --run-typed');
+      // The multi-gate form (cleo done, complete-ci) gets the same caller-neutral hint.
       const done = await validateGateVerify(root, {
         taskId: 'T121',
         gateEvidence: { cleanupDone: 'note:explicit synthetic verification' },
       });
-      expect(done.success ? '' : done.error.message).toContain('cleo done T121 --run-typed');
+      expect(done.success ? '' : done.error.message).toContain(
+        're-run the same command with --run-typed',
+      );
       const before = runs();
       const executed = await write();
       expect(executed.success, executed.success ? undefined : executed.error.message).toBe(true);
