@@ -11,7 +11,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { findDeniedOp, RESTRICTED_ROLES } from '../denylist.js';
+import { findDeniedOp, protectedPushRefspec, RESTRICTED_ROLES } from '../denylist.js';
 
 describe('RESTRICTED_ROLES', () => {
   it('includes worker, lead, subagent', () => {
@@ -156,5 +156,26 @@ describe('findDeniedOp', () => {
         expect(findDeniedOp(sub, [...args])).toBeNull();
       });
     }
+  });
+});
+
+describe('push to a protected branch (T13522)', () => {
+  it('denies a push whose destination is main or master, in every refspec spelling', () => {
+    for (const args of [
+      ['origin', 'main'],
+      ['origin', 'HEAD:main'],
+      ['origin', 'task/T1:refs/heads/main'],
+      ['-u', 'origin', '+master'],
+    ]) {
+      expect(findDeniedOp('push', args)?.subcommand).toBe('push');
+    }
+  });
+
+  it('allows pushing a task branch, and names the offending refspec', () => {
+    expect(findDeniedOp('push', ['-u', 'origin', 'task/T13522'])).toBeNull();
+    expect(findDeniedOp('push', ['origin', 'main-fix'])).toBeNull();
+    expect(protectedPushRefspec(['origin', 'HEAD:main'])).toBe('HEAD:main');
+    // the first positional is the remote, never a destination
+    expect(protectedPushRefspec(['main'])).toBeNull();
   });
 });

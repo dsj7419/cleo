@@ -207,6 +207,17 @@ export const GIT_OP_DENYLIST: ReadonlyArray<DeniedGitOp> = [
  * @returns The matching {@link DeniedGitOp} if denied, or null if allowed.
  */
 export function findDeniedOp(subcommand: string, args: string[]): DeniedGitOp | null {
+  if (subcommand === 'push') {
+    const spec = protectedPushRefspec(args);
+    if (spec !== null) {
+      return {
+        subcommand: 'push',
+        flag: spec,
+        reason:
+          'agents MUST NOT push to a protected branch (main/master) — push your task branch; the orchestrator merges through a PR',
+      };
+    }
+  }
   for (const entry of GIT_OP_DENYLIST) {
     if (entry.subcommand !== subcommand) continue;
 
@@ -219,6 +230,34 @@ export function findDeniedOp(subcommand: string, args: string[]): DeniedGitOp | 
     if (args.includes(entry.flag)) {
       return entry;
     }
+  }
+  return null;
+}
+
+/** Branches a restricted role may never push to (T13522). */
+export const PROTECTED_PUSH_BRANCHES: ReadonlySet<string> = new Set(['main', 'master']);
+
+/**
+ * The refspec of a `git push` that targets a protected branch, or `null`.
+ * The first positional argument is the remote; each later one is a refspec
+ * whose destination (`src:dst`, or the name itself) is checked, ignoring a
+ * leading `+` and `refs/heads/`.
+ *
+ * @param args - The arguments after `push`.
+ * @returns The offending refspec, or `null` when none targets a protected branch.
+ * @example
+ * ```ts
+ * protectedPushRefspec(['origin', 'HEAD:main']); // 'HEAD:main'
+ * protectedPushRefspec(['origin', 'task/T1']);   // null
+ * ```
+ * @task T13522
+ */
+export function protectedPushRefspec(args: readonly string[]): string | null {
+  const positional = args.filter((a) => !a.startsWith('-'));
+  for (const spec of positional.slice(1)) {
+    const dst = spec.includes(':') ? spec.slice(spec.lastIndexOf(':') + 1) : spec;
+    const branch = dst.replace(/^\+/, '').replace(/^refs\/heads\//, '');
+    if (PROTECTED_PUSH_BRANCHES.has(branch)) return spec;
   }
   return null;
 }
