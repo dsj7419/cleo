@@ -186,6 +186,27 @@ describe('index freshness (T12316)', () => {
     expect((await assessNexusFreshnessForQuery(repo)).freshness.status).toBe('fresh');
   });
 
+  it('never runs a full rebuild inline: too many stale files, or a pipeline fallback (T13523)', async () => {
+    await runNexusAnalysis({ repoPath: repo });
+    for (const name of ['a', 'd', 'e']) await put(`src/${name}.ts`, `export const ${name}2 = 1;\n`);
+    const many = await ensureNexusIndexFresh(repo, ON);
+    expect(many.freshness.autoRefresh).toMatchObject({ refreshed: false, durationMs: 0 });
+    expect(many.freshness.autoRefresh?.reason).toMatch(
+      /3 of 6 files are stale, which needs a full rebuild/,
+    );
+    // One stale file, but no parse cache: the pipeline would fall back to a full parse.
+    await runNexusAnalysis({ repoPath: repo });
+    native.exec('DELETE FROM _nexus_parse_cache');
+    await put('src/a.ts', 'export const a3 = 1;\n');
+    const fallback = await ensureNexusIndexFresh(repo, ON);
+    expect(fallback.freshness.status).toBe('stale');
+    expect(fallback.freshness.autoRefresh?.refreshed).toBe(false);
+    expect(fallback.freshness.autoRefresh?.reason).toMatch(
+      /a full rebuild is required \(no parse cache was committed.*\); run cleo nexus analyze/,
+    );
+    expect((await assessNexusIndexFreshness(repo)).status).toBe('stale');
+  });
+
   it('judges symbol files identified only after the query ran', async () => {
     await runNexusAnalysis({ repoPath: repo });
     await put('src/b.ts', 'export const beta = () => 0;\n');

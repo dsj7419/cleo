@@ -333,6 +333,12 @@ export async function ensureNexusIndexFresh(
       `${before.staleFileCount} stale files exceed nexus.autoRefresh.maxFiles = ${effective.maxFiles}; ` +
         'answered from the stale index',
     );
+  // T13523: a read query never runs a full rebuild inline; the pipeline also
+  // refuses one it would fall back to (requireIncremental below).
+  if (before.fileCount > 0 && before.staleFileCount / before.fileCount > FULL_REBUILD_RATIO)
+    return skip(
+      `${before.staleFileCount} of ${before.fileCount} files are stale, which needs a full rebuild; answered from the stale index (run ${NEXUS_REFRESH_COMMAND})`,
+    );
   const db = await getNexusDb(projectRoot);
   const estimate = estimateRefreshMs(readRunCost(db), before.staleFileCount, before.fileCount);
   // T13523: with no recorded cost there is no bound on the run (a full
@@ -355,6 +361,7 @@ export async function ensureNexusIndexFresh(
       repoPath: manifest?.sourceRoot ?? projectRoot,
       ...(manifest ? { includedRepositories: manifest.includedRepositories } : {}),
       parserLimits: { signal: AbortSignal.timeout(effective.budgetMs) },
+      requireIncremental: true,
     });
     const after = await assessWithStaleSet(projectRoot);
     return {
