@@ -365,16 +365,36 @@ export async function runRefreshInWorker(
   const heapMb =
     options.heapMb ?? Math.max(64, Math.floor(getHeapStatistics().heap_size_limit / 2 ** 20));
   const { Worker } = await import('node:worker_threads');
+  // T13539: ends a stall the phase-boundary abort cannot reach (a synchronous
+  // loop, a hung native call). shortcut: a worker killed mid-publish leaves its
+  // SQLite handle open until this process exits; a long-lived host would need
+  // the refresh in a child process instead.
+  const killAfterMs = input.budgetMs + Math.max(1_000, input.budgetMs / 10);
   return new Promise<NexusRefreshSummary>((resolve, reject) => {
-    let summary: NexusRefreshSummary | undefined;
     const worker = new Worker(entry, {
       workerData: input,
       resourceLimits: { maxOldGenerationSizeMb: heapMb },
     });
+    const timer = setTimeout(() => {
+      reject(
+        new Error(
+          `the refresh did not finish within ${Math.round(killAfterMs)} ms; run ${NEXUS_REFRESH_COMMAND}`,
+        ),
+      );
+      void worker.terminate();
+    }, killAfterMs);
+    const settle = (): void => {
+      clearTimeout(timer);
+      void worker.terminate();
+    };
+    // T13539: the result is published once posted; a handle left open in the
+    // worker must not hold the query.
     worker.on('message', (message: NexusRefreshSummary) => {
-      summary = message;
+      settle();
+      resolve(message);
     });
     worker.on('error', (error: Error & { code?: string }) => {
+      settle();
       reject(
         error.code === 'ERR_WORKER_OUT_OF_MEMORY'
           ? new Error(
@@ -383,9 +403,10 @@ export async function runRefreshInWorker(
           : error,
       );
     });
+    // A no-op once settled; otherwise the worker ended without a result.
     worker.on('exit', (code) => {
-      if (summary) resolve(summary);
-      else reject(new Error(`the refresh worker exited with code ${code} and no result`));
+      clearTimeout(timer);
+      reject(new Error(`the refresh worker exited with code ${code} and no result`));
     });
   });
 }
