@@ -13,9 +13,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   findDeniedOp,
-  implicitProtectedPush,
+  protectedPorcelainDestinations,
   protectedPushRefspec,
-  pushRefspecs,
   RESTRICTED_ROLES,
   splitGitArgv,
 } from '../denylist.js';
@@ -218,13 +217,24 @@ describe('every-ref pushes and global options (T13533)', () => {
     expect(splitGitArgv([])).toEqual({ global: [], subcommand: undefined, args: [] });
   });
 
-  it('judges a bare push by the current branch and its upstream', () => {
-    expect(pushRefspecs(['origin'])).toEqual([]);
-    expect(pushRefspecs(['-u', 'origin', 'task/T1'])).toEqual(['task/T1']);
-    expect(implicitProtectedPush('main', null)).toBe('main');
-    expect(implicitProtectedPush('task/T1', 'origin/master')).toBe('master');
-    expect(implicitProtectedPush('task/T1', 'origin/task/T1')).toBeNull();
-    expect(implicitProtectedPush('task/T1', null)).toBeNull();
-    expect(implicitProtectedPush(null, null)).toBeNull();
+  it('refuses a pattern destination and sees past --attr-source (T13535)', () => {
+    expect(findDeniedOp('push', ['origin', 'refs/heads/*:refs/heads/*'])?.subcommand).toBe('push');
+    expect(splitGitArgv(['--attr-source', 'HEAD', 'push', '--all', 'origin']).subcommand).toBe(
+      'push',
+    );
+  });
+
+  it('reads protected destinations from a porcelain dry run', () => {
+    const out = [
+      'To /tmp/remote.git',
+      '*\trefs/heads/task/T1:refs/heads/task/T1\t[new branch]',
+      '=\trefs/heads/x:refs/heads/main\t[up to date]',
+      '-\t:refs/heads/master\t[deleted]',
+      'Done',
+    ].join('\n');
+    expect(protectedPorcelainDestinations(out)).toEqual(['refs/heads/main', 'refs/heads/master']);
+    expect(
+      protectedPorcelainDestinations('To /r\n*\trefs/heads/a:refs/heads/a\t[new branch]\n'),
+    ).toEqual([]);
   });
 });

@@ -59,8 +59,7 @@ import {
 } from './boundary.js';
 import {
   findDeniedOp,
-  implicitProtectedPush,
-  pushRefspecs,
+  protectedPorcelainDestinations,
   RESTRICTED_ROLES,
   splitGitArgv,
 } from './denylist.js';
@@ -347,33 +346,44 @@ function buildAuditRecord(
  * and either blocks or passes through to the real git binary.
  */
 /**
- * A bare `git push` (no refspec) from a protected branch, or one whose
- * upstream is a protected branch, would update it: deny it (T13533). Reads
- * the branch and upstream from the real git with the caller's global options.
+ * Resolve where a worker's push would really go, with git itself: rerun it as
+ * `--dry-run --porcelain` with the worker's own global options, arguments and
+ * config, and refuse when any destination is a protected branch, or when the
+ * dry run fails (fail closed). This catches pattern refspecs, configured
+ * `remote.<r>.push` / `push.default` targets, `-c` overrides and global
+ * options the argv parser does not know (T13535). The argv denylist stays the
+ * fast path in front of it.
  */
-function implicitPushDenial(
+function dryRunPushDenial(
   subcommand: string,
   args: string[],
   globalArgs: string[],
 ): DeniedGitOp | null {
-  if (subcommand !== 'push' || pushRefspecs(args).length > 0) return null;
+  if (subcommand !== 'push') return null;
   const realGit = resolveRealGit();
   if (!realGit) return null;
-  const read = (extra: string[]): string | null => {
-    const r = spawnSync(realGit, [...globalArgs, 'rev-parse', ...extra], { encoding: 'utf8' });
-    const out = r.status === 0 ? (r.stdout ?? '').trim() : '';
-    return out === '' ? null : out;
-  };
-  const target = implicitProtectedPush(
-    read(['--abbrev-ref', 'HEAD']),
-    read(['--abbrev-ref', '--symbolic-full-name', '@{u}']),
+  const r = spawnSync(
+    realGit,
+    [...globalArgs, 'push', '--dry-run', '--porcelain', '--no-verify', ...args],
+    { encoding: 'utf8', env: { ...process.env, GIT_TERMINAL_PROMPT: '0' } },
   );
-  if (target === null) return null;
-  return {
-    subcommand: 'push',
-    flag: `(implicit ${target})`,
-    reason: `a push with no refspec would update the protected branch ${target} — push your task branch explicitly`,
-  };
+  const hits = protectedPorcelainDestinations(r.stdout ?? '');
+  if (hits.length > 0) {
+    return {
+      subcommand: 'push',
+      flag: hits.join(','),
+      reason: `the push would update the protected branch ${hits.join(', ')} — push your task branch only`,
+    };
+  }
+  if (r.status !== 0) {
+    const detail = (r.stderr ?? '').trim().split('\n').pop() ?? '';
+    return {
+      subcommand: 'push',
+      flag: '(dry-run failed)',
+      reason: `could not verify where this push goes (git push --dry-run failed: ${detail}); refusing`,
+    };
+  }
+  return null;
 }
 
 function main(): void {
@@ -458,7 +468,7 @@ function main(): void {
   // ---------------------------------------------------------------------------
   const denied =
     findDeniedOp(subcommand, remainingArgs) ??
-    implicitPushDenial(subcommand, remainingArgs, globalArgs);
+    dryRunPushDenial(subcommand, remainingArgs, globalArgs);
   if (denied && !allowBranchOps && !allowGit) {
     const worktreeRoot = process.env['CLEO_WORKTREE_ROOT'] ?? '(unknown)';
     emitBlockedError(

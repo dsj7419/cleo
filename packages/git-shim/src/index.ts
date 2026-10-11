@@ -31,6 +31,7 @@ export {
   findDeniedOp,
   GIT_OP_DENYLIST,
   PROTECTED_PUSH_BRANCHES,
+  protectedPorcelainDestinations,
   protectedPushRefspec,
   RESTRICTED_ROLES,
   splitGitArgv,

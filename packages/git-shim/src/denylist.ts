@@ -264,10 +264,12 @@ export const PROTECTED_PUSH_BRANCHES: ReadonlySet<string> = new Set(['main', 'ma
  * @task T13522
  */
 export function protectedPushRefspec(args: readonly string[]): string | null {
-  for (const spec of pushRefspecs(args)) {
+  const positional = args.filter((a) => !a.startsWith('-'));
+  for (const spec of positional.slice(1)) {
     const dst = spec.includes(':') ? spec.slice(spec.lastIndexOf(':') + 1) : spec;
     const branch = dst.replace(/^\+/, '').replace(/^refs\/heads\//, '');
-    if (PROTECTED_PUSH_BRANCHES.has(branch)) return spec;
+    // A pattern destination (`refs/heads/*`) can match main: refuse it outright (T13535).
+    if (PROTECTED_PUSH_BRANCHES.has(branch) || branch.includes('*')) return spec;
   }
   return null;
 }
@@ -283,6 +285,7 @@ const GLOBAL_OPTIONS_WITH_VALUE = new Set([
   '--config-env',
   '--exec-path',
   '--list-cmds',
+  '--attr-source',
 ]);
 
 /**
@@ -313,36 +316,26 @@ export function splitGitArgv(argv: readonly string[]): {
 }
 
 /**
- * The explicit refspecs of a `git push` (positional arguments after the remote).
+ * The protected branches a `git push --dry-run --porcelain` would update.
+ * Porcelain lines are `<flag>\t<from>:<to>\t<summary>`; a deletion has an
+ * empty `<from>`. Up-to-date refs count too: the push named them.
  *
- * @param args - The arguments after `push`.
- * @returns The refspecs; empty for a bare `git push` / `git push origin`.
- * @task T13533
- */
-export function pushRefspecs(args: readonly string[]): string[] {
-  return args.filter((a) => !a.startsWith('-')).slice(1);
-}
-
-/**
- * For a push with no explicit refspec: the protected branch it would update,
- * judged from the current branch and its upstream (`origin/main` → `main`),
- * or `null`.
- *
- * @param currentBranch - `git rev-parse --abbrev-ref HEAD`, or `null`.
- * @param upstream - `git rev-parse --abbrev-ref --symbolic-full-name @{u}`, or `null`.
- * @returns The protected branch name, or `null`.
+ * @param porcelain - The dry run's stdout.
+ * @returns The protected destination refs found (e.g. `refs/heads/main`).
  * @example
  * ```ts
- * implicitProtectedPush('task/T1', 'origin/main'); // 'main'
- * implicitProtectedPush('task/T1', 'origin/task/T1'); // null
+ * protectedPorcelainDestinations('To /r\n*\trefs/heads/x:refs/heads/main\t[new branch]\nDone\n');
+ * // ['refs/heads/main']
  * ```
- * @task T13533
+ * @task T13535
  */
-export function implicitProtectedPush(
-  currentBranch: string | null,
-  upstream: string | null,
-): string | null {
-  if (currentBranch && PROTECTED_PUSH_BRANCHES.has(currentBranch)) return currentBranch;
-  const upstreamBranch = upstream?.includes('/') ? upstream.slice(upstream.indexOf('/') + 1) : null;
-  return upstreamBranch && PROTECTED_PUSH_BRANCHES.has(upstreamBranch) ? upstreamBranch : null;
+export function protectedPorcelainDestinations(porcelain: string): string[] {
+  const hits: string[] = [];
+  for (const line of porcelain.split('\n')) {
+    const ref = line.split('\t')[1];
+    if (ref === undefined || !ref.includes(':')) continue;
+    const dst = ref.slice(ref.lastIndexOf(':') + 1);
+    if (PROTECTED_PUSH_BRANCHES.has(dst.replace(/^refs\/heads\//, ''))) hits.push(dst);
+  }
+  return hits;
 }

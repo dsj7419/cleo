@@ -66,8 +66,11 @@ describe('ensureGitShimDir (T13522)', () => {
         const r = spawnSync(launcher, argv, { cwd: root, env, encoding: 'utf-8' });
         expect(r.status, argv.join(' ')).toBe(77);
       }
-      // A bare push from a task branch whose upstream is main (T13533).
-      const git = (args: string[]) => execFileSync('git', args, { cwd: root, encoding: 'utf-8' });
+      // Destinations git itself resolves (T13535): a real remote, then every bypass.
+      const git = (args: string[], cwd = root as string) =>
+        execFileSync('git', args, { cwd, encoding: 'utf-8' });
+      const remote = join(root, 'remote.git');
+      git(['init', '-q', '--bare', remote]);
       git([
         '-c',
         'user.email=t@t',
@@ -79,12 +82,38 @@ describe('ensureGitShimDir (T13522)', () => {
         '-m',
         'T1 init',
       ]);
-      git(['remote', 'add', 'origin', root]);
-      git(['fetch', '-q', 'origin']);
+      git(['remote', 'add', 'origin', remote]);
+      git(['push', '-q', 'origin', 'main']);
       git(['switch', '-q', '-c', 'task/T1', '--track', 'origin/main']);
-      const bare = spawnSync(launcher, ['push'], { cwd: root, env, encoding: 'utf-8' });
-      expect(bare.status).toBe(77);
-      expect(bare.stderr).toContain('protected branch main');
+      git([
+        '-c',
+        'user.email=t@t',
+        '-c',
+        'user.name=t',
+        'commit',
+        '-q',
+        '--allow-empty',
+        '-m',
+        'T1 work',
+      ]);
+      const bypasses = [
+        ['push', 'origin', 'refs/heads/*:refs/heads/*'],
+        ['--attr-source', 'HEAD', 'push', '--all', 'origin'],
+        ['-c', 'remote.origin.push=HEAD:refs/heads/main', 'push', 'origin'],
+        ['push'], // bare push, upstream origin/main
+      ];
+      for (const argv of bypasses) {
+        const r = spawnSync(launcher, argv, { cwd: root, env, encoding: 'utf-8' });
+        expect(r.status, argv.join(' ')).toBe(77);
+      }
+      expect(git(['rev-parse', 'main'], remote).trim()).toBe(git(['rev-parse', 'main']).trim());
+      // Pushing the task branch itself still works through the shim.
+      const ok = spawnSync(launcher, ['push', 'origin', 'task/T1'], {
+        cwd: root,
+        env,
+        encoding: 'utf-8',
+      });
+      expect(ok.status, ok.stderr).toBe(0);
       // A harmless command still reaches the real git.
       const status = spawnSync(launcher, ['status', '--short'], {
         cwd: root,
