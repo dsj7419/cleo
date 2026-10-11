@@ -6,7 +6,7 @@
 
 ### Added
 
-- Sync: the undo-budget rebind runs at the next pull to head - reconcile, signed retire of the old replica, late old segments as history _(provenance: [T13278](https://github.com/kryptobaseddev/cleo/search?q=T13278&type=commits), [T12763](https://github.com/kryptobaseddev/cleo/search?q=T12763&type=commits), [T12753](https://github.com/kryptobaseddev/cleo/search?q=T12753&type=commits))_
+- Sync: the undo-budget rebind runs at the next pull to head - reconcile, signed retire of the old replica, late old segments as history _(provenance: [T13278](https://github.com/kryptobaseddev/cleo/search?q=T13278&type=commits); groundwork for T12763 and T12753)_
 - Throwaway containers: a `--rm` / `cleo.task` + `cleo.ttl` label convention, and a bounded reaper behind `cleo doctor system --repair` (dry run first) _(provenance: [T13436](https://github.com/kryptobaseddev/cleo/search?q=T13436&type=commits))_
 
 ### Fixed
