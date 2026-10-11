@@ -32,6 +32,7 @@ import { dirname, join } from 'node:path';
 import type { EvidenceAtom, VerificationGate } from '@cleocode/contracts';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { engineSuccess } from '../../engine-result.js';
+import { readProjectInfoAtDirectorySync } from '../../project-scope.js';
 import { ResourceMonitor } from '../../resources/monitor.js';
 import { _resetMemoryGateForTest } from '../../resources/pressure-gate.js';
 import { createTestDb, type TestDbEnv } from '../../store/__tests__/test-db-helper.js';
@@ -362,6 +363,84 @@ describe('merged-PR CI replaces local tool runs when the project opts in (T12634
     };
     return { id, prDeps };
   }
+
+  describe('T13495: a tree-pinned scoped testsPassed after the merge', () => {
+    async function record(id: string, treeHash: string | null): Promise<void> {
+      const atom = {
+        kind: 'test-run',
+        path: 'reports/r.json',
+        sha256: 'c'.repeat(64),
+        passCount: 1,
+        failCount: 0,
+        skipCount: 0,
+        ...(treeHash ? { treeHash } : {}),
+      };
+      const verification = {
+        passed: false,
+        round: 1,
+        gates: { testsPassed: true },
+        failureLog: [],
+        lastAgent: null,
+        lastUpdated: null,
+        evidence: {
+          testsPassed: { atoms: [atom], capturedAt: '2026-10-01T00:00:00Z', capturedBy: 'test' },
+        },
+      };
+      await env.accessor.updateTaskFields(id, { verificationJson: JSON.stringify(verification) });
+    }
+
+    it('stands at the recorded tree when the merge carries the change byte for byte', async () => {
+      const { id, prDeps } = await mergedPrSetup(false);
+      git(root, ['switch', '-q', `task/${id}`]);
+      await record(id, await captureTreeHash(root));
+      const plan = await deriveTaskEvidence(id, { projectRoot: root, cwd: root, deps: prDeps });
+      expect(plan.gates.find((g) => g.gate === 'testsPassed')?.passed).toBe(true);
+      expect(plan.changeSet.warnings.join(' ')).not.toMatch(/scoped run/);
+    });
+
+    it('does not stand when the merge commit changed the file, and the plan says why', async () => {
+      const { id, prDeps } = await mergedPrSetup(false, async () => {});
+      // Re-point the merged PR at a merge that altered the change's file.
+      git(root, ['switch', '-q', 'main']);
+      writeFileSync(join(root, 'src', 'a.ts'), 'export const a = 3;\n');
+      git(root, ['commit', '-q', '--amend', '-am', `${id}: squash, edited (#42)`]);
+      const edited = git(root, ['rev-parse', 'HEAD']);
+      const deps2: ChangeSetDeps = {
+        ...prDeps,
+        viewPr: async (n) => ({
+          number: n,
+          title: '',
+          headRefName: `task/${id}`,
+          baseRefName: 'main',
+          state: 'MERGED',
+          mergedAt: '2026-09-28T00:00:00Z',
+          headRefOid: null,
+          mergeCommitSha: edited,
+        }),
+        resolvePr: async (n) => ({
+          ok: true,
+          prNumber: n,
+          mergeCommitSha: edited,
+          mergedAt: '2026-09-28T00:00:00Z',
+          successCount: 1,
+          totalChecks: 1,
+          cacheHit: false,
+          title: '',
+          body: '',
+          headRefName: `task/${id}`,
+          changedPaths: ['src/a.ts'],
+          changedFileCount: 1,
+        }),
+      };
+      git(root, ['switch', '-q', `task/${id}`]);
+      await record(id, await captureTreeHash(root));
+      const plan = await deriveTaskEvidence(id, { projectRoot: root, cwd: root, deps: deps2 });
+      expect(plan.gates.find((g) => g.gate === 'testsPassed')?.passed).toBe(false);
+      expect(plan.changeSet.warnings.join(' ')).toMatch(
+        /does not carry across the merge because the change's files at merge commit .* differ/,
+      );
+    });
+  });
 
   /** Component #42 (task/<id>) merged into integration/i, which #41 squash-landed on main. */
   async function integrationSetup() {
@@ -1397,6 +1476,57 @@ describe('research and no-change-set tasks', () => {
       );
     });
 
+    it("T13463: a PR merged from the task's OWN branch still implements it, doc or not", async () => {
+      const { id, sha } = await researchDoc();
+      commitOnTaskBranch(id);
+      git(root, ['switch', '-q', 'main']);
+      git(root, ['merge', '-q', '--squash', `task/${id}`]);
+      git(root, ['commit', '-q', '-m', `${id}: squash (#43)`]);
+      const merge = git(root, ['rev-parse', 'HEAD']);
+      const plan = await deriveTaskEvidence(id, {
+        projectRoot: root,
+        cwd: root,
+        satisfies: 'all',
+        previewEvidence: async () => ({ ok: true }),
+        deps: {
+          ...deps,
+          listMergedPrs: async () => ({
+            ok: true,
+            prs: [{ number: 43, title: `${id}: spike code`, body: '', headRefName: `task/${id}` }],
+          }),
+          viewPr: async (n) => ({
+            number: n,
+            title: '',
+            headRefName: `task/${id}`,
+            baseRefName: 'main',
+            state: 'MERGED',
+            mergedAt: '2026-09-28T00:00:00Z',
+            headRefOid: null,
+            mergeCommitSha: merge,
+          }),
+          findPrByHead: async () => null,
+          resolvePr: async (n) => ({
+            ok: true,
+            prNumber: n,
+            mergeCommitSha: merge,
+            mergedAt: '2026-09-28T00:00:00Z',
+            successCount: 1,
+            totalChecks: 1,
+            cacheHit: false,
+            title: '',
+            body: '',
+            headRefName: `task/${id}`,
+            changedPaths: ['src/a.ts'],
+            changedFileCount: 1,
+          }),
+          listTaskDocs: async () => [{ id: 'att', slug: 'review', sha256: sha }],
+          listTaskDecisions: async () => ['D900'],
+        },
+      });
+      expect(plan.changeSet.source).toBe('pr');
+      expect(plan.changeSet.prNumber).toBe(43);
+    });
+
     it('with a doc but no decision yet: still no suite or typecheck, only the decision blocker', async () => {
       const { id, sha } = await researchDoc();
       const plan = await deriveTaskEvidence(id, {
@@ -1440,6 +1570,7 @@ describe('a stored typed pass bound to an older definition is not a pass (T13463
 
   async function withStoredPass(
     bind: (text: string) => { criterionHash: string; gateHash: string },
+    over: (binding: Record<string, unknown>) => Record<string, unknown> = (b) => b,
   ) {
     const id = await seedTask(['Change src/a.ts']);
     commitOnTaskBranch(id);
@@ -1463,7 +1594,17 @@ describe('a stored typed pass bound to an older definition is not a pass (T13463
           checkedAt: '2026-10-01T00:00:00Z',
           checkedBy: 'test',
           durationMs: 1,
-          binding: bind(row.text),
+          // T13502: the full binding cleo complete's revalidation compares.
+          binding: over({
+            ...bind(row.text),
+            taskId: id,
+            criterionId: row.id,
+            identity: {
+              projectId:
+                readProjectInfoAtDirectorySync(root, join(root, '.cleo')).projectId ?? 'none',
+              projectRoot: root,
+            },
+          }),
         },
       ],
     };
@@ -1477,6 +1618,29 @@ describe('a stored typed pass bound to an older definition is not a pass (T13463
       gateHash: createHash('sha256').update(acItemToText(gate)).digest('hex'),
     }));
     expect(plan.typedGates.map((g) => g.status)).toEqual(['pass']);
+  });
+
+  const current = (text: string) => ({
+    criterionHash: acTextHash(text),
+    gateHash: createHash('sha256').update(acItemToText(gate)).digest('hex'),
+  });
+
+  it('T13502: a binding for another task reads not-run', async () => {
+    const plan = await withStoredPass(current, (b) => ({ ...b, taskId: 'T999999' }));
+    expect(plan.typedGates.map((g) => g.status)).toEqual(['not-run']);
+  });
+
+  it('T13502: a binding to another criterion id reads not-run', async () => {
+    const plan = await withStoredPass(current, (b) => ({ ...b, criterionId: 'not-this-row' }));
+    expect(plan.typedGates.map((g) => g.status)).toEqual(['not-run']);
+  });
+
+  it('T13502: a binding from another project root reads not-run', async () => {
+    const plan = await withStoredPass(current, (b) => ({
+      ...b,
+      identity: { ...(b.identity as object), projectRoot: '/elsewhere' },
+    }));
+    expect(plan.typedGates.map((g) => g.status)).toEqual(['not-run']);
   });
 
   it('a binding to an older gate definition reads not-run, as complete refuses it', async () => {
