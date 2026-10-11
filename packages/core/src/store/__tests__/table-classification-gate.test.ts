@@ -201,6 +201,10 @@ const SYNC_SEGMENT_DDL =
   'packages/core/migrations/sync-journal/20261007120000_t12343-segment-outbox/migration.sql';
 const SYNC_PULL_DDL =
   'packages/core/migrations/sync-journal/20261008120000_t12343-pull-cursor/migration.sql';
+const SYNC_SEEN_FLOOR_DDL =
+  'packages/core/migrations/sync-journal/20261009120000_t13318-seen-floor/migration.sql';
+const SYNC_RETIRE_DDL =
+  'packages/core/migrations/sync-journal/20261009130000_t13278-replica-retire/migration.sql';
 const SYNC_UID_ALIAS_DDL =
   'packages/core/migrations/sync-journal/20261010150000_t13397-uid-alias/migration.sql';
 const SYNC_REKEY_FOLLOW_DDL =
@@ -225,6 +229,8 @@ const SYNC_JOURNAL_TABLES = {
   _sync_segment_txn: { class: 'local-only', ddl: SYNC_SEGMENT_DDL },
   _sync_cursor: { class: 'local-only', ddl: SYNC_PULL_DDL },
   _sync_seen_txn: { class: 'local-only', ddl: SYNC_PULL_DDL },
+  _sync_seen_floor: { class: 'local-only', ddl: SYNC_SEEN_FLOOR_DDL },
+  _sync_retired: { class: 'local-only', ddl: SYNC_RETIRE_DDL },
   _sync_uid_alias: { class: 'local-only', ddl: SYNC_UID_ALIAS_DDL },
   _sync_uid_ref_alias: { class: 'local-only', ddl: SYNC_REKEY_FOLLOW_DDL },
   _sync_authored: { class: 'local-only', ddl: SYNC_REKEY_FOLLOW_DDL },
