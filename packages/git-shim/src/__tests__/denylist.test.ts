@@ -11,7 +11,14 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { findDeniedOp, protectedPushRefspec, RESTRICTED_ROLES, splitGitArgv } from '../denylist.js';
+import {
+  findDeniedOp,
+  implicitProtectedPush,
+  protectedPushRefspec,
+  pushRefspecs,
+  RESTRICTED_ROLES,
+  splitGitArgv,
+} from '../denylist.js';
 
 describe('RESTRICTED_ROLES', () => {
   it('includes worker, lead, subagent', () => {
@@ -194,17 +201,30 @@ describe('every-ref pushes and global options (T13533)', () => {
 
   it('finds the subcommand after global options, so they cannot hide a denied push', () => {
     expect(splitGitArgv(['-C', '.', 'push', 'origin', 'main'])).toEqual({
+      global: ['-C', '.'],
       subcommand: 'push',
       args: ['origin', 'main'],
     });
     expect(splitGitArgv(['-c', 'k=v', '--no-pager', 'push', '--all'])).toEqual({
+      global: ['-c', 'k=v', '--no-pager'],
       subcommand: 'push',
       args: ['--all'],
     });
     expect(splitGitArgv(['--git-dir', '/x/.git', 'status'])).toEqual({
+      global: ['--git-dir', '/x/.git'],
       subcommand: 'status',
       args: [],
     });
-    expect(splitGitArgv([])).toEqual({ subcommand: undefined, args: [] });
+    expect(splitGitArgv([])).toEqual({ global: [], subcommand: undefined, args: [] });
+  });
+
+  it('judges a bare push by the current branch and its upstream', () => {
+    expect(pushRefspecs(['origin'])).toEqual([]);
+    expect(pushRefspecs(['-u', 'origin', 'task/T1'])).toEqual(['task/T1']);
+    expect(implicitProtectedPush('main', null)).toBe('main');
+    expect(implicitProtectedPush('task/T1', 'origin/master')).toBe('master');
+    expect(implicitProtectedPush('task/T1', 'origin/task/T1')).toBeNull();
+    expect(implicitProtectedPush('task/T1', null)).toBeNull();
+    expect(implicitProtectedPush(null, null)).toBeNull();
   });
 });

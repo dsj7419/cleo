@@ -66,6 +66,25 @@ describe('ensureGitShimDir (T13522)', () => {
         const r = spawnSync(launcher, argv, { cwd: root, env, encoding: 'utf-8' });
         expect(r.status, argv.join(' ')).toBe(77);
       }
+      // A bare push from a task branch whose upstream is main (T13533).
+      const git = (args: string[]) => execFileSync('git', args, { cwd: root, encoding: 'utf-8' });
+      git([
+        '-c',
+        'user.email=t@t',
+        '-c',
+        'user.name=t',
+        'commit',
+        '-q',
+        '--allow-empty',
+        '-m',
+        'T1 init',
+      ]);
+      git(['remote', 'add', 'origin', root]);
+      git(['fetch', '-q', 'origin']);
+      git(['switch', '-q', '-c', 'task/T1', '--track', 'origin/main']);
+      const bare = spawnSync(launcher, ['push'], { cwd: root, env, encoding: 'utf-8' });
+      expect(bare.status).toBe(77);
+      expect(bare.stderr).toContain('protected branch main');
       // A harmless command still reaches the real git.
       const status = spawnSync(launcher, ['status', '--short'], {
         cwd: root,

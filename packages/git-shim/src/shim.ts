@@ -47,6 +47,7 @@ import {
 } from 'node:fs';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import type { DeniedGitOp } from '@cleocode/contracts';
 import { pathEnvKey, splitPathEnv } from '@cleocode/paths';
 import { type AuditRecord, writeAuditRecord } from './audit-log.js';
 import {
@@ -56,7 +57,13 @@ import {
   validateCommitSubject,
   validateMergeAllowed,
 } from './boundary.js';
-import { findDeniedOp, RESTRICTED_ROLES, splitGitArgv } from './denylist.js';
+import {
+  findDeniedOp,
+  implicitProtectedPush,
+  pushRefspecs,
+  RESTRICTED_ROLES,
+  splitGitArgv,
+} from './denylist.js';
 import { evaluateIsolationBoundary } from './isolation-boundary.js';
 import { resolveActiveWorktree } from './worktree-path.js';
 
@@ -339,10 +346,40 @@ function buildAuditRecord(
  * Reads argv, env, applies the isolation fence + denylist + boundary fence,
  * and either blocks or passes through to the real git binary.
  */
+/**
+ * A bare `git push` (no refspec) from a protected branch, or one whose
+ * upstream is a protected branch, would update it: deny it (T13533). Reads
+ * the branch and upstream from the real git with the caller's global options.
+ */
+function implicitPushDenial(
+  subcommand: string,
+  args: string[],
+  globalArgs: string[],
+): DeniedGitOp | null {
+  if (subcommand !== 'push' || pushRefspecs(args).length > 0) return null;
+  const realGit = resolveRealGit();
+  if (!realGit) return null;
+  const read = (extra: string[]): string | null => {
+    const r = spawnSync(realGit, [...globalArgs, 'rev-parse', ...extra], { encoding: 'utf8' });
+    const out = r.status === 0 ? (r.stdout ?? '').trim() : '';
+    return out === '' ? null : out;
+  };
+  const target = implicitProtectedPush(
+    read(['--abbrev-ref', 'HEAD']),
+    read(['--abbrev-ref', '--symbolic-full-name', '@{u}']),
+  );
+  if (target === null) return null;
+  return {
+    subcommand: 'push',
+    flag: `(implicit ${target})`,
+    reason: `a push with no refspec would update the protected branch ${target} — push your task branch explicitly`,
+  };
+}
+
 function main(): void {
   const argv = process.argv.slice(2);
   // Global options (`-C dir`, `-c k=v`) precede the subcommand (T13533).
-  const { subcommand, args: subArgs } = splitGitArgv(argv);
+  const { global: globalArgs, subcommand, args: subArgs } = splitGitArgv(argv);
 
   // Fast path: no subcommand → pass through (git with no args shows usage).
   if (!subcommand) {
@@ -419,7 +456,9 @@ function main(): void {
   // ---------------------------------------------------------------------------
   // Layer 1 — T1118 denylist (branch-mutation ops).
   // ---------------------------------------------------------------------------
-  const denied = findDeniedOp(subcommand, remainingArgs);
+  const denied =
+    findDeniedOp(subcommand, remainingArgs) ??
+    implicitPushDenial(subcommand, remainingArgs, globalArgs);
   if (denied && !allowBranchOps && !allowGit) {
     const worktreeRoot = process.env['CLEO_WORKTREE_ROOT'] ?? '(unknown)';
     emitBlockedError(

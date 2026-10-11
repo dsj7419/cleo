@@ -264,8 +264,7 @@ export const PROTECTED_PUSH_BRANCHES: ReadonlySet<string> = new Set(['main', 'ma
  * @task T13522
  */
 export function protectedPushRefspec(args: readonly string[]): string | null {
-  const positional = args.filter((a) => !a.startsWith('-'));
-  for (const spec of positional.slice(1)) {
+  for (const spec of pushRefspecs(args)) {
     const dst = spec.includes(':') ? spec.slice(spec.lastIndexOf(':') + 1) : spec;
     const branch = dst.replace(/^\+/, '').replace(/^refs\/heads\//, '');
     if (PROTECTED_PUSH_BRANCHES.has(branch)) return spec;
@@ -300,6 +299,7 @@ const GLOBAL_OPTIONS_WITH_VALUE = new Set([
  * @task T13533
  */
 export function splitGitArgv(argv: readonly string[]): {
+  global: string[];
   subcommand: string | undefined;
   args: string[];
 } {
@@ -309,5 +309,40 @@ export function splitGitArgv(argv: readonly string[]): {
     if (!a.startsWith('-')) break;
     i += GLOBAL_OPTIONS_WITH_VALUE.has(a) ? 2 : 1;
   }
-  return { subcommand: argv[i], args: argv.slice(i + 1) };
+  return { global: argv.slice(0, i), subcommand: argv[i], args: argv.slice(i + 1) };
+}
+
+/**
+ * The explicit refspecs of a `git push` (positional arguments after the remote).
+ *
+ * @param args - The arguments after `push`.
+ * @returns The refspecs; empty for a bare `git push` / `git push origin`.
+ * @task T13533
+ */
+export function pushRefspecs(args: readonly string[]): string[] {
+  return args.filter((a) => !a.startsWith('-')).slice(1);
+}
+
+/**
+ * For a push with no explicit refspec: the protected branch it would update,
+ * judged from the current branch and its upstream (`origin/main` → `main`),
+ * or `null`.
+ *
+ * @param currentBranch - `git rev-parse --abbrev-ref HEAD`, or `null`.
+ * @param upstream - `git rev-parse --abbrev-ref --symbolic-full-name @{u}`, or `null`.
+ * @returns The protected branch name, or `null`.
+ * @example
+ * ```ts
+ * implicitProtectedPush('task/T1', 'origin/main'); // 'main'
+ * implicitProtectedPush('task/T1', 'origin/task/T1'); // null
+ * ```
+ * @task T13533
+ */
+export function implicitProtectedPush(
+  currentBranch: string | null,
+  upstream: string | null,
+): string | null {
+  if (currentBranch && PROTECTED_PUSH_BRANCHES.has(currentBranch)) return currentBranch;
+  const upstreamBranch = upstream?.includes('/') ? upstream.slice(upstream.indexOf('/') + 1) : null;
+  return upstreamBranch && PROTECTED_PUSH_BRANCHES.has(upstreamBranch) ? upstreamBranch : null;
 }
