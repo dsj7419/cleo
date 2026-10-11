@@ -443,6 +443,8 @@ describe('typed requirement persistence', () => {
         value: true,
         agent: 'implementer',
         evidence: 'note:explicit synthetic verification',
+        // T13521: these exercise execution, which a write now does only on request.
+        runTyped: true,
       });
 
     it("a typed gate running node node_modules/<pkg>/bin through pnpm's link executes and passes", async () => {
