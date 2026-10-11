@@ -14,7 +14,10 @@
  * @module nexus/freshness
  */
 
+import { existsSync } from 'node:fs';
 import { performance } from 'node:perf_hooks';
+import { fileURLToPath } from 'node:url';
+import { getHeapStatistics } from 'node:v8';
 import type { GraphIndexFreshness } from '@cleocode/contracts';
 import type { KnownFileFingerprint } from '@cleocode/nexus/pipeline';
 import { getConfigValue } from '../config/registry.js';
@@ -294,6 +297,99 @@ function policyFrom(
   };
 }
 
+/** What an inline refresh is asked to do (structured-cloned into its worker). */
+export interface NexusRefreshInput {
+  /** Project whose graph is refreshed. */
+  projectRoot: string;
+  /** Source root the previous generation was built from. */
+  repoPath: string;
+  /** Included nested repositories carried over from the previous generation. */
+  includedRepositories?: readonly string[];
+  /** Wall-clock budget; cancels the run at its next phase boundary. */
+  budgetMs: number;
+}
+
+/** What an inline refresh reports back. */
+export interface NexusRefreshSummary {
+  /** Analysis mode the refresh ran in. */
+  mode: GraphRunCost['summary']['mode'];
+  /** Why that mode was chosen. */
+  reason: string;
+}
+
+/** Runs one inline refresh; {@link runRefreshInWorker} unless a caller supplies another. */
+export type NexusRefreshRunner = (input: NexusRefreshInput) => Promise<NexusRefreshSummary>;
+
+/**
+ * Run a refresh in this thread, incrementally or not at all. Unbounded in
+ * memory: {@link runRefreshInWorker} runs it inside a heap-limited worker.
+ *
+ * @param input - The refresh to run.
+ * @returns The refresh summary.
+ */
+export async function runRefreshInProcess(input: NexusRefreshInput): Promise<NexusRefreshSummary> {
+  const { summary } = await runNexusAnalysis({
+    projectRoot: input.projectRoot,
+    repoPath: input.repoPath,
+    ...(input.includedRepositories ? { includedRepositories: input.includedRepositories } : {}),
+    parserLimits: { signal: AbortSignal.timeout(input.budgetMs) },
+    requireIncremental: true,
+  });
+  return { mode: summary.mode, reason: summary.reason };
+}
+
+/**
+ * Run an inline refresh in a worker thread with its own heap limit (T13537).
+ *
+ * A refresh that outgrows the limit ends the worker with
+ * `ERR_WORKER_OUT_OF_MEMORY` and this rejects; the CLI's own heap is never
+ * touched, so a read query cannot abort at the CLI heap cap. Even an
+ * incremental run re-resolves the whole graph (Leiden included), so the bound
+ * matters whatever the stale-file count.
+ *
+ * @param input - The refresh to run.
+ * @param options - Worker entry and heap limit; default to `refresh-worker.js`
+ *   beside this module and this process's own V8 heap limit, so a refresh that
+ *   fit in-process still fits.
+ * @returns The refresh summary.
+ */
+export async function runRefreshInWorker(
+  input: NexusRefreshInput,
+  options: { entry?: URL; heapMb?: number } = {},
+): Promise<NexusRefreshSummary> {
+  const entry = options.entry ?? new URL('./refresh-worker.js', import.meta.url);
+  // Running from TypeScript source (no built worker beside it) has no bounded
+  // runner; refreshing in-process would reintroduce the heap-cap abort.
+  if (!existsSync(fileURLToPath(entry)))
+    throw new Error(`no bounded refresh worker at ${fileURLToPath(entry)}`);
+  const heapMb =
+    options.heapMb ?? Math.max(64, Math.floor(getHeapStatistics().heap_size_limit / 2 ** 20));
+  const { Worker } = await import('node:worker_threads');
+  return new Promise<NexusRefreshSummary>((resolve, reject) => {
+    let summary: NexusRefreshSummary | undefined;
+    const worker = new Worker(entry, {
+      workerData: input,
+      resourceLimits: { maxOldGenerationSizeMb: heapMb },
+    });
+    worker.on('message', (message: NexusRefreshSummary) => {
+      summary = message;
+    });
+    worker.on('error', (error: Error & { code?: string }) => {
+      reject(
+        error.code === 'ERR_WORKER_OUT_OF_MEMORY'
+          ? new Error(
+              `the refresh exceeded its ${heapMb} MB heap bound; run ${NEXUS_REFRESH_COMMAND}`,
+            )
+          : error,
+      );
+    });
+    worker.on('exit', (code) => {
+      if (summary) resolve(summary);
+      else reject(new Error(`the refresh worker exited with code ${code} and no result`));
+    });
+  });
+}
+
 /**
  * Assess freshness and, when only a few files are stale, refresh the index
  * inline before the caller answers from it.
@@ -307,11 +403,13 @@ function policyFrom(
  *
  * @param projectRoot - Project whose graph is about to be queried.
  * @param policy - Explicit policy; read from config when omitted.
+ * @param runRefresh - Runs the refresh; a heap-bounded worker unless supplied (T13537).
  * @returns Freshness of the index as it stands after any refresh, with its stale set.
  */
 export async function ensureNexusIndexFresh(
   projectRoot: string,
   policy?: NexusAutoRefreshPolicy,
+  runRefresh: NexusRefreshRunner = runRefreshInWorker,
 ): Promise<NexusFreshnessAssessment> {
   const initial = await assessWithStaleSet(projectRoot);
   const before = initial.freshness;
@@ -356,12 +454,11 @@ export async function ensureNexusIndexFresh(
   const manifest = readFileManifest(db, projectRoot);
   const started = performance.now();
   try {
-    const result = await runNexusAnalysis({
+    const summary = await runRefresh({
       projectRoot,
       repoPath: manifest?.sourceRoot ?? projectRoot,
       ...(manifest ? { includedRepositories: manifest.includedRepositories } : {}),
-      parserLimits: { signal: AbortSignal.timeout(effective.budgetMs) },
-      requireIncremental: true,
+      budgetMs: effective.budgetMs,
     });
     const after = await assessWithStaleSet(projectRoot);
     return {
@@ -369,10 +466,10 @@ export async function ensureNexusIndexFresh(
       freshness: {
         ...after.freshness,
         autoRefresh: {
-          refreshed: result.summary.mode !== 'unchanged',
+          refreshed: summary.mode !== 'unchanged',
           staleFiles: before.staleFileCount,
           durationMs: Math.round(performance.now() - started),
-          reason: `${result.summary.mode}: ${result.summary.reason}`,
+          reason: `${summary.mode}: ${summary.reason}`,
         },
       },
     };

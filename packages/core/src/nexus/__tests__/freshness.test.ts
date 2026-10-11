@@ -17,6 +17,8 @@ import {
   ensureNexusIndexFresh,
   judgeSymbolFiles,
   querySymbolFiles,
+  runRefreshInProcess,
+  runRefreshInWorker,
 } from '../freshness.js';
 
 vi.mock('../../store/nexus-sqlite.js', async () => ({
@@ -134,7 +136,7 @@ describe('index freshness (T12316)', () => {
   it('refreshes a few stale files inline and discloses it', async () => {
     await runNexusAnalysis({ repoPath: repo });
     await put('src/a.ts', 'export function alpha(): number { return 3; }\n');
-    const { freshness } = await ensureNexusIndexFresh(repo, ON);
+    const { freshness } = await ensureNexusIndexFresh(repo, ON, runRefreshInProcess);
     expect(freshness.status).toBe('fresh');
     expect(freshness.autoRefresh).toMatchObject({ refreshed: true, staleFiles: 1 });
     expect(freshness.autoRefresh?.reason).toMatch(/^incremental: 1 changed/);
@@ -183,7 +185,8 @@ describe('index freshness (T12316)', () => {
     }
     expect((await assessNexusIndexFreshness(repo)).status).toBe('stale');
     // Without either, the same index refreshes inline.
-    expect((await assessNexusFreshnessForQuery(repo)).freshness.status).toBe('fresh');
+    const on = await ensureNexusIndexFresh(repo, undefined, runRefreshInProcess);
+    expect(on.freshness.status).toBe('fresh');
   });
 
   it('never runs a full rebuild inline: too many stale files, or a pipeline fallback (T13523)', async () => {
@@ -198,13 +201,39 @@ describe('index freshness (T12316)', () => {
     await runNexusAnalysis({ repoPath: repo });
     native.exec('DELETE FROM _nexus_parse_cache');
     await put('src/a.ts', 'export const a3 = 1;\n');
-    const fallback = await ensureNexusIndexFresh(repo, ON);
+    const fallback = await ensureNexusIndexFresh(repo, ON, runRefreshInProcess);
     expect(fallback.freshness.status).toBe('stale');
     expect(fallback.freshness.autoRefresh?.refreshed).toBe(false);
     expect(fallback.freshness.autoRefresh?.reason).toMatch(
       /a full rebuild is required \(no parse cache was committed.*\); run cleo nexus analyze/,
     );
     expect((await assessNexusIndexFreshness(repo)).status).toBe('stale');
+  });
+
+  it('a refresh that exceeds its heap bound answers from the stale index; the process survives (T13537)', async () => {
+    await runNexusAnalysis({ repoPath: repo });
+    await put('src/a.ts', 'export const a4 = 1;\n');
+    const hog = new URL('./fixtures/heap-hog-worker.mjs', import.meta.url);
+    const { freshness } = await ensureNexusIndexFresh(repo, ON, (input) =>
+      runRefreshInWorker(input, { entry: hog, heapMb: 32 }),
+    );
+    expect(freshness.status).toBe('stale');
+    expect(freshness.autoRefresh?.refreshed).toBe(false);
+    expect(freshness.autoRefresh?.reason).toMatch(
+      /refresh failed, previous graph retained: the refresh exceeded its 32 MB heap bound; run cleo nexus analyze/,
+    );
+    expect((await assessNexusIndexFreshness(repo)).status).toBe('stale');
+  });
+
+  it('never falls back to an unbounded in-process refresh when no worker is built (T13537)', async () => {
+    await runNexusAnalysis({ repoPath: repo });
+    await put('src/a.ts', 'export const a5 = 1;\n');
+    // Tests run from TypeScript source, where no refresh-worker.js sits beside freshness.
+    const { freshness } = await assessNexusFreshnessForQuery(repo);
+    expect(freshness.status).toBe('stale');
+    expect(freshness.autoRefresh?.reason).toMatch(
+      /no bounded refresh worker at .*refresh-worker\.js/,
+    );
   });
 
   it('judges symbol files identified only after the query ran', async () => {
