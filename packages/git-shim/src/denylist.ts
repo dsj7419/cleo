@@ -197,6 +197,17 @@ export const GIT_OP_DENYLIST: ReadonlyArray<DeniedGitOp> = [
     flag: '--force-with-lease',
     reason: 'agents MUST NOT force-push — the orchestrator manages push lifecycle',
   },
+  // Every-ref pushes: worktrees share refs, so --all pushes main and --mirror force-updates and deletes (T13533).
+  {
+    subcommand: 'push',
+    flag: '--all',
+    reason: 'agents MUST NOT push every branch — push your task branch only',
+  },
+  {
+    subcommand: 'push',
+    flag: '--mirror',
+    reason: 'agents MUST NOT mirror-push — it force-updates and deletes remote refs',
+  },
 ];
 
 /**
@@ -260,4 +271,43 @@ export function protectedPushRefspec(args: readonly string[]): string | null {
     if (PROTECTED_PUSH_BRANCHES.has(branch)) return spec;
   }
   return null;
+}
+
+/** Git global options that take their value as the next argument. */
+const GLOBAL_OPTIONS_WITH_VALUE = new Set([
+  '-C',
+  '-c',
+  '--git-dir',
+  '--work-tree',
+  '--namespace',
+  '--super-prefix',
+  '--config-env',
+  '--exec-path',
+  '--list-cmds',
+]);
+
+/**
+ * Split a git argv into its subcommand and the arguments after it, skipping
+ * the global options before the subcommand (`git -C dir -c k=v push …`), so
+ * no global option hides a denied subcommand from the shim (T13533).
+ *
+ * @param argv - Arguments after `git`.
+ * @returns The subcommand (or `undefined`) and its arguments.
+ * @example
+ * ```ts
+ * splitGitArgv(['-C', '.', 'push', 'origin', 'main']); // { subcommand: 'push', args: ['origin', 'main'] }
+ * ```
+ * @task T13533
+ */
+export function splitGitArgv(argv: readonly string[]): {
+  subcommand: string | undefined;
+  args: string[];
+} {
+  let i = 0;
+  while (i < argv.length) {
+    const a = argv[i] as string;
+    if (!a.startsWith('-')) break;
+    i += GLOBAL_OPTIONS_WITH_VALUE.has(a) ? 2 : 1;
+  }
+  return { subcommand: argv[i], args: argv.slice(i + 1) };
 }

@@ -10,6 +10,8 @@ Worker worktrees set `CLEO_BRANCH_PROTECTION=strict` and put `.cleo/bin/git-shim
 - **Resolve from the CLI install.** `ensureGitShimDir` resolves the shim from the `@cleocode/git-shim` package the running CLI was installed with (`resolveShimBinPath()`). It writes the launcher, checks the launcher is executable, and returns `{dir, installed, shimBinPath, reason}`.
 - **No more stub.** The weaker inline stub is gone. If the real shim cannot be installed, nothing is installed.
 - **Honest advertising.** `createWorktree` takes the result as `gitShim`. It advertises `strict` and prepends the shim to PATH only when the shim is installed. Otherwise the env says `CLEO_BRANCH_PROTECTION=unavailable`, and the worker preamble says the git rules are not enforced.
-- **Block pushes to main.** The shim now refuses, with exit 77, a restricted role's `git push` whose destination is `main` or `master` in any refspec spelling (`main`, `HEAD:main`, `+refs/heads/main`, …).
+- **Block pushes to main.** The shim now refuses, with exit 77, a restricted role's `git push` whose destination is `main` or `master` in any refspec spelling (`main`, `HEAD:main`, `+refs/heads/main`, …). It also refuses `push --all` and `push --mirror`: worker worktrees share refs, so these would push main or force-update and delete remote refs (T13533).
+- **Global options no longer hide the subcommand.** The shim finds the subcommand after git's global options, so `git -C dir push …` and `git -c k=v push …` no longer skip every rule.
+- **SDK helper is honest too.** `buildWorktreeSpawnResult` accepts the `ensureGitShimDir` result and says `unavailable` when the shim is not installed. The contracts `CLEO_BRANCH_PROTECTION` type gains `unavailable`.
 
 The launcher lives under `.cleo/bin/`, which the deny-by-default `.cleo/.gitignore` already ignores.

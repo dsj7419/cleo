@@ -56,7 +56,7 @@ import {
   validateCommitSubject,
   validateMergeAllowed,
 } from './boundary.js';
-import { findDeniedOp, RESTRICTED_ROLES } from './denylist.js';
+import { findDeniedOp, RESTRICTED_ROLES, splitGitArgv } from './denylist.js';
 import { evaluateIsolationBoundary } from './isolation-boundary.js';
 import { resolveActiveWorktree } from './worktree-path.js';
 
@@ -341,7 +341,8 @@ function buildAuditRecord(
  */
 function main(): void {
   const argv = process.argv.slice(2);
-  const subcommand = argv[0];
+  // Global options (`-C dir`, `-c k=v`) precede the subcommand (T13533).
+  const { subcommand, args: subArgs } = splitGitArgv(argv);
 
   // Fast path: no subcommand → pass through (git with no args shows usage).
   if (!subcommand) {
@@ -369,7 +370,7 @@ function main(): void {
     return;
   }
 
-  const remainingArgs = argv.slice(1);
+  const remainingArgs = subArgs;
   const allowBranchOps = process.env['CLEO_ALLOW_BRANCH_OPS'] === '1';
   const allowGit = process.env['CLEO_ALLOW_GIT'] === '1';
 

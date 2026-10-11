@@ -33,6 +33,7 @@ export {
   PROTECTED_PUSH_BRANCHES,
   protectedPushRefspec,
   RESTRICTED_ROLES,
+  splitGitArgv,
 } from './denylist.js';
 export {
   enforceAbsolutePathBoundary,

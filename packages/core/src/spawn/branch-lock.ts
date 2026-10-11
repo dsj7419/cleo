@@ -208,7 +208,9 @@ function shellQuote(value: string): string {
  * env block and prompt preamble that bind the agent to its worktree.
  *
  * @param worktree - The created worktree state.
- * @param shimDir - Directory containing the git shim symlink.
+ * @param shim - The {@link ensureGitShimDir} result; strict protection and the
+ *   PATH entry apply only when it is installed (T13522). A bare directory
+ *   string is taken as installed (legacy callers).
  * @param identity - Per-agent session + agent identity to inject (T11343).
  *   `sessionId` → `CLEO_SESSION_ID`, `agentId` → `CLEO_AGENT_ID`. Only set
  *   when non-empty so an unallocated identity never clobbers an inherited env.
@@ -221,22 +223,28 @@ function shellQuote(value: string): string {
  */
 export function buildWorktreeSpawnResult(
   worktree: AgentWorktreeState,
-  shimDir: string,
+  shim: string | GitShimInstall,
   identity: { sessionId?: string | null; agentId?: string | null } = {},
 ): WorktreeSpawnResult {
   const pathKey = pathEnvKey();
+  const shimDir = typeof shim === 'string' ? shim : shim.dir;
+  const shimActive = typeof shim === 'string' || shim.installed;
   const envVars: Record<string, string> = {
     CLEO_AGENT_ROLE: 'worker',
     CLEO_AGENT_CWD: worktree.path,
     CLEO_WORKTREE_ROOT: worktree.path,
     CLEO_WORKTREE_BRANCH: worktree.branch,
     CLEO_PROJECT_HASH: worktree.projectHash,
-    CLEO_BRANCH_PROTECTION: 'strict',
-    CLEO_SHIM_MARKER: '.cleo/bin/git-shim',
-    // Prepend the shim directory so `git` resolves to the shim. The platform
-    // delimiter matters: `${shimDir}:${PATH}` on Windows fuses the shim dir
-    // with the first real entry and loses both (T12605).
-    [pathKey]: prependPathEntry(shimDir, process.env[pathKey]),
+    CLEO_BRANCH_PROTECTION: shimActive ? 'strict' : 'unavailable',
+    ...(shimActive
+      ? {
+          CLEO_SHIM_MARKER: '.cleo/bin/git-shim',
+          // Prepend the shim directory so `git` resolves to the shim. The platform
+          // delimiter matters: `${shimDir}:${PATH}` on Windows fuses the shim dir
+          // with the first real entry and loses both (T12605).
+          [pathKey]: prependPathEntry(shimDir, process.env[pathKey]),
+        }
+      : {}),
   };
 
   // T11343 — bind the spawned agent's OWN session + identity into the worker
@@ -263,7 +271,9 @@ export function buildWorktreeSpawnResult(
     '  git checkout, git switch, git branch -b/-D, git reset --hard,',
     '  git worktree add/remove, git rebase, git stash pop, git push --force',
     '',
-    'A git shim is active on your PATH that will exit 77 if you attempt these.',
+    shimActive
+      ? 'A git shim is active on your PATH that will exit 77 if you attempt these, or a push to main.'
+      : 'No git shim could be installed for this worktree: these rules are NOT enforced, so follow them yourself.',
     `Your working directory is: ${worktree.path}`,
     'All your commits must land on YOUR branch only.',
     '',
