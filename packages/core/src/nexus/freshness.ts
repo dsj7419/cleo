@@ -18,6 +18,7 @@ import { performance } from 'node:perf_hooks';
 import type { GraphIndexFreshness } from '@cleocode/contracts';
 import type { KnownFileFingerprint } from '@cleocode/nexus/pipeline';
 import { getConfigValue } from '../config/registry.js';
+import { readEnvOverride } from '../config.js';
 import { pushWarning } from '../output.js';
 import { getNexusDb } from '../store/nexus-sqlite.js';
 import { runNexusAnalysis } from './analyze-orchestrator.js';
@@ -82,6 +83,8 @@ export interface NexusAutoRefreshPolicy {
   maxFiles: number;
   /** Wall-clock budget; a refresh estimated to exceed it is not started. @defaultValue 60000 */
   budgetMs: number;
+  /** What turned refresh off, when not the config key (`--no-refresh`, `CLEO_NEXUS_AUTO_REFRESH`). */
+  disabledBy?: string;
 }
 
 /** Estimate a refresh from the last recorded run, or `null` when nothing is recorded. */
@@ -256,6 +259,19 @@ export async function readNexusAutoRefreshPolicy(
     read('maxFiles'),
     read('budgetMs'),
   ]);
+  // T13523: the env var wins over config, as ENV_MAP does for loadConfig.
+  const env = readEnvOverride('nexus.autoRefresh.enabled');
+  if (typeof env === 'boolean')
+    return { ...policyFrom(env, maxFiles, budgetMs), disabledBy: 'CLEO_NEXUS_AUTO_REFRESH=false' };
+  return policyFrom(enabled, maxFiles, budgetMs);
+}
+
+/** Apply defaults to raw `nexus.autoRefresh.*` values. */
+function policyFrom(
+  enabled: unknown,
+  maxFiles: unknown,
+  budgetMs: unknown,
+): NexusAutoRefreshPolicy {
   return {
     enabled: typeof enabled === 'boolean' ? enabled : true,
     maxFiles:
@@ -300,7 +316,9 @@ export async function ensureNexusIndexFresh(
     },
   });
   if (!effective.enabled)
-    return skip('auto-refresh is disabled (nexus.autoRefresh.enabled = false)');
+    return skip(
+      `auto-refresh is disabled (${effective.disabledBy ?? 'nexus.autoRefresh.enabled = false'}); answered from the stale index`,
+    );
   if (before.staleFileCount > effective.maxFiles)
     return skip(
       `${before.staleFileCount} stale files exceed nexus.autoRefresh.maxFiles = ${effective.maxFiles}; ` +
@@ -308,7 +326,13 @@ export async function ensureNexusIndexFresh(
     );
   const db = await getNexusDb(projectRoot);
   const estimate = estimateRefreshMs(readRunCost(db), before.staleFileCount, before.fileCount);
-  if (estimate !== null && estimate > effective.budgetMs)
+  // T13523: with no recorded cost there is no bound on the run (a full
+  // analysis, Leiden included, can exhaust the CLI heap), so do not start one.
+  if (estimate === null)
+    return skip(
+      `no previous analysis cost recorded, so the refresh cannot be bounded; answered from the stale index (run ${NEXUS_REFRESH_COMMAND} to refresh and record one)`,
+    );
+  if (estimate > effective.budgetMs)
     return skip(
       `estimated refresh ${Math.round(estimate / 1000)}s exceeds nexus.autoRefresh.budgetMs = ` +
         `${effective.budgetMs}; answered from the stale index`,
@@ -390,6 +414,14 @@ export function querySymbolFiles(data: unknown): string[] {
   return [...files];
 }
 
+/** `--no-refresh` (T13523): answer from the index as it stands. */
+const NO_REFRESH_POLICY: NexusAutoRefreshPolicy = {
+  enabled: false,
+  maxFiles: 0,
+  budgetMs: DEFAULT_AUTO_REFRESH_BUDGET_MS,
+  disabledBy: '--no-refresh',
+};
+
 /**
  * Assess (and when small, repair) index freshness before a graph query.
  *
@@ -397,13 +429,18 @@ export function querySymbolFiles(data: unknown): string[] {
  * reason, so it neither blocks the query nor is ever mistaken for fresh.
  *
  * @param projectRoot - Project whose graph is about to be queried.
+ * @param options - `refresh: false` (`--no-refresh`) skips any inline refresh.
  * @returns The assessment to judge the answer against.
  */
 export async function assessNexusFreshnessForQuery(
   projectRoot: string,
+  options: { refresh?: boolean } = {},
 ): Promise<NexusFreshnessAssessment> {
   try {
-    return await ensureNexusIndexFresh(projectRoot);
+    return await ensureNexusIndexFresh(
+      projectRoot,
+      options.refresh === false ? NO_REFRESH_POLICY : undefined,
+    );
   } catch (error) {
     return {
       staleFiles: new Set(),

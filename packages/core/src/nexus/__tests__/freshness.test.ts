@@ -11,6 +11,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { drainWarnings } from '../../output.js';
 import { runNexusAnalysis } from '../analyze-orchestrator.js';
 import {
+  assessNexusFreshnessForQuery,
   assessNexusIndexFreshness,
   discloseNexusFreshness,
   ensureNexusIndexFresh,
@@ -151,6 +152,38 @@ describe('index freshness (T12316)', () => {
     expect(disabled.freshness.autoRefresh?.reason).toMatch(/auto-refresh is disabled/);
     // None of them touched the graph.
     expect((await assessNexusIndexFreshness(repo)).status).toBe('stale');
+  });
+
+  it('a stale index with no run-cost row answers without running analysis (T13523)', async () => {
+    await runNexusAnalysis({ repoPath: repo });
+    native.exec("DELETE FROM _nexus_meta WHERE key = 'graph_run_summary'");
+    await put('src/a.ts', 'export function alpha(): number { return 5; }\n');
+    // The impact/context path, with auto-refresh on by default.
+    const { freshness } = await assessNexusFreshnessForQuery(repo);
+    expect(freshness.status).toBe('stale');
+    expect(freshness.autoRefresh).toMatchObject({ refreshed: false, durationMs: 0 });
+    expect(freshness.autoRefresh?.reason).toMatch(/no previous analysis cost recorded/);
+    expect((await assessNexusIndexFreshness(repo)).status).toBe('stale');
+  });
+
+  it('--no-refresh and CLEO_NEXUS_AUTO_REFRESH=false answer from the stale index and say so (T13523)', async () => {
+    await runNexusAnalysis({ repoPath: repo });
+    await put('src/a.ts', 'export function alpha(): number { return 6; }\n');
+    const flag = await assessNexusFreshnessForQuery(repo, { refresh: false });
+    expect(flag.freshness.status).toBe('stale');
+    expect(flag.freshness.autoRefresh?.reason).toMatch(/disabled \(--no-refresh\)/);
+    vi.stubEnv('CLEO_NEXUS_AUTO_REFRESH', 'false');
+    try {
+      const env = await assessNexusFreshnessForQuery(repo);
+      expect(env.freshness.autoRefresh?.reason).toMatch(
+        /disabled \(CLEO_NEXUS_AUTO_REFRESH=false\)/,
+      );
+    } finally {
+      vi.unstubAllEnvs();
+    }
+    expect((await assessNexusIndexFreshness(repo)).status).toBe('stale');
+    // Without either, the same index refreshes inline.
+    expect((await assessNexusFreshnessForQuery(repo)).freshness.status).toBe('fresh');
   });
 
   it('judges symbol files identified only after the query ran', async () => {
