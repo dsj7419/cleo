@@ -32,6 +32,7 @@ import { dirname, join } from 'node:path';
 import type { EvidenceAtom, VerificationGate } from '@cleocode/contracts';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { engineSuccess } from '../../engine-result.js';
+import { readProjectInfoAtDirectorySync } from '../../project-scope.js';
 import { ResourceMonitor } from '../../resources/monitor.js';
 import { _resetMemoryGateForTest } from '../../resources/pressure-gate.js';
 import { createTestDb, type TestDbEnv } from '../../store/__tests__/test-db-helper.js';
@@ -1518,6 +1519,7 @@ describe('a stored typed pass bound to an older definition is not a pass (T13463
 
   async function withStoredPass(
     bind: (text: string) => { criterionHash: string; gateHash: string },
+    over: (binding: Record<string, unknown>) => Record<string, unknown> = (b) => b,
   ) {
     const id = await seedTask(['Change src/a.ts']);
     commitOnTaskBranch(id);
@@ -1541,7 +1543,17 @@ describe('a stored typed pass bound to an older definition is not a pass (T13463
           checkedAt: '2026-10-01T00:00:00Z',
           checkedBy: 'test',
           durationMs: 1,
-          binding: bind(row.text),
+          // T13502: the full binding cleo complete's revalidation compares.
+          binding: over({
+            ...bind(row.text),
+            taskId: id,
+            criterionId: row.id,
+            identity: {
+              projectId:
+                readProjectInfoAtDirectorySync(root, join(root, '.cleo')).projectId ?? 'none',
+              projectRoot: root,
+            },
+          }),
         },
       ],
     };
@@ -1555,6 +1567,29 @@ describe('a stored typed pass bound to an older definition is not a pass (T13463
       gateHash: createHash('sha256').update(acItemToText(gate)).digest('hex'),
     }));
     expect(plan.typedGates.map((g) => g.status)).toEqual(['pass']);
+  });
+
+  const current = (text: string) => ({
+    criterionHash: acTextHash(text),
+    gateHash: createHash('sha256').update(acItemToText(gate)).digest('hex'),
+  });
+
+  it('T13502: a binding for another task reads not-run', async () => {
+    const plan = await withStoredPass(current, (b) => ({ ...b, taskId: 'T999999' }));
+    expect(plan.typedGates.map((g) => g.status)).toEqual(['not-run']);
+  });
+
+  it('T13502: a binding to another criterion id reads not-run', async () => {
+    const plan = await withStoredPass(current, (b) => ({ ...b, criterionId: 'not-this-row' }));
+    expect(plan.typedGates.map((g) => g.status)).toEqual(['not-run']);
+  });
+
+  it('T13502: a binding from another project root reads not-run', async () => {
+    const plan = await withStoredPass(current, (b) => ({
+      ...b,
+      identity: { ...(b.identity as object), projectRoot: '/elsewhere' },
+    }));
+    expect(plan.typedGates.map((g) => g.status)).toEqual(['not-run']);
   });
 
   it('a binding to an older gate definition reads not-run, as complete refuses it', async () => {
