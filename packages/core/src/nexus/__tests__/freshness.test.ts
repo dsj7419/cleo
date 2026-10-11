@@ -11,6 +11,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { drainWarnings } from '../../output.js';
 import { runNexusAnalysis } from '../analyze-orchestrator.js';
 import {
+  assessNexusFreshnessForQuery,
   assessNexusIndexFreshness,
   discloseNexusFreshness,
   ensureNexusIndexFresh,
@@ -150,6 +151,59 @@ describe('index freshness (T12316)', () => {
     const disabled = await ensureNexusIndexFresh(repo, { ...ON, enabled: false });
     expect(disabled.freshness.autoRefresh?.reason).toMatch(/auto-refresh is disabled/);
     // None of them touched the graph.
+    expect((await assessNexusIndexFreshness(repo)).status).toBe('stale');
+  });
+
+  it('a stale index with no run-cost row answers without running analysis (T13523)', async () => {
+    await runNexusAnalysis({ repoPath: repo });
+    native.exec("DELETE FROM _nexus_meta WHERE key = 'graph_run_summary'");
+    await put('src/a.ts', 'export function alpha(): number { return 5; }\n');
+    // The impact/context path, with auto-refresh on by default.
+    const { freshness } = await assessNexusFreshnessForQuery(repo);
+    expect(freshness.status).toBe('stale');
+    expect(freshness.autoRefresh).toMatchObject({ refreshed: false, durationMs: 0 });
+    expect(freshness.autoRefresh?.reason).toMatch(/no previous analysis cost recorded/);
+    expect((await assessNexusIndexFreshness(repo)).status).toBe('stale');
+  });
+
+  it('--no-refresh and CLEO_NEXUS_AUTO_REFRESH=false answer from the stale index and say so (T13523)', async () => {
+    await runNexusAnalysis({ repoPath: repo });
+    await put('src/a.ts', 'export function alpha(): number { return 6; }\n');
+    const flag = await assessNexusFreshnessForQuery(repo, { refresh: false });
+    expect(flag.freshness.status).toBe('stale');
+    expect(flag.freshness.autoRefresh?.reason).toMatch(/disabled \(--no-refresh\)/);
+    try {
+      for (const off of ['false', '0', 'no']) {
+        vi.stubEnv('CLEO_NEXUS_AUTO_REFRESH', off);
+        const env = await assessNexusFreshnessForQuery(repo);
+        expect(env.freshness.autoRefresh?.reason).toMatch(/disabled \(CLEO_NEXUS_AUTO_REFRESH\)/);
+      }
+    } finally {
+      vi.unstubAllEnvs();
+    }
+    expect((await assessNexusIndexFreshness(repo)).status).toBe('stale');
+    // Without either, the same index refreshes inline.
+    expect((await assessNexusFreshnessForQuery(repo)).freshness.status).toBe('fresh');
+  });
+
+  it('never runs a full rebuild inline: too many stale files, or a pipeline fallback (T13523)', async () => {
+    await runNexusAnalysis({ repoPath: repo });
+    for (const name of ['a', 'd', 'e']) await put(`src/${name}.ts`, `export const ${name}2 = 1;\n`);
+    const many = await ensureNexusIndexFresh(repo, ON);
+    expect(many.freshness.autoRefresh).toMatchObject({ refreshed: false, durationMs: 0 });
+    expect(many.freshness.autoRefresh?.reason).toMatch(
+      /3 of 6 files are stale, which needs a full rebuild/,
+    );
+    // One stale file, but no parse cache: the pipeline would fall back to a full parse.
+    await runNexusAnalysis({ repoPath: repo });
+    native.exec('DELETE FROM _nexus_parse_cache');
+    await put('src/a.ts', 'export const a3 = 1;\n');
+    const fallback = await ensureNexusIndexFresh(repo, ON);
+    expect(fallback.freshness.status).toBe('stale');
+    expect(fallback.freshness.autoRefresh?.refreshed).toBe(false);
+    expect(fallback.freshness.autoRefresh?.reason).toMatch(
+      /a full rebuild is required \(no parse cache was committed.*\); run cleo nexus analyze/,
+    );
     expect((await assessNexusIndexFreshness(repo)).status).toBe('stale');
   });
 
