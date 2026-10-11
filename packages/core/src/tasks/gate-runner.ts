@@ -769,8 +769,19 @@ export async function runTaskGates(
       // quote) becomes ITS OWN `error` result. Throwing here rejected the whole
       // batch, and the verify engine turned that into E_GENERAL, discarding
       // every other gate's verdict.
-      const { invocation, refusal } = resolveInvocation(gate, tree, env);
-      const artifacts = await snapshotGateInputs(snapshot, gate, invocation, execution, tree);
+      const { invocation, refusal: invocationRefusal } = resolveInvocation(gate, tree, env);
+      // T13527: an input that cannot be captured (an ambiguous symlink, an
+      // escape) is THIS gate's error, not a rejection of every gate in the
+      // batch. A cancellation still propagates.
+      let artifacts: AcceptanceGateArtifact[] = [];
+      let snapshotRefusal: string | undefined;
+      try {
+        artifacts = await snapshotGateInputs(snapshot, gate, invocation, execution, tree);
+      } catch (error) {
+        execution.assertActive();
+        snapshotRefusal = `Typed gate inputs could not be captured: ${error instanceof Error ? error.message : String(error)}`;
+      }
+      const refusal = invocationRefusal ?? snapshotRefusal;
       const binding: AcceptanceGateBinding = {
         version: 1,
         verificationId,
@@ -804,7 +815,10 @@ export async function runTaskGates(
           )[0]!;
       let result: AcceptanceGateResult = { ...observed, index, binding };
       try {
-        const after = await snapshotGateInputs(snapshot, gate, invocation, execution, tree);
+        // A gate whose inputs were never captured has nothing to compare.
+        const after = snapshotRefusal
+          ? artifacts
+          : await snapshotGateInputs(snapshot, gate, invocation, execution, tree);
         if (!isDeepStrictEqual(after, artifacts))
           throw new Error('Verification inputs changed during execution');
       } catch (error) {
@@ -971,7 +985,17 @@ export async function revalidateTaskGateResults(
       // A refused command is bound without an invocation (T12718 review), so it
       // revalidates as the unmet `error` it was recorded as.
       const { invocation } = resolveInvocation(gate, tree, env);
-      const artifacts = await snapshotGateInputs(task, gate, invocation, execution, tree);
+      // T13527: an unmet result recorded because its inputs could not be
+      // captured has nothing to re-capture; completion (requirePassing) never
+      // reaches here with it, because only a pass stands there.
+      let artifacts: AcceptanceGateArtifact[];
+      try {
+        artifacts = await snapshotGateInputs(task, gate, invocation, execution, tree);
+      } catch (error) {
+        execution.assertActive();
+        if (!requirePassing && result.result !== 'pass') continue;
+        throw error;
+      }
       const exact =
         isDeepStrictEqual(binding.invocation, invocation) &&
         isDeepStrictEqual(binding.artifacts, artifacts);
@@ -1153,6 +1177,33 @@ function resolveInvocation(
   }
 }
 
+/**
+ * T13527: an interpreter script reached through a package manager's
+ * `node_modules` link (pnpm resolves `node_modules/vitest` to
+ * `node_modules/.pnpm/vitest@x/node_modules/vitest`) is captured at its real
+ * path, so the ambiguous-parent guard below sees a plain path inside the
+ * project. Only a link that resolves into this project's `.pnpm` virtual store
+ * is followed; any other link is left for the guard to refuse.
+ */
+async function packageStoreRealPath(root: string, path: string): Promise<string> {
+  const rel = relative(root, path).split('\\').join('/');
+  if (!/(^|\/)node_modules\//.test(rel)) return path;
+  try {
+    const real = await realpath(path);
+    const realRel = relative(root, real).split('\\').join('/');
+    if (
+      realRel !== '' &&
+      !realRel.startsWith('../') &&
+      !isAbsolute(realRel) &&
+      /(^|\/)node_modules\/\.pnpm\//.test(realRel)
+    )
+      return real;
+  } catch {
+    // absent or unreadable: the guard below decides
+  }
+  return path;
+}
+
 /** Capture declared task inputs and an interpreter's explicit harness argument. */
 async function snapshotGateInputs(
   task: Task,
@@ -1179,15 +1230,17 @@ async function snapshotGateInputs(
     )
   ) {
     if (!invocation.args.some((arg) => ['-e', '--eval', '-c', '--print', '-p'].includes(arg))) {
+      const scripts: string[] = [];
       const script = invocation.args.find((arg) => !arg.startsWith('-'));
-      if (script) paths.add(resolve(invocation.cwd, script));
+      if (script) scripts.push(resolve(invocation.cwd, script));
       for (const arg of invocation.args) {
         if (
           !arg.startsWith('-') &&
           (arg.includes('/') || /\.(?:[cm]?[jt]sx?|py|sh|rb|pl)$/.test(arg))
         )
-          paths.add(resolve(invocation.cwd, arg));
+          scripts.push(resolve(invocation.cwd, arg));
       }
+      for (const path of scripts) paths.add(await packageStoreRealPath(root, path));
     }
   }
   const artifacts: AcceptanceGateArtifact[] = [];

@@ -2,7 +2,7 @@
 import { spawnSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import type { AcceptanceGate, AcRow, Task } from '@cleocode/contracts';
@@ -424,6 +424,80 @@ describe('typed requirement persistence', () => {
         (entry) => entry.bindingType === 'satisfies',
       ),
     ).toBe(true);
+  });
+
+  describe('pnpm-symlinked interpreter scripts (T13527)', () => {
+    /** node_modules/fakebin -> node_modules/.pnpm/fakebin@1.0.0/node_modules/fakebin, as pnpm links it. */
+    async function pnpmLinkedBin(body: string): Promise<void> {
+      const real = join(root, 'node_modules', '.pnpm', 'fakebin@1.0.0', 'node_modules', 'fakebin');
+      await mkdir(real, { recursive: true });
+      await writeFile(join(real, 'bin.mjs'), body);
+      await symlink(real, join(root, 'node_modules', 'fakebin'), 'dir');
+    }
+    const write = () =>
+      validateGateVerify(root, {
+        taskId: 'T121',
+        gate: 'cleanupDone',
+        value: true,
+        agent: 'implementer',
+        evidence: 'note:explicit synthetic verification',
+      });
+
+    it("a typed gate running node node_modules/<pkg>/bin through pnpm's link executes and passes", async () => {
+      await verificationFixture('verified.mjs', 'process.exit(0);');
+      await pnpmLinkedBin('process.exit(0);');
+      await reqAdd(
+        root,
+        'T121',
+        {
+          kind: 'test',
+          command: process.execPath,
+          args: ['node_modules/fakebin/bin.mjs'],
+          expect: 'exit0',
+          req: 'PNPM-1',
+          description: 'pnpm-linked harness',
+        },
+        accessor,
+      );
+      const result = await write();
+      expect(result.success, result.success ? undefined : result.error.message).toBe(true);
+      const stored = (await accessor.loadSingleTask('T121'))?.verification?.gateResults ?? [];
+      const pnpm = stored.find((r) => r.req === 'PNPM-1');
+      expect(pnpm?.result, pnpm?.errorMessage).toBe('pass');
+      // Captured at its real path inside the project's virtual store.
+      expect(pnpm?.binding?.artifacts.map((a) => a.path)).toContain(
+        join(root, 'node_modules', '.pnpm', 'fakebin@1.0.0', 'node_modules', 'fakebin', 'bin.mjs'),
+      );
+    });
+
+    it('a genuinely ambiguous symlink parent fails that gate alone; the other gates still run', async () => {
+      await verificationFixture('verified.mjs', 'process.exit(0);');
+      await mkdir(join(root, 'realdir'), { recursive: true });
+      await writeFile(join(root, 'realdir', 'h.mjs'), 'process.exit(0);');
+      await symlink(join(root, 'realdir'), join(root, 'linkdir'), 'dir');
+      await reqAdd(
+        root,
+        'T121',
+        {
+          kind: 'test',
+          command: process.execPath,
+          args: ['linkdir/h.mjs'],
+          expect: 'exit0',
+          req: 'LINK-1',
+          description: 'redirected harness',
+        },
+        accessor,
+      );
+      const result = await write();
+      expect(result.success, result.success ? undefined : result.error.message).toBe(true);
+      const stored = (await accessor.loadSingleTask('T121'))?.verification?.gateResults ?? [];
+      expect(stored.find((r) => r.req === 'VERIFY-121')?.result).toBe('pass');
+      const linked = stored.find((r) => r.req === 'LINK-1');
+      expect(linked?.result).toBe('error');
+      expect(linked?.errorMessage).toMatch(
+        /inputs could not be captured: .*ambiguous symlink parent/,
+      );
+    });
   });
 
   it('canonical verify records missing harness as unmet instead of green generic evidence', async () => {

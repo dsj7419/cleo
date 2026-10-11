@@ -1264,9 +1264,12 @@ describe('task-bound explicit gate verification (T12292)', () => {
     const { task, rows } = taskAndRows(script);
     const execution = admitted();
     try {
-      await expect(
-        runTaskGates({ ...task, files: ['../outside'] }, rows, { execution }),
-      ).rejects.toThrow('escapes');
+      // T13527: an uncapturable input is that gate's own unmet `error`, never run.
+      const [escaped] = await runTaskGates({ ...task, files: ['../outside'] }, rows, {
+        execution,
+      });
+      expect(escaped?.result).toBe('error');
+      expect(escaped?.errorMessage).toMatch(/inputs could not be captured: .*escapes/);
     } finally {
       execution.close();
     }
@@ -1296,7 +1299,9 @@ describe('task-bound explicit gate verification (T12292)', () => {
       { resources: { maxBytes: 4 } },
     );
     try {
-      await expect(runTaskGates(task, rows, { execution: bounded })).rejects.toThrow('byte limit');
+      const [oversized] = await runTaskGates(task, rows, { execution: bounded });
+      expect(oversized?.result).toBe('error');
+      expect(oversized?.errorMessage).toMatch(/byte limit/);
     } finally {
       bounded.close();
     }
@@ -1316,9 +1321,9 @@ describe('task-bound explicit gate verification (T12292)', () => {
         : row,
     );
     try {
-      await expect(runTaskGates(task, revisedRows, { execution })).rejects.toThrow(
-        'working directory escapes',
-      );
+      const [escaping] = await runTaskGates(task, revisedRows, { execution });
+      expect(escaping?.result).toBe('error');
+      expect(escaping?.errorMessage).toMatch(/working directory escapes/);
     } finally {
       execution.close();
     }
