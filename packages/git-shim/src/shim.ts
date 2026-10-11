@@ -389,7 +389,7 @@ function dryRunPushDenial(
 function main(): void {
   const argv = process.argv.slice(2);
   // Global options (`-C dir`, `-c k=v`) precede the subcommand (T13533).
-  const { global: globalArgs, subcommand, args: subArgs } = splitGitArgv(argv);
+  const { global: globalArgs, subcommand, args: subArgs, unknownGlobal } = splitGitArgv(argv);
 
   // Fast path: no subcommand → pass through (git with no args shows usage).
   if (!subcommand) {
@@ -418,6 +418,24 @@ function main(): void {
   }
 
   const remainingArgs = subArgs;
+
+  // An unknown leading option may take a value, hiding the real subcommand:
+  // fail closed for a restricted role rather than guess (T13535).
+  if (unknownGlobal !== null && process.env['CLEO_ALLOW_GIT'] !== '1') {
+    emitBlockedError(
+      'E_GIT_OP_BLOCKED',
+      `git ${unknownGlobal} is not a global option the shim understands; refusing for role '${role}' (set CLEO_ALLOW_GIT=1 to bypass, audited)`,
+      { subcommand: subcommand ?? '', flag: unknownGlobal, role },
+    );
+    writeAuditRecord(
+      buildAuditRecord('blocked', 'denylist', 'E_GIT_OP_BLOCKED', subcommand ?? '', subArgs, {
+        flag: unknownGlobal,
+        reason: 'unknown global option',
+      }),
+    );
+    process.exit(BLOCKED_EXIT_CODE);
+    return;
+  }
   const allowBranchOps = process.env['CLEO_ALLOW_BRANCH_OPS'] === '1';
   const allowGit = process.env['CLEO_ALLOW_GIT'] === '1';
 

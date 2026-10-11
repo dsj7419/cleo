@@ -101,6 +101,7 @@ describe('ensureGitShimDir (T13522)', () => {
         ['--attr-source', 'HEAD', 'push', '--all', 'origin'],
         ['-c', 'remote.origin.push=HEAD:refs/heads/main', 'push', 'origin'],
         ['push'], // bare push, upstream origin/main
+        ['--future-opt', 'HEAD', 'push', '--all', 'origin'], // unknown leading option: fail closed
       ];
       for (const argv of bypasses) {
         const r = spawnSync(launcher, argv, { cwd: root, env, encoding: 'utf-8' });

@@ -203,18 +203,31 @@ describe('every-ref pushes and global options (T13533)', () => {
       global: ['-C', '.'],
       subcommand: 'push',
       args: ['origin', 'main'],
+      unknownGlobal: null,
     });
     expect(splitGitArgv(['-c', 'k=v', '--no-pager', 'push', '--all'])).toEqual({
       global: ['-c', 'k=v', '--no-pager'],
       subcommand: 'push',
       args: ['--all'],
+      unknownGlobal: null,
     });
     expect(splitGitArgv(['--git-dir', '/x/.git', 'status'])).toEqual({
       global: ['--git-dir', '/x/.git'],
       subcommand: 'status',
       args: [],
+      unknownGlobal: null,
     });
-    expect(splitGitArgv([])).toEqual({ global: [], subcommand: undefined, args: [] });
+    // An option the parser does not know is reported, so the shim can fail closed.
+    expect(splitGitArgv(['--future-opt', 'HEAD', 'push', '--all']).unknownGlobal).toBe(
+      '--future-opt',
+    );
+    expect(splitGitArgv(['--git-dir=/x/.git', 'push']).unknownGlobal).toBeNull();
+    expect(splitGitArgv([])).toEqual({
+      global: [],
+      subcommand: undefined,
+      args: [],
+      unknownGlobal: null,
+    });
   });
 
   it('refuses a pattern destination and sees past --attr-source (T13535)', () => {

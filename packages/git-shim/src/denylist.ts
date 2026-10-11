@@ -305,15 +305,45 @@ export function splitGitArgv(argv: readonly string[]): {
   global: string[];
   subcommand: string | undefined;
   args: string[];
+  /** A leading option this parser does not know: it may take a value, so the subcommand is uncertain. */
+  unknownGlobal: string | null;
 } {
   let i = 0;
+  let unknownGlobal: string | null = null;
   while (i < argv.length) {
     const a = argv[i] as string;
     if (!a.startsWith('-')) break;
+    if (!GLOBAL_OPTIONS_WITH_VALUE.has(a) && !GLOBAL_FLAGS.has(a) && !a.includes('=')) {
+      unknownGlobal ??= a;
+    }
     i += GLOBAL_OPTIONS_WITH_VALUE.has(a) ? 2 : 1;
   }
-  return { global: argv.slice(0, i), subcommand: argv[i], args: argv.slice(i + 1) };
+  return { global: argv.slice(0, i), subcommand: argv[i], args: argv.slice(i + 1), unknownGlobal };
 }
+
+/** Git global options that take no value. */
+const GLOBAL_FLAGS = new Set([
+  '-p',
+  '-P',
+  '--paginate',
+  '--no-pager',
+  '--bare',
+  '--no-replace-objects',
+  '--no-lazy-fetch',
+  '--no-optional-locks',
+  '--no-advice',
+  '--literal-pathspecs',
+  '--glob-pathspecs',
+  '--noglob-pathspecs',
+  '--icase-pathspecs',
+  '-v',
+  '--version',
+  '-h',
+  '--help',
+  '--html-path',
+  '--man-path',
+  '--info-path',
+]);
 
 /**
  * The protected branches a `git push --dry-run --porcelain` would update.
