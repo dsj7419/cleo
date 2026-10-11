@@ -260,10 +260,19 @@ export async function readNexusAutoRefreshPolicy(
     read('budgetMs'),
   ]);
   // T13523: the env var wins over config, as ENV_MAP does for loadConfig.
-  const env = readEnvOverride('nexus.autoRefresh.enabled');
-  if (typeof env === 'boolean')
-    return { ...policyFrom(env, maxFiles, budgetMs), disabledBy: 'CLEO_NEXUS_AUTO_REFRESH=false' };
+  const env = envSwitch(readEnvOverride('nexus.autoRefresh.enabled'));
+  if (env === true) return policyFrom(true, maxFiles, budgetMs);
+  if (env === false)
+    return { ...policyFrom(false, maxFiles, budgetMs), disabledBy: 'CLEO_NEXUS_AUTO_REFRESH' };
   return policyFrom(enabled, maxFiles, budgetMs);
+}
+
+/** Read an on/off env value (`true`/`false`, `1`/`0`, `yes`/`no`, `on`/`off`); `undefined` otherwise. */
+function envSwitch(value: unknown): boolean | undefined {
+  const text = String(value).trim().toLowerCase();
+  if (['true', '1', 'yes', 'on'].includes(text)) return true;
+  if (['false', '0', 'no', 'off'].includes(text)) return false;
+  return undefined;
 }
 
 /** Apply defaults to raw `nexus.autoRefresh.*` values. */

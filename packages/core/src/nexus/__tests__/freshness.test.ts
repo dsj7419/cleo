@@ -172,12 +172,12 @@ describe('index freshness (T12316)', () => {
     const flag = await assessNexusFreshnessForQuery(repo, { refresh: false });
     expect(flag.freshness.status).toBe('stale');
     expect(flag.freshness.autoRefresh?.reason).toMatch(/disabled \(--no-refresh\)/);
-    vi.stubEnv('CLEO_NEXUS_AUTO_REFRESH', 'false');
     try {
-      const env = await assessNexusFreshnessForQuery(repo);
-      expect(env.freshness.autoRefresh?.reason).toMatch(
-        /disabled \(CLEO_NEXUS_AUTO_REFRESH=false\)/,
-      );
+      for (const off of ['false', '0', 'no']) {
+        vi.stubEnv('CLEO_NEXUS_AUTO_REFRESH', off);
+        const env = await assessNexusFreshnessForQuery(repo);
+        expect(env.freshness.autoRefresh?.reason).toMatch(/disabled \(CLEO_NEXUS_AUTO_REFRESH\)/);
+      }
     } finally {
       vi.unstubAllEnvs();
     }
