@@ -236,6 +236,31 @@ describe('index freshness (T12316)', () => {
     );
   });
 
+  it('resolves on the worker result even when the worker keeps a handle open (T13539)', async () => {
+    const started = Date.now();
+    const summary = await runRefreshInWorker(
+      { projectRoot: repo, repoPath: repo, budgetMs: 60_000 },
+      { entry: new URL('./fixtures/hold-open-worker.mjs', import.meta.url) },
+    );
+    expect(summary).toEqual({ mode: 'incremental', reason: 'posted, then held open' });
+    expect(Date.now() - started).toBeLessThan(5_000);
+  });
+
+  it('terminates a synchronously stalled worker after the budget plus a margin (T13539)', async () => {
+    await runNexusAnalysis({ repoPath: repo });
+    await put('src/a.ts', 'export const a6 = 1;\n');
+    const stall = new URL('./fixtures/stall-worker.mjs', import.meta.url);
+    const started = Date.now();
+    const { freshness } = await ensureNexusIndexFresh(repo, { ...ON, budgetMs: 3_000 }, (input) =>
+      runRefreshInWorker(input, { entry: stall }),
+    );
+    expect(Date.now() - started).toBeLessThan(8_000);
+    expect(freshness.status).toBe('stale');
+    expect(freshness.autoRefresh?.reason).toMatch(
+      /refresh failed, previous graph retained: the refresh did not finish within 4000 ms; run cleo nexus analyze/,
+    );
+  }, 15_000);
+
   it('judges symbol files identified only after the query ran', async () => {
     await runNexusAnalysis({ repoPath: repo });
     await put('src/b.ts', 'export const beta = () => 0;\n');
