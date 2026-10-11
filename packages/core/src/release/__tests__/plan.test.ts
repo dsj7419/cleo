@@ -332,6 +332,25 @@ describe('releasePlan — happy path', () => {
     }
   });
 
+  it('previousTag orders prerelease numbers numerically: beta.9 precedes beta.10 (T13543)', async () => {
+    await seedEpicWithChildren('T9999', 1);
+    const git = (...args: string[]) => execFileSync('git', ['-C', testDir, ...args]);
+    git('commit', '--allow-empty', '-m', 'one', '--quiet');
+    for (const n of [1, 2, 9]) git('tag', `v2026.6.0-beta.${n}`);
+
+    const result = await releasePlan({
+      version: 'v2026.6.0-beta.10',
+      epicId: 'T9999',
+      channel: 'beta',
+      scheme: 'calver',
+      projectRoot: testDir,
+    });
+    expect(result.success).toBe(true);
+    if (!result.success) throw new Error('unreachable');
+    const plan = parseReleasePlan(JSON.parse(readFileSync(result.data.planPath, 'utf-8')));
+    expect(plan.previousTag).toBe('v2026.6.0-beta.9');
+  });
+
   it('accepts explicit task-list release scope via taskIds (T10088)', async () => {
     const accessor = await createSqliteDataAccessor(testDir);
     try {

@@ -1117,7 +1117,8 @@ function compareVersionStrings(a: string, b: string): number {
     const diff = (pa[i] ?? 0) - (pb[i] ?? 0);
     if (diff !== 0) return diff;
   }
-  return a.localeCompare(b);
+  // Numeric, so a prerelease `beta.10` sorts after `beta.9` (T13543).
+  return a.localeCompare(b, undefined, { numeric: true });
 }
 
 function parseVersionParts(version: string): number[] {
