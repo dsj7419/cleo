@@ -25,6 +25,7 @@
  */
 
 import { execFileSync } from 'node:child_process';
+import { join, resolve } from 'node:path';
 import type {
   AcRow,
   DoneNextStep,
@@ -44,6 +45,7 @@ import { type EngineResult, engineSuccess } from '../engine-result.js';
 import { CleoError } from '../errors.js';
 import { cleoErrorToEngineResult } from '../errors-to-engine.js';
 import { getProjectRoot } from '../paths.js';
+import { readProjectInfoAtDirectorySync } from '../project-scope.js';
 import { isCiDocumentPath, readCiChecks, readCiSatisfies } from '../release/ci-evidence.js';
 
 import { getTaskAccessor } from '../store/data-accessor.js';
@@ -53,6 +55,8 @@ import {
   standalonePackage,
 } from './affected-packages.js';
 import {
+  hasTreeBoundQaRun,
+  qaRunTreeMismatchReason,
   type TaskMergeInfo,
   taskChangeMergeState,
   testsPassedSupersededReason,
@@ -63,7 +67,7 @@ import {
   classifyEvidenceTask,
   extractTaskAcFilesWithProvenance,
 } from './evidence.js';
-import { extractTypedGates } from './gate-runner.js';
+import { extractTypedGates, typedResultStaleReason } from './gate-runner.js';
 import { changedTestFiles } from './test-run-binding.js';
 import { captureTreeHash, computeCacheKey, readCacheEntry } from './tool-cache.js';
 import { captureEnvFingerprint, captureResourceEnv } from './tool-cache-env.js';
@@ -113,6 +117,7 @@ const DONE_PLAN_BLOCKER_ORDER: readonly DonePlanBlockerCode[] = [
   'tool-failed',
   'typed-gate-failed',
   'test-run-needed',
+  'qa-run-needed',
   'ac-mapping-needed',
   'manual-gate',
   'epic-rollup',
@@ -396,17 +401,33 @@ function normaliseRepoPath(path: string): string {
 }
 
 /** Stored typed-gate results, aligned with criteria by acceptance index. */
-function planTypedGates(task: Task, rows: readonly AcRow[]): DonePlanTypedGate[] {
+function planTypedGates(
+  task: Task,
+  rows: readonly AcRow[],
+  storeRoot: string,
+): DonePlanTypedGate[] {
   const results = task.verification?.gateResults ?? [];
+  const projectRoot = resolve(storeRoot);
+  const projectId = readProjectInfoAtDirectorySync(
+    projectRoot,
+    join(projectRoot, '.cleo'),
+  ).projectId;
+  const owner = projectId ? { projectId, projectRoot } : undefined;
   return extractTypedGates(task.acceptance ?? []).map(({ gate, originalIndex }) => {
     const stored = results.find((r) => r.index === originalIndex);
+    const row = rows[originalIndex];
+    // A pass `cleo complete` would refuse as stale (an older criterion or gate
+    // definition, another task, owner or criterion id) is not a pass in the
+    // plan: the one predicate completion's revalidation uses (T13502).
+    const stale =
+      stored?.result === 'pass' &&
+      (row === undefined || typedResultStaleReason(stored, task, gate, row, owner) !== null);
     const status: DonePlanTypedGate['status'] =
-      stored === undefined || stored.result === 'skipped'
+      stored === undefined || stored.result === 'skipped' || stale
         ? 'not-run'
         : stored.result === 'pass'
           ? 'pass'
           : 'fail';
-    const row = rows[originalIndex];
     return {
       alias: `AC${row?.ordinal ?? originalIndex + 1}`,
       kind: gate.kind,
@@ -570,6 +591,40 @@ function testRunNeededBlocker(
       'Write the report to a gitignored path (vitest run <files> --reporter=json ' +
         '--outputFile=<path>; jest <files> --json --outputFile=<path>); it must pass every ' +
         'changed test file. tool:test (the whole suite) also satisfies the gate.',
+    ),
+  };
+}
+
+/**
+ * The step that binds qa-run receipts of a standalone project's changed roots
+ * instead of a fresh whole-project lint/typecheck (T13427).
+ */
+function qaRunNeededBlocker(
+  taskId: string,
+  root: string,
+  checks: readonly string[],
+): DonePlanBlocker {
+  const dirs = [
+    ...new Set(
+      (changedPathsSinceDefault(root) ?? [])
+        .filter((p) => !isCiDocumentPath(p))
+        .map((p) => (p.includes('/') ? p.slice(0, p.lastIndexOf('/')) : '.')),
+    ),
+  ].sort();
+  const roots = `${dirs.slice(0, 5).join(' ')}${dirs.length > 5 ? ` … (${dirs.length} dirs)` : ''}`;
+  const atoms = checks.map((c) => `qa-run:<${c}-receipt.json>`).join(';');
+  return {
+    code: 'qa-run-needed',
+    message:
+      `qaPassed: this single-package project has no recorded ${checks.join(' or ')} result for ` +
+      `the current tree, and tool:${checks[0]} would check the whole project. Run ` +
+      `${checks.join(' and ')} over the changed roots (${roots || 'none'}) and record a qa-run receipt for each.`,
+    next: step(
+      `cleo verify ${taskId} --gate qaPassed --evidence '${atoms}'`,
+      'Each receipt is JSON: {"kind":"typecheck"|"lint","command":[…],"exitCode":0,' +
+        '"diagnostics":{"errors":0},"roots":[…],"startTime":<epoch ms>}; its roots must hold every ' +
+        'changed code file. A check with a fresh cached result binds as tool:<check> alongside. ' +
+        'tool:lint;tool:typecheck (the whole project) also satisfies the gate.',
     ),
   };
 }
@@ -749,8 +804,16 @@ export async function deriveTaskEvidence(
   );
   const superseded = supersededReason !== null;
   if (supersededReason) changeSet.warnings.push(supersededReason);
+  // T13427: a qa-run receipt stands only while its tree does.
+  const qaAtoms = task.verification?.evidence?.qaPassed?.atoms ?? [];
+  const qaSupersededReason = hasTreeBoundQaRun(qaAtoms)
+    ? qaRunTreeMismatchReason(qaAtoms, await captureTreeHash(root))
+    : null;
+  if (qaSupersededReason) changeSet.warnings.push(qaSupersededReason);
   const passed = (gate: VerificationGate): boolean =>
-    task.verification?.gates?.[gate] === true && !(gate === 'testsPassed' && superseded);
+    task.verification?.gates?.[gate] === true &&
+    !(gate === 'testsPassed' && superseded) &&
+    !(gate === 'qaPassed' && qaSupersededReason !== null);
   const pending = policy.requiredGates.filter((g) => !passed(g));
   const decisionOnly =
     changeSet.source === 'docs' && (changeSet.implementedEvidence ?? '').startsWith('decision:');
@@ -772,6 +835,8 @@ export async function deriveTaskEvidence(
     : null;
   const toolRuns: DonePlanToolRun[] = [];
   const testRunBlockers: DonePlanBlocker[] = [];
+  const qaRunChecks: string[] = [];
+  const standalone = standalonePackage(root) !== null;
   // T13428: a docs change set (a research or documentation deliverable) has
   // no code to test or typecheck, decision recorded yet or not: never plan a
   // whole suite or a typecheck for it.
@@ -811,7 +876,7 @@ export async function deriveTaskEvidence(
                 : '; evidence.ciSatisfies is set, so ci:<pr> once the PR merges is the preferred evidence and needs no local run'),
           );
         }
-        toolRuns.push(
+        const run: DonePlanToolRun =
           scoped?.scope === 'affected'
             ? await planToolRun('test-affected', gate, storeRoot, root, scoped.run.command)
             : scoped?.scope === 'pending'
@@ -823,12 +888,22 @@ export async function deriveTaskEvidence(
                   cache: 'miss',
                   reason: scoped.reason,
                 }
-              : await planToolRun(tool, gate, storeRoot, root),
-        );
+              : await planToolRun(tool, gate, storeRoot, root);
+        // T13427: in a standalone project a missing lint/typecheck result
+        // would be a fresh whole-project run; plan a qa-run receipt of the
+        // changed roots instead. A cached result still binds as tool:.
+        if (standalone && gate === 'qaPassed' && run.cache === 'miss') {
+          qaRunChecks.push(tool);
+          continue;
+        }
+        toolRuns.push(run);
       }
     }
   }
-  const typedGates = planTypedGates(task, rows);
+  if (qaRunChecks.length > 0) {
+    testRunBlockers.push(qaRunNeededBlocker(taskId, root, qaRunChecks));
+  }
+  const typedGates = planTypedGates(task, rows, storeRoot);
   const acMapping = mapCriteria(task, rows, typedGates, changeSet, pending, satisfies);
 
   const gates: DonePlanGate[] = policy.requiredGates.map((gate) => {
